@@ -77,8 +77,8 @@ $i18n = [
 
         // Cek Status Section (1:1 Mirip Sewa Lapangan)
         'status_section_title' => 'Cek Status Pendaftaran Siswa Baru',
-        'status_section_desc' => 'Gunakan nomor registrasi atau alamat email terdaftar untuk mengecek status verifikasi berkas dan mengunggah bukti pembayaran formulir.',
-        'status_input_ph' => 'Contoh: CCS-ADM-2609-001 atau Email',
+        'status_section_desc' => 'Gunakan alamat email terdaftar dan nomor WhatsApp/HP orang tua untuk mengecek status verifikasi berkas dan mengunggah bukti pembayaran formulir.',
+        'status_input_ph' => 'Masukkan Alamat Email Terdaftar (contoh: orangtua@gmail.com)',
         'btn_check' => 'Cek Status',
         'status_verified' => 'Disetujui (Lunas)',
         'status_proof_uploaded' => 'Verifikasi Bukti Struk',
@@ -93,6 +93,7 @@ $i18n = [
         'bank_card_an' => 'Atas Nama:',
         'bank_card_remark' => 'Berita Transfer:',
         'btn_copy' => 'Salin',
+        'lbl_copy_rek' => 'Salin',
         'msg_copied' => 'Nomor rekening berhasil disalin!',
 
         // Upload Bukti
@@ -189,8 +190,8 @@ $i18n = [
 
         // Cek Status Section (1:1 Mirip Sewa Lapangan)
         'status_section_title' => 'Check New Student Admission Status',
-        'status_section_desc' => 'Enter your registration number or registered email to check document status and upload your form payment receipt.',
-        'status_input_ph' => 'Example: CCS-ADM-2609-001 or Email',
+        'status_section_desc' => 'Enter your registered email address and parent WhatsApp/phone number to check document status and upload your form payment receipt.',
+        'status_input_ph' => 'Enter Registered Email Address (e.g. parent@example.com)',
         'btn_check' => 'Check Status',
         'status_verified' => 'Approved (Verified)',
         'status_proof_uploaded' => 'Verifying Payment Receipt',
@@ -205,6 +206,7 @@ $i18n = [
         'bank_card_an' => 'Beneficiary Name:',
         'bank_card_remark' => 'Transfer Remarks:',
         'btn_copy' => 'Copy',
+        'lbl_copy_rek' => 'Copy',
         'msg_copied' => 'Account number copied successfully!',
 
         // Upload Proof
@@ -301,8 +303,8 @@ $i18n = [
 
         // Cek Status Section (1:1 Mirip Sewa Lapangan)
         'status_section_title' => '查询新生入学报名状态',
-        'status_section_desc' => '使用您的官方报名编号或已填写的电子邮箱，查询审核状态或上传报名表格付款凭证。',
-        'status_input_ph' => '例如：CCS-ADM-2609-001 或电子邮箱',
+        'status_section_desc' => '使用您注册时填写的电子邮箱和家长手机号码，查询审核状态或上传报名表格付款凭证。',
+        'status_input_ph' => '请输入注册时填写的电子邮箱 (例如: parent@example.com)',
         'btn_check' => '查询状态',
         'status_verified' => '已审核批准 (已缴费)',
         'status_proof_uploaded' => '凭证审核中',
@@ -317,6 +319,7 @@ $i18n = [
         'bank_card_an' => '账户户名：',
         'bank_card_remark' => '转账附言：',
         'btn_copy' => '复制',
+        'lbl_copy_rek' => '复制',
         'msg_copied' => '银行账号复制成功！',
 
         // Upload Proof
@@ -662,7 +665,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action_complete_form'
 }
 
 // ─── 9. PENCARIAN STATUS PENDAFTARAN (1:1 DENGAN SEWA LAPANGAN) ─────────────
-$searchQuery = trim($_GET['cek'] ?? ($_SESSION['applicant_app_no'] ?? ''));
+$searchQuery = trim($_GET['cek'] ?? ($_SESSION['applicant_email'] ?? ''));
 $searchPhone = trim($_GET['phone'] ?? ($_SESSION['applicant_phone'] ?? ''));
 $currentApplicant = null;
 $searchError = '';
@@ -691,7 +694,7 @@ if (!empty($searchQuery)) {
         }
     } else {
         if (isset($_GET['cek'])) {
-            $searchError = "Data pendaftaran dengan kata kunci '{$searchQuery}' tidak ditemukan.";
+            $searchError = !empty($res['message']) ? $res['message'] : "Data pendaftaran dengan kata kunci '{$searchQuery}' tidak ditemukan.";
         }
     }
 }
@@ -880,21 +883,21 @@ if (!empty($searchQuery)) {
       <!-- Sisi Kanan: Multi-Bahasa (English | Bahasa | 中文) -->
       <div class="flex items-center gap-3 text-[13px] font-medium text-gray-200">
         <a 
-          href="?lang=en<?= !empty($searchQuery) ? '&cek=' . urlencode($searchQuery) : '' ?>" 
+          href="?lang=en<?= !empty($searchQuery) ? '&cek=' . urlencode($searchQuery) : '' ?><?= !empty($searchPhone) ? '&phone=' . urlencode($searchPhone) : '' ?>" 
           class="<?= $currLang === 'en' ? 'text-ccsOrangeLight font-semibold' : 'hover:text-ccsOrangeLight transition' ?>"
         >
           English
         </a>
         <span class="text-gray-500">|</span>
         <a 
-          href="?lang=id<?= !empty($searchQuery) ? '&cek=' . urlencode($searchQuery) : '' ?>" 
+          href="?lang=id<?= !empty($searchQuery) ? '&cek=' . urlencode($searchQuery) : '' ?><?= !empty($searchPhone) ? '&phone=' . urlencode($searchPhone) : '' ?>" 
           class="<?= $currLang === 'id' ? 'text-ccsOrangeLight font-semibold' : 'hover:text-ccsOrangeLight transition' ?>"
         >
           Bahasa
         </a>
         <span class="text-gray-500">|</span>
         <a 
-          href="?lang=cn<?= !empty($searchQuery) ? '&cek=' . urlencode($searchQuery) : '' ?>" 
+          href="?lang=cn<?= !empty($searchQuery) ? '&cek=' . urlencode($searchQuery) : '' ?><?= !empty($searchPhone) ? '&phone=' . urlencode($searchPhone) : '' ?>" 
           class="<?= $currLang === 'cn' ? 'text-ccsOrangeLight font-semibold' : 'hover:text-ccsOrangeLight transition' ?>"
         >
           中文
@@ -991,7 +994,7 @@ if (!empty($searchQuery)) {
         </div>
 
         <div class="space-y-3 pt-2">
-          <a href="?cek=<?= urlencode($successReg['application_number']) ?>&lang=<?= $currLang ?>#cek-status" class="thm-btn w-full sm:w-auto">
+          <a href="?cek=<?= urlencode($successReg['parent_email'] ?? '') ?>&phone=<?= urlencode($successReg['parent_phone'] ?? '') ?>&lang=<?= $currLang ?>#tempat-unggah" class="thm-btn w-full sm:w-auto">
             <i class="fas fa-eye mr-1.5"></i> <?= htmlspecialchars($L['btn_check_this']) ?>
           </a>
           <div>
@@ -1152,13 +1155,13 @@ if (!empty($searchQuery)) {
     <!-- ═════════════════════════════════════════════════════════════════════ -->
     <!-- SECTION 2: CEK STATUS PENDAFTARAN (INSTITUSIONAL & BERSIH)            -->
     <!-- ═════════════════════════════════════════════════════════════════════ -->
-    <section id="cek-status" class="bg-white border border-gray-200 rounded-md p-6 sm:p-8 shadow-xs space-y-6">
+    <section id="cek-status" class="bg-white border border-gray-200 rounded-md p-6 sm:p-8 shadow-xs space-y-6 scroll-mt-28">
       <div class="border-b border-gray-200 pb-3">
         <h2 class="text-2xl font-bold text-ccsHeading"><?= htmlspecialchars($L['status_section_title']) ?></h2>
         <p class="text-xs text-gray-500 mt-1"><?= htmlspecialchars($L['status_section_desc'] ?? '') ?></p>
       </div>
 
-      <!-- Search Form -->
+      <!-- Search Form (Email + Nomor HP) -->
       <form method="GET" class="flex flex-wrap sm:flex-nowrap gap-2.5 max-w-2xl">
         <input type="hidden" name="lang" value="<?= htmlspecialchars($currLang) ?>" />
         <input
@@ -1167,13 +1170,14 @@ if (!empty($searchQuery)) {
           value="<?= htmlspecialchars($searchQuery) ?>"
           placeholder="<?= htmlspecialchars($L['status_input_ph']) ?>"
           required
-          class="school-input uppercase font-medium"
+          class="school-input font-medium"
         />
         <input
           type="tel"
           name="phone"
           value="<?= htmlspecialchars($searchPhone) ?>"
           placeholder="<?= htmlspecialchars($L['lbl_parent_phone']) ?>"
+          required
           class="school-input sm:w-56"
         />
         <button type="submit" class="thm-btn px-6 py-2.5 whitespace-nowrap text-xs font-semibold shrink-0">
@@ -1239,7 +1243,7 @@ if (!empty($searchQuery)) {
 
           <!-- KONDISI A: FORMULIR BELUM VERIFIED (TAMPILKAN FORM UPLOAD STRUK) -->
           <?php if (($currentApplicant['form_fee_status'] ?? '') !== 'verified'): ?>
-            <div class="border-t border-gray-200 pt-5 space-y-4">
+            <div id="tempat-unggah" class="border-t border-gray-200 pt-5 space-y-4 scroll-mt-28">
               <!-- Informasi Rekening Bank Mayapada: Tampilan Formal & Dignified (No AI gradient) -->
               <div class="bg-[#022c46] text-white p-5 rounded-md border border-[#0b4877] space-y-3">
                 <div class="flex items-center justify-between border-b border-white/10 pb-2.5">
@@ -1260,7 +1264,7 @@ if (!empty($searchQuery)) {
                     onclick="copyRekeningNumber()" 
                     class="self-start sm:self-center px-3 py-1.5 rounded bg-white/15 hover:bg-white/25 text-xs font-semibold text-white transition flex items-center gap-1.5"
                   >
-                    <i class="far fa-copy"></i> <span><?= htmlspecialchars($L['lbl_copy_rek']) ?></span>
+                    <i class="far fa-copy"></i> <span><?= htmlspecialchars($L['lbl_copy_rek'] ?? $L['btn_copy'] ?? 'Salin') ?></span>
                   </button>
                 </div>
                 <div class="text-[11px] text-gray-300 pt-2 border-t border-white/10 flex flex-wrap items-center gap-1.5">
@@ -1714,6 +1718,28 @@ if (!empty($searchQuery)) {
         }
       });
     }
+
+    // Auto-scroll halus ke tempat unggah / cek status jika ada hash atau data pendaftar aktif
+    window.addEventListener('load', function() {
+      var hash = window.location.hash;
+      var target = null;
+      if (hash) {
+        try {
+          target = document.querySelector(hash);
+        } catch(e) {}
+      }
+      <?php if ($currentApplicant): ?>
+      if (!target) {
+        target = document.getElementById('tempat-unggah') || document.getElementById('cek-status');
+      }
+      <?php endif; ?>
+
+      if (target) {
+        setTimeout(function() {
+          target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 250);
+      }
+    });
   </script>
 
 </body>

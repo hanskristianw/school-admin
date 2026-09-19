@@ -76,15 +76,15 @@ export async function GET(request) {
     const { searchParams } = new URL(request.url)
     const action = searchParams.get('action')
 
-    // ─── LOGIN / CEK STATUS: KOMBINASI EMAIL & NOMOR HP ────────
+    // ─── LOGIN / CEK STATUS: NOMOR REGISTRASI / EMAIL & NOMOR HP ────────
     if (action === 'check_status') {
       const email = searchParams.get('email')?.toLowerCase().trim()
       const rawPhone = searchParams.get('phone')?.trim() || ''
       const code = searchParams.get('code')?.trim() || ''
 
-      if (!email || (!rawPhone && !code)) {
+      if (!email && !code) {
         return NextResponse.json(
-          { success: false, message: 'Email dan Nomor HP / WhatsApp wajib diisi' },
+          { success: false, message: 'Nomor Registrasi atau Email wajib diisi' },
           { status: 400 }
         )
       }
@@ -135,19 +135,25 @@ export async function GET(request) {
             level_name
           )
         `)
-        .ilike('parent_email', email)
+
+      if (code && email) {
+        query = query.or(`application_number.ilike.${code},access_token.eq.${code}`)
+                     .ilike('parent_email', email)
+      } else if (code) {
+        query = query.or(`application_number.ilike.${code},access_token.eq.${code}`)
+      } else if (email) {
+        query = query.ilike('parent_email', email)
+      }
 
       if (phoneSuffix) {
         query = query.ilike('parent_phone', `%${phoneSuffix}%`)
-      } else if (code) {
-        query = query.or(`application_number.eq.${code},access_token.eq.${code}`)
       }
 
       const { data: apps, error } = await query.order('application_id', { ascending: false }).limit(1)
 
       if (error || !apps || apps.length === 0) {
         return NextResponse.json(
-          { success: false, message: 'Data pendaftaran tidak ditemukan. Pastikan kombinasi Email dan Nomor HP sesuai saat mendaftar.' },
+          { success: false, message: 'Data pendaftaran tidak ditemukan. Pastikan Nomor Registrasi / Email dan Nomor HP sesuai saat mendaftar.' },
           { status: 404 }
         )
       }
@@ -369,6 +375,8 @@ export async function POST(request) {
         if (cleanEmail && emailTemplates.admissionRegistrationPayment) {
           const { subject, html } = emailTemplates.admissionRegistrationPayment({
             parentName: resolvedStudentName,
+            parentEmail: cleanEmail,
+            parentPhone: cleanPhoneDigits,
             studentName: resolvedStudentName,
             applicationNumber: inserted.application_number,
             levelName: resolvedGrade || inserted.preferred_grade || '',

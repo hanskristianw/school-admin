@@ -63,6 +63,8 @@ export const emailTemplates = {
 
   admissionRegistrationPayment: ({
     parentName,
+    parentEmail,
+    parentPhone,
     studentName,
     applicationNumber,
     levelName,
@@ -70,7 +72,9 @@ export const emailTemplates = {
     hostingUrl = 'https://ccs.sch.id/registrasi'
   }) => {
     const formattedAmount = `Rp ${Number(feeAmount || 250000).toLocaleString('id-ID')}`
-    const checkUrl = `${String(hostingUrl || 'https://ccs.sch.id/registrasi').replace(/\/$/, '')}/?cek=${encodeURIComponent(applicationNumber)}#cek-status`
+    const queryTarget = parentEmail || applicationNumber
+    const queryPhone = parentPhone ? `&phone=${encodeURIComponent(parentPhone)}` : ''
+    const checkUrl = `${String(hostingUrl || 'https://ccs.sch.id/registrasi').replace(/\/$/, '')}/?cek=${encodeURIComponent(queryTarget)}${queryPhone}#tempat-unggah`
     const subject = `Instruksi Pembayaran Pendaftaran Siswa Baru CCS — ${applicationNumber}`
     const html = wrapHtml(`
       <div class="container">

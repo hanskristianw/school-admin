@@ -10,6 +10,7 @@ import Modal from '@/components/ui/modal';
 import NotificationModal from '@/components/ui/notification-modal';
 import { supabase } from '@/lib/supabase';
 import { useI18n } from '@/lib/i18n';
+import { useTheme } from '@/lib/theme';
 
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -51,34 +52,77 @@ const statusConfig = {
   pending: {
     label: 'Menunggu Review',
     icon: faClock,
-    color: 'text-yellow-600',
-    bgColor: 'bg-yellow-100',
-    borderColor: 'border-yellow-300'
+    color: 'text-amber-700 dark:text-amber-400',
+    bgColor: 'bg-amber-50 dark:bg-amber-950/30',
+    borderColor: 'border-amber-200 dark:border-amber-800'
   },
   approved: {
     label: 'Diterima',
     icon: faCheck,
-    color: 'text-green-600',
-    bgColor: 'bg-green-100',
-    borderColor: 'border-green-300'
+    color: 'text-emerald-700 dark:text-emerald-400',
+    bgColor: 'bg-emerald-50 dark:bg-emerald-950/30',
+    borderColor: 'border-emerald-200 dark:border-emerald-800'
   },
   rejected: {
     label: 'Ditolak',
     icon: faTimes,
-    color: 'text-red-600',
-    bgColor: 'bg-red-100',
-    borderColor: 'border-red-300'
+    color: 'text-rose-700 dark:text-rose-400',
+    bgColor: 'bg-rose-50 dark:bg-rose-950/30',
+    borderColor: 'border-rose-200 dark:border-rose-800'
   }
 };
 
 export default function AdmissionManagement() {
   const router = useRouter();
   const { t } = useI18n();
+  const { isDark } = useTheme();
+
+  // Minimalist UI styling tokens (matching /data/pyp)
+  const pageBg = isDark ? '#09090B' : '#FBFBFA';
+  const cardBg = isDark ? '#18181B' : '#FFFFFF';
+  const borderColor = isDark ? '#27272A' : '#EAEAEA';
+  const textPrimary = isDark ? '#F4F4F5' : '#111111';
+  const textSecondary = isDark ? '#A1A1AA' : '#787774';
+
+  const inputStyle = {
+    background: isDark ? '#27272A' : '#FFFFFF',
+    border: `1px solid ${borderColor}`,
+    color: textPrimary,
+    borderRadius: '6px',
+    fontSize: '13px'
+  };
+
+  const selectStyle = {
+    background: isDark ? '#27272A' : '#FFFFFF',
+    border: `1px solid ${borderColor}`,
+    color: textPrimary,
+    borderRadius: '6px',
+    fontSize: '13px',
+    padding: '6px 10px'
+  };
 
   const statusLabels = {
     pending: t('admission.status.pending'),
     approved: t('admission.status.approved'),
     rejected: t('admission.status.rejected'),
+  };
+
+  const statusPillStyles = {
+    pending: {
+      background: isDark ? 'rgba(245, 158, 11, 0.15)' : '#FBF3DB',
+      borderColor: isDark ? '#D97706' : '#FDE68A',
+      color: isDark ? '#FBBF24' : '#956400'
+    },
+    approved: {
+      background: isDark ? 'rgba(16, 185, 129, 0.15)' : '#EDF3EC',
+      borderColor: isDark ? '#059669' : '#A7F3D0',
+      color: isDark ? '#34D399' : '#346538'
+    },
+    rejected: {
+      background: isDark ? 'rgba(239, 68, 68, 0.15)' : '#FDEBEC',
+      borderColor: isDark ? '#DC2626' : '#FECACA',
+      color: isDark ? '#F87171' : '#9F2F2D'
+    }
   };
 
   const [applications, setApplications] = useState([]);
@@ -1336,14 +1380,14 @@ export default function AdmissionManagement() {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-64">
-        <FontAwesomeIcon icon={faSpinner} className="text-3xl text-blue-600 animate-spin" />
+      <div style={{ background: pageBg, minHeight: '100%', padding: '48px 32px', display: 'flex', justifyContent: 'center', alignItems: 'center', color: textSecondary }}>
+        <FontAwesomeIcon icon={faSpinner} className="text-2xl animate-spin" style={{ color: isDark ? '#60A5FA' : '#0284C7' }} />
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div style={{ background: pageBg, minHeight: '100%', padding: '24px 32px', color: textPrimary, fontFamily: "'Geist Sans', 'SF Pro Display', system-ui, -apple-system, sans-serif" }}>
       {/* Notification Modal */}
       <NotificationModal
         isOpen={notification.isOpen}
@@ -1353,318 +1397,560 @@ export default function AdmissionManagement() {
         type={notification.type}
       />
 
-      {/* Header */}
-      <div className="flex justify-between items-center">
+      {/* ── HEADER & BREADCRUMBS (MATCHING /data/pyp LAYOUT) ─────────── */}
+      <div className="pb-5 border-b flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6" style={{ borderColor }}>
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">{t('admission.title')}</h1>
-          <p className="text-gray-600">{t('admission.subtitle')}</p>
-        </div>
-        <Button
-          onClick={() => router.push('/data/admission/discounts')}
-          className="bg-emerald-600 hover:bg-emerald-700 text-white"
-        >
-          <FontAwesomeIcon icon={faTag} className="mr-2" />
-          {t('admission.masterDiscountBtn')}
-        </Button>
-      </div>
-
-      {/* Status Tabs */}
-      {/* Status Summary Cards */}
-      <div className="grid grid-cols-3 gap-4">
-        {Object.entries(statusConfig).map(([status, config]) => (
-          <Card 
-            key={status}
-            className={`cursor-pointer transition-all hover:shadow-md ${filterStatus === status ? 'ring-2 ring-blue-500' : ''}`}
-            onClick={() => setFilterStatus(filterStatus === status ? '' : status)}
-          >
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-          <p className="text-sm text-gray-500">{statusLabels[status]}</p>
-                  <p className={`text-2xl font-bold ${config.color}`}>{statusCounts[status]}</p>
-                </div>
-                <div className={`w-10 h-10 rounded-full ${config.bgColor} flex items-center justify-center`}>
-                  <FontAwesomeIcon icon={config.icon} className={config.color} />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      {/* Pending Form Fee Proofs Alert */}
-      {applications.filter(a => a.form_fee_status === 'proof_uploaded').length > 0 && (
-        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-center justify-between shadow-sm">
+          <div className="flex items-center gap-2 text-[10px] font-mono tracking-wider uppercase mb-1.5" style={{ color: textSecondary }}>
+            <span>[ADMISSIONS]</span>
+            <span>/</span>
+            <span>[STUDENT ENROLLMENT]</span>
+            <span>/</span>
+            <span className="font-semibold" style={{ color: isDark ? '#60A5FA' : '#0284C7' }}>[APPLICATIONS]</span>
+          </div>
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center text-amber-700">
-              <FontAwesomeIcon icon={faClock} className="text-lg" />
+            <div className="w-9 h-9 rounded flex items-center justify-center border" style={{ background: isDark ? 'rgba(59, 130, 246, 0.15)' : '#E1F3FE', borderColor: isDark ? '#2563EB' : '#BAE6FD', color: isDark ? '#60A5FA' : '#0284C7' }}>
+              <FontAwesomeIcon icon={faUserGraduate} className="text-base" />
             </div>
             <div>
-              <p className="font-semibold text-amber-900 text-sm">
+              <h1 className="text-xl font-bold tracking-tight" style={{ color: textPrimary, letterSpacing: '-0.02em', margin: 0 }}>
+                {t('admission.title')}
+              </h1>
+              <p className="text-xs" style={{ color: textSecondary, margin: '2px 0 0 0' }}>
+                {t('admission.subtitle')}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Right Header Actions */}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleExportExcel}
+            className="flex items-center gap-1.5 text-xs h-9 px-3 border transition-colors hover:bg-black/5 dark:hover:bg-white/5 font-medium"
+            style={{
+              background: cardBg,
+              borderColor,
+              color: textPrimary,
+              borderRadius: '6px'
+            }}
+          >
+            <FontAwesomeIcon icon={faDownload} className="text-xs text-emerald-600" />
+            <span>{t('admission.exportExcel')}</span>
+          </button>
+
+          <button
+            onClick={() => router.push('/data/admission/discounts')}
+            className="flex items-center gap-1.5 text-xs h-9 px-3.5 border transition-all font-medium"
+            style={{
+              background: isDark ? '#F4F4F5' : '#111111',
+              color: isDark ? '#111111' : '#FFFFFF',
+              borderColor: isDark ? '#F4F4F5' : '#111111',
+              borderRadius: '6px'
+            }}
+          >
+            <FontAwesomeIcon icon={faTag} className="text-xs" />
+            <span>{t('admission.masterDiscountBtn')}</span>
+          </button>
+        </div>
+      </div>
+
+      {/* ── BENTO STATS CARDS ────────────────────────────────────────── */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+        {/* Total Pendaftar */}
+        <div
+          onClick={() => setFilterStatus('')}
+          className="p-3.5 rounded border cursor-pointer transition-all hover:opacity-90"
+          style={{
+            background: cardBg,
+            borderColor: filterStatus === '' ? (isDark ? '#60A5FA' : '#0284C7') : borderColor,
+            borderRadius: '8px'
+          }}
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-[10px] font-mono uppercase tracking-wider" style={{ color: textSecondary }}>
+                Total Pendaftar
+              </p>
+              <p className="text-xl font-bold tracking-tight mt-0.5" style={{ color: textPrimary }}>
+                {applications.length}
+              </p>
+            </div>
+            <div className="w-8 h-8 rounded flex items-center justify-center border" style={{ background: isDark ? 'rgba(59, 130, 246, 0.15)' : '#E1F3FE', borderColor: isDark ? '#2563EB' : '#BAE6FD', color: isDark ? '#60A5FA' : '#1F6C9F' }}>
+              <FontAwesomeIcon icon={faUserGraduate} className="text-xs" />
+            </div>
+          </div>
+        </div>
+
+        {/* Menunggu Review */}
+        <div
+          onClick={() => setFilterStatus(filterStatus === 'pending' ? '' : 'pending')}
+          className="p-3.5 rounded border cursor-pointer transition-all hover:opacity-90"
+          style={{
+            background: cardBg,
+            borderColor: filterStatus === 'pending' ? (isDark ? '#F59E0B' : '#D97706') : borderColor,
+            borderRadius: '8px'
+          }}
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-[10px] font-mono uppercase tracking-wider" style={{ color: textSecondary }}>
+                {statusLabels.pending}
+              </p>
+              <p className="text-xl font-bold tracking-tight mt-0.5" style={{ color: isDark ? '#FBBF24' : '#956400' }}>
+                {statusCounts.pending}
+              </p>
+            </div>
+            <div className="w-8 h-8 rounded flex items-center justify-center border" style={{ background: isDark ? 'rgba(245, 158, 11, 0.15)' : '#FBF3DB', borderColor: isDark ? '#D97706' : '#FDE68A', color: isDark ? '#FBBF24' : '#956400' }}>
+              <FontAwesomeIcon icon={faClock} className="text-xs" />
+            </div>
+          </div>
+        </div>
+
+        {/* Diterima */}
+        <div
+          onClick={() => setFilterStatus(filterStatus === 'approved' ? '' : 'approved')}
+          className="p-3.5 rounded border cursor-pointer transition-all hover:opacity-90"
+          style={{
+            background: cardBg,
+            borderColor: filterStatus === 'approved' ? (isDark ? '#10B981' : '#059669') : borderColor,
+            borderRadius: '8px'
+          }}
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-[10px] font-mono uppercase tracking-wider" style={{ color: textSecondary }}>
+                {statusLabels.approved}
+              </p>
+              <p className="text-xl font-bold tracking-tight mt-0.5" style={{ color: isDark ? '#34D399' : '#346538' }}>
+                {statusCounts.approved}
+              </p>
+            </div>
+            <div className="w-8 h-8 rounded flex items-center justify-center border" style={{ background: isDark ? 'rgba(16, 185, 129, 0.15)' : '#EDF3EC', borderColor: isDark ? '#059669' : '#A7F3D0', color: isDark ? '#34D399' : '#346538' }}>
+              <FontAwesomeIcon icon={faCheck} className="text-xs" />
+            </div>
+          </div>
+        </div>
+
+        {/* Ditolak */}
+        <div
+          onClick={() => setFilterStatus(filterStatus === 'rejected' ? '' : 'rejected')}
+          className="p-3.5 rounded border cursor-pointer transition-all hover:opacity-90"
+          style={{
+            background: cardBg,
+            borderColor: filterStatus === 'rejected' ? (isDark ? '#EF4444' : '#DC2626') : borderColor,
+            borderRadius: '8px'
+          }}
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-[10px] font-mono uppercase tracking-wider" style={{ color: textSecondary }}>
+                {statusLabels.rejected}
+              </p>
+              <p className="text-xl font-bold tracking-tight mt-0.5" style={{ color: isDark ? '#F87171' : '#9F2F2D' }}>
+                {statusCounts.rejected}
+              </p>
+            </div>
+            <div className="w-8 h-8 rounded flex items-center justify-center border" style={{ background: isDark ? 'rgba(239, 68, 68, 0.15)' : '#FDEBEC', borderColor: isDark ? '#DC2626' : '#FECACA', color: isDark ? '#F87171' : '#9F2F2D' }}>
+              <FontAwesomeIcon icon={faTimes} className="text-xs" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── PENDING FORM FEE PROOFS ALERT (MINIMALIST BANNER) ─────────────── */}
+      {applications.filter(a => a.form_fee_status === 'proof_uploaded').length > 0 && (
+        <div 
+          className="p-3.5 rounded border mb-6 flex items-center justify-between flex-wrap gap-3"
+          style={{
+            background: isDark ? 'rgba(245, 158, 11, 0.10)' : '#FBF3DB',
+            borderColor: isDark ? 'rgba(245, 158, 11, 0.3)' : '#FDE68A',
+            borderRadius: '8px'
+          }}
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded flex items-center justify-center border flex-shrink-0" style={{ background: isDark ? '#18181B' : '#FFFFFF', borderColor: isDark ? '#D97706' : '#FDE68A', color: isDark ? '#FBBF24' : '#956400' }}>
+              <FontAwesomeIcon icon={faClock} className="text-xs" />
+            </div>
+            <div>
+              <p className="text-xs font-semibold" style={{ color: isDark ? '#FBBF24' : '#956400', margin: 0 }}>
                 Ada {applications.filter(a => a.form_fee_status === 'proof_uploaded').length} bukti transfer formulir baru yang perlu diverifikasi!
               </p>
-              <p className="text-xs text-amber-700">
+              <p className="text-[11px]" style={{ color: textSecondary, margin: '2px 0 0 0' }}>
                 Pendaftar dari portal ccs.sch.id telah mengunggah bukti pembayaran formulir. Silakan verifikasi untuk membuka formulir biodata lengkap bagi orang tua.
               </p>
             </div>
           </div>
-          <Button
-            size="sm"
-            variant="outline"
-            className="border-amber-400 text-amber-900 hover:bg-amber-100 text-xs font-medium"
+          <button
+            className="text-xs h-7 px-3 border font-medium transition-colors hover:bg-black/5 dark:hover:bg-white/5"
+            style={{
+              background: isDark ? '#18181B' : '#FFFFFF',
+              borderColor: isDark ? '#D97706' : '#D97706',
+              color: isDark ? '#FBBF24' : '#956400',
+              borderRadius: '6px'
+            }}
             onClick={() => {
               const pendingApp = applications.find(a => a.form_fee_status === 'proof_uploaded');
               if (pendingApp) handleViewDetail(pendingApp);
             }}
           >
-            Lihat Sekarang
-          </Button>
+            Verifikasi Sekarang
+          </button>
         </div>
       )}
 
-      {/* Filters */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg flex items-center gap-2">
-            <FontAwesomeIcon icon={faFilter} className="text-gray-500" />
-            {t('admission.filter.title')}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <Label>{t('admission.filter.searchLabel')}</Label>
-              <div className="relative mt-1">
-                <FontAwesomeIcon icon={faSearch} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                <Input
-                  placeholder={t('admission.filter.searchPlaceholder')}
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-            </div>
-
-            <div>
-              <Label>{t('admission.filter.levelLabel')}</Label>
-              <select
-                value={filterLevel}
-                onChange={(e) => setFilterLevel(e.target.value)}
-                className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">{t('admission.filter.allLevels')}</option>
-                {(() => {
-                  const groups = {};
-                  levels.forEach(l => {
-                    const uName = l.unit?.unit_name || 'Other';
-                    if (!groups[uName]) groups[uName] = [];
-                    groups[uName].push(l);
-                  });
-                  return Object.entries(groups).map(([unitName, unitLevels]) => (
-                    <optgroup key={unitName} label={unitName}>
-                      {unitLevels.map(l => (
-                        <option key={l.level_id} value={l.level_id}>{l.level_name}</option>
-                      ))}
-                    </optgroup>
-                  ));
-                })()}
-              </select>
-            </div>
-            <div>
-              <Label>{t('admission.filter.yearLabel')}</Label>
-              <select
-                value={filterYear}
-                onChange={(e) => setFilterYear(e.target.value)}
-                className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">{t('admission.filter.allYears')}</option>
-                {years.map(year => (
-                  <option key={year.year_id} value={year.year_id}>{year.year_name}</option>
-                ))}
-              </select>
+      {/* ── BENTO CONTROLS & FILTERS (MATCHING /data/pyp) ──────────────────── */}
+      <div className="p-3.5 rounded border mb-6" style={{ background: cardBg, borderColor, borderRadius: '8px' }}>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          {/* Search */}
+          <div>
+            <label className="text-[10px] font-mono uppercase block mb-1 font-bold" style={{ color: isDark ? '#60A5FA' : '#0284C7' }}>
+              {t('admission.filter.searchLabel')}
+            </label>
+            <div className="relative">
+              <FontAwesomeIcon icon={faSearch} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs" style={{ color: textSecondary }} />
+              <input
+                type="text"
+                placeholder={t('admission.filter.searchPlaceholder')}
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-8 pr-2.5 py-1.5 text-xs font-mono rounded border outline-none"
+                style={inputStyle}
+              />
             </div>
           </div>
-        </CardContent>
-      </Card>
 
-      {/* Applications Table */}
-      <Card>
-        <CardHeader className="pb-0">
-          <CardTitle className="flex items-center gap-2 mb-4">
-            <FontAwesomeIcon icon={faUserGraduate} className="text-blue-600" />
-            {t('admission.table.title')} ({filteredApplications.length})
-            <div className="ml-auto">
-              <Button
-                size="sm"
-                className="bg-green-700 hover:bg-green-800 text-white"
-                onClick={handleExportExcel}
-              >
-                <FontAwesomeIcon icon={faDownload} className="mr-2" />
-                {t('admission.exportExcel')}
-              </Button>
-            </div>
-          </CardTitle>
-          {/* Status Tabs */}
-          <div className="border-b border-gray-200">
-            <nav className="flex gap-0 -mb-px overflow-x-auto" aria-label="Tabs">
-              {/* Menunggu Review tab first */}
-              <button
-                onClick={() => setFilterStatus('pending')}
-                className={`flex items-center gap-2 px-5 py-3 text-sm font-medium border-b-2 whitespace-nowrap transition-colors ${
-                  filterStatus === 'pending' 
-                    ? 'border-blue-600 text-blue-600' 
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                <FontAwesomeIcon icon={faClock} className="text-xs" />
-                Menunggu Review
-                <span className={`ml-1 px-2 py-0.5 rounded-full text-xs font-semibold ${
-                  filterStatus === 'pending' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600'
-                }`}>{statusCounts.pending}</span>
-              </button>
-              {/* Semua tab second */}
-              <button
-                onClick={() => setFilterStatus('')}
-                className={`flex items-center gap-2 px-5 py-3 text-sm font-medium border-b-2 whitespace-nowrap transition-colors ${
-                  filterStatus === '' 
-                    ? 'border-blue-600 text-blue-600' 
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                {t('admission.table.tabAll')}
-                <span className={`ml-1 px-2 py-0.5 rounded-full text-xs font-semibold ${
-                  filterStatus === '' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600'
-                }`}>{applications.length}</span>
-              </button>
-              {/* Remaining status tabs (skip pending since it's first) */}
-              {Object.entries(statusConfig)
-                .filter(([status]) => status !== 'pending')
-                .map(([status, config]) => (
-                <button
-                  key={status}
-                  onClick={() => setFilterStatus(status)}
-                  className={`flex items-center gap-2 px-5 py-3 text-sm font-medium border-b-2 whitespace-nowrap transition-colors ${
-                    filterStatus === status 
-                      ? 'border-blue-600 text-blue-600' 
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
-                >
-                  <FontAwesomeIcon icon={config.icon} className="text-xs" />
-                  {statusLabels[status]}
-                  <span className={`ml-1 px-2 py-0.5 rounded-full text-xs font-semibold ${
-                    filterStatus === status ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600'
-                  }`}>{statusCounts[status]}</span>
-                </button>
+          {/* Level */}
+          <div>
+            <label className="text-[10px] font-mono uppercase block mb-1 font-bold" style={{ color: isDark ? '#60A5FA' : '#0284C7' }}>
+              {t('admission.filter.levelLabel')}
+            </label>
+            <select
+              value={filterLevel}
+              onChange={(e) => setFilterLevel(e.target.value)}
+              className="w-full px-2.5 py-1.5 text-xs font-mono rounded border outline-none cursor-pointer"
+              style={selectStyle}
+            >
+              <option value="">{t('admission.filter.allLevels')}</option>
+              {(() => {
+                const groups = {};
+                levels.forEach(l => {
+                  const uName = l.unit?.unit_name || 'Other';
+                  if (!groups[uName]) groups[uName] = [];
+                  groups[uName].push(l);
+                });
+                return Object.entries(groups).map(([unitName, unitLevels]) => (
+                  <optgroup key={unitName} label={unitName}>
+                    {unitLevels.map(l => (
+                      <option key={l.level_id} value={l.level_id}>{l.level_name}</option>
+                    ))}
+                  </optgroup>
+                ));
+              })()}
+            </select>
+          </div>
+
+          {/* Year */}
+          <div>
+            <label className="text-[10px] font-mono uppercase block mb-1 font-bold" style={{ color: isDark ? '#60A5FA' : '#0284C7' }}>
+              {t('admission.filter.yearLabel')}
+            </label>
+            <select
+              value={filterYear}
+              onChange={(e) => setFilterYear(e.target.value)}
+              className="w-full px-2.5 py-1.5 text-xs font-mono rounded border outline-none cursor-pointer"
+              style={selectStyle}
+            >
+              <option value="">{t('admission.filter.allYears')}</option>
+              {years.map(year => (
+                <option key={year.year_id} value={year.year_id}>{year.year_name}</option>
               ))}
-            </nav>
+            </select>
           </div>
-        </CardHeader>
-        <CardContent>
-          {filteredApplications.length === 0 ? (
-            <div className="text-center py-12 text-gray-500">
-              <FontAwesomeIcon icon={faUserGraduate} className="text-4xl mb-4 text-gray-300" />
-              <p>{t('admission.table.noData')}</p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('admission.table.colAppNumber')}</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('admission.table.colStudentName')}</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('admission.table.colParent')}</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('admission.table.colLevel')}</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('admission.table.colYear')}</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('admission.table.colRegDate')}</th>
-                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">UDP</th>
-                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">USEK/bln</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('admission.table.colStatus')}</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('admission.table.colActions')}</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {filteredApplications.map(app => (
-                    <tr key={app.application_id} className="hover:bg-gray-50">
-                      <td className="px-4 py-3">
-                        <span className="font-mono text-sm text-blue-600">{app.application_number}</span>
+        </div>
+      </div>
+
+      {/* ── TABS NAVIGATION (MATCHING /data/pyp EXACT STRUCTURE) ──────────── */}
+      <div style={{ display: 'flex', borderBottom: `1px solid ${borderColor}`, marginBottom: '20px', gap: '24px', flexWrap: 'wrap' }}>
+        {/* TAB: Menunggu Review */}
+        <button
+          onClick={() => setFilterStatus('pending')}
+          style={{
+            padding: '10px 0',
+            fontSize: '13px',
+            fontWeight: filterStatus === 'pending' ? 600 : 400,
+            border: 'none',
+            background: 'none',
+            cursor: 'pointer',
+            color: filterStatus === 'pending' ? textPrimary : textSecondary,
+            borderBottom: filterStatus === 'pending' ? `2px solid ${textPrimary}` : '2px solid transparent',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            transition: 'all 0.15s ease'
+          }}
+        >
+          <FontAwesomeIcon icon={faClock} style={{ fontSize: '12px' }} />
+          Menunggu Review
+          <span
+            className="px-1.5 py-0.5 rounded text-[10px] font-mono"
+            style={{
+              background: filterStatus === 'pending' ? (isDark ? '#27272A' : '#EAEAEA') : (isDark ? '#1C1C1F' : '#F4F4F5'),
+              color: filterStatus === 'pending' ? textPrimary : textSecondary
+            }}
+          >
+            {statusCounts.pending}
+          </span>
+        </button>
+
+        {/* TAB: Semua Pendaftar */}
+        <button
+          onClick={() => setFilterStatus('')}
+          style={{
+            padding: '10px 0',
+            fontSize: '13px',
+            fontWeight: filterStatus === '' ? 600 : 400,
+            border: 'none',
+            background: 'none',
+            cursor: 'pointer',
+            color: filterStatus === '' ? textPrimary : textSecondary,
+            borderBottom: filterStatus === '' ? `2px solid ${textPrimary}` : '2px solid transparent',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            transition: 'all 0.15s ease'
+          }}
+        >
+          <FontAwesomeIcon icon={faUserGraduate} style={{ fontSize: '12px' }} />
+          {t('admission.table.tabAll')}
+          <span
+            className="px-1.5 py-0.5 rounded text-[10px] font-mono"
+            style={{
+              background: filterStatus === '' ? (isDark ? '#27272A' : '#EAEAEA') : (isDark ? '#1C1C1F' : '#F4F4F5'),
+              color: filterStatus === '' ? textPrimary : textSecondary
+            }}
+          >
+            {applications.length}
+          </span>
+        </button>
+
+        {/* TAB: Diterima */}
+        <button
+          onClick={() => setFilterStatus('approved')}
+          style={{
+            padding: '10px 0',
+            fontSize: '13px',
+            fontWeight: filterStatus === 'approved' ? 600 : 400,
+            border: 'none',
+            background: 'none',
+            cursor: 'pointer',
+            color: filterStatus === 'approved' ? textPrimary : textSecondary,
+            borderBottom: filterStatus === 'approved' ? `2px solid ${textPrimary}` : '2px solid transparent',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            transition: 'all 0.15s ease'
+          }}
+        >
+          <FontAwesomeIcon icon={faCheck} style={{ fontSize: '12px' }} />
+          {statusLabels.approved}
+          <span
+            className="px-1.5 py-0.5 rounded text-[10px] font-mono"
+            style={{
+              background: filterStatus === 'approved' ? (isDark ? '#27272A' : '#EAEAEA') : (isDark ? '#1C1C1F' : '#F4F4F5'),
+              color: filterStatus === 'approved' ? textPrimary : textSecondary
+            }}
+          >
+            {statusCounts.approved}
+          </span>
+        </button>
+
+        {/* TAB: Ditolak */}
+        <button
+          onClick={() => setFilterStatus('rejected')}
+          style={{
+            padding: '10px 0',
+            fontSize: '13px',
+            fontWeight: filterStatus === 'rejected' ? 600 : 400,
+            border: 'none',
+            background: 'none',
+            cursor: 'pointer',
+            color: filterStatus === 'rejected' ? textPrimary : textSecondary,
+            borderBottom: filterStatus === 'rejected' ? `2px solid ${textPrimary}` : '2px solid transparent',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            transition: 'all 0.15s ease'
+          }}
+        >
+          <FontAwesomeIcon icon={faTimes} style={{ fontSize: '12px' }} />
+          {statusLabels.rejected}
+          <span
+            className="px-1.5 py-0.5 rounded text-[10px] font-mono"
+            style={{
+              background: filterStatus === 'rejected' ? (isDark ? '#27272A' : '#EAEAEA') : (isDark ? '#1C1C1F' : '#F4F4F5'),
+              color: filterStatus === 'rejected' ? textPrimary : textSecondary
+            }}
+          >
+            {statusCounts.rejected}
+          </span>
+        </button>
+      </div>
+
+      {/* ── APPLICATIONS TABLE (EDITORIAL MINIMALIST STYLE) ───────────────── */}
+      <div
+        className="rounded border overflow-hidden mb-6"
+        style={{
+          background: cardBg,
+          borderColor,
+          borderRadius: '8px'
+        }}
+      >
+        <div className="px-4 py-3 border-b flex items-center justify-between" style={{ borderColor }}>
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-semibold" style={{ color: textPrimary }}>
+              {t('admission.table.title')}
+            </span>
+            <span className="text-[10px] font-mono px-2 py-0.5 rounded border" style={{ background: isDark ? '#27272A' : '#F4F4F5', borderColor, color: textSecondary }}>
+              {filteredApplications.length} baris
+            </span>
+          </div>
+        </div>
+
+        {filteredApplications.length === 0 ? (
+          <div className="text-center py-16" style={{ color: textSecondary }}>
+            <FontAwesomeIcon icon={faUserGraduate} className="text-3xl mb-3 opacity-30" />
+            <p className="text-xs">{t('admission.table.noData')}</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="border-b" style={{ background: isDark ? '#1F1F23' : '#F9F9F8', borderColor }}>
+                  <th className="px-3.5 py-2.5 text-[10px] font-mono font-medium uppercase tracking-wider" style={{ color: textSecondary }}>{t('admission.table.colAppNumber')}</th>
+                  <th className="px-3.5 py-2.5 text-[10px] font-mono font-medium uppercase tracking-wider" style={{ color: textSecondary }}>{t('admission.table.colStudentName')}</th>
+                  <th className="px-3.5 py-2.5 text-[10px] font-mono font-medium uppercase tracking-wider" style={{ color: textSecondary }}>{t('admission.table.colParent')}</th>
+                  <th className="px-3.5 py-2.5 text-[10px] font-mono font-medium uppercase tracking-wider" style={{ color: textSecondary }}>{t('admission.table.colLevel')}</th>
+                  <th className="px-3.5 py-2.5 text-[10px] font-mono font-medium uppercase tracking-wider" style={{ color: textSecondary }}>{t('admission.table.colYear')}</th>
+                  <th className="px-3.5 py-2.5 text-[10px] font-mono font-medium uppercase tracking-wider" style={{ color: textSecondary }}>{t('admission.table.colRegDate')}</th>
+                  <th className="px-3.5 py-2.5 text-[10px] font-mono font-medium uppercase tracking-wider text-right" style={{ color: textSecondary }}>UDP Netto</th>
+                  <th className="px-3.5 py-2.5 text-[10px] font-mono font-medium uppercase tracking-wider text-right" style={{ color: textSecondary }}>USEK/bln</th>
+                  <th className="px-3.5 py-2.5 text-[10px] font-mono font-medium uppercase tracking-wider" style={{ color: textSecondary }}>{t('admission.table.colStatus')}</th>
+                  <th className="px-3.5 py-2.5 text-[10px] font-mono font-medium uppercase tracking-wider text-right" style={{ color: textSecondary }}>{t('admission.table.colActions')}</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y" style={{ borderColor }}>
+                {filteredApplications.map(app => {
+                  const fee = getAppFeeInfo(app);
+                  const hasInstallment = allInstallments.some(inst => inst.application_id === app.application_id);
+                  return (
+                    <tr key={app.application_id} className="transition-colors hover:bg-black/[0.02] dark:hover:bg-white/[0.02]">
+                      <td className="px-3.5 py-2.5 text-xs font-mono">
+                        <span className="font-semibold" style={{ color: isDark ? '#60A5FA' : '#0284C7' }}>
+                          {app.application_number}
+                        </span>
                       </td>
-                      <td className="px-4 py-3">
-                        <div>
-                          <div className="flex items-center gap-1.5">
-                            <p className="font-medium text-gray-900">{app.student_name}</p>
-                            {!allInstallments.some(inst => inst.application_id === app.application_id) && (
-                              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-orange-100 text-orange-700 border border-orange-200" title={t('admission.tooltips.installmentPlan')}>
-                                <FontAwesomeIcon icon={faCalculator} className="mr-0.5 text-[8px]" />
-                                {t('admission.table.noInstallmentBadge')}
-                              </span>
-                            )}
-                          </div>
-                          {app.student_nickname && (
-                            <p className="text-sm text-gray-500">({app.student_nickname})</p>
+                      <td className="px-3.5 py-2.5">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs font-medium" style={{ color: textPrimary }}>{app.student_name}</span>
+                          {!hasInstallment && (
+                            <span 
+                              className="px-1.5 py-0.2 rounded text-[9px] font-mono border"
+                              style={{ 
+                                background: isDark ? 'rgba(245, 158, 11, 0.15)' : '#FBF3DB', 
+                                borderColor: isDark ? '#D97706' : '#FDE68A', 
+                                color: isDark ? '#FBBF24' : '#956400' 
+                              }}
+                              title={t('admission.tooltips.installmentPlan')}
+                            >
+                              <FontAwesomeIcon icon={faCalculator} className="mr-0.5 text-[8px]" />
+                              {t('admission.table.noInstallmentBadge')}
+                            </span>
                           )}
                         </div>
+                        {app.student_nickname && (
+                          <span className="text-[11px]" style={{ color: textSecondary }}>({app.student_nickname})</span>
+                        )}
                       </td>
-                      <td className="px-4 py-3">
-                        <div>
-                          <p className="text-gray-900">{app.parent_name}</p>
-                          <p className="text-sm text-gray-500">{app.parent_phone}</p>
-                        </div>
+                      <td className="px-3.5 py-2.5">
+                        <div className="text-xs font-medium" style={{ color: textPrimary }}>{app.parent_name || '-'}</div>
+                        <div className="text-[11px] font-mono" style={{ color: textSecondary }}>{app.parent_phone || '-'}</div>
                       </td>
-                      <td className="px-4 py-3 text-gray-600">{app.level?.level_name || app.unit?.unit_name || '-'}</td>
-                      <td className="px-4 py-3 text-gray-600">{app.year?.year_name || '-'}</td>
-                      <td className="px-4 py-3 text-gray-600 text-sm">{formatDate(app.created_at)}</td>
-                      {(() => {
-                        const fee = getAppFeeInfo(app);
-                        return (
-                          <>
-                            <td className="px-4 py-3 text-right">
-                              {fee.udpBase > 0 ? (
-                                <div>
-                                  {fee.udpHasDiscount ? (
-                                    <>
-                                      <p className="text-xs text-gray-400 line-through">{formatCurrency(fee.udpBase)}</p>
-                                      <p className="text-sm font-semibold text-emerald-700">{formatCurrency(fee.udpFinal)}</p>
-                                    </>
-                                  ) : (
-                                    <p className="text-sm text-gray-700">{formatCurrency(fee.udpBase)}</p>
-                                  )}
-                                </div>
-                              ) : <span className="text-xs text-gray-400">-</span>}
-                            </td>
-                            <td className="px-4 py-3 text-right">
-                              {fee.usekBase > 0 ? (
-                                <div>
-                                  {fee.usekHasDiscount ? (
-                                    <>
-                                      <p className="text-xs text-gray-400 line-through">{formatCurrency(fee.usekBase)}</p>
-                                      <p className="text-sm font-semibold text-blue-700">{formatCurrency(fee.usekFinal)}</p>
-                                    </>
-                                  ) : (
-                                    <p className="text-sm text-gray-700">{formatCurrency(fee.usekBase)}</p>
-                                  )}
-                                </div>
-                              ) : <span className="text-xs text-gray-400">-</span>}
-                            </td>
-                          </>
-                        );
-                      })()}
-                      <td className="px-4 py-3">
+                      <td className="px-3.5 py-2.5 text-xs" style={{ color: textSecondary }}>
+                        {app.level?.level_name || app.unit?.unit_name || '-'}
+                      </td>
+                      <td className="px-3.5 py-2.5 text-xs font-mono" style={{ color: textSecondary }}>
+                        {app.year?.year_name || '-'}
+                      </td>
+                      <td className="px-3.5 py-2.5 text-xs font-mono" style={{ color: textSecondary }}>
+                        {formatDate(app.created_at)}
+                      </td>
+                      <td className="px-3.5 py-2.5 text-right text-xs">
+                        {fee.udpBase > 0 ? (
+                          <div>
+                            {fee.udpHasDiscount ? (
+                              <>
+                                <div className="text-[10px] line-through font-mono" style={{ color: textSecondary }}>{formatCurrency(fee.udpBase)}</div>
+                                <div className="font-semibold font-mono" style={{ color: isDark ? '#34D399' : '#346538' }}>{formatCurrency(fee.udpFinal)}</div>
+                              </>
+                            ) : (
+                              <div className="font-mono" style={{ color: textPrimary }}>{formatCurrency(fee.udpBase)}</div>
+                            )}
+                          </div>
+                        ) : <span className="text-[11px]" style={{ color: textSecondary }}>-</span>}
+                      </td>
+                      <td className="px-3.5 py-2.5 text-right text-xs">
+                        {fee.usekBase > 0 ? (
+                          <div>
+                            {fee.usekHasDiscount ? (
+                              <>
+                                <div className="text-[10px] line-through font-mono" style={{ color: textSecondary }}>{formatCurrency(fee.usekBase)}</div>
+                                <div className="font-semibold font-mono" style={{ color: isDark ? '#60A5FA' : '#1F6C9F' }}>{formatCurrency(fee.usekFinal)}</div>
+                              </>
+                            ) : (
+                              <div className="font-mono" style={{ color: textPrimary }}>{formatCurrency(fee.usekBase)}</div>
+                            )}
+                          </div>
+                        ) : <span className="text-[11px]" style={{ color: textSecondary }}>-</span>}
+                      </td>
+                      <td className="px-3.5 py-2.5">
                         <div className="flex flex-col gap-1 items-start">
-                          <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${statusConfig[app.status]?.bgColor} ${statusConfig[app.status]?.color}`}>
-                            <FontAwesomeIcon icon={statusConfig[app.status]?.icon} className="text-xs" />
+                          <span
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono tracking-wide uppercase border"
+                            style={{
+                              background: app.status === 'approved' ? (isDark ? 'rgba(16, 185, 129, 0.15)' : '#EDF3EC') :
+                                          app.status === 'rejected' ? (isDark ? 'rgba(239, 68, 68, 0.15)' : '#FDEBEC') :
+                                          (isDark ? 'rgba(245, 158, 11, 0.15)' : '#FBF3DB'),
+                              borderColor: app.status === 'approved' ? (isDark ? '#059669' : '#A7F3D0') :
+                                           app.status === 'rejected' ? (isDark ? '#DC2626' : '#FECACA') :
+                                           (isDark ? '#D97706' : '#FDE68A'),
+                              color: app.status === 'approved' ? (isDark ? '#34D399' : '#346538') :
+                                     app.status === 'rejected' ? (isDark ? '#F87171' : '#9F2F2D') :
+                                     (isDark ? '#FBBF24' : '#956400')
+                            }}
+                          >
+                            <FontAwesomeIcon icon={app.status === 'approved' ? faCheck : app.status === 'rejected' ? faTimes : faClock} className="text-[8px]" />
                             {statusLabels[app.status]}
                           </span>
+
                           {app.form_fee_amount ? (
-                            <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium ${
-                              app.form_fee_status === 'verified'
-                                ? 'bg-green-100 text-green-800 border border-green-200'
-                                : app.form_fee_status === 'proof_uploaded'
-                                ? 'bg-amber-100 text-amber-800 border border-amber-300 font-semibold'
-                                : app.form_fee_status === 'rejected'
-                                ? 'bg-red-100 text-red-700 border border-red-200'
-                                : 'bg-gray-100 text-gray-600'
-                            }`}>
-                              <FontAwesomeIcon icon={app.form_fee_status === 'verified' ? faCheck : (app.form_fee_status === 'rejected' ? faTimes : faClock)} className="text-[9px]" />
+                            <span
+                              className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded text-[9px] font-mono border"
+                              style={{
+                                background: app.form_fee_status === 'verified' ? (isDark ? 'rgba(16, 185, 129, 0.12)' : '#EDF3EC') :
+                                            app.form_fee_status === 'proof_uploaded' ? (isDark ? 'rgba(59, 130, 246, 0.12)' : '#E1F3FE') :
+                                            app.form_fee_status === 'rejected' ? (isDark ? 'rgba(239, 68, 68, 0.12)' : '#FDEBEC') :
+                                            (isDark ? 'rgba(245, 158, 11, 0.12)' : '#FBF3DB'),
+                                borderColor: app.form_fee_status === 'verified' ? (isDark ? '#059669' : '#A7F3D0') :
+                                             app.form_fee_status === 'proof_uploaded' ? (isDark ? '#2563EB' : '#BAE6FD') :
+                                             app.form_fee_status === 'rejected' ? (isDark ? '#DC2626' : '#FECACA') :
+                                             (isDark ? '#D97706' : '#FDE68A'),
+                                color: app.form_fee_status === 'verified' ? (isDark ? '#34D399' : '#346538') :
+                                       app.form_fee_status === 'proof_uploaded' ? (isDark ? '#60A5FA' : '#1F6C9F') :
+                                       app.form_fee_status === 'rejected' ? (isDark ? '#F87171' : '#9F2F2D') :
+                                       (isDark ? '#FBBF24' : '#956400')
+                              }}
+                            >
+                              <FontAwesomeIcon icon={app.form_fee_status === 'verified' ? faCheck : (app.form_fee_status === 'rejected' ? faTimes : faClock)} className="text-[8px]" />
                               {app.form_fee_status === 'verified'
                                 ? 'Form Lunas'
                                 : app.form_fee_status === 'proof_uploaded'
@@ -1676,66 +1962,72 @@ export default function AdmissionManagement() {
                           ) : null}
                         </div>
                       </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          <Button
-                            size="sm"
-                            className="bg-blue-600 hover:bg-blue-700 text-white"
+                      <td className="px-3.5 py-2.5 text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <button
                             onClick={() => handleViewDetail(app)}
+                            className="p-1.5 rounded border transition-colors hover:bg-black/5 dark:hover:bg-white/5"
+                            style={{ borderColor, color: textSecondary }}
                             title={t('admission.tooltips.viewDetail')}
                           >
-                            <FontAwesomeIcon icon={faEye} />
-                          </Button>
-                          <Button
-                            size="sm"
-                            className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                            <FontAwesomeIcon icon={faEye} className="text-xs" />
+                          </button>
+
+                          <button
                             onClick={() => {
                               setSelectedApplication(app);
                               fetchDiscountsForApplication(app);
                               setShowDiscountModal(true);
                             }}
+                            className="p-1.5 rounded border transition-colors hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
+                            style={{ borderColor, color: isDark ? '#34D399' : '#059669' }}
                             title={t('admission.tooltips.manageDiscount')}
                           >
-                            <FontAwesomeIcon icon={faTag} />
-                          </Button>
-                          <Button
-                            size="sm"
-                            className={`text-white ${allInstallments.some(inst => inst.application_id === app.application_id) ? 'bg-purple-600 hover:bg-purple-700' : 'bg-gray-500 hover:bg-gray-600'}`}
+                            <FontAwesomeIcon icon={faTag} className="text-xs" />
+                          </button>
+
+                          <button
                             onClick={() => handleOpenInstallment(app)}
+                            className="p-1.5 rounded border transition-colors hover:bg-black/5 dark:hover:bg-white/5"
+                            style={{
+                              borderColor: hasInstallment ? (isDark ? '#8B5CF6' : '#7C3AED') : borderColor,
+                              color: hasInstallment ? (isDark ? '#A78BFA' : '#7C3AED') : textSecondary
+                            }}
                             title={t('admission.tooltips.installmentPlan')}
                           >
-                            <FontAwesomeIcon icon={faCalculator} />
-                          </Button>
+                            <FontAwesomeIcon icon={faCalculator} className="text-xs" />
+                          </button>
+
                           {app.status === 'pending' && (
                             <>
-                              <Button
-                                size="sm"
-                                className="bg-green-600 hover:bg-green-700 text-white"
+                              <button
                                 onClick={() => handleActionClick(app, 'approved')}
+                                className="p-1.5 rounded border transition-colors hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
+                                style={{ borderColor: isDark ? '#059669' : '#A7F3D0', color: isDark ? '#34D399' : '#059669' }}
                                 title={t('admission.tooltips.approve')}
                               >
-                                <FontAwesomeIcon icon={faCheck} />
-                              </Button>
-                              <Button
-                                size="sm"
-                                className="bg-red-600 hover:bg-red-700 text-white"
+                                <FontAwesomeIcon icon={faCheck} className="text-xs" />
+                              </button>
+                              <button
                                 onClick={() => handleActionClick(app, 'rejected')}
+                                className="p-1.5 rounded border transition-colors hover:bg-rose-50 dark:hover:bg-rose-950/30"
+                                style={{ borderColor: isDark ? '#DC2626' : '#FECACA', color: isDark ? '#F87171' : '#DC2626' }}
                                 title={t('admission.tooltips.reject')}
                               >
-                                <FontAwesomeIcon icon={faTimes} />
-                              </Button>
+                                <FontAwesomeIcon icon={faTimes} className="text-xs" />
+                              </button>
                             </>
                           )}
                         </div>
                       </td>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
 
       {/* Detail Modal */}
       <Modal
@@ -1747,145 +2039,193 @@ export default function AdmissionManagement() {
         {selectedApplication && (
           <div className="space-y-6">
             {/* Status Badge + Edit Toggle */}
-            <div className="flex items-center justify-between">
-              <div className={`flex-1 p-4 rounded-lg ${statusConfig[selectedApplication.status]?.bgColor} ${statusConfig[selectedApplication.status]?.borderColor} border`}>
-                <div className="flex items-center gap-3">
-                  <FontAwesomeIcon 
-                    icon={statusConfig[selectedApplication.status]?.icon} 
-                    className={`text-2xl ${statusConfig[selectedApplication.status]?.color}`} 
-                  />
-                  <div>
-                    <p className="text-sm text-gray-600">{t('admission.detail.statusLabel')}</p>
-                    <p className={`font-semibold ${statusConfig[selectedApplication.status]?.color}`}>
-                      {statusLabels[selectedApplication.status]}
-                    </p>
-                  </div>
+            <div className="flex items-center justify-between gap-3">
+              <div
+                className="flex-1 p-3 rounded border flex items-center gap-3"
+                style={{
+                  background: selectedApplication.status === 'approved' ? (isDark ? 'rgba(16, 185, 129, 0.12)' : '#EDF3EC') :
+                              selectedApplication.status === 'rejected' ? (isDark ? 'rgba(239, 68, 68, 0.12)' : '#FDEBEC') :
+                              (isDark ? 'rgba(245, 158, 11, 0.12)' : '#FBF3DB'),
+                  borderColor: selectedApplication.status === 'approved' ? (isDark ? '#059669' : '#A7F3D0') :
+                               selectedApplication.status === 'rejected' ? (isDark ? '#DC2626' : '#FECACA') :
+                               (isDark ? '#D97706' : '#FDE68A'),
+                  borderRadius: '6px'
+                }}
+              >
+                <FontAwesomeIcon 
+                  icon={statusConfig[selectedApplication.status]?.icon || faClock} 
+                  className="text-base"
+                  style={{
+                    color: selectedApplication.status === 'approved' ? (isDark ? '#34D399' : '#346538') :
+                           selectedApplication.status === 'rejected' ? (isDark ? '#F87171' : '#9F2F2D') :
+                           (isDark ? '#FBBF24' : '#956400')
+                  }}
+                />
+                <div>
+                  <p className="text-[10px] font-mono uppercase tracking-wider" style={{ color: textSecondary }}>{t('admission.detail.statusLabel')}</p>
+                  <p className="font-semibold text-xs mt-0.5" style={{
+                    color: selectedApplication.status === 'approved' ? (isDark ? '#34D399' : '#346538') :
+                           selectedApplication.status === 'rejected' ? (isDark ? '#F87171' : '#9F2F2D') :
+                           (isDark ? '#FBBF24' : '#956400')
+                  }}>
+                    {statusLabels[selectedApplication.status] || selectedApplication.status || '-'}
+                  </p>
                 </div>
               </div>
               {!isEditing ? (
-                <Button
-                  className="ml-3 bg-blue-600 hover:bg-blue-700 text-white"
+                <button
+                  className="flex items-center gap-1.5 px-3 py-2 text-xs border rounded font-medium transition-colors hover:bg-black/5 dark:hover:bg-white/5"
+                  style={{
+                    background: cardBg,
+                    borderColor,
+                    color: textPrimary,
+                    borderRadius: '6px'
+                  }}
                   onClick={handleStartEdit}
                 >
-                  <FontAwesomeIcon icon={faEdit} className="mr-2" />
+                  <FontAwesomeIcon icon={faEdit} className="text-xs" />
                   {t('admission.detail.editDataBtn')}
-                </Button>
+                </button>
               ) : (
-                <div className="ml-3 flex gap-2">
-                  <Button
-                    className="bg-green-600 hover:bg-green-700 text-white"
+                <div className="flex gap-2">
+                  <button
+                    className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded transition-colors"
+                    style={{
+                      background: isDark ? '#F4F4F5' : '#111111',
+                      color: isDark ? '#111111' : '#FFFFFF',
+                      borderRadius: '6px'
+                    }}
                     onClick={handleSaveEdit}
                     disabled={editSaving}
                   >
-                    {editSaving ? <FontAwesomeIcon icon={faSpinner} className="mr-2 animate-spin" /> : <FontAwesomeIcon icon={faSave} className="mr-2" />}
+                    {editSaving ? <FontAwesomeIcon icon={faSpinner} className="animate-spin text-xs" /> : <FontAwesomeIcon icon={faSave} className="text-xs" />}
                     {editSaving ? t('admission.detail.saving') : t('admission.detail.saveBtn')}
-                  </Button>
-                  <Button variant="outline" onClick={() => setIsEditing(false)} disabled={editSaving}>
+                  </button>
+                  <button
+                    className="px-3 py-2 text-xs border rounded transition-colors hover:bg-black/5 dark:hover:bg-white/5"
+                    style={{
+                      background: 'none',
+                      borderColor,
+                      color: textSecondary,
+                      borderRadius: '6px'
+                    }}
+                    onClick={() => setIsEditing(false)}
+                    disabled={editSaving}
+                  >
                     {t('admission.detail.cancelBtn')}
-                  </Button>
+                  </button>
                 </div>
               )}
             </div>
 
             {/* PPDB Portal Payment & Verification Card */}
             {(selectedApplication.form_fee_amount || selectedApplication.form_fee_status || selectedApplication.payment_proof_file) && (
-              <div className="p-4 rounded-xl border border-indigo-200 bg-gradient-to-r from-indigo-50/70 to-blue-50/70 space-y-3 shadow-sm">
-                <div className="flex items-center justify-between flex-wrap gap-2 pb-2 border-b border-indigo-100">
+              <div
+                className="p-3.5 rounded border space-y-3"
+                style={{
+                  background: isDark ? '#1C1C1F' : '#F9F9F8',
+                  borderColor,
+                  borderRadius: '8px'
+                }}
+              >
+                <div className="flex items-center justify-between flex-wrap gap-2 pb-2.5 border-b" style={{ borderColor }}>
                   <div className="flex items-center gap-2">
-                    <FontAwesomeIcon icon={faFileInvoice} className="text-indigo-600 text-lg" />
+                    <div className="w-7 h-7 rounded flex items-center justify-center border" style={{ background: isDark ? '#27272A' : '#FFFFFF', borderColor, color: isDark ? '#60A5FA' : '#0284C7' }}>
+                      <FontAwesomeIcon icon={faFileInvoice} className="text-xs" />
+                    </div>
                     <div>
-                      <h4 className="font-semibold text-gray-900 text-sm">Pembayaran Formulir PPDB (Portal ccs.sch.id)</h4>
-                      <p className="text-xs text-gray-500">
-                        {selectedApplication.wave_name || 'Gelombang Pendaftaran'} &bull; Tagihan: <span className="font-semibold text-indigo-700">{formatCurrency(selectedApplication.form_fee_amount || 0)}</span>
+                      <h4 className="font-semibold text-xs" style={{ color: textPrimary }}>Pembayaran Formulir PPDB (Portal ccs.sch.id)</h4>
+                      <p className="text-[11px] font-mono" style={{ color: textSecondary }}>
+                        {selectedApplication.wave_name || 'Gelombang Pendaftaran'} &bull; Tagihan: <span className="font-bold" style={{ color: isDark ? '#60A5FA' : '#0284C7' }}>{formatCurrency(selectedApplication.form_fee_amount || 0)}</span>
                       </p>
                     </div>
                   </div>
                   <div>
                     {selectedApplication.form_fee_status === 'verified' && (
-                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800 border border-green-300">
-                        <FontAwesomeIcon icon={faCheck} className="text-xs" />
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-mono border" style={{ background: isDark ? 'rgba(16, 185, 129, 0.15)' : '#EDF3EC', borderColor: isDark ? '#059669' : '#A7F3D0', color: isDark ? '#34D399' : '#346538' }}>
+                        <FontAwesomeIcon icon={faCheck} className="text-[8px]" />
                         Formulir Terverifikasi (Lunas)
                       </span>
                     )}
                     {selectedApplication.form_fee_status === 'proof_uploaded' && (
-                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 border border-amber-300 animate-pulse">
-                        <FontAwesomeIcon icon={faClock} className="text-xs" />
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-mono border" style={{ background: isDark ? 'rgba(245, 158, 11, 0.15)' : '#FBF3DB', borderColor: isDark ? '#D97706' : '#FDE68A', color: isDark ? '#FBBF24' : '#956400' }}>
+                        <FontAwesomeIcon icon={faClock} className="text-[8px]" />
                         Bukti Diunggah (Perlu Verifikasi)
                       </span>
                     )}
                     {selectedApplication.form_fee_status === 'pending_payment' && (
-                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-700 border border-gray-300">
-                        <FontAwesomeIcon icon={faClock} className="text-xs" />
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-mono border" style={{ background: isDark ? '#27272A' : '#F4F4F5', borderColor, color: textSecondary }}>
+                        <FontAwesomeIcon icon={faClock} className="text-[8px]" />
                         Menunggu Pembayaran Orang Tua
                       </span>
                     )}
                     {selectedApplication.form_fee_status === 'rejected' && (
-                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-800 border border-red-300">
-                        <FontAwesomeIcon icon={faTimes} className="text-xs" />
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-mono border" style={{ background: isDark ? 'rgba(239, 68, 68, 0.15)' : '#FDEBEC', borderColor: isDark ? '#DC2626' : '#FECACA', color: isDark ? '#F87171' : '#9F2F2D' }}>
+                        <FontAwesomeIcon icon={faTimes} className="text-[8px]" />
                         Bukti Transfer Ditolak
                       </span>
                     )}
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
                   <div>
-                    <span className="text-gray-500">Status Form Lengkap Siswa:</span>{' '}
+                    <span className="text-[10px] font-mono uppercase block" style={{ color: textSecondary }}>Status Form Lengkap Siswa:</span>
                     {selectedApplication.is_form_completed ? (
-                      <span className="font-semibold text-green-700">Sudah Dilengkapi oleh Orang Tua</span>
+                      <span className="font-medium" style={{ color: isDark ? '#34D399' : '#346538' }}>Sudah Dilengkapi oleh Orang Tua</span>
                     ) : (
-                      <span className="font-semibold text-amber-700">Belum Lengkap (Hanya data awal)</span>
+                      <span className="font-medium" style={{ color: isDark ? '#FBBF24' : '#956400' }}>Belum Lengkap (Hanya data awal)</span>
                     )}
                   </div>
                   <div>
-                    <span className="text-gray-500">Waktu Verifikasi:</span>{' '}
-                    <span className="font-medium text-gray-800">
+                    <span className="text-[10px] font-mono uppercase block" style={{ color: textSecondary }}>Waktu Verifikasi:</span>
+                    <span className="font-medium font-mono" style={{ color: textPrimary }}>
                       {selectedApplication.verified_at ? formatDate(selectedApplication.verified_at) : '-'}
                     </span>
                   </div>
                 </div>
 
                 {/* Bukti Transfer Action / Preview */}
-                <div className="pt-2 flex items-center justify-between flex-wrap gap-2 border-t border-indigo-100">
+                <div className="pt-2 flex items-center justify-between flex-wrap gap-2 border-t" style={{ borderColor }}>
                   <div className="flex items-center gap-2">
                     {selectedApplication.payment_proof_file ? (
                       <a
                         href={`/api/admission/${selectedApplication.application_id}/proof`}
                         target="_blank"
                         rel="noreferrer"
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-indigo-300 rounded-lg text-xs font-medium text-indigo-700 hover:bg-indigo-50 shadow-sm"
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-mono border rounded transition-colors hover:bg-black/5 dark:hover:bg-white/5"
+                        style={{ background: cardBg, borderColor, color: isDark ? '#60A5FA' : '#0284C7', borderRadius: '6px' }}
                       >
                         <FontAwesomeIcon icon={faEye} />
                         Lihat Bukti Transfer
                       </a>
                     ) : (
-                      <span className="text-xs text-gray-400 italic">Belum ada file bukti transfer</span>
+                      <span className="text-[11px] italic" style={{ color: textSecondary }}>Belum ada file bukti transfer</span>
                     )}
                   </div>
 
                   <div className="flex items-center gap-2">
                     {selectedApplication.form_fee_status !== 'verified' && (
-                      <Button
-                        size="sm"
-                        className="bg-green-600 hover:bg-green-700 text-white text-xs h-8"
+                      <button
+                        className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium border rounded transition-colors hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
+                        style={{ background: cardBg, borderColor: isDark ? '#059669' : '#A7F3D0', color: isDark ? '#34D399' : '#059669', borderRadius: '6px' }}
                         onClick={() => handleVerifyFormFee(selectedApplication.application_id, 'verified')}
                         disabled={processing}
                       >
-                        <FontAwesomeIcon icon={faCheck} className="mr-1" />
+                        <FontAwesomeIcon icon={faCheck} className="text-[10px]" />
                         Approve Pembayaran Formulir
-                      </Button>
+                      </button>
                     )}
                     {selectedApplication.form_fee_status !== 'rejected' && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="border-red-300 text-red-600 hover:bg-red-50 text-xs h-8"
+                      <button
+                        className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium border rounded transition-colors hover:bg-rose-50 dark:hover:bg-rose-950/30"
+                        style={{ background: cardBg, borderColor: isDark ? '#DC2626' : '#FECACA', color: isDark ? '#F87171' : '#DC2626', borderRadius: '6px' }}
                         onClick={() => handleVerifyFormFee(selectedApplication.application_id, 'rejected')}
                         disabled={processing}
                       >
-                        <FontAwesomeIcon icon={faTimes} className="mr-1" />
+                        <FontAwesomeIcon icon={faTimes} className="text-[10px]" />
                         Tolak Bukti
-                      </Button>
+                      </button>
                     )}
                   </div>
                 </div>
@@ -1894,40 +2234,41 @@ export default function AdmissionManagement() {
 
             {/* Student Info */}
             <div>
-              <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                <FontAwesomeIcon icon={faUser} className="text-blue-600" />
+              <h3 className="font-semibold mb-3 flex items-center gap-2 text-xs font-mono uppercase tracking-wider" style={{ color: textPrimary }}>
+                <FontAwesomeIcon icon={faUser} style={{ color: textSecondary }} />
                 {t('admission.studentData.title')}
               </h3>
               {isEditing ? (
-                <div className="grid grid-cols-2 gap-4 bg-blue-50 p-4 rounded-lg border border-blue-200">
+                <div className="grid grid-cols-2 gap-4 p-4 rounded-lg" style={{ background: isDark ? '#1C1C1F' : '#F9F9F8', border: '1px solid ' + borderColor, borderRadius: '8px' }}>
                   <div>
-                    <Label>{t('admission.studentData.fullNameRequired')}</Label>
-                    <Input className="mt-1" value={editData.student_name} onChange={(e) => setEditData(p => ({ ...p, student_name: e.target.value }))} />
+                    <Label className="text-xs font-mono uppercase tracking-wider" style={{ color: textSecondary }}>{t('admission.studentData.fullNameRequired')}</Label>
+                    <Input className="mt-1" style={inputStyle} value={editData.student_name} onChange={(e) => setEditData(p => ({ ...p, student_name: e.target.value }))} />
                   </div>
                   <div>
-                    <Label>{t('admission.studentData.nickname')}</Label>
-                    <Input className="mt-1" value={editData.student_nickname} onChange={(e) => setEditData(p => ({ ...p, student_nickname: e.target.value }))} />
+                    <Label className="text-xs font-mono uppercase tracking-wider" style={{ color: textSecondary }}>{t('admission.studentData.nickname')}</Label>
+                    <Input className="mt-1" style={inputStyle} value={editData.student_nickname} onChange={(e) => setEditData(p => ({ ...p, student_nickname: e.target.value }))} />
                   </div>
                   <div>
-                    <Label>{t('admission.studentData.gender')}</Label>
-                    <select className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" value={editData.student_gender} onChange={(e) => setEditData(p => ({ ...p, student_gender: e.target.value }))}>
+                    <Label className="text-xs font-mono uppercase tracking-wider" style={{ color: textSecondary }}>{t('admission.studentData.gender')}</Label>
+                    <select className="mt-1 w-full px-3 py-2 rounded-md focus:outline-none" style={selectStyle} value={editData.student_gender} onChange={(e) => setEditData(p => ({ ...p, student_gender: e.target.value }))}>
                       <option value="">{t('admission.studentData.selectGender')}</option>
                       <option value="male">{t('admission.studentData.male')}</option>
                       <option value="female">{t('admission.studentData.female')}</option>
                     </select>
                   </div>
                   <div>
-                    <Label>{t('admission.studentData.birthPlace')}</Label>
-                    <Input className="mt-1" value={editData.student_birth_place} onChange={(e) => setEditData(p => ({ ...p, student_birth_place: e.target.value }))} />
+                    <Label className="text-xs font-mono uppercase tracking-wider" style={{ color: textSecondary }}>{t('admission.studentData.birthPlace')}</Label>
+                    <Input className="mt-1" style={inputStyle} value={editData.student_birth_place} onChange={(e) => setEditData(p => ({ ...p, student_birth_place: e.target.value }))} />
                   </div>
                   <div>
-                    <Label>{t('admission.studentData.birthDate')}</Label>
-                    <Input type="date" className="mt-1" value={editData.student_birth_date} onChange={(e) => setEditData(p => ({ ...p, student_birth_date: e.target.value }))} />
+                    <Label className="text-xs font-mono uppercase tracking-wider" style={{ color: textSecondary }}>{t('admission.studentData.birthDate')}</Label>
+                    <Input type="date" className="mt-1" style={inputStyle} value={editData.student_birth_date} onChange={(e) => setEditData(p => ({ ...p, student_birth_date: e.target.value }))} />
                   </div>
                   <div>
-                    <Label>{t('admission.studentData.religion')}</Label>
+                    <Label className="text-xs font-mono uppercase tracking-wider" style={{ color: textSecondary }}>{t('admission.studentData.religion')}</Label>
                     <select
-                      className="mt-1 w-full px-3 py-2 bg-white border border-gray-200 rounded-md text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="mt-1 w-full px-3 py-2 rounded-md focus:outline-none"
+                      style={selectStyle}
                       value={editData.student_religion}
                       onChange={(e) => setEditData(p => ({ ...p, student_religion: e.target.value }))}
                     >
@@ -1942,13 +2283,14 @@ export default function AdmissionManagement() {
                     </select>
                   </div>
                   <div>
-                    <Label>{t('admission.studentData.nationality')}</Label>
-                    <Input className="mt-1" value={editData.student_nationality} onChange={(e) => setEditData(p => ({ ...p, student_nationality: e.target.value }))} />
+                    <Label className="text-xs font-mono uppercase tracking-wider" style={{ color: textSecondary }}>{t('admission.studentData.nationality')}</Label>
+                    <Input className="mt-1" style={inputStyle} value={editData.student_nationality} onChange={(e) => setEditData(p => ({ ...p, student_nationality: e.target.value }))} />
                   </div>
                   <div className="relative">
-                    <Label>{t('admission.studentData.city')}</Label>
+                    <Label className="text-xs font-mono uppercase tracking-wider" style={{ color: textSecondary }}>{t('admission.studentData.city')}</Label>
                     <Input 
                       className="mt-1" 
+                      style={inputStyle}
                       value={editCitySearch} 
                       onChange={(e) => {
                         setEditCitySearch(e.target.value);
@@ -1961,12 +2303,13 @@ export default function AdmissionManagement() {
                     {showEditCityDropdown && (() => {
                       const filtered = allCities.filter(c => c.toLowerCase().includes(editCitySearch.toLowerCase())).slice(0, 8);
                       return filtered.length > 0 ? (
-                        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-48 overflow-y-auto">
+                        <div className="absolute z-50 w-full mt-1 border rounded-md shadow-lg max-h-48 overflow-y-auto" style={{ background: cardBg, borderColor }}>
                           {filtered.map(city => (
                             <button
                               key={city}
                               type="button"
-                              className="w-full text-left px-3 py-2 hover:bg-blue-50 text-sm transition-colors"
+                              className="w-full text-left px-3 py-2 text-sm transition-colors hover:bg-black/5 dark:hover:bg-white/5"
+                              style={{ color: textPrimary }}
                               onClick={() => {
                                 const province = getProvinceByCity(city);
                                 setEditData(p => ({ ...p, student_city: city, student_province: province }));
@@ -1975,7 +2318,7 @@ export default function AdmissionManagement() {
                               }}
                             >
                               <span className="font-medium">{city}</span>
-                              <span className="text-gray-400 ml-2 text-xs">({getProvinceByCity(city)})</span>
+                              <span className="ml-2 text-xs" style={{ color: textSecondary }}>({getProvinceByCity(city)})</span>
                             </button>
                           ))}
                         </div>
@@ -1983,73 +2326,73 @@ export default function AdmissionManagement() {
                     })()}
                   </div>
                   <div>
-                    <Label>{t('admission.studentData.province')}</Label>
-                    <Input className="mt-1 bg-gray-100" value={editData.student_province} readOnly placeholder={t('admission.studentData.autoFilled')} />
+                    <Label className="text-xs font-mono uppercase tracking-wider" style={{ color: textSecondary }}>{t('admission.studentData.province')}</Label>
+                    <Input className="mt-1" style={{ ...inputStyle, opacity: 0.7 }} value={editData.student_province} readOnly placeholder={t('admission.studentData.autoFilled')} />
                   </div>
                   <div>
-                    <Label>{t('admission.studentData.postalCode')}</Label>
-                    <Input className="mt-1" value={editData.student_postal_code} onChange={(e) => setEditData(p => ({ ...p, student_postal_code: e.target.value }))} />
+                    <Label className="text-xs font-mono uppercase tracking-wider" style={{ color: textSecondary }}>{t('admission.studentData.postalCode')}</Label>
+                    <Input className="mt-1" style={inputStyle} value={editData.student_postal_code} onChange={(e) => setEditData(p => ({ ...p, student_postal_code: e.target.value }))} />
                   </div>
                   <div className="col-span-2">
-                    <Label>{t('admission.studentData.addressID')}</Label>
-                    <textarea className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" rows={2} value={editData.student_address} onChange={(e) => setEditData(p => ({ ...p, student_address: e.target.value }))} />
+                    <Label className="text-xs font-mono uppercase tracking-wider" style={{ color: textSecondary }}>{t('admission.studentData.addressID')}</Label>
+                    <textarea className="mt-1 w-full px-3 py-2 rounded-md focus:outline-none" style={inputStyle} rows={2} value={editData.student_address} onChange={(e) => setEditData(p => ({ ...p, student_address: e.target.value }))} />
                   </div>
                   <div className="col-span-2">
-                    <Label>{t('admission.studentData.domicileAddress')}</Label>
-                    <textarea className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" rows={2} value={editData.student_domicile_address} onChange={(e) => setEditData(p => ({ ...p, student_domicile_address: e.target.value }))} />
+                    <Label className="text-xs font-mono uppercase tracking-wider" style={{ color: textSecondary }}>{t('admission.studentData.domicileAddress')}</Label>
+                    <textarea className="mt-1 w-full px-3 py-2 rounded-md focus:outline-none" style={inputStyle} rows={2} value={editData.student_domicile_address} onChange={(e) => setEditData(p => ({ ...p, student_domicile_address: e.target.value }))} />
                   </div>
                   <div className="col-span-2">
-                    <Label>{t('admission.studentData.prevSchool')}</Label>
-                    <Input className="mt-1" value={editData.student_previous_school} onChange={(e) => setEditData(p => ({ ...p, student_previous_school: e.target.value }))} />
+                    <Label className="text-xs font-mono uppercase tracking-wider" style={{ color: textSecondary }}>{t('admission.studentData.prevSchool')}</Label>
+                    <Input className="mt-1" style={inputStyle} value={editData.student_previous_school} onChange={(e) => setEditData(p => ({ ...p, student_previous_school: e.target.value }))} />
                   </div>
                 </div>
               ) : (
-                <div className="grid grid-cols-2 gap-4 bg-gray-50 p-4 rounded-lg">
+                <div className="grid grid-cols-2 gap-4 p-4 rounded-lg" style={{ background: isDark ? '#1C1C1F' : '#F9F9F8', border: '1px solid ' + borderColor, borderRadius: '8px' }}>
                   <div>
-                    <p className="text-sm text-gray-500">{t('admission.studentData.fullName')}</p>
-                    <p className="font-medium">{selectedApplication.student_name}</p>
+                    <p className="text-[10px] font-mono uppercase tracking-wider" style={{ color: textSecondary }}>{t('admission.studentData.fullName')}</p>
+                    <p className="text-sm font-medium" style={{ color: textPrimary }}>{selectedApplication.student_name}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-500">{t('admission.studentData.nickname')}</p>
-                    <p className="font-medium">{selectedApplication.student_nickname || '-'}</p>
+                    <p className="text-[10px] font-mono uppercase tracking-wider" style={{ color: textSecondary }}>{t('admission.studentData.nickname')}</p>
+                    <p className="text-sm font-medium" style={{ color: textPrimary }}>{selectedApplication.student_nickname || '-'}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-500">{t('admission.studentData.gender')}</p>
-                    <p className="font-medium">{selectedApplication.student_gender === 'male' ? t('admission.studentData.male') : selectedApplication.student_gender === 'female' ? t('admission.studentData.female') : '-'}</p>
+                    <p className="text-[10px] font-mono uppercase tracking-wider" style={{ color: textSecondary }}>{t('admission.studentData.gender')}</p>
+                    <p className="text-sm font-medium" style={{ color: textPrimary }}>{selectedApplication.student_gender === 'male' ? t('admission.studentData.male') : selectedApplication.student_gender === 'female' ? t('admission.studentData.female') : '-'}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-500">{t('admission.studentData.birthPlaceDate')}</p>
-                    <p className="font-medium">
+                    <p className="text-[10px] font-mono uppercase tracking-wider" style={{ color: textSecondary }}>{t('admission.studentData.birthPlaceDate')}</p>
+                    <p className="text-sm font-medium" style={{ color: textPrimary }}>
                       {selectedApplication.student_birth_place || '-'}, {formatDate(selectedApplication.student_birth_date)}
                     </p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-500">{t('admission.studentData.religion')}</p>
-                    <p className="font-medium">{selectedApplication.student_religion || '-'}</p>
+                    <p className="text-[10px] font-mono uppercase tracking-wider" style={{ color: textSecondary }}>{t('admission.studentData.religion')}</p>
+                    <p className="text-sm font-medium" style={{ color: textPrimary }}>{selectedApplication.student_religion || '-'}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-500">{t('admission.studentData.nationality')}</p>
-                    <p className="font-medium">{selectedApplication.student_nationality || '-'}</p>
+                    <p className="text-[10px] font-mono uppercase tracking-wider" style={{ color: textSecondary }}>{t('admission.studentData.nationality')}</p>
+                    <p className="text-sm font-medium" style={{ color: textPrimary }}>{selectedApplication.student_nationality || '-'}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-500">{t('admission.studentData.city')}</p>
-                    <p className="font-medium">{selectedApplication.student_city || '-'}</p>
+                    <p className="text-[10px] font-mono uppercase tracking-wider" style={{ color: textSecondary }}>{t('admission.studentData.city')}</p>
+                    <p className="text-sm font-medium" style={{ color: textPrimary }}>{selectedApplication.student_city || '-'}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-500">{t('admission.studentData.province')}</p>
-                    <p className="font-medium">{selectedApplication.student_province || '-'}</p>
+                    <p className="text-[10px] font-mono uppercase tracking-wider" style={{ color: textSecondary }}>{t('admission.studentData.province')}</p>
+                    <p className="text-sm font-medium" style={{ color: textPrimary }}>{selectedApplication.student_province || '-'}</p>
                   </div>
                   <div className="col-span-2">
-                    <p className="text-sm text-gray-500">{t('admission.studentData.addressID')}</p>
-                    <p className="font-medium">{selectedApplication.student_address || '-'}</p>
+                    <p className="text-[10px] font-mono uppercase tracking-wider" style={{ color: textSecondary }}>{t('admission.studentData.addressID')}</p>
+                    <p className="text-sm font-medium" style={{ color: textPrimary }}>{selectedApplication.student_address || '-'}</p>
                   </div>
                   <div className="col-span-2">
-                    <p className="text-sm text-gray-500">{t('admission.studentData.domicileAddress')}</p>
-                    <p className="font-medium">{selectedApplication.student_domicile_address || '-'}</p>
+                    <p className="text-[10px] font-mono uppercase tracking-wider" style={{ color: textSecondary }}>{t('admission.studentData.domicileAddress')}</p>
+                    <p className="text-sm font-medium" style={{ color: textPrimary }}>{selectedApplication.student_domicile_address || '-'}</p>
                   </div>
                   <div className="col-span-2">
-                    <p className="text-sm text-gray-500">{t('admission.studentData.prevSchool')}</p>
-                    <p className="font-medium">{selectedApplication.student_previous_school || '-'}</p>
+                    <p className="text-[10px] font-mono uppercase tracking-wider" style={{ color: textSecondary }}>{t('admission.studentData.prevSchool')}</p>
+                    <p className="text-sm font-medium" style={{ color: textPrimary }}>{selectedApplication.student_previous_school || '-'}</p>
                   </div>
                 </div>
               )}
@@ -2057,68 +2400,68 @@ export default function AdmissionManagement() {
 
             {/* Parent Info */}
             <div>
-              <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                <FontAwesomeIcon icon={faUser} className="text-green-600" />
+              <h3 className="font-semibold mb-3 flex items-center gap-2 text-xs font-mono uppercase tracking-wider" style={{ color: textPrimary }}>
+                <FontAwesomeIcon icon={faUser} style={{ color: textSecondary }} />
                 {t('admission.parentData.title')}
               </h3>
               {isEditing ? (
-                <div className="grid grid-cols-2 gap-4 bg-green-50 p-4 rounded-lg border border-green-200">
+                <div className="grid grid-cols-2 gap-4 p-4 rounded-lg" style={{ background: isDark ? '#1C1C1F' : '#F9F9F8', border: '1px solid ' + borderColor, borderRadius: '8px' }}>
                   <div>
-                    <Label>{t('admission.parentData.nik')}</Label>
-                    <Input className="mt-1" value={editData.parent_nik} maxLength={16} onChange={(e) => { const val = e.target.value.replace(/\D/g, '').slice(0, 16); setEditData(p => ({ ...p, parent_nik: val })); }} placeholder={t('admission.parentData.nikPlaceholder')} />
+                    <Label className="text-xs font-mono uppercase tracking-wider" style={{ color: textSecondary }}>{t('admission.parentData.nik')}</Label>
+                    <Input className="mt-1 font-mono" style={inputStyle} value={editData.parent_nik} maxLength={16} onChange={(e) => { const val = e.target.value.replace(/\D/g, '').slice(0, 16); setEditData(p => ({ ...p, parent_nik: val })); }} placeholder={t('admission.parentData.nikPlaceholder')} />
                   </div>
                   <div>
-                    <Label>{t('admission.parentData.parentNameRequired')}</Label>
-                    <Input className="mt-1" value={editData.parent_name} onChange={(e) => setEditData(p => ({ ...p, parent_name: e.target.value }))} />
+                    <Label className="text-xs font-mono uppercase tracking-wider" style={{ color: textSecondary }}>{t('admission.parentData.parentNameRequired')}</Label>
+                    <Input className="mt-1" style={inputStyle} value={editData.parent_name} onChange={(e) => setEditData(p => ({ ...p, parent_name: e.target.value }))} />
                   </div>
                   <div>
-                    <Label>{t('admission.parentData.occupation')}</Label>
-                    <Input className="mt-1" value={editData.parent_occupation} onChange={(e) => setEditData(p => ({ ...p, parent_occupation: e.target.value }))} />
+                    <Label className="text-xs font-mono uppercase tracking-wider" style={{ color: textSecondary }}>{t('admission.parentData.occupation')}</Label>
+                    <Input className="mt-1" style={inputStyle} value={editData.parent_occupation} onChange={(e) => setEditData(p => ({ ...p, parent_occupation: e.target.value }))} />
                   </div>
                   <div>
-                    <Label>{t('admission.parentData.phone')}</Label>
-                    <Input className="mt-1" value={editData.parent_phone} onChange={(e) => setEditData(p => ({ ...p, parent_phone: e.target.value }))} />
+                    <Label className="text-xs font-mono uppercase tracking-wider" style={{ color: textSecondary }}>{t('admission.parentData.phone')}</Label>
+                    <Input className="mt-1" style={inputStyle} value={editData.parent_phone} onChange={(e) => setEditData(p => ({ ...p, parent_phone: e.target.value }))} />
                   </div>
                   <div>
-                    <Label>Email</Label>
-                    <Input type="email" className="mt-1" value={editData.parent_email} onChange={(e) => setEditData(p => ({ ...p, parent_email: e.target.value }))} />
+                    <Label className="text-xs font-mono uppercase tracking-wider" style={{ color: textSecondary }}>Email</Label>
+                    <Input type="email" className="mt-1" style={inputStyle} value={editData.parent_email} onChange={(e) => setEditData(p => ({ ...p, parent_email: e.target.value }))} />
                   </div>
                   <div className="col-span-2">
-                    <Label>{t('admission.parentData.address')}</Label>
-                    <textarea className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" rows={2} value={editData.parent_address} onChange={(e) => setEditData(p => ({ ...p, parent_address: e.target.value }))} />
+                    <Label className="text-xs font-mono uppercase tracking-wider" style={{ color: textSecondary }}>{t('admission.parentData.address')}</Label>
+                    <textarea className="mt-1 w-full px-3 py-2 rounded-md focus:outline-none" style={inputStyle} rows={2} value={editData.parent_address} onChange={(e) => setEditData(p => ({ ...p, parent_address: e.target.value }))} />
                   </div>
                 </div>
               ) : (
-                <div className="grid grid-cols-2 gap-4 bg-gray-50 p-4 rounded-lg">
+                <div className="grid grid-cols-2 gap-4 p-4 rounded-lg" style={{ background: isDark ? '#1C1C1F' : '#F9F9F8', border: '1px solid ' + borderColor, borderRadius: '8px' }}>
                   <div>
-                    <p className="text-sm text-gray-500">{t('admission.parentData.nik')}</p>
-                    <p className="font-medium font-mono">{selectedApplication.parent_nik || '-'}</p>
+                    <p className="text-[10px] font-mono uppercase tracking-wider" style={{ color: textSecondary }}>{t('admission.parentData.nik')}</p>
+                    <p className="text-sm font-medium font-mono" style={{ color: textPrimary }}>{selectedApplication.parent_nik || '-'}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-500">{t('admission.parentData.parentNameLabel')}</p>
-                    <p className="font-medium">{selectedApplication.parent_name}</p>
+                    <p className="text-[10px] font-mono uppercase tracking-wider" style={{ color: textSecondary }}>{t('admission.parentData.parentNameLabel')}</p>
+                    <p className="text-sm font-medium" style={{ color: textPrimary }}>{selectedApplication.parent_name}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-500">{t('admission.parentData.occupation')}</p>
-                    <p className="font-medium">{selectedApplication.parent_occupation || '-'}</p>
+                    <p className="text-[10px] font-mono uppercase tracking-wider" style={{ color: textSecondary }}>{t('admission.parentData.occupation')}</p>
+                    <p className="text-sm font-medium" style={{ color: textPrimary }}>{selectedApplication.parent_occupation || '-'}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-500">{t('admission.parentData.phone')}</p>
-                    <p className="font-medium flex items-center gap-2">
-                      <FontAwesomeIcon icon={faPhone} className="text-gray-400" />
+                    <p className="text-[10px] font-mono uppercase tracking-wider" style={{ color: textSecondary }}>{t('admission.parentData.phone')}</p>
+                    <p className="text-sm font-medium flex items-center gap-2" style={{ color: textPrimary }}>
+                      <FontAwesomeIcon icon={faPhone} style={{ color: textSecondary }} />
                       {selectedApplication.parent_phone}
                     </p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-500">Email</p>
-                    <p className="font-medium flex items-center gap-2">
-                      <FontAwesomeIcon icon={faEnvelope} className="text-gray-400" />
+                    <p className="text-[10px] font-mono uppercase tracking-wider" style={{ color: textSecondary }}>Email</p>
+                    <p className="text-sm font-medium flex items-center gap-2" style={{ color: textPrimary }}>
+                      <FontAwesomeIcon icon={faEnvelope} style={{ color: textSecondary }} />
                       {selectedApplication.parent_email || '-'}
                     </p>
                   </div>
                   <div className="col-span-2">
-                    <p className="text-sm text-gray-500">{t('admission.parentData.address')}</p>
-                    <p className="font-medium">{selectedApplication.parent_address || '-'}</p>
+                    <p className="text-[10px] font-mono uppercase tracking-wider" style={{ color: textSecondary }}>{t('admission.parentData.address')}</p>
+                    <p className="text-sm font-medium" style={{ color: textPrimary }}>{selectedApplication.parent_address || '-'}</p>
                   </div>
                 </div>
               )}
@@ -2126,26 +2469,26 @@ export default function AdmissionManagement() {
 
             {/* School Selection */}
             <div>
-              <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                <FontAwesomeIcon icon={faSchool} className="text-purple-600" />
+              <h3 className="font-semibold mb-3 flex items-center gap-2 text-xs font-mono uppercase tracking-wider" style={{ color: textPrimary }}>
+                <FontAwesomeIcon icon={faSchool} style={{ color: textSecondary }} />
                 {t('admission.schoolSelection.title')}
               </h3>
-              <div className="grid grid-cols-2 gap-4 bg-gray-50 p-4 rounded-lg">
+              <div className="grid grid-cols-2 gap-4 p-4 rounded-lg" style={{ background: isDark ? '#1C1C1F' : '#F9F9F8', border: '1px solid ' + borderColor, borderRadius: '8px' }}>
                 <div>
-                  <p className="text-sm text-gray-500">{t('admission.schoolSelection.levelLabel')}</p>
-                  <p className="font-medium">{selectedApplication.level?.level_name || selectedApplication.unit?.unit_name || '-'}</p>
+                  <p className="text-[10px] font-mono uppercase tracking-wider" style={{ color: textSecondary }}>{t('admission.schoolSelection.levelLabel')}</p>
+                  <p className="text-sm font-medium" style={{ color: textPrimary }}>{selectedApplication.level?.level_name || selectedApplication.unit?.unit_name || '-'}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">{t('admission.schoolSelection.yearLabel')}</p>
-                  <p className="font-medium">{selectedApplication.year?.year_name || '-'}</p>
+                  <p className="text-[10px] font-mono uppercase tracking-wider" style={{ color: textSecondary }}>{t('admission.schoolSelection.yearLabel')}</p>
+                  <p className="text-sm font-medium" style={{ color: textPrimary }}>{selectedApplication.year?.year_name || '-'}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">{t('admission.schoolSelection.academicUnit')}</p>
-                  <p className="font-medium">{selectedApplication.unit?.unit_name || '-'}</p>
+                  <p className="text-[10px] font-mono uppercase tracking-wider" style={{ color: textSecondary }}>{t('admission.schoolSelection.academicUnit')}</p>
+                  <p className="text-sm font-medium" style={{ color: textPrimary }}>{selectedApplication.unit?.unit_name || '-'}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">{t('admission.schoolSelection.registrationDate')}</p>
-                  <p className="font-medium">{formatDateTime(selectedApplication.created_at)}</p>
+                  <p className="text-[10px] font-mono uppercase tracking-wider" style={{ color: textSecondary }}>{t('admission.schoolSelection.registrationDate')}</p>
+                  <p className="text-sm font-medium font-mono" style={{ color: textPrimary }}>{formatDateTime(selectedApplication.created_at)}</p>
                 </div>
               </div>
             </div>
@@ -2153,12 +2496,12 @@ export default function AdmissionManagement() {
             {/* Additional Notes */}
             {selectedApplication.additional_notes && (
               <div>
-                <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                  <FontAwesomeIcon icon={faInfoCircle} className="text-orange-600" />
+                <h3 className="font-semibold mb-3 flex items-center gap-2 text-xs font-mono uppercase tracking-wider" style={{ color: textPrimary }}>
+                  <FontAwesomeIcon icon={faInfoCircle} style={{ color: isDark ? '#FBBF24' : '#B45309' }} />
                   Catatan dari Pendaftar
                 </h3>
-                <div className="bg-orange-50 p-4 rounded-lg border border-orange-200">
-                  <p className="text-gray-700">{selectedApplication.additional_notes}</p>
+                <div className="p-4 rounded-lg" style={{ background: isDark ? 'rgba(251, 191, 36, 0.08)' : '#FDFBF7', border: '1px solid ' + (isDark ? 'rgba(251, 191, 36, 0.25)' : '#F3E8D2'), borderRadius: '8px' }}>
+                  <p className="text-sm" style={{ color: textPrimary }}>{selectedApplication.additional_notes}</p>
                 </div>
               </div>
             )}
@@ -2166,14 +2509,14 @@ export default function AdmissionManagement() {
             {/* Admin Notes */}
             {selectedApplication.admin_notes && (
               <div>
-                <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                  <FontAwesomeIcon icon={faInfoCircle} className="text-blue-600" />
+                <h3 className="font-semibold mb-3 flex items-center gap-2 text-xs font-mono uppercase tracking-wider" style={{ color: textPrimary }}>
+                  <FontAwesomeIcon icon={faInfoCircle} style={{ color: isDark ? '#60A5FA' : '#0284C7' }} />
                   Catatan Admin
                 </h3>
-                <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                  <p className="text-gray-700">{selectedApplication.admin_notes}</p>
+                <div className="p-4 rounded-lg" style={{ background: isDark ? 'rgba(96, 165, 250, 0.08)' : '#F8FAFC', border: '1px solid ' + (isDark ? 'rgba(96, 165, 250, 0.25)' : '#E2E8F0'), borderRadius: '8px' }}>
+                  <p className="text-sm" style={{ color: textPrimary }}>{selectedApplication.admin_notes}</p>
                   {selectedApplication.reviewed_at && (
-                    <p className="text-sm text-gray-500 mt-2">
+                    <p className="text-xs mt-2 font-mono" style={{ color: textSecondary }}>
                       {t('admission.notes.updatedAt')} {formatDateTime(selectedApplication.reviewed_at)}
                       {selectedApplication.reviewer && ` ${t('admission.notes.by')} ${selectedApplication.reviewer.user_nama_depan} ${selectedApplication.reviewer.user_nama_belakang}`}
                     </p>
@@ -2184,59 +2527,59 @@ export default function AdmissionManagement() {
 
             {/* ===== Discount / Potongan Section ===== */}
             <div>
-              <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                <FontAwesomeIcon icon={faTag} className="text-emerald-600" />
+              <h3 className="font-semibold mb-3 flex items-center gap-2 text-xs font-mono uppercase tracking-wider" style={{ color: textPrimary }}>
+                <FontAwesomeIcon icon={faTag} style={{ color: textSecondary }} />
                 {t('admission.discount.title')}
               </h3>
 
               {discountLoading ? (
-                <div className="text-center py-6 text-gray-400">
-                  <FontAwesomeIcon icon={faSpinner} className="animate-spin text-2xl mb-2" />
-                  <p className="text-sm">{t('admission.discount.loadingDiscount')}</p>
+                <div className="text-center py-6" style={{ color: textSecondary }}>
+                  <FontAwesomeIcon icon={faSpinner} className="animate-spin text-xl mb-2" />
+                  <p className="text-xs font-mono">{t('admission.discount.loadingDiscount')}</p>
                 </div>
               ) : (
                 <div className="space-y-4">
                   {/* UDP Discounts */}
                   {udpDef && (
-                    <div className="border border-emerald-200 rounded-lg overflow-hidden">
-                      <div className="bg-emerald-50 px-4 py-3 flex items-center justify-between">
+                    <div className="border rounded-lg overflow-hidden" style={{ borderColor, background: cardBg }}>
+                      <div className="px-4 py-2.5 flex items-center justify-between" style={{ background: isDark ? '#1C1C1F' : '#F9F9F8', borderBottom: '1px solid ' + borderColor }}>
                         <div>
-                          <span className="font-semibold text-emerald-800">UDP</span>
-                          <span className="text-sm text-emerald-600 ml-2">
+                          <span className="font-mono text-xs font-bold uppercase tracking-wider" style={{ color: textPrimary }}>UDP</span>
+                          <span className="text-xs font-mono ml-2" style={{ color: textSecondary }}>
                             Base: {formatCurrency(udpDef.total_amount)}
                           </span>
                         </div>
-                        <Button
-                          size="sm"
-                          className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs"
+                        <button
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-mono border rounded transition-colors hover:bg-black/5 dark:hover:bg-white/5"
+                          style={{ background: cardBg, borderColor, color: textPrimary, borderRadius: '6px' }}
                           onClick={() => { setAddDiscountTarget('udp'); setShowAddDiscount(true); }}
                           disabled={discountSaving}
                         >
-                          <FontAwesomeIcon icon={faPlus} className="mr-1" /> {t('admission.discount.addBtn')}
-                        </Button>
+                          <FontAwesomeIcon icon={faPlus} className="text-[10px]" /> {t('admission.discount.addBtn')}
+                        </button>
                       </div>
                       
                       {(() => {
                         const udpDiscounts = calculateDiscounts(discounts, 'udp');
                         if (udpDiscounts.length === 0) {
                           return (
-                            <div className="px-4 py-4 text-center text-gray-400 text-sm">
+                            <div className="px-4 py-4 text-center text-xs font-mono" style={{ color: textSecondary }}>
                               {t('admission.discount.noUdpDiscount')}
                             </div>
                           );
                         }
                         return (
-                          <div className="divide-y divide-emerald-100">
+                          <div>
                             {udpDiscounts.map((d, idx) => (
-                              <div key={d.app_discount_id} className="px-4 py-3 flex items-center gap-3 hover:bg-gray-50 transition-colors">
-                                <span className="flex-shrink-0 w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-xs font-bold">
+                              <div key={d.app_discount_id} className="px-4 py-2.5 flex items-center gap-3 transition-colors hover:bg-black/5 dark:hover:bg-white/5 border-t" style={{ borderColor }}>
+                                <span className="flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-mono font-semibold" style={{ background: isDark ? '#27272A' : '#F4F4F5', color: textSecondary, border: '1px solid ' + borderColor }}>
                                   {d.seq}
                                 </span>
                                 <div className="flex-1 min-w-0">
-                                  <p className="font-medium text-sm text-gray-900 truncate">
+                                  <p className="font-medium text-xs truncate" style={{ color: textPrimary }}>
                                     {d.discount?.discount_name || d.discount?.discount_code || '-'}
                                   </p>
-                                  <p className="text-xs text-gray-500">
+                                  <p className="text-[11px] font-mono" style={{ color: textSecondary }}>
                                     {d.value_type === 'percentage' ? (
                                       <><FontAwesomeIcon icon={faPercent} className="mr-1" />{d.value}% dari {formatCurrency(d.base_before)}</>
                                     ) : (
@@ -2245,42 +2588,45 @@ export default function AdmissionManagement() {
                                   </p>
                                 </div>
                                 <div className="text-right flex-shrink-0">
-                                  <p className="text-sm font-semibold text-red-600">-{formatCurrency(d.calculated_amount)}</p>
-                                  <p className="text-xs text-gray-400">→ {formatCurrency(d.subtotal_after)}</p>
+                                  <p className="text-xs font-semibold font-mono" style={{ color: isDark ? '#F87171' : '#DC2626' }}>-{formatCurrency(d.calculated_amount)}</p>
+                                  <p className="text-[11px] font-mono" style={{ color: textSecondary }}>→ {formatCurrency(d.subtotal_after)}</p>
                                 </div>
                                 <div className="flex flex-col gap-1 flex-shrink-0">
                                   <button
                                     onClick={() => handleMoveDiscount(d.app_discount_id, 'udp', 'up')}
                                     disabled={idx === 0 || discountSaving}
-                                    className="p-1 text-gray-400 hover:text-gray-700 disabled:opacity-30"
+                                    className="p-1 hover:opacity-100 disabled:opacity-20"
+                                    style={{ color: textSecondary }}
                                   >
-                                    <FontAwesomeIcon icon={faArrowUp} className="text-xs" />
+                                    <FontAwesomeIcon icon={faArrowUp} className="text-[10px]" />
                                   </button>
                                   <button
                                     onClick={() => handleMoveDiscount(d.app_discount_id, 'udp', 'down')}
                                     disabled={idx === udpDiscounts.length - 1 || discountSaving}
-                                    className="p-1 text-gray-400 hover:text-gray-700 disabled:opacity-30"
+                                    className="p-1 hover:opacity-100 disabled:opacity-20"
+                                    style={{ color: textSecondary }}
                                   >
-                                    <FontAwesomeIcon icon={faArrowDown} className="text-xs" />
+                                    <FontAwesomeIcon icon={faArrowDown} className="text-[10px]" />
                                   </button>
                                 </div>
                                 <button
                                   onClick={() => handleRemoveDiscount(d.app_discount_id, 'udp')}
                                   disabled={discountSaving}
-                                  className="p-1 text-red-400 hover:text-red-600 disabled:opacity-30"
+                                  className="p-1 hover:opacity-100 disabled:opacity-20"
+                                  style={{ color: isDark ? '#F87171' : '#DC2626' }}
                                 >
-                                  <FontAwesomeIcon icon={faTrash} className="text-xs" />
+                                  <FontAwesomeIcon icon={faTrash} className="text-[10px]" />
                                 </button>
                               </div>
                             ))}
                             {/* Total */}
-                            <div className="px-4 py-3 bg-emerald-50 flex items-center justify-between">
-                              <span className="font-semibold text-emerald-800 text-sm">{t('admission.discount.totalUdpDiscount')}</span>
+                            <div className="px-4 py-2.5 flex items-center justify-between border-t" style={{ background: isDark ? 'rgba(52, 211, 153, 0.08)' : '#EDF3EC', borderColor }}>
+                              <span className="font-semibold text-xs font-mono uppercase" style={{ color: isDark ? '#34D399' : '#346538' }}>{t('admission.discount.totalUdpDiscount')}</span>
                               <div className="text-right">
-                                <p className="font-bold text-red-600">
+                                <p className="font-bold text-xs font-mono" style={{ color: isDark ? '#F87171' : '#DC2626' }}>
                                   -{formatCurrency(udpDiscounts.reduce((sum, d) => sum + d.calculated_amount, 0))}
                                 </p>
-                                <p className="text-sm font-semibold text-emerald-700">
+                                <p className="text-xs font-semibold font-mono" style={{ color: isDark ? '#34D399' : '#346538' }}>
                                   {t('admission.discount.final')} {formatCurrency(udpDiscounts[udpDiscounts.length - 1]?.subtotal_after || udpDef.total_amount)}
                                 </p>
                               </div>
@@ -2293,45 +2639,45 @@ export default function AdmissionManagement() {
 
                   {/* USEK Discounts */}
                   {usekDef && (
-                    <div className="border border-blue-200 rounded-lg overflow-hidden">
-                      <div className="bg-blue-50 px-4 py-3 flex items-center justify-between">
+                    <div className="border rounded-lg overflow-hidden" style={{ borderColor, background: cardBg }}>
+                      <div className="px-4 py-2.5 flex items-center justify-between" style={{ background: isDark ? '#1C1C1F' : '#F9F9F8', borderBottom: '1px solid ' + borderColor }}>
                         <div>
-                          <span className="font-semibold text-blue-800">USEK</span>
-                          <span className="text-sm text-blue-600 ml-2">
+                          <span className="font-mono text-xs font-bold uppercase tracking-wider" style={{ color: textPrimary }}>USEK</span>
+                          <span className="text-xs font-mono ml-2" style={{ color: textSecondary }}>
                             Base/bulan: {formatCurrency(usekDef.default_amount)}
                           </span>
                         </div>
-                        <Button
-                          size="sm"
-                          className="bg-blue-600 hover:bg-blue-700 text-white text-xs"
+                        <button
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-mono border rounded transition-colors hover:bg-black/5 dark:hover:bg-white/5"
+                          style={{ background: cardBg, borderColor, color: textPrimary, borderRadius: '6px' }}
                           onClick={() => { setAddDiscountTarget('usek'); setShowAddDiscount(true); }}
                           disabled={discountSaving}
                         >
-                          <FontAwesomeIcon icon={faPlus} className="mr-1" /> {t('admission.discount.addBtn')}
-                        </Button>
+                          <FontAwesomeIcon icon={faPlus} className="text-[10px]" /> {t('admission.discount.addBtn')}
+                        </button>
                       </div>
                       
                       {(() => {
                         const usekDiscounts = calculateDiscounts(discounts, 'usek');
                         if (usekDiscounts.length === 0) {
                           return (
-                            <div className="px-4 py-4 text-center text-gray-400 text-sm">
+                            <div className="px-4 py-4 text-center text-xs font-mono" style={{ color: textSecondary }}>
                               {t('admission.discount.noUsekDiscount')}
                             </div>
                           );
                         }
                         return (
-                          <div className="divide-y divide-blue-100">
+                          <div>
                             {usekDiscounts.map((d, idx) => (
-                              <div key={d.app_discount_id} className="px-4 py-3 flex items-center gap-3 hover:bg-gray-50 transition-colors">
-                                <span className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-xs font-bold">
+                              <div key={d.app_discount_id} className="px-4 py-2.5 flex items-center gap-3 transition-colors hover:bg-black/5 dark:hover:bg-white/5 border-t" style={{ borderColor }}>
+                                <span className="flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-mono font-semibold" style={{ background: isDark ? '#27272A' : '#F4F4F5', color: textSecondary, border: '1px solid ' + borderColor }}>
                                   {d.seq}
                                 </span>
                                 <div className="flex-1 min-w-0">
-                                  <p className="font-medium text-sm text-gray-900 truncate">
+                                  <p className="font-medium text-xs truncate" style={{ color: textPrimary }}>
                                     {d.discount?.discount_name || d.discount?.discount_code || '-'}
                                   </p>
-                                  <p className="text-xs text-gray-500">
+                                  <p className="text-[11px] font-mono" style={{ color: textSecondary }}>
                                     {d.value_type === 'percentage' ? (
                                       <><FontAwesomeIcon icon={faPercent} className="mr-1" />{d.value}% dari {formatCurrency(d.base_before)}</>
                                     ) : (
@@ -2340,42 +2686,45 @@ export default function AdmissionManagement() {
                                   </p>
                                 </div>
                                 <div className="text-right flex-shrink-0">
-                                  <p className="text-sm font-semibold text-red-600">-{formatCurrency(d.calculated_amount)}</p>
-                                  <p className="text-xs text-gray-400">→ {formatCurrency(d.subtotal_after)}</p>
+                                  <p className="text-xs font-semibold font-mono" style={{ color: isDark ? '#F87171' : '#DC2626' }}>-{formatCurrency(d.calculated_amount)}</p>
+                                  <p className="text-[11px] font-mono" style={{ color: textSecondary }}>→ {formatCurrency(d.subtotal_after)}</p>
                                 </div>
                                 <div className="flex flex-col gap-1 flex-shrink-0">
                                   <button
                                     onClick={() => handleMoveDiscount(d.app_discount_id, 'usek', 'up')}
                                     disabled={idx === 0 || discountSaving}
-                                    className="p-1 text-gray-400 hover:text-gray-700 disabled:opacity-30"
+                                    className="p-1 hover:opacity-100 disabled:opacity-20"
+                                    style={{ color: textSecondary }}
                                   >
-                                    <FontAwesomeIcon icon={faArrowUp} className="text-xs" />
+                                    <FontAwesomeIcon icon={faArrowUp} className="text-[10px]" />
                                   </button>
                                   <button
                                     onClick={() => handleMoveDiscount(d.app_discount_id, 'usek', 'down')}
                                     disabled={idx === usekDiscounts.length - 1 || discountSaving}
-                                    className="p-1 text-gray-400 hover:text-gray-700 disabled:opacity-30"
+                                    className="p-1 hover:opacity-100 disabled:opacity-20"
+                                    style={{ color: textSecondary }}
                                   >
-                                    <FontAwesomeIcon icon={faArrowDown} className="text-xs" />
+                                    <FontAwesomeIcon icon={faArrowDown} className="text-[10px]" />
                                   </button>
                                 </div>
                                 <button
                                   onClick={() => handleRemoveDiscount(d.app_discount_id, 'usek')}
                                   disabled={discountSaving}
-                                  className="p-1 text-red-400 hover:text-red-600 disabled:opacity-30"
+                                  className="p-1 hover:opacity-100 disabled:opacity-20"
+                                  style={{ color: isDark ? '#F87171' : '#DC2626' }}
                                 >
-                                  <FontAwesomeIcon icon={faTrash} className="text-xs" />
+                                  <FontAwesomeIcon icon={faTrash} className="text-[10px]" />
                                 </button>
                               </div>
                             ))}
                             {/* Total */}
-                            <div className="px-4 py-3 bg-blue-50 flex items-center justify-between">
-                              <span className="font-semibold text-blue-800 text-sm">{t('admission.discount.totalUsekDiscount')}</span>
+                            <div className="px-4 py-2.5 flex items-center justify-between border-t" style={{ background: isDark ? 'rgba(96, 165, 250, 0.08)' : '#E1F3FE', borderColor }}>
+                              <span className="font-semibold text-xs font-mono uppercase" style={{ color: isDark ? '#60A5FA' : '#0284C7' }}>{t('admission.discount.totalUsekDiscount')}</span>
                               <div className="text-right">
-                                <p className="font-bold text-red-600">
+                                <p className="font-bold text-xs font-mono" style={{ color: isDark ? '#F87171' : '#DC2626' }}>
                                   -{formatCurrency(usekDiscounts.reduce((sum, d) => sum + d.calculated_amount, 0))}
                                 </p>
-                                <p className="text-sm font-semibold text-blue-700">
+                                <p className="text-xs font-semibold font-mono" style={{ color: isDark ? '#60A5FA' : '#0284C7' }}>
                                   {t('admission.discount.finalPerMonth')} {formatCurrency(usekDiscounts[usekDiscounts.length - 1]?.subtotal_after || usekDef.default_amount)}
                                 </p>
                               </div>
@@ -2388,21 +2737,21 @@ export default function AdmissionManagement() {
 
                   {/* No fee definitions */}
                   {!udpDef && !usekDef && (
-                    <div className="text-center py-6 text-gray-400 bg-gray-50 rounded-lg">
-                      <FontAwesomeIcon icon={faInfoCircle} className="text-2xl mb-2" />
-                      <p className="text-sm">{t('admission.discount.noFeeDef')}</p>
-                      <p className="text-xs mt-1">{t('admission.discount.setFeeFirst')}</p>
+                    <div className="text-center py-6 border rounded-lg" style={{ background: isDark ? '#1C1C1F' : '#F9F9F8', borderColor, color: textSecondary }}>
+                      <FontAwesomeIcon icon={faInfoCircle} className="text-xl mb-2" />
+                      <p className="text-xs font-mono">{t('admission.discount.noFeeDef')}</p>
+                      <p className="text-[11px] mt-1 font-mono">{t('admission.discount.setFeeFirst')}</p>
                     </div>
                   )}
 
                   {/* Add Discount Dropdown */}
                   {showAddDiscount && (
-                    <div className="border border-gray-300 rounded-lg p-4 bg-white shadow-sm">
+                    <div className="border rounded-lg p-4" style={{ background: cardBg, borderColor, borderRadius: '8px' }}>
                       <div className="flex items-center justify-between mb-3">
-                        <h4 className="font-semibold text-sm text-gray-900">
+                        <h4 className="font-mono text-xs font-semibold uppercase tracking-wider" style={{ color: textPrimary }}>
                           {t('admission.discount.addDiscountTitle')} {addDiscountTarget.toUpperCase()}
                         </h4>
-                        <button onClick={() => setShowAddDiscount(false)} className="text-gray-400 hover:text-gray-600">
+                        <button onClick={() => setShowAddDiscount(false)} className="hover:opacity-100" style={{ color: textSecondary }}>
                           <FontAwesomeIcon icon={faTimes} />
                         </button>
                       </div>
@@ -2415,13 +2764,22 @@ export default function AdmissionManagement() {
                               key={m.discount_id}
                               onClick={() => handleAddDiscount(m.discount_id, addDiscountTarget)}
                               disabled={discountSaving}
-                              className="w-full flex items-center justify-between p-3 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors text-left disabled:opacity-50"
+                              className="w-full flex items-center justify-between p-2.5 rounded-lg border transition-colors text-left disabled:opacity-50 hover:bg-black/5 dark:hover:bg-white/5"
+                              style={{ background: isDark ? '#1C1C1F' : '#F9F9F8', borderColor }}
                             >
                               <div>
-                                <p className="font-medium text-sm text-gray-900">{m.discount_name}</p>
-                                <p className="text-xs text-gray-500">{m.discount_code}</p>
+                                <p className="font-medium text-xs" style={{ color: textPrimary }}>{m.discount_name}</p>
+                                <p className="text-[10px] font-mono" style={{ color: textSecondary }}>{m.discount_code}</p>
                               </div>
-                              <span className={`px-2 py-1 rounded-full text-xs font-semibold ${m.discount_type === 'percentage' ? 'bg-purple-100 text-purple-700' : 'bg-green-100 text-green-700'}`}>
+                              <span className="px-2 py-0.5 rounded-full text-[11px] font-mono font-medium border" style={m.discount_type === 'percentage' ? {
+                                background: isDark ? 'rgba(168, 85, 247, 0.15)' : '#F3E8FF',
+                                color: isDark ? '#C084FC' : '#7E22CE',
+                                borderColor: isDark ? '#7E22CE' : '#E9D5FF'
+                              } : {
+                                background: isDark ? 'rgba(52, 211, 153, 0.15)' : '#EDF3EC',
+                                color: isDark ? '#34D399' : '#346538',
+                                borderColor: isDark ? '#059669' : '#D1E7DD'
+                              }}>
                                 {m.discount_type === 'percentage' ? `${m.discount_value}%` : formatCurrency(m.discount_value)}
                               </span>
                             </button>
@@ -2431,7 +2789,7 @@ export default function AdmissionManagement() {
                           .filter(m => m.applies_to === addDiscountTarget || m.applies_to === 'both')
                           .filter(m => !discounts.some(d => d.discount_id === m.discount_id && d.fee_target === addDiscountTarget))
                           .length === 0 && (
-                          <p className="text-center text-gray-400 text-sm py-3">
+                          <p className="text-center text-xs font-mono py-3" style={{ color: textSecondary }}>
                             Tidak ada potongan tersedia untuk {addDiscountTarget.toUpperCase()}
                           </p>
                         )}
@@ -2443,32 +2801,38 @@ export default function AdmissionManagement() {
             </div>
 
             {/* Action Buttons */}
-            <div className="flex justify-end gap-3 pt-4 border-t">
-              <Button variant="outline" onClick={() => setShowDetailModal(false)}>
+            <div className="flex justify-end gap-2.5 pt-4 border-t" style={{ borderColor }}>
+              <button
+                className="px-3.5 py-1.5 text-xs font-mono uppercase tracking-wider border rounded transition-colors hover:bg-black/5 dark:hover:bg-white/5"
+                style={{ borderColor, color: textSecondary, borderRadius: '6px' }}
+                onClick={() => setShowDetailModal(false)}
+              >
                 {t('admission.detail.closeBtn')}
-              </Button>
+              </button>
               {selectedApplication.status === 'pending' && (
                 <>
-                  <Button
-                    className="bg-green-600 hover:bg-green-700 text-white"
+                  <button
+                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-mono uppercase tracking-wider border rounded transition-colors"
+                    style={{ background: isDark ? '#059669' : '#10B981', color: '#FFFFFF', borderColor: isDark ? '#047857' : '#059669', borderRadius: '6px' }}
                     onClick={() => {
                       setShowDetailModal(false);
                       handleActionClick(selectedApplication, 'approved');
                     }}
                   >
-                    <FontAwesomeIcon icon={faCheck} className="mr-2" />
+                    <FontAwesomeIcon icon={faCheck} className="text-[10px]" />
                     {t('admission.detail.approveBtn')}
-                  </Button>
-                  <Button
-                    className="bg-red-600 hover:bg-red-700 text-white"
+                  </button>
+                  <button
+                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-mono uppercase tracking-wider border rounded transition-colors"
+                    style={{ background: isDark ? '#DC2626' : '#EF4444', color: '#FFFFFF', borderColor: isDark ? '#B91C1C' : '#DC2626', borderRadius: '6px' }}
                     onClick={() => {
                       setShowDetailModal(false);
                       handleActionClick(selectedApplication, 'rejected');
                     }}
                   >
-                    <FontAwesomeIcon icon={faTimes} className="mr-2" />
+                    <FontAwesomeIcon icon={faTimes} className="text-[10px]" />
                     {t('admission.detail.rejectBtn')}
-                  </Button>
+                  </button>
                 </>
               )}
             </div>
@@ -2484,55 +2848,69 @@ export default function AdmissionManagement() {
       >
         {selectedApplication && (
           <div className="space-y-4">
-            <p className="text-gray-600">
+            <p className="text-xs font-mono" style={{ color: textSecondary }}>
               {actionType === 'approved' && t('admission.action.willApprove')}
               {actionType === 'rejected' && t('admission.action.willReject')}
             </p>
 
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <p className="font-medium">{selectedApplication.student_name}</p>
-              <p className="text-sm text-gray-500">{selectedApplication.application_number}</p>
+            <div className="p-3.5 rounded-lg border" style={{ background: isDark ? '#1C1C1F' : '#F9F9F8', borderColor }}>
+              <p className="font-semibold text-sm" style={{ color: textPrimary }}>{selectedApplication.student_name}</p>
+              <p className="text-xs font-mono mt-0.5" style={{ color: textSecondary }}>{selectedApplication.application_number}</p>
             </div>
 
             <div>
-              <Label htmlFor="admin_notes">{t('admission.notes.notesOptional')}</Label>
+              <Label htmlFor="admin_notes" className="text-xs font-mono uppercase tracking-wider" style={{ color: textSecondary }}>{t('admission.notes.notesOptional')}</Label>
               <textarea
                 id="admin_notes"
                 value={adminNotes}
                 onChange={(e) => setAdminNotes(e.target.value)}
                 rows={3}
                 placeholder={t('admission.notes.notesPlaceholder')}
-                className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="mt-1.5 w-full px-3 py-2 rounded-md focus:outline-none"
+                style={inputStyle}
               />
             </div>
 
-            <div className="flex justify-end gap-3 pt-4">
-              <Button variant="outline" onClick={() => setShowActionModal(false)} disabled={processing}>
+            <div className="flex justify-end gap-2.5 pt-4 border-t" style={{ borderColor }}>
+              <button
+                className="px-3.5 py-1.5 text-xs font-mono uppercase tracking-wider border rounded transition-colors hover:bg-black/5 dark:hover:bg-white/5 disabled:opacity-50"
+                style={{ borderColor, color: textSecondary, borderRadius: '6px' }}
+                onClick={() => setShowActionModal(false)}
+                disabled={processing}
+              >
                 {t('admission.detail.cancelBtn')}
-              </Button>
-              <Button
+              </button>
+              <button
                 onClick={handleUpdateStatus}
                 disabled={processing}
-                className={
-                  actionType === 'approved' ? 'bg-green-600 hover:bg-green-700 text-white' :
-                  'bg-red-600 hover:bg-red-700 text-white'
-                }
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-mono uppercase tracking-wider border rounded transition-colors disabled:opacity-50"
+                style={actionType === 'approved' ? {
+                  background: isDark ? '#059669' : '#10B981',
+                  borderColor: isDark ? '#047857' : '#059669',
+                  color: '#FFFFFF',
+                  borderRadius: '6px'
+                } : {
+                  background: isDark ? '#DC2626' : '#EF4444',
+                  borderColor: isDark ? '#B91C1C' : '#DC2626',
+                  color: '#FFFFFF',
+                  borderRadius: '6px'
+                }}
               >
                 {processing ? (
                   <>
-                    <FontAwesomeIcon icon={faSpinner} className="mr-2 animate-spin" />
+                    <FontAwesomeIcon icon={faSpinner} className="animate-spin text-[10px]" />
                     {t('admission.action.processing')}
                   </>
                 ) : (
                   <>
                     <FontAwesomeIcon 
                       icon={actionType === 'approved' ? faCheck : faTimes} 
-                      className="mr-2" 
+                      className="text-[10px]" 
                     />
                     {actionType === 'approved' ? t('admission.action.confirmApprove') : t('admission.action.confirmReject')}
                   </>
                 )}
-              </Button>
+              </button>
             </div>
           </div>
         )}
@@ -2553,74 +2931,76 @@ export default function AdmissionManagement() {
         {selectedApplication && (
           <div className="space-y-4">
             {/* Application Info */}
-            <div className="bg-gray-50 p-3 rounded-lg flex items-center justify-between">
+            <div className="p-3.5 rounded-lg border flex items-center justify-between" style={{ background: isDark ? '#1C1C1F' : '#F9F9F8', borderColor }}>
               <div>
-                <p className="font-medium text-gray-900">{selectedApplication.student_name}</p>
-                <p className="text-sm text-gray-500">{selectedApplication.application_number} • {selectedApplication.level?.level_name || selectedApplication.unit?.unit_name || '-'} • {selectedApplication.year?.year_name || '-'}</p>
+                <p className="font-semibold text-sm" style={{ color: textPrimary }}>{selectedApplication.student_name}</p>
+                <p className="text-xs font-mono mt-0.5" style={{ color: textSecondary }}>
+                  {selectedApplication.application_number} • {selectedApplication.level?.level_name || selectedApplication.unit?.unit_name || '-'} • {selectedApplication.year?.year_name || '-'}
+                </p>
               </div>
-              <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${statusConfig[selectedApplication.status]?.bgColor} ${statusConfig[selectedApplication.status]?.color}`}>
-                <FontAwesomeIcon icon={statusConfig[selectedApplication.status]?.icon} className="text-xs" />
-                {statusLabels[selectedApplication.status]}
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-mono font-medium border" style={statusPillStyles[selectedApplication?.status] || statusPillStyles.pending}>
+                <FontAwesomeIcon icon={statusConfig[selectedApplication?.status]?.icon || faClock} className="text-[10px]" />
+                {statusLabels[selectedApplication?.status] || selectedApplication?.status || '-'}
               </span>
             </div>
 
             {discountLoading ? (
-              <div className="flex justify-center py-8">
-                <FontAwesomeIcon icon={faSpinner} className="text-2xl text-blue-600 animate-spin" />
+              <div className="flex justify-center py-8" style={{ color: textSecondary }}>
+                <FontAwesomeIcon icon={faSpinner} className="text-xl animate-spin" />
               </div>
             ) : (
               <div className="space-y-4">
                 {/* UDP Discounts */}
                 {udpDef && (
-                  <div className="border border-emerald-200 rounded-lg overflow-hidden">
-                    <div className="bg-emerald-50 px-4 py-3 flex items-center justify-between">
+                  <div className="border rounded-lg overflow-hidden" style={{ borderColor, background: cardBg }}>
+                    <div className="px-4 py-2.5 flex items-center justify-between" style={{ background: isDark ? '#1C1C1F' : '#F9F9F8', borderBottom: '1px solid ' + borderColor }}>
                       <div>
-                        <span className="font-semibold text-emerald-800">UDP</span>
-                        <span className="text-sm text-emerald-600 ml-2">
+                        <span className="font-mono text-xs font-bold uppercase tracking-wider" style={{ color: textPrimary }}>UDP</span>
+                        <span className="text-xs font-mono ml-2" style={{ color: textSecondary }}>
                           Base: {formatCurrency(udpDef.total_amount)}
                         </span>
                       </div>
-                      <Button
-                        size="sm"
-                        className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs"
+                      <button
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-mono border rounded transition-colors hover:bg-black/5 dark:hover:bg-white/5"
+                        style={{ background: cardBg, borderColor, color: textPrimary, borderRadius: '6px' }}
                         onClick={() => { setAddDiscountTarget('udp'); setShowAddDiscount(true); }}
                         disabled={discountSaving}
                       >
-                        <FontAwesomeIcon icon={faPlus} className="mr-1" /> {t('admission.discount.addBtn')}
-                      </Button>
+                        <FontAwesomeIcon icon={faPlus} className="text-[10px]" /> {t('admission.discount.addBtn')}
+                      </button>
                     </div>
                     {(() => {
                       const udpDiscounts = calculateDiscounts(discounts, 'udp');
                       if (udpDiscounts.length === 0) {
-                        return <div className="px-4 py-4 text-center text-gray-400 text-sm">{t('admission.discount.noUdpDiscount')}</div>;
+                        return <div className="px-4 py-4 text-center text-xs font-mono" style={{ color: textSecondary }}>{t('admission.discount.noUdpDiscount')}</div>;
                       }
                       return (
-                        <div className="divide-y divide-emerald-100">
+                        <div>
                           {udpDiscounts.map((d, idx) => (
-                            <div key={d.app_discount_id} className="px-4 py-3 flex items-center gap-3 hover:bg-gray-50 transition-colors">
-                              <span className="flex-shrink-0 w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-xs font-bold">{d.seq}</span>
+                            <div key={d.app_discount_id} className="px-4 py-2.5 flex items-center gap-3 transition-colors hover:bg-black/5 dark:hover:bg-white/5 border-t" style={{ borderColor }}>
+                              <span className="flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-mono font-semibold" style={{ background: isDark ? '#27272A' : '#F4F4F5', color: textSecondary, border: '1px solid ' + borderColor }}>{d.seq}</span>
                               <div className="flex-1 min-w-0">
-                                <p className="font-medium text-sm text-gray-900 truncate">{d.discount?.discount_name || '-'}</p>
-                                <p className="text-xs text-gray-500">
+                                <p className="font-medium text-xs truncate" style={{ color: textPrimary }}>{d.discount?.discount_name || '-'}</p>
+                                <p className="text-[11px] font-mono" style={{ color: textSecondary }}>
                                   {d.value_type === 'percentage' ? <><FontAwesomeIcon icon={faPercent} className="mr-1" />{d.value}% dari {formatCurrency(d.base_before)}</> : <><FontAwesomeIcon icon={faMoneyBill} className="mr-1" />{formatCurrency(d.value)} (fixed)</>}
                                 </p>
                               </div>
                               <div className="text-right flex-shrink-0">
-                                <p className="text-sm font-semibold text-red-600">-{formatCurrency(d.calculated_amount)}</p>
-                                <p className="text-xs text-gray-400">→ {formatCurrency(d.subtotal_after)}</p>
+                                <p className="text-xs font-semibold font-mono" style={{ color: isDark ? '#F87171' : '#DC2626' }}>-{formatCurrency(d.calculated_amount)}</p>
+                                <p className="text-[11px] font-mono" style={{ color: textSecondary }}>→ {formatCurrency(d.subtotal_after)}</p>
                               </div>
                               <div className="flex flex-col gap-1 flex-shrink-0">
-                                <button onClick={() => handleMoveDiscount(d.app_discount_id, 'udp', 'up')} disabled={idx === 0 || discountSaving} className="p-1 text-gray-400 hover:text-gray-700 disabled:opacity-30"><FontAwesomeIcon icon={faArrowUp} className="text-xs" /></button>
-                                <button onClick={() => handleMoveDiscount(d.app_discount_id, 'udp', 'down')} disabled={idx === udpDiscounts.length - 1 || discountSaving} className="p-1 text-gray-400 hover:text-gray-700 disabled:opacity-30"><FontAwesomeIcon icon={faArrowDown} className="text-xs" /></button>
+                                <button onClick={() => handleMoveDiscount(d.app_discount_id, 'udp', 'up')} disabled={idx === 0 || discountSaving} className="p-1 hover:opacity-100 disabled:opacity-20" style={{ color: textSecondary }}><FontAwesomeIcon icon={faArrowUp} className="text-[10px]" /></button>
+                                <button onClick={() => handleMoveDiscount(d.app_discount_id, 'udp', 'down')} disabled={idx === udpDiscounts.length - 1 || discountSaving} className="p-1 hover:opacity-100 disabled:opacity-20" style={{ color: textSecondary }}><FontAwesomeIcon icon={faArrowDown} className="text-[10px]" /></button>
                               </div>
-                              <button onClick={() => handleRemoveDiscount(d.app_discount_id, 'udp')} disabled={discountSaving} className="p-1 text-red-400 hover:text-red-600 disabled:opacity-30"><FontAwesomeIcon icon={faTrash} className="text-xs" /></button>
+                              <button onClick={() => handleRemoveDiscount(d.app_discount_id, 'udp')} disabled={discountSaving} className="p-1 hover:opacity-100 disabled:opacity-20" style={{ color: isDark ? '#F87171' : '#DC2626' }}><FontAwesomeIcon icon={faTrash} className="text-[10px]" /></button>
                             </div>
                           ))}
-                          <div className="px-4 py-3 bg-emerald-50 flex items-center justify-between">
-                            <span className="font-semibold text-emerald-800 text-sm">{t('admission.discount.totalUdpDiscount')}</span>
+                          <div className="px-4 py-2.5 flex items-center justify-between border-t" style={{ background: isDark ? 'rgba(52, 211, 153, 0.08)' : '#EDF3EC', borderColor }}>
+                            <span className="font-semibold text-xs font-mono uppercase" style={{ color: isDark ? '#34D399' : '#346538' }}>{t('admission.discount.totalUdpDiscount')}</span>
                             <div className="text-right">
-                              <p className="font-bold text-red-600">-{formatCurrency(udpDiscounts.reduce((sum, d) => sum + d.calculated_amount, 0))}</p>
-                              <p className="text-sm font-semibold text-emerald-700">{t('admission.discount.final')}: {formatCurrency(udpDiscounts[udpDiscounts.length - 1]?.subtotal_after || udpDef.total_amount)}</p>
+                              <p className="font-bold text-xs font-mono" style={{ color: isDark ? '#F87171' : '#DC2626' }}>-{formatCurrency(udpDiscounts.reduce((sum, d) => sum + d.calculated_amount, 0))}</p>
+                              <p className="text-xs font-semibold font-mono" style={{ color: isDark ? '#34D399' : '#346538' }}>{t('admission.discount.final')}: {formatCurrency(udpDiscounts[udpDiscounts.length - 1]?.subtotal_after || udpDef.total_amount)}</p>
                             </div>
                           </div>
                         </div>
@@ -2631,55 +3011,55 @@ export default function AdmissionManagement() {
 
                 {/* USEK Discounts */}
                 {usekDef && (
-                  <div className="border border-blue-200 rounded-lg overflow-hidden">
-                    <div className="bg-blue-50 px-4 py-3 flex items-center justify-between">
+                  <div className="border rounded-lg overflow-hidden" style={{ borderColor, background: cardBg }}>
+                    <div className="px-4 py-2.5 flex items-center justify-between" style={{ background: isDark ? '#1C1C1F' : '#F9F9F8', borderBottom: '1px solid ' + borderColor }}>
                       <div>
-                        <span className="font-semibold text-blue-800">USEK</span>
-                        <span className="text-sm text-blue-600 ml-2">
+                        <span className="font-mono text-xs font-bold uppercase tracking-wider" style={{ color: textPrimary }}>USEK</span>
+                        <span className="text-xs font-mono ml-2" style={{ color: textSecondary }}>
                           Base/bulan: {formatCurrency(usekDef.default_amount)}
                         </span>
                       </div>
-                      <Button
-                        size="sm"
-                        className="bg-blue-600 hover:bg-blue-700 text-white text-xs"
+                      <button
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-mono border rounded transition-colors hover:bg-black/5 dark:hover:bg-white/5"
+                        style={{ background: cardBg, borderColor, color: textPrimary, borderRadius: '6px' }}
                         onClick={() => { setAddDiscountTarget('usek'); setShowAddDiscount(true); }}
                         disabled={discountSaving}
                       >
-                        <FontAwesomeIcon icon={faPlus} className="mr-1" /> {t('admission.discount.addBtn')}
-                      </Button>
+                        <FontAwesomeIcon icon={faPlus} className="text-[10px]" /> {t('admission.discount.addBtn')}
+                      </button>
                     </div>
                     {(() => {
                       const usekDiscounts = calculateDiscounts(discounts, 'usek');
                       if (usekDiscounts.length === 0) {
-                        return <div className="px-4 py-4 text-center text-gray-400 text-sm">{t('admission.discount.noUsekDiscount')}</div>;
+                        return <div className="px-4 py-4 text-center text-xs font-mono" style={{ color: textSecondary }}>{t('admission.discount.noUsekDiscount')}</div>;
                       }
                       return (
-                        <div className="divide-y divide-blue-100">
+                        <div>
                           {usekDiscounts.map((d, idx) => (
-                            <div key={d.app_discount_id} className="px-4 py-3 flex items-center gap-3 hover:bg-gray-50 transition-colors">
-                              <span className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-xs font-bold">{d.seq}</span>
+                            <div key={d.app_discount_id} className="px-4 py-2.5 flex items-center gap-3 transition-colors hover:bg-black/5 dark:hover:bg-white/5 border-t" style={{ borderColor }}>
+                              <span className="flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-mono font-semibold" style={{ background: isDark ? '#27272A' : '#F4F4F5', color: textSecondary, border: '1px solid ' + borderColor }}>{d.seq}</span>
                               <div className="flex-1 min-w-0">
-                                <p className="font-medium text-sm text-gray-900 truncate">{d.discount?.discount_name || '-'}</p>
-                                <p className="text-xs text-gray-500">
+                                <p className="font-medium text-xs truncate" style={{ color: textPrimary }}>{d.discount?.discount_name || '-'}</p>
+                                <p className="text-[11px] font-mono" style={{ color: textSecondary }}>
                                   {d.value_type === 'percentage' ? <><FontAwesomeIcon icon={faPercent} className="mr-1" />{d.value}% dari {formatCurrency(d.base_before)}</> : <><FontAwesomeIcon icon={faMoneyBill} className="mr-1" />{formatCurrency(d.value)} (fixed)</>}
                                 </p>
                               </div>
                               <div className="text-right flex-shrink-0">
-                                <p className="text-sm font-semibold text-red-600">-{formatCurrency(d.calculated_amount)}</p>
-                                <p className="text-xs text-gray-400">→ {formatCurrency(d.subtotal_after)}</p>
+                                <p className="text-xs font-semibold font-mono" style={{ color: isDark ? '#F87171' : '#DC2626' }}>-{formatCurrency(d.calculated_amount)}</p>
+                                <p className="text-[11px] font-mono" style={{ color: textSecondary }}>→ {formatCurrency(d.subtotal_after)}</p>
                               </div>
                               <div className="flex flex-col gap-1 flex-shrink-0">
-                                <button onClick={() => handleMoveDiscount(d.app_discount_id, 'usek', 'up')} disabled={idx === 0 || discountSaving} className="p-1 text-gray-400 hover:text-gray-700 disabled:opacity-30"><FontAwesomeIcon icon={faArrowUp} className="text-xs" /></button>
-                                <button onClick={() => handleMoveDiscount(d.app_discount_id, 'usek', 'down')} disabled={idx === usekDiscounts.length - 1 || discountSaving} className="p-1 text-gray-400 hover:text-gray-700 disabled:opacity-30"><FontAwesomeIcon icon={faArrowDown} className="text-xs" /></button>
+                                <button onClick={() => handleMoveDiscount(d.app_discount_id, 'usek', 'up')} disabled={idx === 0 || discountSaving} className="p-1 hover:opacity-100 disabled:opacity-20" style={{ color: textSecondary }}><FontAwesomeIcon icon={faArrowUp} className="text-[10px]" /></button>
+                                <button onClick={() => handleMoveDiscount(d.app_discount_id, 'usek', 'down')} disabled={idx === usekDiscounts.length - 1 || discountSaving} className="p-1 hover:opacity-100 disabled:opacity-20" style={{ color: textSecondary }}><FontAwesomeIcon icon={faArrowDown} className="text-[10px]" /></button>
                               </div>
-                              <button onClick={() => handleRemoveDiscount(d.app_discount_id, 'usek')} disabled={discountSaving} className="p-1 text-red-400 hover:text-red-600 disabled:opacity-30"><FontAwesomeIcon icon={faTrash} className="text-xs" /></button>
+                              <button onClick={() => handleRemoveDiscount(d.app_discount_id, 'usek')} disabled={discountSaving} className="p-1 hover:opacity-100 disabled:opacity-20" style={{ color: isDark ? '#F87171' : '#DC2626' }}><FontAwesomeIcon icon={faTrash} className="text-[10px]" /></button>
                             </div>
                           ))}
-                          <div className="px-4 py-3 bg-blue-50 flex items-center justify-between">
-                            <span className="font-semibold text-blue-800 text-sm">{t('admission.discount.totalUsekDiscount')}</span>
+                          <div className="px-4 py-2.5 flex items-center justify-between border-t" style={{ background: isDark ? 'rgba(96, 165, 250, 0.08)' : '#E1F3FE', borderColor }}>
+                            <span className="font-semibold text-xs font-mono uppercase" style={{ color: isDark ? '#60A5FA' : '#0284C7' }}>{t('admission.discount.totalUsekDiscount')}</span>
                             <div className="text-right">
-                              <p className="font-bold text-red-600">-{formatCurrency(usekDiscounts.reduce((sum, d) => sum + d.calculated_amount, 0))}</p>
-                              <p className="text-sm font-semibold text-blue-700">{t('admission.discount.finalPerMonth')}: {formatCurrency(usekDiscounts[usekDiscounts.length - 1]?.subtotal_after || usekDef.default_amount)}</p>
+                              <p className="font-bold text-xs font-mono" style={{ color: isDark ? '#F87171' : '#DC2626' }}>-{formatCurrency(usekDiscounts.reduce((sum, d) => sum + d.calculated_amount, 0))}</p>
+                              <p className="text-xs font-semibold font-mono" style={{ color: isDark ? '#60A5FA' : '#0284C7' }}>{t('admission.discount.finalPerMonth')}: {formatCurrency(usekDiscounts[usekDiscounts.length - 1]?.subtotal_after || usekDef.default_amount)}</p>
                             </div>
                           </div>
                         </div>
@@ -2690,21 +3070,21 @@ export default function AdmissionManagement() {
 
                 {/* No fee definitions */}
                 {!udpDef && !usekDef && (
-                  <div className="text-center py-6 text-gray-400 bg-gray-50 rounded-lg">
-                    <FontAwesomeIcon icon={faInfoCircle} className="text-2xl mb-2" />
-                    <p className="text-sm">{t('admission.discount.noFeeDef')}</p>
-                    <p className="text-xs mt-1">{t('admission.discount.setFeeFirst')}</p>
+                  <div className="text-center py-6 border rounded-lg" style={{ background: isDark ? '#1C1C1F' : '#F9F9F8', borderColor, color: textSecondary }}>
+                    <FontAwesomeIcon icon={faInfoCircle} className="text-xl mb-2" />
+                    <p className="text-xs font-mono">{t('admission.discount.noFeeDef')}</p>
+                    <p className="text-[11px] mt-1 font-mono">{t('admission.discount.setFeeFirst')}</p>
                   </div>
                 )}
 
                 {/* Add Discount Picker */}
                 {showAddDiscount && (
-                  <div className="border border-gray-300 rounded-lg p-4 bg-white shadow-sm">
+                  <div className="border rounded-lg p-4" style={{ background: cardBg, borderColor, borderRadius: '8px' }}>
                     <div className="flex items-center justify-between mb-3">
-                      <h4 className="font-semibold text-sm text-gray-900">
+                      <h4 className="font-mono text-xs font-semibold uppercase tracking-wider" style={{ color: textPrimary }}>
                         {t('admission.discount.addDiscountTitle')} {addDiscountTarget.toUpperCase()}
                       </h4>
-                      <button onClick={() => setShowAddDiscount(false)} className="text-gray-400 hover:text-gray-600">
+                      <button onClick={() => setShowAddDiscount(false)} className="hover:opacity-100" style={{ color: textSecondary }}>
                         <FontAwesomeIcon icon={faTimes} />
                       </button>
                     </div>
@@ -2717,13 +3097,22 @@ export default function AdmissionManagement() {
                             key={m.discount_id}
                             onClick={() => handleAddDiscount(m.discount_id, addDiscountTarget)}
                             disabled={discountSaving}
-                            className="w-full flex items-center justify-between p-3 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors text-left disabled:opacity-50"
+                            className="w-full flex items-center justify-between p-2.5 rounded-lg border transition-colors text-left disabled:opacity-50 hover:bg-black/5 dark:hover:bg-white/5"
+                            style={{ background: isDark ? '#1C1C1F' : '#F9F9F8', borderColor }}
                           >
                             <div>
-                              <p className="font-medium text-sm text-gray-900">{m.discount_name}</p>
-                              <p className="text-xs text-gray-500">{m.discount_code}</p>
+                              <p className="font-medium text-xs" style={{ color: textPrimary }}>{m.discount_name}</p>
+                              <p className="text-[10px] font-mono" style={{ color: textSecondary }}>{m.discount_code}</p>
                             </div>
-                            <span className={`px-2 py-1 rounded-full text-xs font-semibold ${m.discount_type === 'percentage' ? 'bg-purple-100 text-purple-700' : 'bg-green-100 text-green-700'}`}>
+                            <span className="px-2 py-0.5 rounded-full text-[11px] font-mono font-medium border" style={m.discount_type === 'percentage' ? {
+                              background: isDark ? 'rgba(168, 85, 247, 0.15)' : '#F3E8FF',
+                              color: isDark ? '#C084FC' : '#7E22CE',
+                              borderColor: isDark ? '#7E22CE' : '#E9D5FF'
+                            } : {
+                              background: isDark ? 'rgba(52, 211, 153, 0.15)' : '#EDF3EC',
+                              color: isDark ? '#34D399' : '#346538',
+                              borderColor: isDark ? '#059669' : '#D1E7DD'
+                            }}>
                               {m.discount_type === 'percentage' ? `${m.discount_value}%` : formatCurrency(m.discount_value)}
                             </span>
                           </button>
@@ -2733,7 +3122,7 @@ export default function AdmissionManagement() {
                         .filter(m => m.applies_to === addDiscountTarget || m.applies_to === 'both')
                         .filter(m => !discounts.some(d => d.discount_id === m.discount_id && d.fee_target === addDiscountTarget))
                         .length === 0 && (
-                        <p className="text-center text-gray-400 text-sm py-3">
+                        <p className="text-center text-xs font-mono py-3" style={{ color: textSecondary }}>
                           {t('admission.discount.noDiscountAvailable')} {addDiscountTarget.toUpperCase()}
                         </p>
                       )}
@@ -2756,30 +3145,32 @@ export default function AdmissionManagement() {
         {selectedApplication && (
           <div className="space-y-4">
             {/* Application Info */}
-            <div className="bg-gray-50 p-3 rounded-lg flex items-center justify-between">
+            <div className="p-3.5 rounded-lg border flex items-center justify-between" style={{ background: isDark ? '#1C1C1F' : '#F9F9F8', borderColor }}>
               <div>
-                <p className="font-medium text-gray-900">{selectedApplication.student_name}</p>
-                <p className="text-sm text-gray-500">{selectedApplication.application_number} • {selectedApplication.level?.level_name || selectedApplication.unit?.unit_name || '-'} • {selectedApplication.year?.year_name || '-'}</p>
+                <p className="font-semibold text-sm" style={{ color: textPrimary }}>{selectedApplication.student_name}</p>
+                <p className="text-xs font-mono mt-0.5" style={{ color: textSecondary }}>
+                  {selectedApplication.application_number} • {selectedApplication.level?.level_name || selectedApplication.unit?.unit_name || '-'} • {selectedApplication.year?.year_name || '-'}
+                </p>
               </div>
-              <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${statusConfig[selectedApplication.status]?.bgColor} ${statusConfig[selectedApplication.status]?.color}`}>
-                <FontAwesomeIcon icon={statusConfig[selectedApplication.status]?.icon} className="text-xs" />
-                {statusLabels[selectedApplication.status]}
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-mono font-medium border" style={statusPillStyles[selectedApplication?.status] || statusPillStyles.pending}>
+                <FontAwesomeIcon icon={statusConfig[selectedApplication?.status]?.icon || faClock} className="text-[10px]" />
+                {statusLabels[selectedApplication?.status] || selectedApplication?.status || '-'}
               </span>
             </div>
 
             {installmentLoading ? (
-              <div className="flex justify-center py-8">
-                <FontAwesomeIcon icon={faSpinner} className="text-2xl text-purple-600 animate-spin" />
+              <div className="flex justify-center py-8" style={{ color: textSecondary }}>
+                <FontAwesomeIcon icon={faSpinner} className="text-xl animate-spin" />
               </div>
             ) : (() => {
               const feeInfo = getAppFeeInfo(selectedApplication);
               const hasAnyFee = feeInfo.udpFinal > 0 || feeInfo.usekFinal > 0;
               if (!hasAnyFee) {
                 return (
-                  <div className="text-center py-6 text-gray-400 bg-gray-50 rounded-lg">
-                    <FontAwesomeIcon icon={faInfoCircle} className="text-2xl mb-2" />
-                    <p className="text-sm">{t('admission.installment.noFeeDef')}</p>
-                    <p className="text-xs mt-1">{t('admission.installment.setFeeFirst')}</p>
+                  <div className="text-center py-6 border rounded-lg" style={{ background: isDark ? '#1C1C1F' : '#F9F9F8', borderColor, color: textSecondary }}>
+                    <FontAwesomeIcon icon={faInfoCircle} className="text-xl mb-2" />
+                    <p className="text-xs font-mono">{t('admission.installment.noFeeDef')}</p>
+                    <p className="text-[11px] mt-1 font-mono">{t('admission.installment.setFeeFirst')}</p>
                   </div>
                 );
               }
@@ -2791,56 +3182,59 @@ export default function AdmissionManagement() {
               return (
                 <div className="space-y-4">
                   {/* Fee Summary */}
-                  <div className="border border-purple-200 rounded-lg overflow-hidden">
-                    <div className="bg-purple-50 px-4 py-3">
-                      <span className="font-semibold text-purple-800">{t('admission.installment.feeSummary')}</span>
+                  <div className="border rounded-lg overflow-hidden" style={{ borderColor, background: cardBg }}>
+                    <div className="px-4 py-2.5" style={{ background: isDark ? '#1C1C1F' : '#F9F9F8', borderBottom: '1px solid ' + borderColor }}>
+                      <span className="font-mono text-xs font-semibold uppercase tracking-wider" style={{ color: textPrimary }}>{t('admission.installment.feeSummary')}</span>
                     </div>
                     <div className="p-4 space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-600">{t('admission.installment.udpAfterDiscount')}</span>
-                        <span className="font-medium">{formatCurrency(calc.udpFinal)}</span>
+                      <div className="flex justify-between text-xs font-mono">
+                        <span style={{ color: textSecondary }}>{t('admission.installment.udpAfterDiscount')}</span>
+                        <span className="font-medium" style={{ color: textPrimary }}>{formatCurrency(calc.udpFinal)}</span>
                       </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-600">{t('admission.installment.sppFirstMonth')}</span>
-                        <span className="font-medium">{formatCurrency(calc.sppFinal)}</span>
+                      <div className="flex justify-between text-xs font-mono">
+                        <span style={{ color: textSecondary }}>{t('admission.installment.sppFirstMonth')}</span>
+                        <span className="font-medium" style={{ color: textPrimary }}>{formatCurrency(calc.sppFinal)}</span>
                       </div>
-                      <div className="border-t pt-2 flex justify-between font-semibold text-purple-800">
-                        <span>{t('admission.installment.totalEntryFee')}</span>
-                        <span>{formatCurrency(calc.totalEntry)}</span>
+                      <div className="border-t pt-2 flex justify-between text-xs font-mono font-bold" style={{ borderColor }}>
+                        <span className="uppercase" style={{ color: textPrimary }}>{t('admission.installment.totalEntryFee')}</span>
+                        <span style={{ color: isDark ? '#60A5FA' : '#0284C7' }}>{formatCurrency(calc.totalEntry)}</span>
                       </div>
                     </div>
                   </div>
 
                   {/* Configuration */}
-                  <div className="border border-gray-200 rounded-lg p-4 space-y-3">
-                    <h4 className="font-semibold text-sm text-gray-800">{t('admission.installment.settings')}</h4>
+                  <div className="border rounded-lg p-4 space-y-3" style={{ background: isDark ? '#1C1C1F' : '#F9F9F8', borderColor }}>
+                    <h4 className="font-mono text-xs font-semibold uppercase tracking-wider" style={{ color: textPrimary }}>{t('admission.installment.settings')}</h4>
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <Label className="text-xs text-gray-600">{t('admission.installment.utjPercentage')}</Label>
+                        <Label className="text-[10px] font-mono uppercase tracking-wider" style={{ color: textSecondary }}>{t('admission.installment.utjPercentage')}</Label>
                         <Input
                           type="number"
                           min="0"
                           max="100"
                           className="mt-1"
+                          style={inputStyle}
                           value={installmentConfig.utj_percentage}
                           onChange={(e) => setInstallmentConfig(p => ({ ...p, utj_percentage: Math.min(100, Math.max(0, parseFloat(e.target.value) || 0)) }))}
                         />
                       </div>
                       <div>
-                        <Label className="text-xs text-gray-600">{t('admission.installment.numInstallments')}</Label>
+                        <Label className="text-[10px] font-mono uppercase tracking-wider" style={{ color: textSecondary }}>{t('admission.installment.numInstallments')}</Label>
                         <Input
                           type="number"
                           min="1"
                           max="24"
                           className="mt-1"
+                          style={inputStyle}
                           value={installmentConfig.num_installments}
                           onChange={(e) => setInstallmentConfig(p => ({ ...p, num_installments: Math.min(24, Math.max(1, parseInt(e.target.value) || 1)) }))}
                         />
                       </div>
                       <div>
-                        <Label className="text-xs text-gray-600">{t('admission.installment.startMonth')}</Label>
+                        <Label className="text-[10px] font-mono uppercase tracking-wider" style={{ color: textSecondary }}>{t('admission.installment.startMonth')}</Label>
                         <select
-                          className="mt-1 w-full px-3 py-2 bg-white border border-gray-200 rounded-md text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                          className="mt-1 w-full px-3 py-2 rounded-md text-xs font-mono focus:outline-none"
+                          style={selectStyle}
                           value={installmentConfig.start_month}
                           onChange={(e) => setInstallmentConfig(p => ({ ...p, start_month: parseInt(e.target.value) }))}
                         >
@@ -2850,21 +3244,23 @@ export default function AdmissionManagement() {
                         </select>
                       </div>
                       <div>
-                        <Label className="text-xs text-gray-600">{t('admission.installment.startYear')}</Label>
+                        <Label className="text-[10px] font-mono uppercase tracking-wider" style={{ color: textSecondary }}>{t('admission.installment.startYear')}</Label>
                         <Input
                           type="number"
                           min="2020"
                           max="2040"
                           className="mt-1"
+                          style={inputStyle}
                           value={installmentConfig.start_year}
                           onChange={(e) => setInstallmentConfig(p => ({ ...p, start_year: parseInt(e.target.value) || new Date().getFullYear() }))}
                         />
                       </div>
                     </div>
                     <div>
-                      <Label className="text-xs text-gray-600">{t('admission.installment.notesLabel')}</Label>
+                      <Label className="text-[10px] font-mono uppercase tracking-wider" style={{ color: textSecondary }}>{t('admission.installment.notesLabel')}</Label>
                       <Input
                         className="mt-1"
+                        style={inputStyle}
                         placeholder={t('admission.installment.notesPlaceholder')}
                         value={installmentConfig.notes}
                         onChange={(e) => setInstallmentConfig(p => ({ ...p, notes: e.target.value }))}
@@ -2873,23 +3269,23 @@ export default function AdmissionManagement() {
                   </div>
 
                   {/* UTJ Info */}
-                  <div className="border border-amber-200 rounded-lg overflow-hidden">
-                    <div className="bg-amber-50 px-4 py-3 flex items-center justify-between">
-                      <span className="font-semibold text-amber-800">{t('admission.installment.utjSection')}</span>
-                      <span className="font-bold text-amber-700 text-lg">{formatCurrency(calc.utjAmount)}</span>
+                  <div className="rounded-lg overflow-hidden" style={{ background: isDark ? 'rgba(251, 191, 36, 0.08)' : '#FBF3DB', border: '1px solid ' + (isDark ? 'rgba(251, 191, 36, 0.25)' : '#F5E8B7') }}>
+                    <div className="px-4 py-2.5 flex items-center justify-between">
+                      <span className="font-mono text-xs uppercase font-semibold" style={{ color: isDark ? '#FBBF24' : '#956400' }}>{t('admission.installment.utjSection')}</span>
+                      <span className="font-mono text-sm font-bold" style={{ color: isDark ? '#FBBF24' : '#956400' }}>{formatCurrency(calc.utjAmount)}</span>
                     </div>
-                    <div className="px-4 py-2 text-xs text-gray-500">
+                    <div className="px-4 pb-2.5 text-[11px] font-mono" style={{ color: isDark ? 'rgba(251, 191, 36, 0.8)' : '#956400' }}>
                       {installmentConfig.utj_percentage}% {t('admission.installment.utjInfoOf')} {formatCurrency(calc.totalEntry)} — {t('admission.installment.utjInfoIncluded')}
                     </div>
                   </div>
 
                   {/* Remaining & Monthly */}
-                  <div className="border border-blue-200 rounded-lg overflow-hidden">
-                    <div className="bg-blue-50 px-4 py-3 flex items-center justify-between">
-                      <span className="font-semibold text-blue-800">{t('admission.installment.remainingSection')}</span>
-                      <span className="font-bold text-blue-700">{formatCurrency(calc.remaining)}</span>
+                  <div className="rounded-lg overflow-hidden" style={{ background: isDark ? 'rgba(96, 165, 250, 0.08)' : '#E1F3FE', border: '1px solid ' + (isDark ? 'rgba(96, 165, 250, 0.25)' : '#C9E7FE') }}>
+                    <div className="px-4 py-2.5 flex items-center justify-between">
+                      <span className="font-mono text-xs uppercase font-semibold" style={{ color: isDark ? '#60A5FA' : '#0284C7' }}>{t('admission.installment.remainingSection')}</span>
+                      <span className="font-mono text-sm font-bold" style={{ color: isDark ? '#60A5FA' : '#0284C7' }}>{formatCurrency(calc.remaining)}</span>
                     </div>
-                    <div className="px-4 py-2 text-xs text-gray-500">
+                    <div className="px-4 pb-2.5 text-[11px] font-mono" style={{ color: isDark ? 'rgba(96, 165, 250, 0.8)' : '#0284C7' }}>
                       {t('admission.installment.remainingInfoDivided')} {calc.numInst} {t('admission.installment.remainingInfoMonths')} — {formatCurrency(calc.monthlyAmount)}{t('admission.installment.remainingInfoPerMonth')}
                       {calc.lastMonthAmount !== calc.monthlyAmount && (
                         <span className="ml-1">({t('admission.installment.lastInstallment')}: {formatCurrency(calc.lastMonthAmount)})</span>
@@ -2898,35 +3294,37 @@ export default function AdmissionManagement() {
                   </div>
 
                   {/* Schedule Table */}
-                  <div className="border border-gray-200 rounded-lg overflow-hidden">
-                    <div className="bg-gray-50 px-4 py-3">
-                      <span className="font-semibold text-gray-800">{t('admission.installment.scheduleTitle')}</span>
+                  <div className="border rounded-lg overflow-hidden" style={{ borderColor, background: cardBg }}>
+                    <div className="px-4 py-2.5" style={{ background: isDark ? '#1C1C1F' : '#F9F9F8', borderBottom: '1px solid ' + borderColor }}>
+                      <span className="font-mono text-xs font-semibold uppercase tracking-wider" style={{ color: textPrimary }}>{t('admission.installment.scheduleTitle')}</span>
                     </div>
                     <div className="overflow-x-auto">
-                      <table className="w-full text-sm">
+                      <table className="w-full text-xs">
                         <thead>
-                          <tr className="bg-gray-50 text-gray-600 text-xs">
-                            <th className="px-4 py-2 text-left w-12">No</th>
-                            <th className="px-4 py-2 text-left">{t('admission.installment.scheduleColDescription')}</th>
-                            <th className="px-4 py-2 text-right">{t('admission.installment.scheduleColAmount')}</th>
+                          <tr className="border-b" style={{ background: isDark ? '#18181B' : '#FAFAF9', borderColor }}>
+                            <th className="px-4 py-2 text-left w-12 text-[10px] font-mono uppercase tracking-wider" style={{ color: textSecondary }}>No</th>
+                            <th className="px-4 py-2 text-left text-[10px] font-mono uppercase tracking-wider" style={{ color: textSecondary }}>{t('admission.installment.scheduleColDescription')}</th>
+                            <th className="px-4 py-2 text-right text-[10px] font-mono uppercase tracking-wider" style={{ color: textSecondary }}>{t('admission.installment.scheduleColAmount')}</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-gray-100">
+                        <tbody className="divide-y" style={{ borderColor }}>
                           {calc.items.map((item) => (
-                            <tr key={item.seq} className={item.seq === 1 ? 'bg-amber-50' : 'hover:bg-gray-50'}>
-                              <td className="px-4 py-2 text-gray-500">{item.seq}</td>
+                            <tr key={item.seq} className="transition-colors hover:bg-black/5 dark:hover:bg-white/5" style={item.seq === 1 ? { background: isDark ? 'rgba(251, 191, 36, 0.06)' : 'rgba(251, 243, 219, 0.5)' } : {}}>
+                              <td className="px-4 py-2 font-mono" style={{ color: textSecondary }}>{item.seq}</td>
                               <td className="px-4 py-2">
-                                <span className={`font-medium ${item.seq === 1 ? 'text-amber-800' : 'text-gray-900'}`}>{item.label}</span>
-                                {item.info && <p className="text-xs text-gray-400">{item.info}</p>}
+                                <span className="font-medium" style={{ color: item.seq === 1 ? (isDark ? '#FBBF24' : '#956400') : textPrimary }}>{item.label}</span>
+                                {item.info && <p className="text-[10px] font-mono mt-0.5" style={{ color: textSecondary }}>{item.info}</p>}
                               </td>
-                              <td className="px-4 py-2 text-right font-semibold">{formatCurrency(item.amount)}</td>
+                              <td className="px-4 py-2 text-right font-mono font-semibold" style={{ color: item.seq === 1 ? (isDark ? '#FBBF24' : '#956400') : textPrimary }}>
+                                {formatCurrency(item.amount)}
+                              </td>
                             </tr>
                           ))}
                         </tbody>
                         <tfoot>
-                          <tr className="bg-purple-50 font-bold text-purple-800">
-                            <td className="px-4 py-3" colSpan="2">{t('admission.installment.total')}</td>
-                            <td className="px-4 py-3 text-right">{formatCurrency(calc.items.reduce((sum, i) => sum + i.amount, 0))}</td>
+                          <tr className="font-bold border-t" style={{ background: isDark ? '#1C1C1F' : '#F9F9F8', borderColor }}>
+                            <td className="px-4 py-2.5 font-mono text-xs uppercase" colSpan="2" style={{ color: textPrimary }}>{t('admission.installment.total')}</td>
+                            <td className="px-4 py-2.5 text-right font-mono text-xs" style={{ color: textPrimary }}>{formatCurrency(calc.items.reduce((sum, i) => sum + i.amount, 0))}</td>
                           </tr>
                         </tfoot>
                       </table>
@@ -2937,56 +3335,54 @@ export default function AdmissionManagement() {
                   <div className="flex items-center justify-between pt-2">
                     <div className="flex items-center gap-2">
                       {existingPlan && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="text-red-600 border-red-300 hover:bg-red-50"
+                        <button
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-mono uppercase tracking-wider border rounded transition-colors hover:bg-rose-50 dark:hover:bg-rose-950/30 disabled:opacity-50"
+                          style={{ borderColor: isDark ? '#DC2626' : '#FECACA', color: isDark ? '#F87171' : '#DC2626', borderRadius: '6px' }}
                           onClick={handleDeleteInstallment}
                           disabled={installmentSaving}
                         >
-                          <FontAwesomeIcon icon={faTrash} className="mr-1" /> {t('admission.installment.deleteScheme')}
-                        </Button>
+                          <FontAwesomeIcon icon={faTrash} className="text-[10px]" /> {t('admission.installment.deleteScheme')}
+                        </button>
                       )}
                       {existingPlan && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="text-blue-600 border-blue-300 hover:bg-blue-50"
+                        <button
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-mono uppercase tracking-wider border rounded transition-colors hover:bg-blue-50 dark:hover:bg-blue-950/30"
+                          style={{ borderColor: isDark ? '#2563EB' : '#BFDBFE', color: isDark ? '#60A5FA' : '#2563EB', borderRadius: '6px' }}
                           onClick={handlePrintInstallment}
                         >
-                          <FontAwesomeIcon icon={faPrint} className="mr-1" /> {t('admission.installment.printPdf')}
-                        </Button>
+                          <FontAwesomeIcon icon={faPrint} className="text-[10px]" /> {t('admission.installment.printPdf')}
+                        </button>
                       )}
                       {existingPlan && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="text-purple-600 border-purple-300 hover:bg-purple-50"
+                        <button
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-mono uppercase tracking-wider border rounded transition-colors hover:bg-purple-50 dark:hover:bg-purple-950/30 disabled:opacity-50"
+                          style={{ borderColor: isDark ? '#7E22CE' : '#E9D5FF', color: isDark ? '#C084FC' : '#7E22CE', borderRadius: '6px' }}
                           onClick={handleEmailInstallment}
                           disabled={emailSending || !selectedApplication?.parent_email}
                           title={!selectedApplication?.parent_email ? t('admission.installment.emailNoParent') : t('admission.installment.emailToParent')}
                         >
                           {emailSending ? (
-                            <FontAwesomeIcon icon={faSpinner} className="mr-1 animate-spin" />
+                            <FontAwesomeIcon icon={faSpinner} className="animate-spin text-[10px]" />
                           ) : (
-                            <FontAwesomeIcon icon={faEnvelope} className="mr-1" />
+                            <FontAwesomeIcon icon={faEnvelope} className="text-[10px]" />
                           )}
                           {emailSending ? t('admission.installment.sendingEmail') : t('admission.installment.sendEmail')}
-                        </Button>
+                        </button>
                       )}
                     </div>
-                    <Button
-                      className="bg-purple-600 hover:bg-purple-700 text-white"
+                    <button
+                      className="inline-flex items-center gap-1.5 px-4 py-1.5 text-xs font-mono uppercase tracking-wider border rounded transition-colors disabled:opacity-50"
+                      style={{ background: textPrimary, color: cardBg, borderColor: textPrimary, borderRadius: '6px' }}
                       onClick={handleSaveInstallment}
                       disabled={installmentSaving}
                     >
                       {installmentSaving ? (
-                        <FontAwesomeIcon icon={faSpinner} className="mr-2 animate-spin" />
+                        <FontAwesomeIcon icon={faSpinner} className="animate-spin text-[10px]" />
                       ) : (
-                        <FontAwesomeIcon icon={faSave} className="mr-2" />
+                        <FontAwesomeIcon icon={faSave} className="text-[10px]" />
                       )}
                       {existingPlan ? t('admission.installment.updateScheme') : t('admission.installment.saveScheme')}
-                    </Button>
+                    </button>
                   </div>
                 </div>
               );

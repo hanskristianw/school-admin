@@ -1,7 +1,7 @@
 # Graph Report - school-admin  (2026-09-19)
 
 ## Corpus Check
-- 389 files · ~654,077 words
+- 389 files · ~654,064 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
@@ -436,7 +436,7 @@ Nodes (8): DAY_ID, DAYS, extractHM(), formatWeekLabel(), getMonday(), parseRange
 
 ### Community 16 - "Third-party Libraries"
 Cohesion: 0.12
-Nodes (17): browser-image-compression, dependencies, browser-image-compression, clsx, driver.js, next, qrcode, @radix-ui/react-select (+9 more)
+Nodes (17): bcryptjs, dependencies, bcryptjs, clsx, driver.js, next, qrcode, @radix-ui/react-select (+9 more)
 
 ### Community 17 - "Attendance Report API"
 Cohesion: 0.38
@@ -684,7 +684,7 @@ Nodes (12): 4.1 Tables, 4.2 ERD / Relationships (Purchasing Domain), 4. Purchasi
 
 ### Community 108 - "Module 108"
 Cohesion: 0.18
-Nodes (10): 11.2 ERD / Relationships (Uniform & Stock Domain), 11.3 Initial Stock & Inventory Ledger Workflows (`/stock/uniform/initial`), 11.4 POS Uniform Sales Workflows (`/sales/uniform`), 11. Uniform & Stock Management Domain (`/sales/uniform`, `/stock/uniform/add`, `/stock/uniform/initial`, `/stock/uniform/po-settings`, `/data/uniform`, `/data/uniform-size`), 7.1 Tables, 7.2 ERD / Relationships (Menu Domain), 7. Menu & Role Permissions Domain (`/data/menu_management`), Database Schema & Relationships (+2 more)
+Nodes (10): 11.2 ERD / Relationships (Uniform & Stock Domain), 11.3 Initial Stock & Inventory Ledger Workflows (`/stock/uniform/initial`), 11.4 POS Uniform Sales Workflows (`/sales/uniform`), 11. Uniform & Stock Management Domain (`/sales/uniform`, `/stock/uniform/add`, `/stock/uniform/initial`, `/stock/uniform/po-settings`, `/data/uniform`, `/data/uniform-size`), 6.1 Tables, 6.2 ERD / Relationships (Assessment & Grading), 6. Assessment & Grading Domain (`/data/topic-new` / Reports), `assessment_grade_strands` (+2 more)
 
 ### Community 109 - "Module 109"
 Cohesion: 0.18
@@ -860,7 +860,7 @@ Nodes (5): 10.1 Tables, 10.2 ERD / Relationships (Duty & Devotion Schedule Domai
 
 ### Community 237 - "Module 237"
 Cohesion: 0.40
-Nodes (5): 6.1 Tables, 6.2 ERD / Relationships (Assessment & Grading), 6. Assessment & Grading Domain (`/data/topic-new` / Reports), `assessment_grade_strands`, `assessment_grades`
+Nodes (5): 7.1 Tables, 7.2 ERD / Relationships (Menu Domain), 7. Menu & Role Permissions Domain (`/data/menu_management`), `menu_permissions`, `menus`
 
 ### Community 238 - "Module 238"
 Cohesion: 0.40
