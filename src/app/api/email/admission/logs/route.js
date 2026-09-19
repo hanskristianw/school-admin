@@ -106,13 +106,17 @@ export async function GET(request) {
       const subj = (item.subject || '').toLowerCase()
       if (subj.includes('instruksi pembayaran')) {
         emailType = 'Instruksi Pembayaran Formulir'
-      } else if (subj.includes('application approved')) {
+      } else if (subj.includes('pembayaran biaya formulir terverifikasi') || subj.includes('formulir terverifikasi') || subj.includes('form fee receipt')) {
+        emailType = 'Konfirmasi Pembayaran Formulir Lunas'
+      } else if (subj.includes('jadwal tes penempatan') || subj.includes('jadwal tes') || subj.includes('placement test')) {
+        emailType = 'Jadwal Tes Penempatan & Wawancara'
+      } else if (subj.includes('application approved') || subj.includes('calon siswa diterima') || subj.includes('diterima')) {
         emailType = 'Pemberitahuan Diterima (Approved)'
-      } else if (subj.includes('application rejected')) {
-        emailType = 'Pemberitahuan Ditolak (Rejected)'
+      } else if (subj.includes('application rejected') || subj.includes('hasil seleksi penerimaan') || subj.includes('ditolak')) {
+        emailType = 'Pemberitahuan Hasil Seleksi (Ditolak)'
       } else if (subj.includes('under review')) {
         emailType = 'Pemberitahuan Sedang Ditinjau'
-      } else if (subj.includes('perjanjian cicilan')) {
+      } else if (subj.includes('perjanjian cicilan') || subj.includes('perjanjian pembayaran cicilan')) {
         emailType = 'Dokumen Perjanjian Cicilan Inhouse'
       } else if (subj.includes('application received')) {
         emailType = 'Konfirmasi Pendaftaran Awal'

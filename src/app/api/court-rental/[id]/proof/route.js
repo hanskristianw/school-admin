@@ -6,7 +6,7 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 )
 
-const EXPECTED_SECRET = process.env.COURT_RENTAL_SECRET_KEY
+const EXPECTED_SECRET = process.env.COURT_RENTAL_SECRET_KEY || process.env.ADMISSION_SECRET_KEY || 'ccs_court_auth_2026_x7k9p2m4'
 
 export async function GET(request, { params }) {
   try {

@@ -170,7 +170,8 @@ $i18n = [
         'test_schedule_badge' => 'Tes Penempatan Calon Siswa',
         'interview_schedule_badge' => 'Wawancara Orang Tua & Observasi',
         'btn_reschedule' => 'Ajukan Perubahan Jadwal (Reschedule)',
-        'schedule_location' => 'Lokasi: Kampus Chung Chung Christian School, Jl. Mayjend Sungkono No. 100, Surabaya',
+        'schedule_location' => 'Lokasi: Kampus Chung Chung Christian School, Jl. Raya Gn. Anyar Sawah No.18, Gn. Anyar, Kec. Gn. Anyar, Surabaya, Jawa Timur 60294',
+        'schedule_notes_label' => 'Catatan Jadwal:',
 
         // Tanda Terima Selesai
         'receipt_title' => 'Formulir Pendaftaran Lengkap Telah Diterima!',
@@ -322,7 +323,8 @@ $i18n = [
         'test_schedule_badge' => 'Student Placement Test',
         'interview_schedule_badge' => 'Parent Interview & Observation',
         'btn_reschedule' => 'Request Schedule Adjustment (Reschedule)',
-        'schedule_location' => 'Venue: Chung Chung Christian School Campus, Jl. Mayjend Sungkono No. 100, Surabaya',
+        'schedule_location' => 'Venue: Chung Chung Christian School Campus, Jl. Raya Gn. Anyar Sawah No.18, Gn. Anyar, Kec. Gn. Anyar, Surabaya, Jawa Timur 60294',
+        'schedule_notes_label' => 'Schedule Notes:',
 
         // Receipt Done
         'receipt_title' => 'Complete Application Form Received!',
@@ -474,7 +476,8 @@ $i18n = [
         'test_schedule_badge' => '学生入学分班测试',
         'interview_schedule_badge' => '家长面谈与入学观察',
         'btn_reschedule' => '申请调整时间 (改期)',
-        'schedule_location' => '地点：崇崇基督教学校校园，Jl. Mayjend Sungkono No. 100, Surabaya',
+        'schedule_location' => '地点：崇崇基督教学校校园，Jl. Raya Gn. Anyar Sawah No.18, Gn. Anyar, Kec. Gn. Anyar, Surabaya, Jawa Timur 60294',
+        'schedule_notes_label' => '时间安排备注：',
 
         // Receipt Done
         'receipt_title' => '完整报名表已成功接收！',
@@ -1427,6 +1430,38 @@ function formatTanggalIndo($dateStr, $lang = 'id') {
             </div>
           </div>
 
+          <?php if (!empty($currentApplicant['promo_code'])): 
+            $pStatus = $currentApplicant['promo_status'] ?? 'pending_payment';
+            $isConfirmed = ($pStatus === 'confirmed');
+            $isExhausted = ($pStatus === 'quota_exhausted');
+          ?>
+          <!-- Informasi Kupon Promosi Terdaftar -->
+          <div class="border rounded-md p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs <?= $isConfirmed ? 'bg-emerald-50/70 border-emerald-200' : ($isExhausted ? 'bg-rose-50/70 border-rose-200' : 'bg-purple-50/70 border-purple-200') ?>">
+            <div class="flex items-center gap-2.5">
+              <span class="text-white font-mono font-bold px-2.5 py-1 rounded text-xs flex items-center gap-1.5 shadow-xs shrink-0 <?= $isConfirmed ? 'bg-emerald-700' : ($isExhausted ? 'bg-rose-700' : 'bg-purple-700') ?>">
+                <i class="fas fa-tag"></i> <?= htmlspecialchars($currentApplicant['promo_code']) ?>
+              </span>
+              <div>
+                <span class="font-bold block <?= $isConfirmed ? 'text-emerald-950' : ($isExhausted ? 'text-rose-950' : 'text-purple-950') ?>">
+                  <?= htmlspecialchars($currentApplicant['promo_details']['discount_name'] ?? 'Kupon Promosi Pendaftaran') ?>
+                </span>
+                <span class="text-[11px] <?= $isConfirmed ? 'text-emerald-700' : ($isExhausted ? 'text-rose-700' : 'text-purple-700') ?>">
+                  <?php if ($isConfirmed): ?>
+                    Kupon promosi resmi terkonfirmasi dan kuota potongan biaya telah terkunci untuk calon siswa ini.
+                  <?php elseif ($isExhausted): ?>
+                    Mohon maaf, kuota kode promosi ini telah habis terisi oleh pendaftar lain yang menyelesaikan pembayaran formulir lebih awal.
+                  <?php else: ?>
+                    Klaim kode promosi tercatat. Kuota promosi akan resmi terkunci setelah pembayaran biaya formulir diverifikasi lunas oleh pihak sekolah.
+                  <?php endif; ?>
+                </span>
+              </div>
+            </div>
+            <span class="inline-block self-start sm:self-auto px-2.5 py-0.5 rounded text-[10px] font-mono font-bold uppercase border shrink-0 <?= $isConfirmed ? 'bg-emerald-100 text-emerald-800 border-emerald-300' : ($isExhausted ? 'bg-rose-100 text-rose-800 border-rose-300' : 'bg-amber-100 text-amber-800 border-amber-300') ?>">
+              <?= $isConfirmed ? 'Kuota Terkonfirmasi' : ($isExhausted ? 'Kuota Habis' : 'Menunggu Lunas Formulir') ?>
+            </span>
+          </div>
+          <?php endif; ?>
+
           <!-- ═══════════════════════════════════════════════════════════════ -->
           <!-- STEPPER VISUAL LINGKARAN-LINGKARAN (STATUS TRACKER)             -->
           <!-- ═══════════════════════════════════════════════════════════════ -->
@@ -1719,7 +1754,10 @@ function formatTanggalIndo($dateStr, $lang = 'id') {
                       </div>
                       <div class="sm:col-span-2">
                         <label class="school-label"><?= htmlspecialchars($L['lbl_notes']) ?></label>
-                        <textarea name="additional_notes" rows="2" class="school-textarea"><?= htmlspecialchars($currentApplicant['additional_notes'] ?? '') ?></textarea>
+                        <?php 
+                          $cleanFormNotes = trim(preg_replace('/\[SCHEDULE_META\]:.*$/s', '', $currentApplicant['additional_notes'] ?? ''));
+                        ?>
+                        <textarea name="additional_notes" rows="2" class="school-textarea"><?= htmlspecialchars($cleanFormNotes) ?></textarea>
                       </div>
                     </div>
                   </div>
@@ -1937,7 +1975,7 @@ function formatTanggalIndo($dateStr, $lang = 'id') {
                     <div>
                       <span class="font-semibold block"><?= htmlspecialchars($L['schedule_location']) ?></span>
                       <?php if (!empty($currentApplicant['schedule_notes'])): ?>
-                        <span class="text-[11px] text-amber-800 block mt-1">Catatan Pendaftar: <?= htmlspecialchars($currentApplicant['schedule_notes']) ?></span>
+                        <span class="text-[11px] text-amber-800 block mt-1"><?= htmlspecialchars($L['schedule_notes_label'] ?? 'Catatan Jadwal:') ?> <?= htmlspecialchars($currentApplicant['schedule_notes']) ?></span>
                       <?php endif; ?>
                     </div>
                   </div>

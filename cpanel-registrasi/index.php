@@ -59,6 +59,10 @@ $i18n = [
         'hint_parent_email' => 'Rincian tagihan formulir dan link akses status pendaftaran dikirimkan ke email ini.',
         'lbl_parent_phone' => 'Nomor WhatsApp / HP Aktif',
         'hint_parent_phone' => 'Digunakan untuk verifikasi cek status dan pengunggahan bukti transfer.',
+        'step_promo_title' => 'Kode Kupon / Promosi (Opsional)',
+        'lbl_promo_code' => 'Punya Kode Kupon / Promosi?',
+        'hint_promo_code' => 'Masukkan kode kupon promosi pendaftaran jika Anda memiliki voucher resmi dari pihak sekolah. Kuota promo bersifat terbatas dan resmi terkunci setelah pembayaran formulir disetujui.',
+        'btn_check_promo' => 'Cek Kode',
         'step4_title' => 'Ketentuan & Prosedur Pendaftaran',
         'rules_header' => 'Ketentuan Pendaftaran Siswa Baru CCS:',
         'rules' => [
@@ -113,6 +117,10 @@ $i18n = [
         'hint_parent_email' => 'Payment invoice details and status access links will be delivered to this email.',
         'lbl_parent_phone' => 'Active WhatsApp Number',
         'hint_parent_phone' => 'Used for verification when checking status and uploading payment receipts.',
+        'step_promo_title' => 'Coupon / Promo Code (Optional)',
+        'lbl_promo_code' => 'Have a Coupon or Promo Code?',
+        'hint_promo_code' => 'Enter an admission promo code if you hold an official voucher. Promo quota is limited and officially locked once form fee payment is verified.',
+        'btn_check_promo' => 'Verify Code',
         'step4_title' => 'Admission Terms & Regulations',
         'rules_header' => 'CCS Admission Regulations:',
         'rules' => [
@@ -167,6 +175,10 @@ $i18n = [
         'hint_parent_email' => '报名费账单明细及状态查询链接将发送至此邮箱。',
         'lbl_parent_phone' => 'WhatsApp 手机号码',
         'hint_parent_phone' => '用于查询状态验证及上传付款凭证。',
+        'step_promo_title' => '优惠券 / 促销代码（选填）',
+        'lbl_promo_code' => '持有优惠券或促销代码？',
+        'hint_promo_code' => '如果您持有学校官方优惠代码，请在此输入。优惠名额有限，将在报名表费用审核确认后正式锁定。',
+        'btn_check_promo' => '验证代码',
         'step4_title' => '招生须知与规章条例',
         'rules_header' => '崇崇基督教学校招生须知：',
         'rules' => [
@@ -326,6 +338,16 @@ if (isset($_GET['action']) && $_GET['action'] === 'view_proof') {
     exit;
 }
 
+// ─── 4b. ENDPOINT AJAX CEK KODE PROMO ───────────────────────────────────────
+if (isset($_GET['action']) && $_GET['action'] === 'check_promo') {
+    header('Content-Type: application/json');
+    $code = trim($_GET['code'] ?? '');
+    $level = trim($_GET['level_name'] ?? '');
+    $res = callNextJsApi('GET', ['action' => 'check_promo', 'promo_code' => $code, 'level_name' => $level]);
+    echo json_encode($res);
+    exit;
+}
+
 // ─── 5. AMBIL MASTER JENJANG PENDIDIKAN DARI SUPABASE ────────────────────────
 $levelsResponse = callNextJsApi('GET', ['action' => 'get_levels']);
 $serverLevels = (!empty($levelsResponse['success']) && !empty($levelsResponse['levels']))
@@ -344,6 +366,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action_register_simpl
     $parentPhone = trim($_POST['parent_phone'] ?? '');
     $studentName = trim($_POST['student_name'] ?? '');
     $levelName   = trim($_POST['level_name'] ?? '');
+    $promoCode   = strtoupper(preg_replace('/\s+/', '', trim($_POST['promo_code'] ?? '')));
     $csrf        = $_POST['csrf_token'] ?? '';
     $agreeTerms  = !empty($_POST['agree_terms']);
 
@@ -372,6 +395,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action_register_simpl
             'parent_email' => $parentEmail,
             'parent_phone' => $parentPhone,
             'level_name' => $levelName,
+            'promo_code' => $promoCode,
             'notes' => 'Pendaftaran online melalui web resmi ccs.sch.id/registrasi'
         ];
 
@@ -694,6 +718,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action_register_simpl
             <i class="fas fa-envelope text-ccsOrange shrink-0"></i>
             <span><?= htmlspecialchars($L['success_reg_email_note']) ?></span>
           </div>
+          <?php if (!empty($successReg['promo_code'])): ?>
+          <div class="sm:col-span-2 pt-2 border-t border-slate-200 flex items-center justify-between text-xs">
+            <span class="text-gray-600 flex items-center gap-1.5"><i class="fas fa-tag text-purple-600"></i> Kupon Promosi Digunakan:</span>
+            <span class="font-mono font-bold bg-purple-100 text-purple-800 border border-purple-200 px-2 py-0.5 rounded"><?= htmlspecialchars($successReg['promo_code']) ?></span>
+          </div>
+          <?php endif; ?>
         </div>
 
         <div class="space-y-3 pt-2">
@@ -805,6 +835,45 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action_register_simpl
               >
               <span class="school-hint"><?= htmlspecialchars($L['hint_parent_phone']) ?></span>
             </div>
+          </div>
+        </div>
+
+        <!-- LANGKAH TAMBAHAN: KODE KUPON / PROMOSI (OPSIONAL) -->
+        <div class="border-t border-gray-100 pt-5 space-y-3">
+          <div class="flex items-center justify-between flex-wrap gap-2">
+            <h2 class="text-sm font-bold text-ccsHeading flex items-center gap-1.5">
+              <i class="fas fa-tag text-ccsOrange text-xs"></i>
+              <?= htmlspecialchars($L['step_promo_title'] ?? 'Kode Kupon / Promosi (Opsional)') ?>
+            </h2>
+            <span class="text-[11px] text-gray-400 font-mono">Opsional</span>
+          </div>
+
+          <div class="max-w-xl space-y-2">
+            <label class="school-label" for="inputPromoCode">
+              <?= htmlspecialchars($L['lbl_promo_code'] ?? 'Punya Kode Kupon / Promosi?') ?>
+            </label>
+            <div class="flex gap-2">
+              <input 
+                type="text" 
+                name="promo_code" 
+                id="inputPromoCode" 
+                class="school-input font-mono uppercase font-bold tracking-wider"
+                value="<?= htmlspecialchars($_POST['promo_code'] ?? '') ?>"
+                autocomplete="off"
+              >
+              <button 
+                type="button" 
+                id="btnCheckPromo" 
+                class="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded text-xs font-semibold shrink-0 transition flex items-center gap-1.5"
+              >
+                <i class="fas fa-check-circle text-xs"></i>
+                <span id="btnCheckPromoText"><?= htmlspecialchars($L['btn_check_promo'] ?? 'Cek Kode') ?></span>
+              </button>
+            </div>
+            <span class="school-hint"><?= htmlspecialchars($L['hint_promo_code'] ?? 'Masukkan kode kupon promosi pendaftaran jika Anda memiliki voucher resmi dari pihak sekolah.') ?></span>
+            
+            <!-- Box Notifikasi AJAX Kupon -->
+            <div id="promoFeedbackBox" class="hidden p-3 rounded-md text-xs border transition-all"></div>
           </div>
         </div>
 
@@ -1076,6 +1145,72 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action_register_simpl
           e.preventDefault();
           showValidationErrorModal(errors);
         }
+      });
+    }
+
+    // ─── AJAX Pengecekan Kode Promo / Kupon Diskon ────────────────────────────
+    const btnCheckPromo = document.getElementById('btnCheckPromo');
+    const inputPromoCode = document.getElementById('inputPromoCode');
+    const promoFeedbackBox = document.getElementById('promoFeedbackBox');
+    const btnCheckPromoText = document.getElementById('btnCheckPromoText');
+
+    if (inputPromoCode) {
+      inputPromoCode.addEventListener('input', function() {
+        this.value = this.value.toUpperCase().replace(/\s/g, '');
+        if (promoFeedbackBox) {
+          promoFeedbackBox.className = 'hidden';
+          promoFeedbackBox.innerHTML = '';
+        }
+      });
+    }
+
+    if (btnCheckPromo && inputPromoCode && promoFeedbackBox) {
+      btnCheckPromo.addEventListener('click', function() {
+        const code = inputPromoCode.value.trim();
+        if (!code) {
+          promoFeedbackBox.className = 'p-3 rounded-md text-xs border border-amber-300 bg-amber-50 text-amber-900 block';
+          promoFeedbackBox.innerHTML = '<i class="fas fa-exclamation-triangle mr-1 text-amber-600"></i> Silakan ketikkan kode kupon promosi terlebih dahulu.';
+          return;
+        }
+
+        const originalText = btnCheckPromoText ? btnCheckPromoText.textContent : 'Cek Kode';
+        if (btnCheckPromoText) btnCheckPromoText.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Memeriksa...';
+        btnCheckPromo.disabled = true;
+
+        fetch('index.php?action=check_promo&code=' + encodeURIComponent(code))
+          .then(res => res.json())
+          .then(data => {
+            if (btnCheckPromoText) btnCheckPromoText.textContent = originalText;
+            btnCheckPromo.disabled = false;
+
+            if (data.valid && data.discount) {
+              const d = data.discount;
+              const valText = d.discount_type === 'percentage' ? d.discount_value + '%' : 'Rp ' + Number(d.discount_value).toLocaleString('id-ID');
+              const targetText = d.applies_to === 'udp' ? 'Uang Gedung (DPP)' : (d.applies_to === 'usek' ? 'Uang Sekolah (SPP)' : 'DPP & SPP');
+              const quotaText = (d.remaining_quota !== null && d.remaining_quota !== undefined)
+                ? ' &bull; Sisa kuota kupon: <strong class="text-emerald-950">' + d.remaining_quota + ' pendaftar</strong>'
+                : ' &bull; Kuota: <strong>Tersedia</strong>';
+
+              promoFeedbackBox.className = 'p-3 rounded-md text-xs border border-emerald-300 bg-emerald-50 text-emerald-900 block';
+              promoFeedbackBox.innerHTML = '<div class="flex items-start gap-2.5">' +
+                '<i class="fas fa-check-circle text-emerald-600 text-sm mt-0.5 shrink-0"></i>' +
+                '<div>' +
+                  '<p class="font-bold text-emerald-950 text-xs">Kupon [' + d.discount_code + '] Berhasil Terverifikasi!</p>' +
+                  '<p class="mt-0.5 text-xs">' + d.discount_name + ' &bull; Potongan <strong>' + valText + '</strong> untuk ' + targetText + quotaText + '</p>' +
+                  '<p class="text-[11px] text-emerald-700 mt-1">Kode kupon tercatat pada registrasi Anda dan kuota promosi resmi terkunci saat pembayaran formulir disetujui sekolah.</p>' +
+                '</div>' +
+              '</div>';
+            } else {
+              promoFeedbackBox.className = 'p-3 rounded-md text-xs border border-rose-300 bg-rose-50 text-rose-900 block';
+              promoFeedbackBox.innerHTML = '<i class="fas fa-times-circle mr-1 text-rose-600"></i> ' + (data.message || 'Kode kupon tidak valid atau kuota telah habis.');
+            }
+          })
+          .catch(err => {
+            if (btnCheckPromoText) btnCheckPromoText.textContent = originalText;
+            btnCheckPromo.disabled = false;
+            promoFeedbackBox.className = 'p-3 rounded-md text-xs border border-rose-300 bg-rose-50 text-rose-900 block';
+            promoFeedbackBox.innerHTML = '<i class="fas fa-exclamation-circle mr-1 text-rose-600"></i> Terjadi kendala saat memeriksa kupon. Silakan coba lagi.';
+          });
       });
     }
   </script>

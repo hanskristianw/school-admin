@@ -67,25 +67,46 @@ async function resolveCurrentFormFee(targetDateStr = null) {
   }
 }
 
-// Helper: Ekstraksi fallback jadwal jika disimpan di format JSON [SCHEDULE_META]
+// Helper: Ekstraksi fallback jadwal & promo jika disimpan di format JSON [SCHEDULE_META] / [PROMO_CLAIM]
 function extractScheduleMeta(app) {
   if (!app) return app
   let meta = {}
-  if (app.additional_notes && app.additional_notes.includes('[SCHEDULE_META]:')) {
+  let promoMeta = {}
+  let cleanNotes = app.additional_notes || null
+
+  if (cleanNotes && cleanNotes.includes('[PROMO_CLAIM]:')) {
     try {
-      const parts = app.additional_notes.split('[SCHEDULE_META]:')
+      const pParts = cleanNotes.split('[PROMO_CLAIM]:')
+      cleanNotes = pParts[0].trim() || null
+      const rawPromo = pParts[1].split('[SCHEDULE_META]:')[0].trim()
+      promoMeta = JSON.parse(rawPromo)
+    } catch (e) {
+      // ignore
+    }
+  }
+
+  if (cleanNotes && cleanNotes.includes('[SCHEDULE_META]:')) {
+    try {
+      const parts = cleanNotes.split('[SCHEDULE_META]:')
+      cleanNotes = parts[0].trim() || null
       meta = JSON.parse(parts[1].trim())
     } catch (e) {
       // ignore parse error
     }
   }
+
   return {
     ...app,
+    additional_notes: cleanNotes,
     test_date: app.test_date || meta.test_date || null,
     test_session: app.test_session || meta.test_session || null,
     interview_date: app.interview_date || meta.interview_date || null,
     interview_session: app.interview_session || meta.interview_session || null,
     schedule_notes: app.schedule_notes || meta.schedule_notes || null,
+    promo_code: app.promo_code || promoMeta.promo_code || null,
+    promo_discount_id: app.promo_discount_id || promoMeta.promo_discount_id || null,
+    promo_status: app.promo_status || promoMeta.promo_status || (promoMeta.promo_code ? 'claimed' : null),
+    promo_details: app.promo_details || promoMeta.promo_details || null,
   }
 }
 
@@ -191,6 +212,115 @@ export async function GET(request) {
       return NextResponse.json({ success: true, data: formatted })
     }
 
+    // ─── CEK KODE PROMO / KUPON DISKON (REAL-TIME VALIDATION & KUOTA) ──
+    if (action === 'check_promo') {
+      const code = (searchParams.get('promo_code') || searchParams.get('code') || '').trim().toUpperCase()
+      const levelName = (searchParams.get('level_name') || '').trim()
+
+      if (!code) {
+        return NextResponse.json({
+          success: false,
+          valid: false,
+          message: 'Silakan masukkan kode kupon promosi.'
+        }, { status: 400 })
+      }
+
+      // Cari kupon di fee_discount
+      const { data: discounts, error: discountErr } = await supabaseAdmin
+        .from('fee_discount')
+        .select('*, unit:unit_id(unit_name), level:level_id(level_name)')
+        .ilike('discount_code', code)
+        .eq('is_active', true)
+
+      if (discountErr) {
+        return NextResponse.json({ success: false, message: discountErr.message }, { status: 500 })
+      }
+
+      if (!discounts || discounts.length === 0) {
+        return NextResponse.json({
+          success: false,
+          valid: false,
+          message: `Kode promo "${code}" tidak ditemukan atau sudah tidak aktif.`
+        })
+      }
+
+      const today = new Date().toISOString().split('T')[0]
+
+      // Filter yang masih berlaku tanggalnya
+      const dateValidDiscounts = discounts.filter(d => {
+        if (d.valid_from && d.valid_from > today) return false
+        if (d.valid_until && d.valid_until < today) return false
+        return true
+      })
+
+      if (dateValidDiscounts.length === 0) {
+        return NextResponse.json({
+          success: false,
+          valid: false,
+          message: `Masa berlaku kode promo "${code}" telah berakhir.`
+        })
+      }
+
+      // Filter kuota pemakaian: pastikan max_usage is null atau current_usage < max_usage
+      const quotaValidDiscounts = dateValidDiscounts.filter(d => {
+        if (d.max_usage !== null && d.max_usage !== undefined && (d.current_usage || 0) >= d.max_usage) {
+          return false
+        }
+        return true
+      })
+
+      if (quotaValidDiscounts.length === 0) {
+        return NextResponse.json({
+          success: false,
+          valid: false,
+          message: `Maaf, kuota penggunaan kode promo "${code}" sudah habis.`
+        })
+      }
+
+      let matched = null
+      if (levelName) {
+        let q = levelName.toLowerCase()
+        if (q.includes('sd') || q.includes('element')) q = 'Elementary'
+        else if (q.includes('smp') || q.includes('junior')) q = 'Junior'
+        else if (q.includes('sma') || q.includes('senior')) q = 'Senior'
+        else if (q.includes('tk') || q.includes('kinder')) q = 'Kindergarten'
+        else if (q.includes('kb') || q.includes('nurse')) q = 'Nursery'
+
+        const { data: foundLvl } = await supabaseAdmin
+          .from('admission_level')
+          .select('level_id, unit_id')
+          .ilike('level_name', `%${q}%`)
+          .limit(1)
+
+        if (foundLvl && foundLvl.length > 0) {
+          const targetUnit = foundLvl[0].unit_id
+          const targetLvl = foundLvl[0].level_id
+          matched = quotaValidDiscounts.find(d => (d.level_id && d.level_id === targetLvl) || (d.unit_id && d.unit_id === targetUnit))
+        }
+      }
+      if (!matched) {
+        matched = quotaValidDiscounts[0]
+      }
+      const remainingQuota = matched.max_usage ? (matched.max_usage - (matched.current_usage || 0)) : null
+
+      return NextResponse.json({
+        success: true,
+        valid: true,
+        message: `Kode promo "${matched.discount_code}" valid! Anda mendapatkan potongan ${matched.discount_type === 'percentage' ? `${matched.discount_value}%` : `Rp ${Number(matched.discount_value).toLocaleString('id-ID')}`} untuk ${matched.applies_to === 'udp' ? 'DPP' : matched.applies_to === 'usek' ? 'SPP' : 'DPP & SPP'}.`,
+        discount: {
+          discount_id: matched.discount_id,
+          discount_code: matched.discount_code,
+          discount_name: matched.discount_name,
+          discount_type: matched.discount_type,
+          discount_value: matched.discount_value,
+          applies_to: matched.applies_to,
+          max_usage: matched.max_usage,
+          current_usage: matched.current_usage,
+          remaining_quota: remainingQuota
+        }
+      })
+    }
+
     // ─── DEFAULT: AMBIL TARIF GELOMBANG AKTIF & JENJANG (DATE-DRIVEN) ───
     const today = new Date().toISOString().split('T')[0]
     const activeFee = await resolveCurrentFormFee(today)
@@ -244,7 +374,8 @@ export async function POST(request) {
         level_id,
         wave_name,
         form_fee_amount,
-        hosting_url
+        hosting_url,
+        promo_code
       } = body
 
       if (!parent_email || !parent_phone) {
@@ -298,6 +429,48 @@ export async function POST(request) {
         resolvedWaveName = resolvedWaveName || resolvedFee.wave_name
       }
 
+      // ─── VALIDASI KODE KUPON / PROMO & KUOTA PENGGUNAAN ──────────
+      let resolvedPromoCode = null
+      let resolvedPromoDiscountId = null
+      let resolvedPromoDetails = null
+
+      const inputPromo = (promo_code || body.discount_code || '').trim().toUpperCase()
+      if (inputPromo) {
+        const today = new Date().toISOString().split('T')[0]
+        const { data: promoMatches } = await supabaseAdmin
+          .from('fee_discount')
+          .select('*, unit:unit_id(unit_name), level:level_id(level_name)')
+          .ilike('discount_code', inputPromo)
+          .eq('is_active', true)
+
+        if (promoMatches && promoMatches.length > 0) {
+          const matchedPromo = promoMatches.find(d => {
+            if (d.unit_id && resolvedUnitId && d.unit_id !== resolvedUnitId) return false
+            if (d.level_id && resolvedLevelId && d.level_id !== resolvedLevelId) return false
+            if (d.valid_from && d.valid_from > today) return false
+            if (d.valid_until && d.valid_until < today) return false
+            if (d.max_usage !== null && d.max_usage !== undefined && (d.current_usage || 0) >= d.max_usage) return false
+            return true
+          })
+
+          if (matchedPromo) {
+            resolvedPromoCode = matchedPromo.discount_code
+            resolvedPromoDiscountId = matchedPromo.discount_id
+            resolvedPromoDetails = {
+              discount_name: matchedPromo.discount_name,
+              discount_type: matchedPromo.discount_type,
+              discount_value: matchedPromo.discount_value,
+              applies_to: matchedPromo.applies_to,
+              claimed_at: new Date().toISOString()
+            }
+            // CATATAN: Kuota promo TIDAK DIPOTONG saat pendaftaran awal, melainkan baru resmi
+            // dipotong saat pembayaran formulir diverifikasi lunas (status = 'verified') oleh admin/sistem.
+          } else {
+            console.warn(`[PROMO] Kupon "${inputPromo}" tidak dapat diklaim (kedaluwarsa atau kuota habis)`)
+          }
+        }
+      }
+
       const cleanEmail = parent_email.trim().toLowerCase()
       const cleanPhone = parent_phone.trim()
       const cleanPhoneDigits = cleanPhone.replace(/[^0-9]/g, '')
@@ -317,10 +490,15 @@ export async function POST(request) {
         form_fee_status: 'pending_payment',
         wave_name: resolvedWaveName || null,
         hosting_url: hosting_url || null,
-        is_form_completed: false
+        is_form_completed: false,
+        promo_code: resolvedPromoCode,
+        promo_discount_id: resolvedPromoDiscountId,
+        promo_status: resolvedPromoCode ? 'pending_payment' : null,
+        promo_details: resolvedPromoDetails || null
       }
 
-      const { data: inserted, error: insertErr } = await supabaseAdmin
+      let inserted = null
+      let { data: insertedData, error: insertErr } = await supabaseAdmin
         .from('student_applications')
         .insert([insertPayload])
         .select(`
@@ -334,14 +512,71 @@ export async function POST(request) {
           form_fee_amount,
           form_fee_status,
           is_form_completed,
+          promo_code,
+          promo_discount_id,
+          promo_status,
+          promo_details,
           created_at
         `)
         .single()
 
-      if (insertErr) {
+      if (insertErr && (insertErr.message?.includes('promo_code') || insertErr.message?.includes('schema cache'))) {
+        console.warn('⚠️ Kolom promo_code belum ada di schema student_applications. Menggunakan defensive fallback additional_notes...')
+        const fallbackPayload = { ...insertPayload }
+        delete fallbackPayload.promo_code
+        delete fallbackPayload.promo_discount_id
+        delete fallbackPayload.promo_status
+        delete fallbackPayload.promo_details
+
+        if (resolvedPromoCode) {
+          const promoMeta = JSON.stringify({
+            promo_code: resolvedPromoCode,
+            promo_discount_id: resolvedPromoDiscountId,
+            promo_status: 'pending_payment',
+            promo_details: resolvedPromoDetails
+          })
+          fallbackPayload.additional_notes = `[PROMO_CLAIM]: ${promoMeta}`
+        }
+
+        const fallbackRes = await supabaseAdmin
+          .from('student_applications')
+          .insert([fallbackPayload])
+          .select(`
+            application_id,
+            application_number,
+            student_name,
+            parent_phone,
+            parent_email,
+            preferred_grade,
+            wave_name,
+            form_fee_amount,
+            form_fee_status,
+            is_form_completed,
+            additional_notes,
+            created_at
+          `)
+          .single()
+
+        if (!fallbackRes.error && fallbackRes.data) {
+          inserted = {
+            ...fallbackRes.data,
+            promo_code: resolvedPromoCode,
+            promo_discount_id: resolvedPromoDiscountId,
+            promo_status: resolvedPromoCode ? 'claimed' : null,
+            promo_details: resolvedPromoDetails
+          }
+          insertErr = null
+        } else {
+          insertErr = fallbackRes.error
+        }
+      } else {
+        inserted = insertedData
+      }
+
+      if (insertErr || !inserted) {
         console.error('Error inserting simple registration in Supabase:', insertErr)
         return NextResponse.json(
-          { success: false, message: 'Gagal membuat pendaftaran di Supabase: ' + insertErr.message },
+          { success: false, message: 'Gagal membuat pendaftaran di Supabase: ' + (insertErr?.message || 'Unknown error') },
           { status: 500 }
         )
       }
@@ -424,6 +659,53 @@ export async function POST(request) {
         form_fee_status: status, // 'verified' | 'rejected'
         verified_at: status === 'verified' ? new Date().toISOString() : null,
         admin_notes: admin_notes || null
+      }
+
+      // Ambil data aplikasi saat ini untuk pengecekan promo code
+      let getAppQuery = supabaseAdmin.from('student_applications').select('*')
+      if (application_id) getAppQuery = getAppQuery.eq('application_id', application_id)
+      else getAppQuery = getAppQuery.eq('application_number', application_number)
+      const { data: existingApps } = await getAppQuery.limit(1)
+      const currentApp = existingApps?.[0]
+
+      // Kelola Kuota Promo Berdasarkan Status Pembayaran Formulir
+      if (currentApp?.promo_discount_id) {
+        if (status === 'verified' && currentApp.promo_status !== 'confirmed') {
+          const { data: discountData } = await supabaseAdmin
+            .from('fee_discount')
+            .select('*')
+            .eq('discount_id', currentApp.promo_discount_id)
+            .single()
+
+          if (discountData) {
+            const hasQuota = discountData.max_usage === null || (discountData.current_usage || 0) < discountData.max_usage
+            if (hasQuota) {
+              await supabaseAdmin
+                .from('fee_discount')
+                .update({ current_usage: (discountData.current_usage || 0) + 1 })
+                .eq('discount_id', discountData.discount_id)
+
+              updateData.promo_status = 'confirmed'
+            } else {
+              updateData.promo_status = 'quota_exhausted'
+            }
+          }
+        } else if (status === 'rejected' && currentApp.promo_status === 'confirmed') {
+          const { data: discountData } = await supabaseAdmin
+            .from('fee_discount')
+            .select('*')
+            .eq('discount_id', currentApp.promo_discount_id)
+            .single()
+
+          if (discountData) {
+            await supabaseAdmin
+              .from('fee_discount')
+              .update({ current_usage: Math.max(0, (discountData.current_usage || 0) - 1) })
+              .eq('discount_id', discountData.discount_id)
+
+            updateData.promo_status = 'pending_payment'
+          }
+        }
       }
 
       let query = supabaseAdmin.from('student_applications').update(updateData)
@@ -567,10 +849,14 @@ export async function POST(request) {
         return NextResponse.json({ success: false, message: updateErr.message }, { status: 500 })
       }
 
+      const formattedData = Array.isArray(updated) 
+        ? updated.map(extractScheduleMeta) 
+        : (updated ? extractScheduleMeta(updated) : updated)
+
       return NextResponse.json({
         success: true,
         message: 'Formulir lengkap pendaftaran siswa & pemilihan jadwal berhasil disimpan',
-        data: updated
+        data: formattedData
       })
     }
 
@@ -655,10 +941,14 @@ export async function POST(request) {
         return NextResponse.json({ success: false, message: updateErr.message }, { status: 500 })
       }
 
+      const formattedData = Array.isArray(updated) 
+        ? updated.map(extractScheduleMeta) 
+        : (updated ? extractScheduleMeta(updated) : updated)
+
       return NextResponse.json({
         success: true,
         message: 'Jadwal tes dan wawancara berhasil diperbarui',
-        data: updated
+        data: formattedData
       })
     }
 

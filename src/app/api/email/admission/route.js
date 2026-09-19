@@ -1,17 +1,45 @@
 import { NextResponse } from 'next/server'
+import { createClient } from '@supabase/supabase-js'
 import { sendEmail } from '@/lib/mailer'
 import { emailTemplates } from '@/lib/emailTemplates'
+
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+  process.env.SUPABASE_SERVICE_ROLE_KEY || ''
+)
 
 /**
  * POST /api/email/admission
  * 
- * Send admission email notification via Resend
- * Body: { type, parentName, studentName, applicationNumber, schoolName, email }
+ * Kirim email notifikasi admisi via Resend dan catat ke database / log
+ * Body: {
+ *   type, parentName, studentName, applicationNumber, applicationId, schoolName,
+ *   email, levelName, feeAmount, hostingUrl, testDate, testSession,
+ *   interviewDate, interviewSession, scheduleNotes, adminNotes, step
+ * }
  */
 export async function POST(request) {
   try {
     const body = await request.json()
-    const { type, parentName, studentName, applicationNumber, schoolName, email, levelName, feeAmount, hostingUrl } = body
+    const {
+      type,
+      parentName,
+      studentName,
+      applicationNumber,
+      applicationId,
+      schoolName,
+      email,
+      levelName,
+      feeAmount,
+      hostingUrl,
+      testDate,
+      testSession,
+      interviewDate,
+      interviewSession,
+      scheduleNotes,
+      adminNotes,
+      step
+    } = body
 
     if (!email || !type) {
       return NextResponse.json(
@@ -56,7 +84,13 @@ export async function POST(request) {
       schoolName,
       levelName,
       feeAmount,
-      hostingUrl
+      hostingUrl,
+      testDate,
+      testSession,
+      interviewDate,
+      interviewSession,
+      scheduleNotes,
+      adminNotes
     })
 
     const result = await sendEmail({
@@ -65,9 +99,56 @@ export async function POST(request) {
       html
     })
 
+    // Pencatatan ke audit trail / tabel student_applications (non-blocking)
+    if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      try {
+        const now = new Date().toISOString()
+        
+        // 1. Log ke tabel admission_email_logs
+        await supabaseAdmin.from('admission_email_logs').insert({
+          application_id: applicationId || null,
+          application_number: applicationNumber || null,
+          recipient_email: email,
+          recipient_name: parentName || null,
+          email_step: step || null,
+          email_type: type,
+          subject,
+          status: result?.id ? 'sent' : 'delivered',
+          resend_id: result?.id || null,
+          metadata: {
+            studentName,
+            levelName,
+            feeAmount,
+            testDate,
+            interviewDate
+          }
+        })
+
+        // 2. Update status pengiriman email di tabel student_applications jika ada applicationId
+        if (applicationId || applicationNumber) {
+          const updatePayload = {
+            last_email_sent_type: type
+          }
+          if (step === 1 || type === 'admissionRegistrationPayment') updatePayload.step1_email_sent_at = now
+          if (step === 2 || type === 'formFeeVerified') updatePayload.step2_email_sent_at = now
+          if (step === 3 || type === 'placementTestSchedule') updatePayload.step3_email_sent_at = now
+          if (step === 4) updatePayload.step4_email_sent_at = now
+          if (step === 5 || type === 'admissionApproved' || type === 'admissionRejected') updatePayload.step5_email_sent_at = now
+
+          const query = applicationId
+            ? supabaseAdmin.from('student_applications').update(updatePayload).eq('application_id', applicationId)
+            : supabaseAdmin.from('student_applications').update(updatePayload).eq('application_number', applicationNumber)
+          
+          await query
+        }
+      } catch (logErr) {
+        console.warn('Logging email to database skipped/failed (non-critical):', logErr.message)
+      }
+    }
+
     return NextResponse.json({
       success: true,
-      message: 'Email notifikasi terkirim',
+      message: 'Email notifikasi berhasil dikirimkan',
       detail: result
     })
 

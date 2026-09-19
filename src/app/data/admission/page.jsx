@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import Modal from '@/components/ui/modal';
 import NotificationModal from '@/components/ui/notification-modal';
+import UnifiedAdmissionModal from './UnifiedAdmissionModal';
 import { supabase } from '@/lib/supabase';
 import { useI18n } from '@/lib/i18n';
 import { useTheme } from '@/lib/theme';
@@ -48,7 +49,16 @@ import {
   faPrint,
   faSync,
   faPaperPlane,
-  faHistory
+  faHistory,
+  faChevronLeft,
+  faChevronRight,
+  faAngleDoubleLeft,
+  faAngleDoubleRight,
+  faCheckCircle,
+  faReceipt,
+  faExternalLinkAlt,
+  faGraduationCap,
+  faArrowRight
 } from '@fortawesome/free-solid-svg-icons';
 
 const statusConfig = {
@@ -110,15 +120,15 @@ export default function AdmissionManagement() {
   const borderColor = isDark ? '#27272A' : '#EAEAEA';
   const textPrimary = isDark ? '#F4F4F5' : '#111111';
   const textSecondary = isDark ? '#A1A1AA' : '#787774';
+  const inputBg = isDark ? '#27272A' : '#FFFFFF';
 
   const inputStyle = {
-    background: isDark ? '#27272A' : '#FFFFFF',
+    background: inputBg,
     border: `1px solid ${borderColor}`,
     color: textPrimary,
     borderRadius: '6px',
     fontSize: '13px'
   };
-
   const selectStyle = {
     background: isDark ? '#27272A' : '#FFFFFF',
     border: `1px solid ${borderColor}`,
@@ -152,6 +162,15 @@ export default function AdmissionManagement() {
     }
   };
 
+  const cleanAdditionalNotes = (notes) => {
+    if (!notes || typeof notes !== 'string') return '';
+    return notes
+      .replace(/\[SCHEDULE_META\]:.*$/s, '')
+      .replace(/\[PROMO_CLAIM\]:.*$/s, '')
+      .trim();
+  };
+
+  // Core application data
   const [applications, setApplications] = useState([]);
   const [units, setUnits] = useState([]);
   const [years, setYears] = useState([]);
@@ -160,13 +179,18 @@ export default function AdmissionManagement() {
   
   // Filter states
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterStatus, setFilterStatus] = useState('pending');
+  const [filterStatus, setFilterStatus] = useState(''); // Default: Seluruh Pendaftar
   const [filterLevel, setFilterLevel] = useState('');
   const [filterYear, setFilterYear] = useState('');
   const [levels, setLevels] = useState([]); // admission_level with unit info
-  
-  // Modal states
+
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(15);
+
   const [showDetailModal, setShowDetailModal] = useState(false);
+  const [modalTab, setModalTab] = useState('step1'); // 'step1' | 'step2' | 'step3' | 'step4' | 'step5' | 'email_logs'
+  const [sendingEmailStep, setSendingEmailStep] = useState(null); // 1, 2, 3, 4, 5
   const [showActionModal, setShowActionModal] = useState(false);
   const [showDiscountModal, setShowDiscountModal] = useState(false);
   const [selectedApplication, setSelectedApplication] = useState(null);
@@ -247,6 +271,10 @@ export default function AdmissionManagement() {
   useEffect(() => {
     fetchData();
   }, []);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, filterStatus, filterLevel, filterYear, pageSize]);
 
   const showNotification = (title, message, type = 'success') => {
     setNotification({ isOpen: true, title, message, type });
@@ -555,21 +583,34 @@ export default function AdmissionManagement() {
       if (yearsError) throw yearsError;
 
       const parsedApps = (applicationsData || []).map(app => {
-        if (app.test_date || app.interview_date) return app;
-        if (app.additional_notes && app.additional_notes.includes('[SCHEDULE_META]:')) {
+        let meta = {};
+        let promoMeta = {};
+        if (app.additional_notes && app.additional_notes.includes('[PROMO_CLAIM]:')) {
           try {
-            const meta = JSON.parse(app.additional_notes.split('[SCHEDULE_META]:')[1].trim());
-            return {
-              ...app,
-              test_date: meta.test_date || null,
-              test_session: meta.test_session || null,
-              interview_date: meta.interview_date || null,
-              interview_session: meta.interview_session || null,
-              schedule_notes: meta.schedule_notes || null,
-            };
+            const pParts = app.additional_notes.split('[PROMO_CLAIM]:');
+            const rawPromo = pParts[1].split('[SCHEDULE_META]:')[0].trim();
+            promoMeta = JSON.parse(rawPromo);
           } catch (e) {}
         }
-        return app;
+        if (app.additional_notes && app.additional_notes.includes('[SCHEDULE_META]:')) {
+          try {
+            meta = JSON.parse(app.additional_notes.split('[SCHEDULE_META]:')[1].trim());
+          } catch (e) {}
+        }
+        const cleaned = cleanAdditionalNotes(app.additional_notes);
+        return {
+          ...app,
+          additional_notes: cleaned || null,
+          test_date: app.test_date || meta.test_date || null,
+          test_session: app.test_session || meta.test_session || null,
+          interview_date: app.interview_date || meta.interview_date || null,
+          interview_session: app.interview_session || meta.interview_session || null,
+          schedule_notes: app.schedule_notes || meta.schedule_notes || null,
+          promo_code: app.promo_code || promoMeta.promo_code || null,
+          promo_discount_id: app.promo_discount_id || promoMeta.promo_discount_id || null,
+          promo_status: app.promo_status || promoMeta.promo_status || (promoMeta.promo_code ? 'claimed' : null),
+          promo_details: app.promo_details || promoMeta.promo_details || null,
+        };
       });
 
       setApplications(parsedApps);
@@ -688,29 +729,157 @@ export default function AdmissionManagement() {
     }
   };
 
-  const handleViewDetail = (application) => {
+  const handleOpenUnifiedModal = async (application, initialTab = 'step1') => {
     let app = application;
-    if (app && !app.test_date && app.additional_notes && app.additional_notes.includes('[SCHEDULE_META]:')) {
-      try {
-        const meta = JSON.parse(app.additional_notes.split('[SCHEDULE_META]:')[1].trim());
-        app = {
-          ...app,
-          test_date: meta.test_date || null,
-          test_session: meta.test_session || null,
-          interview_date: meta.interview_date || null,
-          interview_session: meta.interview_session || null,
-          schedule_notes: meta.schedule_notes || null,
-        };
-      } catch (e) {}
+    if (app) {
+      let meta = {};
+      let promoMeta = {};
+      if (app.additional_notes && app.additional_notes.includes('[PROMO_CLAIM]:')) {
+        try {
+          const pParts = app.additional_notes.split('[PROMO_CLAIM]:');
+          const rawPromo = pParts[1].split('[SCHEDULE_META]:')[0].trim();
+          promoMeta = JSON.parse(rawPromo);
+        } catch (e) {}
+      }
+      if (app.additional_notes && app.additional_notes.includes('[SCHEDULE_META]:')) {
+        try {
+          meta = JSON.parse(app.additional_notes.split('[SCHEDULE_META]:')[1].trim());
+        } catch (e) {}
+      }
+      const cleaned = cleanAdditionalNotes(app.additional_notes);
+      app = {
+        ...app,
+        additional_notes: cleaned || null,
+        test_date: app.test_date || meta.test_date || null,
+        test_session: app.test_session || meta.test_session || null,
+        interview_date: app.interview_date || meta.interview_date || null,
+        interview_session: app.interview_session || meta.interview_session || null,
+        schedule_notes: app.schedule_notes || meta.schedule_notes || null,
+        promo_code: app.promo_code || promoMeta.promo_code || null,
+        promo_discount_id: app.promo_discount_id || promoMeta.promo_discount_id || null,
+        promo_status: app.promo_status || promoMeta.promo_status || (promoMeta.promo_code ? 'claimed' : null),
+        promo_details: app.promo_details || promoMeta.promo_details || null,
+      };
     }
     setSelectedApplication(app);
+    setModalTab(initialTab);
     setShowDetailModal(true);
     setIsEditing(false);
+
+    // Setup schedule edit states
+    setScheduleData({
+      test_date: app?.test_date || '',
+      test_session: app?.test_session || 'Sesi 1 (08:30 - 10:00 WIB)',
+      interview_date: app?.interview_date || app?.test_date || '',
+      interview_session: app?.interview_session || 'Sesi 1 (08:30 - 10:00 WIB)',
+      schedule_notes: app?.schedule_notes || ''
+    });
+    setSameDaySchedule(!app?.interview_date || app?.interview_date === app?.test_date);
+
+    // Setup action notes
+    setActionType(app?.status === 'pending' ? 'approved' : (app?.status || 'approved'));
+    setAdminNotes(app?.admin_notes || '');
+
+    // Preload discounts & applicant email logs
     fetchDiscountsForApplication(app);
     if (app?.parent_email) {
       fetchLogsForApplicant(app.parent_email);
     } else {
       setDetailApplicantLogs([]);
+    }
+
+    // Preload installment plan
+    if (app?.application_id) {
+      try {
+        const { data: existing } = await supabase
+          .from('application_installment')
+          .select('*')
+          .eq('application_id', app.application_id)
+          .maybeSingle();
+
+        if (existing) {
+          setInstallmentConfig({
+            utj_percentage: parseFloat(existing.utj_percentage) || 30,
+            num_installments: existing.num_installments || 11,
+            start_month: existing.start_month || 7,
+            start_year: existing.start_year || new Date().getFullYear(),
+            notes: existing.notes || ''
+          });
+        } else {
+          setInstallmentConfig({
+            utj_percentage: 30,
+            num_installments: 11,
+            start_month: 7,
+            start_year: new Date().getFullYear(),
+            notes: ''
+          });
+        }
+      } catch (e) {
+        console.warn('Installment preload error:', e);
+      }
+    }
+  };
+
+  const handleViewDetail = (app) => handleOpenUnifiedModal(app, 'step1');
+
+  const handleSendStepEmail = async (stepNumber, emailType, customPayload = {}) => {
+    if (!selectedApplication) return;
+    if (!selectedApplication.parent_email) {
+      showNotification('Perhatian', 'Pendaftar ini belum memiliki alamat email orang tua yang terdaftar.', 'error');
+      return;
+    }
+    setSendingEmailStep(stepNumber);
+    try {
+      const payload = {
+        type: emailType,
+        step: stepNumber,
+        applicationId: selectedApplication.application_id,
+        applicationNumber: selectedApplication.application_number,
+        parentName: selectedApplication.parent_name || 'Bapak/Ibu Orang Tua Calon Siswa',
+        parentPhone: selectedApplication.parent_phone || '',
+        email: selectedApplication.parent_email,
+        studentName: selectedApplication.student_name || 'Calon Siswa',
+        levelName: selectedApplication.level?.level_name || selectedApplication.preferred_grade || '',
+        feeAmount: selectedApplication.form_fee_amount || 250000,
+        testDate: scheduleData.test_date || selectedApplication.test_date || '',
+        testSession: scheduleData.test_session || selectedApplication.test_session || '',
+        interviewDate: sameDaySchedule
+          ? (scheduleData.test_date || selectedApplication.test_date || '')
+          : (scheduleData.interview_date || selectedApplication.interview_date || ''),
+        interviewSession: sameDaySchedule
+          ? (scheduleData.test_session || selectedApplication.test_session || '')
+          : (scheduleData.interview_session || selectedApplication.interview_session || ''),
+        scheduleNotes: scheduleData.schedule_notes || selectedApplication.schedule_notes || '',
+        adminNotes: adminNotes || selectedApplication.admin_notes || '',
+        ...customPayload
+      };
+
+      const res = await fetch('/api/email/admission', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const json = await res.json();
+      if (json.success) {
+        showNotification('Berhasil', json.message || 'Email notifikasi berhasil dikirimkan!', 'success');
+        if (selectedApplication.parent_email) {
+          fetchLogsForApplicant(selectedApplication.parent_email);
+        }
+        if (activeTab === 'email_logs') {
+          fetchEmailLogs(emailLogSearch);
+        }
+        const now = new Date().toISOString();
+        const key = `step${stepNumber}_email_sent_at`;
+        setSelectedApplication(prev => ({ ...prev, [key]: now, last_email_sent_type: emailType }));
+        setApplications(prev => prev.map(a => a.application_id === selectedApplication.application_id ? { ...a, [key]: now, last_email_sent_type: emailType } : a));
+      } else {
+        showNotification('Gagal Mengirim Email', json.message || 'Terjadi kesalahan saat mengirim email', 'error');
+      }
+    } catch (err) {
+      console.error('Error sending step email:', err);
+      showNotification('Error', 'Gagal mengirim email: ' + err.message, 'error');
+    } finally {
+      setSendingEmailStep(null);
     }
   };
 
@@ -818,6 +987,7 @@ export default function AdmissionManagement() {
       const updated = { 
         ...selectedApplication, 
         ...updatePayload,
+        additional_notes: cleanAdditionalNotes(selectedApplication.additional_notes) || null,
         test_date: editData.test_date || null,
         test_session: editData.test_session || null,
         interview_date: editData.interview_date || null,
@@ -902,6 +1072,7 @@ export default function AdmissionManagement() {
       const updated = {
         ...selectedApplication,
         ...updatePayload,
+        additional_notes: cleanAdditionalNotes(selectedApplication.additional_notes) || null,
         test_date: scheduleData.test_date || null,
         test_session: scheduleData.test_session || null,
         interview_date: sameDaySchedule ? (scheduleData.test_date || null) : (scheduleData.interview_date || null),
@@ -1025,10 +1196,59 @@ export default function AdmissionManagement() {
   const handleVerifyFormFee = async (applicationId, newStatus) => {
     try {
       setProcessing(true);
+      const targetApp = applications.find(a => a.application_id === applicationId) || selectedApplication;
       const updateData = {
         form_fee_status: newStatus,
         verified_at: newStatus === 'verified' ? new Date().toISOString() : null,
       };
+
+      let promoNote = '';
+      if (targetApp?.promo_discount_id) {
+        if (newStatus === 'verified' && targetApp.promo_status !== 'confirmed') {
+          // Ambil record fee_discount terkini
+          const { data: dData } = await supabase
+            .from('fee_discount')
+            .select('*')
+            .eq('discount_id', targetApp.promo_discount_id)
+            .single();
+
+          if (dData) {
+            const hasQuota = dData.max_usage === null || (dData.current_usage || 0) < dData.max_usage;
+            if (hasQuota) {
+              const newUsage = (dData.current_usage || 0) + 1;
+              await supabase
+                .from('fee_discount')
+                .update({ current_usage: newUsage })
+                .eq('discount_id', dData.discount_id);
+
+              updateData.promo_status = 'confirmed';
+              promoNote = ` & Kuota kupon [${targetApp.promo_code}] resmi dikonfirmasi/terkunci (${newUsage}/${dData.max_usage || '∞'})`;
+            } else {
+              updateData.promo_status = 'quota_exhausted';
+              promoNote = `, namun kuota kupon [${targetApp.promo_code}] telah habis terisi pendaftar lain`;
+            }
+          }
+        } else if (newStatus === 'rejected' && targetApp.promo_status === 'confirmed') {
+          // Kembalikan kuota jika pembatalan / penolakan
+          const { data: dData } = await supabase
+            .from('fee_discount')
+            .select('*')
+            .eq('discount_id', targetApp.promo_discount_id)
+            .single();
+
+          if (dData) {
+            const newUsage = Math.max(0, (dData.current_usage || 0) - 1);
+            await supabase
+              .from('fee_discount')
+              .update({ current_usage: newUsage })
+              .eq('discount_id', dData.discount_id);
+
+            updateData.promo_status = 'pending_payment';
+            promoNote = ` & Kuota kupon [${targetApp.promo_code}] dikembalikan ke publik`;
+          }
+        }
+      }
+
       const { error } = await supabase
         .from('student_applications')
         .update(updateData)
@@ -1039,7 +1259,11 @@ export default function AdmissionManagement() {
         setSelectedApplication({ ...selectedApplication, ...updateData });
       }
       setApplications(prev => prev.map(a => a.application_id === applicationId ? { ...a, ...updateData } : a));
-      showNotification('Berhasil', `Status pembayaran formulir berhasil diubah menjadi ${newStatus === 'verified' ? 'Disetujui' : 'Ditolak'}`, 'success');
+      showNotification(
+        'Berhasil', 
+        `Status pembayaran formulir berhasil diubah menjadi ${newStatus === 'verified' ? 'Disetujui' : 'Ditolak'}${promoNote}.`, 
+        'success'
+      );
     } catch (err) {
       console.error('Error verifying form fee:', err);
       showNotification('Error', 'Gagal memverifikasi formulir: ' + err.message, 'error');
@@ -1518,6 +1742,13 @@ export default function AdmissionManagement() {
     return matchesSearch && matchesStatus && matchesLevel && matchesYear;
   });
 
+  // Pagination calculations
+  const totalItems = filteredApplications.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+  const safeCurrentPage = Math.min(Math.max(1, currentPage), totalPages);
+  const startIndex = (safeCurrentPage - 1) * pageSize;
+  const paginatedApplications = filteredApplications.slice(startIndex, startIndex + pageSize);
+
   // Helper: get fee amounts for an application
   const getAppFeeInfo = (app) => {
     // Find matching UDP by level, year, and application date within period
@@ -1993,37 +2224,6 @@ export default function AdmissionManagement() {
 
       {/* ── TABS NAVIGATION (MATCHING /data/pyp EXACT STRUCTURE) ──────────── */}
       <div style={{ display: 'flex', borderBottom: `1px solid ${borderColor}`, marginBottom: '20px', gap: '24px', flexWrap: 'wrap' }}>
-        {/* TAB: Menunggu Review */}
-        <button
-          onClick={() => setFilterStatus('pending')}
-          style={{
-            padding: '10px 0',
-            fontSize: '13px',
-            fontWeight: filterStatus === 'pending' ? 600 : 400,
-            border: 'none',
-            background: 'none',
-            cursor: 'pointer',
-            color: filterStatus === 'pending' ? textPrimary : textSecondary,
-            borderBottom: filterStatus === 'pending' ? `2px solid ${textPrimary}` : '2px solid transparent',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            transition: 'all 0.15s ease'
-          }}
-        >
-          <FontAwesomeIcon icon={faClock} style={{ fontSize: '12px' }} />
-          {statusLabels.pending}
-          <span
-            className="px-1.5 py-0.5 rounded text-[10px] font-mono"
-            style={{
-              background: filterStatus === 'pending' ? (isDark ? '#27272A' : '#EAEAEA') : (isDark ? '#1C1C1F' : '#F4F4F5'),
-              color: filterStatus === 'pending' ? textPrimary : textSecondary
-            }}
-          >
-            {statusCounts.pending}
-          </span>
-        </button>
-
         {/* TAB: Semua Pendaftar */}
         <button
           onClick={() => setFilterStatus('')}
@@ -2052,6 +2252,37 @@ export default function AdmissionManagement() {
             }}
           >
             {applications.length}
+          </span>
+        </button>
+
+        {/* TAB: Menunggu Review */}
+        <button
+          onClick={() => setFilterStatus('pending')}
+          style={{
+            padding: '10px 0',
+            fontSize: '13px',
+            fontWeight: filterStatus === 'pending' ? 600 : 400,
+            border: 'none',
+            background: 'none',
+            cursor: 'pointer',
+            color: filterStatus === 'pending' ? textPrimary : textSecondary,
+            borderBottom: filterStatus === 'pending' ? `2px solid ${textPrimary}` : '2px solid transparent',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            transition: 'all 0.15s ease'
+          }}
+        >
+          <FontAwesomeIcon icon={faClock} style={{ fontSize: '12px' }} />
+          {statusLabels.pending}
+          <span
+            className="px-1.5 py-0.5 rounded text-[10px] font-mono"
+            style={{
+              background: filterStatus === 'pending' ? (isDark ? '#27272A' : '#EAEAEA') : (isDark ? '#1C1C1F' : '#F4F4F5'),
+              color: filterStatus === 'pending' ? textPrimary : textSecondary
+            }}
+          >
+            {statusCounts.pending}
           </span>
         </button>
 
@@ -2133,7 +2364,7 @@ export default function AdmissionManagement() {
               {t('admission.table.title')}
             </span>
             <span className="text-[10px] font-mono px-2 py-0.5 rounded border" style={{ background: isDark ? '#27272A' : '#F4F4F5', borderColor, color: textSecondary }}>
-              {filteredApplications.length} pendaftar
+              {filteredApplications.length} pendaftar {filteredApplications.length !== applications.length ? `(dari total ${applications.length})` : ''}
             </span>
           </div>
         </div>
@@ -2161,7 +2392,7 @@ export default function AdmissionManagement() {
                 </tr>
               </thead>
               <tbody className="divide-y" style={{ borderColor }}>
-                {filteredApplications.map(app => {
+                {paginatedApplications.map(app => {
                   const fee = getAppFeeInfo(app);
                   const hasInstallment = allInstallments.some(inst => inst.application_id === app.application_id);
                   return (
@@ -2282,74 +2513,54 @@ export default function AdmissionManagement() {
                                 : 'Belum Bayar Formulir'}
                             </span>
                           ) : null}
+
+                          {app.test_date ? (
+                            <span
+                              className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded text-[9px] font-mono border cursor-help"
+                              style={{
+                                background: isDark ? 'rgba(147, 51, 234, 0.12)' : '#FAF5FF',
+                                borderColor: isDark ? '#9333EA' : '#E9D5FF',
+                                color: isDark ? '#C084FC' : '#7E22CE'
+                              }}
+                              title={`Tes Penempatan: ${formatDate(app.test_date)} (${app.test_session || '-'})\nWawancara: ${formatDate(app.interview_date || app.test_date)} (${app.interview_session || '-'})${app.schedule_notes ? `\nCatatan Jadwal: "${app.schedule_notes}"` : ''}`}
+                            >
+                              <FontAwesomeIcon icon={faCalendar} className="text-[8px]" />
+                              Tes: {formatDate(app.test_date)}
+                            </span>
+                          ) : null}
+
+                          {app.promo_code ? (
+                            <span
+                              className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded text-[9px] font-mono border cursor-help font-semibold"
+                              style={{
+                                background: isDark ? 'rgba(147, 51, 234, 0.15)' : '#F5F3FF',
+                                borderColor: isDark ? '#7E22CE' : '#DDD6FE',
+                                color: isDark ? '#C4B5FD' : '#6D28D9'
+                              }}
+                              title={`Kupon Promosi: ${app.promo_code} (${app.promo_details?.discount_name || 'Klaim Kupon'})`}
+                            >
+                              <FontAwesomeIcon icon={faTag} className="text-[8px]" />
+                              {app.promo_code}
+                            </span>
+                          ) : null}
                         </div>
                       </td>
                       <td className="px-3.5 py-2.5 text-right">
-                        <div className="flex items-center justify-end gap-1">
+                        <div className="flex items-center justify-end">
                           <button
-                            onClick={() => handleViewDetail(app)}
-                            className="p-1.5 rounded border transition-colors hover:bg-black/5 dark:hover:bg-white/5"
-                            style={{ borderColor, color: textSecondary }}
-                            title={t('admission.tooltips.viewDetail')}
-                          >
-                            <FontAwesomeIcon icon={faEye} className="text-xs" />
-                          </button>
-
-                          <button
-                            onClick={() => {
-                              setSelectedApplication(app);
-                              fetchDiscountsForApplication(app);
-                              setShowDiscountModal(true);
-                            }}
-                            className="p-1.5 rounded border transition-colors hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
-                            style={{ borderColor, color: isDark ? '#34D399' : '#059669' }}
-                            title={t('admission.tooltips.manageDiscount')}
-                          >
-                            <FontAwesomeIcon icon={faTag} className="text-xs" />
-                          </button>
-
-                          <button
-                            onClick={() => handleOpenInstallment(app)}
-                            className="p-1.5 rounded border transition-colors hover:bg-black/5 dark:hover:bg-white/5"
+                            onClick={() => handleOpenUnifiedModal(app)}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded border transition-all hover:bg-black/5 dark:hover:bg-white/5 active:scale-95 shadow-sm"
                             style={{
-                              borderColor: hasInstallment ? (isDark ? '#8B5CF6' : '#7C3AED') : borderColor,
-                              color: hasInstallment ? (isDark ? '#A78BFA' : '#7C3AED') : textSecondary
+                              borderColor,
+                              background: cardBg,
+                              color: textPrimary,
+                              borderRadius: '6px'
                             }}
-                            title={t('admission.tooltips.installmentPlan')}
+                            title={t('admission.tooltips.viewDetail') || 'Lihat Detail & Kelola Pendaftar'}
                           >
-                            <FontAwesomeIcon icon={faCalculator} className="text-xs" />
+                            <FontAwesomeIcon icon={faEye} className="text-xs text-sky-600 dark:text-sky-400" />
+                            <span>View</span>
                           </button>
-
-                          <button
-                            onClick={() => handleResendPaymentEmail(app)}
-                            disabled={resendingEmailId === app.application_id || !app.parent_email}
-                            className="p-1.5 rounded border transition-colors hover:bg-sky-50 dark:hover:bg-sky-950/30 disabled:opacity-30"
-                            style={{ borderColor, color: isDark ? '#38BDF8' : '#0284C7' }}
-                            title={app.parent_email ? `Kirim Ulang Email Tagihan & Rekening (${app.parent_email})` : 'Email orang tua belum terdaftar'}
-                          >
-                            <FontAwesomeIcon icon={resendingEmailId === app.application_id ? faSpinner : faEnvelope} className={`text-xs ${resendingEmailId === app.application_id ? 'animate-spin' : ''}`} />
-                          </button>
-
-                          {app.status === 'pending' && (
-                            <>
-                              <button
-                                onClick={() => handleActionClick(app, 'approved')}
-                                className="p-1.5 rounded border transition-colors hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
-                                style={{ borderColor: isDark ? '#059669' : '#A7F3D0', color: isDark ? '#34D399' : '#059669' }}
-                                title={t('admission.tooltips.approve')}
-                              >
-                                <FontAwesomeIcon icon={faCheck} className="text-xs" />
-                              </button>
-                              <button
-                                onClick={() => handleActionClick(app, 'rejected')}
-                                className="p-1.5 rounded border transition-colors hover:bg-rose-50 dark:hover:bg-rose-950/30"
-                                style={{ borderColor: isDark ? '#DC2626' : '#FECACA', color: isDark ? '#F87171' : '#DC2626' }}
-                                title={t('admission.tooltips.reject')}
-                              >
-                                <FontAwesomeIcon icon={faTimes} className="text-xs" />
-                              </button>
-                            </>
-                          )}
                         </div>
                       </td>
                     </tr>
@@ -2357,6 +2568,116 @@ export default function AdmissionManagement() {
                 })}
               </tbody>
             </table>
+          </div>
+        )}
+
+        {/* ── PAGINATION CONTROLS ───────────────── */}
+        {filteredApplications.length > 0 && (
+          <div
+            className="p-3 border-t flex items-center justify-between gap-3 flex-wrap text-xs"
+            style={{ borderColor, background: cardBg }}
+          >
+            {/* Left: Info & Items per page */}
+            <div className="flex items-center gap-4 flex-wrap">
+              <span className="font-mono text-[11px]" style={{ color: textSecondary }}>
+                Menampilkan <strong>{totalItems === 0 ? 0 : startIndex + 1}</strong> - <strong>{Math.min(startIndex + pageSize, totalItems)}</strong> dari <strong>{totalItems}</strong> pendaftar
+              </span>
+
+              <div className="flex items-center gap-1.5 text-[11px] font-mono" style={{ color: textSecondary }}>
+                <span>Baris per halaman:</span>
+                <select
+                  value={pageSize}
+                  onChange={(e) => {
+                    setPageSize(Number(e.target.value));
+                    setCurrentPage(1);
+                  }}
+                  className="px-2 py-0.5 rounded border text-[11px] font-mono outline-none cursor-pointer"
+                  style={{ background: inputBg, borderColor, color: textPrimary }}
+                >
+                  <option value={10}>10</option>
+                  <option value={15}>15</option>
+                  <option value={25}>25</option>
+                  <option value={50}>50</option>
+                  <option value={100}>100</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Right: Page Navigation */}
+            {totalPages > 1 && (
+              <div className="flex items-center gap-1">
+                {/* First Page */}
+                <button
+                  disabled={safeCurrentPage <= 1}
+                  onClick={() => setCurrentPage(1)}
+                  className="px-2 py-1 text-[11px] font-mono rounded border cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  style={{ background: inputBg, borderColor, color: textPrimary }}
+                  title="Halaman Pertama"
+                >
+                  <FontAwesomeIcon icon={faAngleDoubleLeft} className="text-[10px]" />
+                </button>
+
+                {/* Prev Page */}
+                <button
+                  disabled={safeCurrentPage <= 1}
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  className="px-2.5 py-1 text-[11px] font-mono rounded border cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  style={{ background: inputBg, borderColor, color: textPrimary }}
+                  title="Halaman Sebelumnya"
+                >
+                  <FontAwesomeIcon icon={faChevronLeft} className="text-[9px] mr-1" />
+                  Prev
+                </button>
+
+                {/* Page Number Buttons */}
+                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                  let pageNum = i + 1;
+                  if (totalPages > 5) {
+                    if (safeCurrentPage > 3) {
+                      pageNum = safeCurrentPage - 2 + i;
+                      if (pageNum > totalPages) pageNum = totalPages - 4 + i;
+                    }
+                  }
+                  return (
+                    <button
+                      key={pageNum}
+                      onClick={() => setCurrentPage(pageNum)}
+                      className="w-7 h-7 flex items-center justify-center text-[11px] font-mono rounded border cursor-pointer font-bold transition-colors"
+                      style={{
+                        background: safeCurrentPage === pageNum ? textPrimary : inputBg,
+                        borderColor: safeCurrentPage === pageNum ? textPrimary : borderColor,
+                        color: safeCurrentPage === pageNum ? (isDark ? '#09090B' : '#FFFFFF') : textSecondary
+                      }}
+                    >
+                      {pageNum}
+                    </button>
+                  );
+                })}
+
+                {/* Next Page */}
+                <button
+                  disabled={safeCurrentPage >= totalPages}
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  className="px-2.5 py-1 text-[11px] font-mono rounded border cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  style={{ background: inputBg, borderColor, color: textPrimary }}
+                  title="Halaman Berikutnya"
+                >
+                  Next
+                  <FontAwesomeIcon icon={faChevronRight} className="text-[9px] ml-1" />
+                </button>
+
+                {/* Last Page */}
+                <button
+                  disabled={safeCurrentPage >= totalPages}
+                  onClick={() => setCurrentPage(totalPages)}
+                  className="px-2 py-1 text-[11px] font-mono rounded border cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  style={{ background: inputBg, borderColor, color: textPrimary }}
+                  title="Halaman Terakhir"
+                >
+                  <FontAwesomeIcon icon={faAngleDoubleRight} className="text-[10px]" />
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -2496,1084 +2817,81 @@ export default function AdmissionManagement() {
         </div>
       )}
 
-      {/* Detail Modal */}
-      <Modal
+      {/* Unified Multi-Step Admission Modal */}
+      <UnifiedAdmissionModal
         isOpen={showDetailModal}
         onClose={() => { setShowDetailModal(false); setIsEditing(false); }}
-        title={`${t('admission.detail.title')} - ${selectedApplication?.application_number}`}
-        size="lg"
-      >
-        {selectedApplication && (
-          <div className="space-y-6">
-            {/* Status Badge + Edit Toggle */}
-            <div className="flex items-center justify-between gap-3">
-              <div
-                className="flex-1 p-3 rounded border flex items-center gap-3"
-                style={{
-                  background: selectedApplication.status === 'approved' ? (isDark ? 'rgba(16, 185, 129, 0.12)' : '#EDF3EC') :
-                              selectedApplication.status === 'rejected' ? (isDark ? 'rgba(239, 68, 68, 0.12)' : '#FDEBEC') :
-                              (isDark ? 'rgba(245, 158, 11, 0.12)' : '#FBF3DB'),
-                  borderColor: selectedApplication.status === 'approved' ? (isDark ? '#059669' : '#A7F3D0') :
-                               selectedApplication.status === 'rejected' ? (isDark ? '#DC2626' : '#FECACA') :
-                               (isDark ? '#D97706' : '#FDE68A'),
-                  borderRadius: '6px'
-                }}
-              >
-                <FontAwesomeIcon 
-                  icon={statusConfig[selectedApplication.status]?.icon || faClock} 
-                  className="text-base"
-                  style={{
-                    color: selectedApplication.status === 'approved' ? (isDark ? '#34D399' : '#346538') :
-                           selectedApplication.status === 'rejected' ? (isDark ? '#F87171' : '#9F2F2D') :
-                           (isDark ? '#FBBF24' : '#956400')
-                  }}
-                />
-                <div>
-                  <p className="text-[10px] font-mono uppercase tracking-wider" style={{ color: textSecondary }}>{t('admission.detail.statusLabel')}</p>
-                  <p className="font-semibold text-xs mt-0.5" style={{
-                    color: selectedApplication.status === 'approved' ? (isDark ? '#34D399' : '#346538') :
-                           selectedApplication.status === 'rejected' ? (isDark ? '#F87171' : '#9F2F2D') :
-                           (isDark ? '#FBBF24' : '#956400')
-                  }}>
-                    {statusLabels[selectedApplication.status] || selectedApplication.status || '-'}
-                  </p>
-                </div>
-              </div>
-              {!isEditing ? (
-                <button
-                  className="flex items-center gap-1.5 px-3 py-2 text-xs border rounded font-medium transition-colors hover:bg-black/5 dark:hover:bg-white/5"
-                  style={{
-                    background: cardBg,
-                    borderColor,
-                    color: textPrimary,
-                    borderRadius: '6px'
-                  }}
-                  onClick={handleStartEdit}
-                >
-                  <FontAwesomeIcon icon={faEdit} className="text-xs" />
-                  {t('admission.detail.editDataBtn')}
-                </button>
-              ) : (
-                <div className="flex gap-2">
-                  <button
-                    className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded transition-colors"
-                    style={{
-                      background: isDark ? '#F4F4F5' : '#111111',
-                      color: isDark ? '#111111' : '#FFFFFF',
-                      borderRadius: '6px'
-                    }}
-                    onClick={handleSaveEdit}
-                    disabled={editSaving}
-                  >
-                    {editSaving ? <FontAwesomeIcon icon={faSpinner} className="animate-spin text-xs" /> : <FontAwesomeIcon icon={faSave} className="text-xs" />}
-                    {editSaving ? t('admission.detail.saving') : t('admission.detail.saveBtn')}
-                  </button>
-                  <button
-                    className="px-3 py-2 text-xs border rounded transition-colors hover:bg-black/5 dark:hover:bg-white/5"
-                    style={{
-                      background: 'none',
-                      borderColor,
-                      color: textSecondary,
-                      borderRadius: '6px'
-                    }}
-                    onClick={() => setIsEditing(false)}
-                    disabled={editSaving}
-                  >
-                    {t('admission.detail.cancelBtn')}
-                  </button>
-                </div>
-              )}
-            </div>
-
-            {/* PPDB Portal Payment & Verification Card */}
-            {(selectedApplication.form_fee_amount || selectedApplication.form_fee_status || selectedApplication.payment_proof_file) && (
-              <div
-                className="p-3.5 rounded border space-y-3"
-                style={{
-                  background: isDark ? '#1C1C1F' : '#F9F9F8',
-                  borderColor,
-                  borderRadius: '8px'
-                }}
-              >
-                <div className="flex items-center justify-between flex-wrap gap-2 pb-2.5 border-b" style={{ borderColor }}>
-                  <div className="flex items-center gap-2">
-                    <div className="w-7 h-7 rounded flex items-center justify-center border" style={{ background: isDark ? '#27272A' : '#FFFFFF', borderColor, color: isDark ? '#60A5FA' : '#0284C7' }}>
-                      <FontAwesomeIcon icon={faFileInvoice} className="text-xs" />
-                    </div>
-                    <div>
-                      <h4 className="font-semibold text-xs" style={{ color: textPrimary }}>Pembayaran Formulir PPDB (Portal ccs.sch.id)</h4>
-                      <p className="text-[11px] font-mono" style={{ color: textSecondary }}>
-                        {selectedApplication.wave_name || 'Gelombang Pendaftaran'} &bull; Tagihan: <span className="font-bold" style={{ color: isDark ? '#60A5FA' : '#0284C7' }}>{formatCurrency(selectedApplication.form_fee_amount || 0)}</span>
-                      </p>
-                    </div>
-                  </div>
-                  <div>
-                    {selectedApplication.form_fee_status === 'verified' && (
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-mono border" style={{ background: isDark ? 'rgba(16, 185, 129, 0.15)' : '#EDF3EC', borderColor: isDark ? '#059669' : '#A7F3D0', color: isDark ? '#34D399' : '#346538' }}>
-                        <FontAwesomeIcon icon={faCheck} className="text-[8px]" />
-                        Formulir Terverifikasi (Lunas)
-                      </span>
-                    )}
-                    {selectedApplication.form_fee_status === 'proof_uploaded' && (
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-mono border" style={{ background: isDark ? 'rgba(245, 158, 11, 0.15)' : '#FBF3DB', borderColor: isDark ? '#D97706' : '#FDE68A', color: isDark ? '#FBBF24' : '#956400' }}>
-                        <FontAwesomeIcon icon={faClock} className="text-[8px]" />
-                        Bukti Diunggah (Perlu Verifikasi)
-                      </span>
-                    )}
-                    {selectedApplication.form_fee_status === 'pending_payment' && (
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-mono border" style={{ background: isDark ? '#27272A' : '#F4F4F5', borderColor, color: textSecondary }}>
-                        <FontAwesomeIcon icon={faClock} className="text-[8px]" />
-                        Menunggu Pembayaran Orang Tua
-                      </span>
-                    )}
-                    {selectedApplication.form_fee_status === 'rejected' && (
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-mono border" style={{ background: isDark ? 'rgba(239, 68, 68, 0.15)' : '#FDEBEC', borderColor: isDark ? '#DC2626' : '#FECACA', color: isDark ? '#F87171' : '#9F2F2D' }}>
-                        <FontAwesomeIcon icon={faTimes} className="text-[8px]" />
-                        Bukti Transfer Ditolak
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-                  <div>
-                    <span className="text-[10px] font-mono uppercase block" style={{ color: textSecondary }}>Kelengkapan Formulir Siswa:</span>
-                    {selectedApplication.is_form_completed ? (
-                      <span className="font-medium" style={{ color: isDark ? '#34D399' : '#346538' }}>Sudah Dilengkapi oleh Orang Tua</span>
-                    ) : (
-                      <span className="font-medium" style={{ color: isDark ? '#FBBF24' : '#956400' }}>Belum Lengkap (Hanya Data Awal)</span>
-                    )}
-                  </div>
-                  <div>
-                    <span className="text-[10px] font-mono uppercase block" style={{ color: textSecondary }}>Waktu Verifikasi:</span>
-                    <span className="font-medium font-mono" style={{ color: textPrimary }}>
-                      {selectedApplication.verified_at ? formatDate(selectedApplication.verified_at) : '-'}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Bukti Transfer Action / Preview */}
-                <div className="pt-2 flex items-center justify-between flex-wrap gap-2 border-t" style={{ borderColor }}>
-                  <div className="flex items-center gap-2">
-                    {selectedApplication.payment_proof_file ? (
-                      <a
-                        href={`/api/admission/${selectedApplication.application_id}/proof`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-mono border rounded transition-colors hover:bg-black/5 dark:hover:bg-white/5"
-                        style={{ background: cardBg, borderColor, color: isDark ? '#60A5FA' : '#0284C7', borderRadius: '6px' }}
-                      >
-                        <FontAwesomeIcon icon={faEye} />
-                        Lihat Bukti Transfer
-                      </a>
-                    ) : (
-                      <span className="text-[11px] italic" style={{ color: textSecondary }}>Belum ada file bukti transfer</span>
-                    )}
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    {selectedApplication.form_fee_status !== 'verified' && (
-                      <button
-                        className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium border rounded transition-colors hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
-                        style={{ background: cardBg, borderColor: isDark ? '#059669' : '#A7F3D0', color: isDark ? '#34D399' : '#059669', borderRadius: '6px' }}
-                        onClick={() => handleVerifyFormFee(selectedApplication.application_id, 'verified')}
-                        disabled={processing}
-                      >
-                        <FontAwesomeIcon icon={faCheck} className="text-[10px]" />
-                        Setujui Pembayaran Formulir
-                      </button>
-                    )}
-                    {selectedApplication.form_fee_status !== 'rejected' && (
-                      <button
-                        className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium border rounded transition-colors hover:bg-rose-50 dark:hover:bg-rose-950/30"
-                        style={{ background: cardBg, borderColor: isDark ? '#DC2626' : '#FECACA', color: isDark ? '#F87171' : '#DC2626', borderRadius: '6px' }}
-                        onClick={() => handleVerifyFormFee(selectedApplication.application_id, 'rejected')}
-                        disabled={processing}
-                      >
-                        <FontAwesomeIcon icon={faTimes} className="text-[10px]" />
-                        Tolak Bukti Transfer
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Student Info */}
-            <div>
-              <h3 className="font-semibold mb-3 flex items-center gap-2 text-xs font-mono uppercase tracking-wider" style={{ color: textPrimary }}>
-                <FontAwesomeIcon icon={faUser} style={{ color: textSecondary }} />
-                {t('admission.studentData.title')}
-              </h3>
-              {isEditing ? (
-                <div className="grid grid-cols-2 gap-4 p-4 rounded-lg" style={{ background: isDark ? '#1C1C1F' : '#F9F9F8', border: '1px solid ' + borderColor, borderRadius: '8px' }}>
-                  <div>
-                    <Label className="text-xs font-mono uppercase tracking-wider" style={{ color: textSecondary }}>{t('admission.studentData.fullNameRequired')}</Label>
-                    <Input className="mt-1" style={inputStyle} value={editData.student_name} onChange={(e) => setEditData(p => ({ ...p, student_name: e.target.value }))} />
-                  </div>
-                  <div>
-                    <Label className="text-xs font-mono uppercase tracking-wider" style={{ color: textSecondary }}>{t('admission.studentData.nickname')}</Label>
-                    <Input className="mt-1" style={inputStyle} value={editData.student_nickname} onChange={(e) => setEditData(p => ({ ...p, student_nickname: e.target.value }))} />
-                  </div>
-                  <div>
-                    <Label className="text-xs font-mono uppercase tracking-wider" style={{ color: textSecondary }}>{t('admission.studentData.gender')}</Label>
-                    <select className="mt-1 w-full px-3 py-2 rounded-md focus:outline-none" style={selectStyle} value={editData.student_gender} onChange={(e) => setEditData(p => ({ ...p, student_gender: e.target.value }))}>
-                      <option value="">{t('admission.studentData.selectGender')}</option>
-                      <option value="male">{t('admission.studentData.male')}</option>
-                      <option value="female">{t('admission.studentData.female')}</option>
-                    </select>
-                  </div>
-                  <div>
-                    <Label className="text-xs font-mono uppercase tracking-wider" style={{ color: textSecondary }}>{t('admission.studentData.birthPlace')}</Label>
-                    <Input className="mt-1" style={inputStyle} value={editData.student_birth_place} onChange={(e) => setEditData(p => ({ ...p, student_birth_place: e.target.value }))} />
-                  </div>
-                  <div>
-                    <Label className="text-xs font-mono uppercase tracking-wider" style={{ color: textSecondary }}>{t('admission.studentData.birthDate')}</Label>
-                    <Input type="date" className="mt-1" style={inputStyle} value={editData.student_birth_date} onChange={(e) => setEditData(p => ({ ...p, student_birth_date: e.target.value }))} />
-                  </div>
-                  <div>
-                    <Label className="text-xs font-mono uppercase tracking-wider" style={{ color: textSecondary }}>{t('admission.studentData.religion')}</Label>
-                    <select
-                      className="mt-1 w-full px-3 py-2 rounded-md focus:outline-none"
-                      style={selectStyle}
-                      value={editData.student_religion}
-                      onChange={(e) => setEditData(p => ({ ...p, student_religion: e.target.value }))}
-                    >
-                      <option value="">{t('admission.studentData.selectReligion')}</option>
-                      <option value="Islam">Islam</option>
-                      <option value="Kristen">Kristen</option>
-                      <option value="Katolik">Katolik</option>
-                      <option value="Hindu">Hindu</option>
-                      <option value="Buddha">Buddha</option>
-                      <option value="Konghucu">Konghucu</option>
-                      <option value="Lainnya">Lainnya</option>
-                    </select>
-                  </div>
-                  <div>
-                    <Label className="text-xs font-mono uppercase tracking-wider" style={{ color: textSecondary }}>{t('admission.studentData.nationality')}</Label>
-                    <Input className="mt-1" style={inputStyle} value={editData.student_nationality} onChange={(e) => setEditData(p => ({ ...p, student_nationality: e.target.value }))} />
-                  </div>
-                  <div className="relative">
-                    <Label className="text-xs font-mono uppercase tracking-wider" style={{ color: textSecondary }}>{t('admission.studentData.city')}</Label>
-                    <Input 
-                      className="mt-1" 
-                      style={inputStyle}
-                      value={editCitySearch} 
-                      onChange={(e) => {
-                        setEditCitySearch(e.target.value);
-                        setShowEditCityDropdown(e.target.value.length >= 1);
-                        setEditData(p => ({ ...p, student_city: e.target.value, student_province: '' }));
-                      }}
-                      onFocus={() => editCitySearch.length >= 1 && setShowEditCityDropdown(true)}
-                      placeholder={t('admission.studentData.typeCityPlaceholder')}
-                    />
-                    {showEditCityDropdown && (() => {
-                      const filtered = allCities.filter(c => c.toLowerCase().includes(editCitySearch.toLowerCase())).slice(0, 8);
-                      return filtered.length > 0 ? (
-                        <div className="absolute z-50 w-full mt-1 border rounded-md shadow-lg max-h-48 overflow-y-auto" style={{ background: cardBg, borderColor }}>
-                          {filtered.map(city => (
-                            <button
-                              key={city}
-                              type="button"
-                              className="w-full text-left px-3 py-2 text-sm transition-colors hover:bg-black/5 dark:hover:bg-white/5"
-                              style={{ color: textPrimary }}
-                              onClick={() => {
-                                const province = getProvinceByCity(city);
-                                setEditData(p => ({ ...p, student_city: city, student_province: province }));
-                                setEditCitySearch(city);
-                                setShowEditCityDropdown(false);
-                              }}
-                            >
-                              <span className="font-medium">{city}</span>
-                              <span className="ml-2 text-xs" style={{ color: textSecondary }}>({getProvinceByCity(city)})</span>
-                            </button>
-                          ))}
-                        </div>
-                      ) : null;
-                    })()}
-                  </div>
-                  <div>
-                    <Label className="text-xs font-mono uppercase tracking-wider" style={{ color: textSecondary }}>{t('admission.studentData.province')}</Label>
-                    <Input className="mt-1" style={{ ...inputStyle, opacity: 0.7 }} value={editData.student_province} readOnly placeholder={t('admission.studentData.autoFilled')} />
-                  </div>
-                  <div>
-                    <Label className="text-xs font-mono uppercase tracking-wider" style={{ color: textSecondary }}>{t('admission.studentData.postalCode')}</Label>
-                    <Input className="mt-1" style={inputStyle} value={editData.student_postal_code} onChange={(e) => setEditData(p => ({ ...p, student_postal_code: e.target.value }))} />
-                  </div>
-                  <div className="col-span-2">
-                    <Label className="text-xs font-mono uppercase tracking-wider" style={{ color: textSecondary }}>{t('admission.studentData.addressID')}</Label>
-                    <textarea className="mt-1 w-full px-3 py-2 rounded-md focus:outline-none" style={inputStyle} rows={2} value={editData.student_address} onChange={(e) => setEditData(p => ({ ...p, student_address: e.target.value }))} />
-                  </div>
-                  <div className="col-span-2">
-                    <Label className="text-xs font-mono uppercase tracking-wider" style={{ color: textSecondary }}>{t('admission.studentData.domicileAddress')}</Label>
-                    <textarea className="mt-1 w-full px-3 py-2 rounded-md focus:outline-none" style={inputStyle} rows={2} value={editData.student_domicile_address} onChange={(e) => setEditData(p => ({ ...p, student_domicile_address: e.target.value }))} />
-                  </div>
-                  <div className="col-span-2">
-                    <Label className="text-xs font-mono uppercase tracking-wider" style={{ color: textSecondary }}>{t('admission.studentData.prevSchool')}</Label>
-                    <Input className="mt-1" style={inputStyle} value={editData.student_previous_school} onChange={(e) => setEditData(p => ({ ...p, student_previous_school: e.target.value }))} />
-                  </div>
-                </div>
-              ) : (
-                <div className="grid grid-cols-2 gap-4 p-4 rounded-lg" style={{ background: isDark ? '#1C1C1F' : '#F9F9F8', border: '1px solid ' + borderColor, borderRadius: '8px' }}>
-                  <div>
-                    <p className="text-[10px] font-mono uppercase tracking-wider" style={{ color: textSecondary }}>{t('admission.studentData.fullName')}</p>
-                    <p className="text-sm font-medium" style={{ color: textPrimary }}>{selectedApplication.student_name}</p>
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-mono uppercase tracking-wider" style={{ color: textSecondary }}>{t('admission.studentData.nickname')}</p>
-                    <p className="text-sm font-medium" style={{ color: textPrimary }}>{selectedApplication.student_nickname || '-'}</p>
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-mono uppercase tracking-wider" style={{ color: textSecondary }}>{t('admission.studentData.gender')}</p>
-                    <p className="text-sm font-medium" style={{ color: textPrimary }}>{selectedApplication.student_gender === 'male' ? t('admission.studentData.male') : selectedApplication.student_gender === 'female' ? t('admission.studentData.female') : '-'}</p>
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-mono uppercase tracking-wider" style={{ color: textSecondary }}>{t('admission.studentData.birthPlaceDate')}</p>
-                    <p className="text-sm font-medium" style={{ color: textPrimary }}>
-                      {selectedApplication.student_birth_place || '-'}, {formatDate(selectedApplication.student_birth_date)}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-mono uppercase tracking-wider" style={{ color: textSecondary }}>{t('admission.studentData.religion')}</p>
-                    <p className="text-sm font-medium" style={{ color: textPrimary }}>{selectedApplication.student_religion || '-'}</p>
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-mono uppercase tracking-wider" style={{ color: textSecondary }}>{t('admission.studentData.nationality')}</p>
-                    <p className="text-sm font-medium" style={{ color: textPrimary }}>{selectedApplication.student_nationality || '-'}</p>
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-mono uppercase tracking-wider" style={{ color: textSecondary }}>{t('admission.studentData.city')}</p>
-                    <p className="text-sm font-medium" style={{ color: textPrimary }}>{selectedApplication.student_city || '-'}</p>
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-mono uppercase tracking-wider" style={{ color: textSecondary }}>{t('admission.studentData.province')}</p>
-                    <p className="text-sm font-medium" style={{ color: textPrimary }}>{selectedApplication.student_province || '-'}</p>
-                  </div>
-                  <div className="col-span-2">
-                    <p className="text-[10px] font-mono uppercase tracking-wider" style={{ color: textSecondary }}>{t('admission.studentData.addressID')}</p>
-                    <p className="text-sm font-medium" style={{ color: textPrimary }}>{selectedApplication.student_address || '-'}</p>
-                  </div>
-                  <div className="col-span-2">
-                    <p className="text-[10px] font-mono uppercase tracking-wider" style={{ color: textSecondary }}>{t('admission.studentData.domicileAddress')}</p>
-                    <p className="text-sm font-medium" style={{ color: textPrimary }}>{selectedApplication.student_domicile_address || '-'}</p>
-                  </div>
-                  <div className="col-span-2">
-                    <p className="text-[10px] font-mono uppercase tracking-wider" style={{ color: textSecondary }}>{t('admission.studentData.prevSchool')}</p>
-                    <p className="text-sm font-medium" style={{ color: textPrimary }}>{selectedApplication.student_previous_school || '-'}</p>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Parent Info */}
-            <div>
-              <h3 className="font-semibold mb-3 flex items-center gap-2 text-xs font-mono uppercase tracking-wider" style={{ color: textPrimary }}>
-                <FontAwesomeIcon icon={faUser} style={{ color: textSecondary }} />
-                {t('admission.parentData.title')}
-              </h3>
-              {isEditing ? (
-                <div className="grid grid-cols-2 gap-4 p-4 rounded-lg" style={{ background: isDark ? '#1C1C1F' : '#F9F9F8', border: '1px solid ' + borderColor, borderRadius: '8px' }}>
-                  <div>
-                    <Label className="text-xs font-mono uppercase tracking-wider" style={{ color: textSecondary }}>{t('admission.parentData.nik')}</Label>
-                    <Input className="mt-1 font-mono" style={inputStyle} value={editData.parent_nik} maxLength={16} onChange={(e) => { const val = e.target.value.replace(/\D/g, '').slice(0, 16); setEditData(p => ({ ...p, parent_nik: val })); }} placeholder={t('admission.parentData.nikPlaceholder')} />
-                  </div>
-                  <div>
-                    <Label className="text-xs font-mono uppercase tracking-wider" style={{ color: textSecondary }}>{t('admission.parentData.parentNameRequired')}</Label>
-                    <Input className="mt-1" style={inputStyle} value={editData.parent_name} onChange={(e) => setEditData(p => ({ ...p, parent_name: e.target.value }))} />
-                  </div>
-                  <div>
-                    <Label className="text-xs font-mono uppercase tracking-wider" style={{ color: textSecondary }}>{t('admission.parentData.occupation')}</Label>
-                    <Input className="mt-1" style={inputStyle} value={editData.parent_occupation} onChange={(e) => setEditData(p => ({ ...p, parent_occupation: e.target.value }))} />
-                  </div>
-                  <div>
-                    <Label className="text-xs font-mono uppercase tracking-wider" style={{ color: textSecondary }}>{t('admission.parentData.phone')}</Label>
-                    <Input className="mt-1" style={inputStyle} value={editData.parent_phone} onChange={(e) => setEditData(p => ({ ...p, parent_phone: e.target.value }))} />
-                  </div>
-                  <div>
-                    <Label className="text-xs font-mono uppercase tracking-wider" style={{ color: textSecondary }}>Email</Label>
-                    <Input type="email" className="mt-1" style={inputStyle} value={editData.parent_email} onChange={(e) => setEditData(p => ({ ...p, parent_email: e.target.value }))} />
-                  </div>
-                  <div className="col-span-2">
-                    <Label className="text-xs font-mono uppercase tracking-wider" style={{ color: textSecondary }}>{t('admission.parentData.address')}</Label>
-                    <textarea className="mt-1 w-full px-3 py-2 rounded-md focus:outline-none" style={inputStyle} rows={2} value={editData.parent_address} onChange={(e) => setEditData(p => ({ ...p, parent_address: e.target.value }))} />
-                  </div>
-                </div>
-              ) : (
-                <div className="grid grid-cols-2 gap-4 p-4 rounded-lg" style={{ background: isDark ? '#1C1C1F' : '#F9F9F8', border: '1px solid ' + borderColor, borderRadius: '8px' }}>
-                  <div>
-                    <p className="text-[10px] font-mono uppercase tracking-wider" style={{ color: textSecondary }}>{t('admission.parentData.nik')}</p>
-                    <p className="text-sm font-medium font-mono" style={{ color: textPrimary }}>{selectedApplication.parent_nik || '-'}</p>
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-mono uppercase tracking-wider" style={{ color: textSecondary }}>{t('admission.parentData.parentNameLabel')}</p>
-                    <p className="text-sm font-medium" style={{ color: textPrimary }}>{selectedApplication.parent_name}</p>
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-mono uppercase tracking-wider" style={{ color: textSecondary }}>{t('admission.parentData.occupation')}</p>
-                    <p className="text-sm font-medium" style={{ color: textPrimary }}>{selectedApplication.parent_occupation || '-'}</p>
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-mono uppercase tracking-wider" style={{ color: textSecondary }}>{t('admission.parentData.phone')}</p>
-                    <p className="text-sm font-medium flex items-center gap-2" style={{ color: textPrimary }}>
-                      <FontAwesomeIcon icon={faPhone} style={{ color: textSecondary }} />
-                      {selectedApplication.parent_phone}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-mono uppercase tracking-wider" style={{ color: textSecondary }}>Email</p>
-                    <p className="text-sm font-medium flex items-center gap-2" style={{ color: textPrimary }}>
-                      <FontAwesomeIcon icon={faEnvelope} style={{ color: textSecondary }} />
-                      {selectedApplication.parent_email || '-'}
-                    </p>
-                  </div>
-                  <div className="col-span-2">
-                    <p className="text-[10px] font-mono uppercase tracking-wider" style={{ color: textSecondary }}>{t('admission.parentData.address')}</p>
-                    <p className="text-sm font-medium" style={{ color: textPrimary }}>{selectedApplication.parent_address || '-'}</p>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* School Selection */}
-            <div>
-              <h3 className="font-semibold mb-3 flex items-center gap-2 text-xs font-mono uppercase tracking-wider" style={{ color: textPrimary }}>
-                <FontAwesomeIcon icon={faSchool} style={{ color: textSecondary }} />
-                {t('admission.schoolSelection.title')}
-              </h3>
-              <div className="grid grid-cols-2 gap-4 p-4 rounded-lg" style={{ background: isDark ? '#1C1C1F' : '#F9F9F8', border: '1px solid ' + borderColor, borderRadius: '8px' }}>
-                <div>
-                  <p className="text-[10px] font-mono uppercase tracking-wider" style={{ color: textSecondary }}>{t('admission.schoolSelection.levelLabel')}</p>
-                  <p className="text-sm font-medium" style={{ color: textPrimary }}>{selectedApplication.level?.level_name || selectedApplication.unit?.unit_name || '-'}</p>
-                </div>
-                <div>
-                  <p className="text-[10px] font-mono uppercase tracking-wider" style={{ color: textSecondary }}>{t('admission.schoolSelection.yearLabel')}</p>
-                  <p className="text-sm font-medium" style={{ color: textPrimary }}>{selectedApplication.year?.year_name || '-'}</p>
-                </div>
-                <div>
-                  <p className="text-[10px] font-mono uppercase tracking-wider" style={{ color: textSecondary }}>{t('admission.schoolSelection.academicUnit')}</p>
-                  <p className="text-sm font-medium" style={{ color: textPrimary }}>{selectedApplication.unit?.unit_name || '-'}</p>
-                </div>
-                <div>
-                  <p className="text-[10px] font-mono uppercase tracking-wider" style={{ color: textSecondary }}>{t('admission.schoolSelection.registrationDate')}</p>
-                  <p className="text-sm font-medium font-mono" style={{ color: textPrimary }}>{formatDateTime(selectedApplication.created_at)}</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Jadwal Tes Penempatan & Wawancara Orang Tua Card */}
-            <div>
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="font-semibold flex items-center gap-2 text-xs font-mono uppercase tracking-wider" style={{ color: textPrimary }}>
-                  <FontAwesomeIcon icon={faCalendar} style={{ color: isDark ? '#60A5FA' : '#0284C7' }} />
-                  Jadwal Tes Penempatan & Wawancara Orang Tua
-                </h3>
-                {!isEditing && (
-                  <button
-                    type="button"
-                    onClick={() => handleOpenScheduleModal(selectedApplication)}
-                    className="flex items-center gap-1.5 px-2.5 py-1 text-xs border rounded font-medium transition-colors hover:bg-black/5 dark:hover:bg-white/5"
-                    style={{
-                      background: cardBg,
-                      borderColor: isDark ? '#3B82F6' : '#93C5FD',
-                      color: isDark ? '#60A5FA' : '#0284C7',
-                      borderRadius: '6px'
-                    }}
-                  >
-                    <FontAwesomeIcon icon={faEdit} className="text-[10px]" />
-                    Atur / Ubah Jadwal
-                  </button>
-                )}
-              </div>
-
-              {isEditing ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 rounded-lg" style={{ background: isDark ? '#1C1C1F' : '#F9F9F8', border: '1px solid ' + borderColor, borderRadius: '8px' }}>
-                  {/* Kolom Tes Penempatan */}
-                  <div className="space-y-3 p-3 rounded border" style={{ borderColor, background: cardBg }}>
-                    <div className="flex items-center gap-1.5 font-semibold text-xs text-blue-600 dark:text-blue-400">
-                      <FontAwesomeIcon icon={faUserGraduate} className="text-xs" />
-                      Tes Penempatan Siswa
-                    </div>
-                    <div>
-                      <Label className="text-xs font-mono uppercase tracking-wider" style={{ color: textSecondary }}>Tanggal Tes</Label>
-                      <Input 
-                        type="date" 
-                        className="mt-1" 
-                        style={inputStyle} 
-                        value={editData.test_date || ''} 
-                        onChange={(e) => setEditData(p => ({ ...p, test_date: e.target.value }))} 
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-xs font-mono uppercase tracking-wider" style={{ color: textSecondary }}>Sesi & Waktu Tes</Label>
-                      <select 
-                        className="mt-1 w-full px-3 py-2 rounded-md focus:outline-none" 
-                        style={selectStyle} 
-                        value={editData.test_session || 'Sesi 1 (08:30 - 10:00 WIB)'} 
-                        onChange={(e) => setEditData(p => ({ ...p, test_session: e.target.value }))}
-                      >
-                        <option value="Sesi 1 (08:30 - 10:00 WIB)">Sesi 1 (08:30 - 10:00 WIB)</option>
-                        <option value="Sesi 2 (10:30 - 12:00 WIB)">Sesi 2 (10:30 - 12:00 WIB)</option>
-                        <option value="Sesi 3 (13:00 - 14:30 WIB)">Sesi 3 (13:00 - 14:30 WIB)</option>
-                        <option value="Sesi 4 (15:00 - 16:30 WIB)">Sesi 4 (15:00 - 16:30 WIB)</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  {/* Kolom Wawancara */}
-                  <div className="space-y-3 p-3 rounded border" style={{ borderColor, background: cardBg }}>
-                    <div className="flex items-center gap-1.5 font-semibold text-xs text-purple-600 dark:text-purple-400">
-                      <FontAwesomeIcon icon={faUser} className="text-xs" />
-                      Wawancara Orang Tua & Observasi
-                    </div>
-                    <div>
-                      <Label className="text-xs font-mono uppercase tracking-wider" style={{ color: textSecondary }}>Tanggal Wawancara</Label>
-                      <Input 
-                        type="date" 
-                        className="mt-1" 
-                        style={inputStyle} 
-                        value={editData.interview_date || ''} 
-                        onChange={(e) => setEditData(p => ({ ...p, interview_date: e.target.value }))} 
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-xs font-mono uppercase tracking-wider" style={{ color: textSecondary }}>Sesi & Waktu Wawancara</Label>
-                      <select 
-                        className="mt-1 w-full px-3 py-2 rounded-md focus:outline-none" 
-                        style={selectStyle} 
-                        value={editData.interview_session || 'Sesi 1 (08:30 - 10:00 WIB)'} 
-                        onChange={(e) => setEditData(p => ({ ...p, interview_session: e.target.value }))}
-                      >
-                        <option value="Sesi 1 (08:30 - 10:00 WIB)">Sesi 1 (08:30 - 10:00 WIB)</option>
-                        <option value="Sesi 2 (10:30 - 12:00 WIB)">Sesi 2 (10:30 - 12:00 WIB)</option>
-                        <option value="Sesi 3 (13:00 - 14:30 WIB)">Sesi 3 (13:00 - 14:30 WIB)</option>
-                        <option value="Sesi 4 (15:00 - 16:30 WIB)">Sesi 4 (15:00 - 16:30 WIB)</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  <div className="col-span-1 md:col-span-2">
-                    <Label className="text-xs font-mono uppercase tracking-wider" style={{ color: textSecondary }}>Catatan Khusus Jadwal</Label>
-                    <Input 
-                      className="mt-1" 
-                      style={inputStyle} 
-                      value={editData.schedule_notes || ''} 
-                      onChange={(e) => setEditData(p => ({ ...p, schedule_notes: e.target.value }))} 
-                      placeholder="Contoh: Tes dan wawancara diadakan di Ruang Observasi CCS Lantai 2"
-                    />
-                  </div>
-                </div>
-              ) : (
-                <div className="p-4 rounded-lg border space-y-3" style={{ background: isDark ? '#1C1C1F' : '#F9F9F8', borderColor, borderRadius: '8px' }}>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {/* Tes Penempatan Info */}
-                    <div className="p-3 rounded border" style={{ background: cardBg, borderColor }}>
-                      <div className="flex items-center justify-between pb-1.5 border-b" style={{ borderColor }}>
-                        <span className="text-[10px] font-mono uppercase tracking-wider font-semibold text-blue-600 dark:text-blue-400 flex items-center gap-1.5">
-                          <FontAwesomeIcon icon={faUserGraduate} className="text-[10px]" />
-                          Tes Penempatan Siswa
-                        </span>
-                        {selectedApplication.test_date ? (
-                          <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded text-[9px] font-mono bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
-                            <FontAwesomeIcon icon={faCheck} className="text-[8px]" /> Terjadwal
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded text-[9px] font-mono bg-slate-100 text-slate-600 dark:bg-zinc-800 dark:text-zinc-400 border border-slate-200 dark:border-zinc-700">
-                            Belum Ditentukan
-                          </span>
-                        )}
-                      </div>
-                      <div className="pt-2 space-y-1">
-                        <div>
-                          <span className="text-[10px] font-mono uppercase text-gray-500 block">Tanggal Pelaksanaan:</span>
-                          <span className="text-xs font-semibold" style={{ color: textPrimary }}>
-                            {selectedApplication.test_date ? formatDate(selectedApplication.test_date) : '-'}
-                          </span>
-                        </div>
-                        <div>
-                          <span className="text-[10px] font-mono uppercase text-gray-500 block">Sesi / Jam:</span>
-                          <span className="text-xs font-mono" style={{ color: textPrimary }}>
-                            {selectedApplication.test_session || '-'}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Wawancara Info */}
-                    <div className="p-3 rounded border" style={{ background: cardBg, borderColor }}>
-                      <div className="flex items-center justify-between pb-1.5 border-b" style={{ borderColor }}>
-                        <span className="text-[10px] font-mono uppercase tracking-wider font-semibold text-purple-600 dark:text-purple-400 flex items-center gap-1.5">
-                          <FontAwesomeIcon icon={faUser} className="text-[10px]" />
-                          Wawancara Orang Tua & Observasi
-                        </span>
-                        {selectedApplication.interview_date ? (
-                          <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded text-[9px] font-mono bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
-                            <FontAwesomeIcon icon={faCheck} className="text-[8px]" /> Terjadwal
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded text-[9px] font-mono bg-slate-100 text-slate-600 dark:bg-zinc-800 dark:text-zinc-400 border border-slate-200 dark:border-zinc-700">
-                            Belum Ditentukan
-                          </span>
-                        )}
-                      </div>
-                      <div className="pt-2 space-y-1">
-                        <div>
-                          <span className="text-[10px] font-mono uppercase text-gray-500 block">Tanggal Pelaksanaan:</span>
-                          <span className="text-xs font-semibold" style={{ color: textPrimary }}>
-                            {selectedApplication.interview_date ? formatDate(selectedApplication.interview_date) : '-'}
-                          </span>
-                        </div>
-                        <div>
-                          <span className="text-[10px] font-mono uppercase text-gray-500 block">Sesi / Jam:</span>
-                          <span className="text-xs font-mono" style={{ color: textPrimary }}>
-                            {selectedApplication.interview_session || '-'}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {selectedApplication.schedule_notes && (
-                    <div className="text-xs p-2.5 rounded border" style={{ borderColor, background: cardBg }}>
-                      <span className="text-[10px] font-mono uppercase text-gray-500 block">Catatan Jadwal:</span>
-                      <span style={{ color: textPrimary }}>{selectedApplication.schedule_notes}</span>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {/* Additional Notes */}
-            {selectedApplication.additional_notes && (
-              <div>
-                <h3 className="font-semibold mb-3 flex items-center gap-2 text-xs font-mono uppercase tracking-wider" style={{ color: textPrimary }}>
-                  <FontAwesomeIcon icon={faInfoCircle} style={{ color: isDark ? '#FBBF24' : '#B45309' }} />
-                  Catatan dari Pendaftar
-                </h3>
-                <div className="p-4 rounded-lg" style={{ background: isDark ? 'rgba(251, 191, 36, 0.08)' : '#FDFBF7', border: '1px solid ' + (isDark ? 'rgba(251, 191, 36, 0.25)' : '#F3E8D2'), borderRadius: '8px' }}>
-                  <p className="text-sm" style={{ color: textPrimary }}>{selectedApplication.additional_notes}</p>
-                </div>
-              </div>
-            )}
-
-            {/* Admin Notes */}
-            {selectedApplication.admin_notes && (
-              <div>
-                <h3 className="font-semibold mb-3 flex items-center gap-2 text-xs font-mono uppercase tracking-wider" style={{ color: textPrimary }}>
-                  <FontAwesomeIcon icon={faInfoCircle} style={{ color: isDark ? '#60A5FA' : '#0284C7' }} />
-                  Catatan Admin
-                </h3>
-                <div className="p-4 rounded-lg" style={{ background: isDark ? 'rgba(96, 165, 250, 0.08)' : '#F8FAFC', border: '1px solid ' + (isDark ? 'rgba(96, 165, 250, 0.25)' : '#E2E8F0'), borderRadius: '8px' }}>
-                  <p className="text-sm" style={{ color: textPrimary }}>{selectedApplication.admin_notes}</p>
-                  {selectedApplication.reviewed_at && (
-                    <p className="text-xs mt-2 font-mono" style={{ color: textSecondary }}>
-                      {t('admission.notes.updatedAt')} {formatDateTime(selectedApplication.reviewed_at)}
-                      {selectedApplication.reviewer && ` ${t('admission.notes.by')} ${selectedApplication.reviewer.user_nama_depan} ${selectedApplication.reviewer.user_nama_belakang}`}
-                    </p>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* ===== Discount / Potongan Section ===== */}
-            <div>
-              <h3 className="font-semibold mb-3 flex items-center gap-2 text-xs font-mono uppercase tracking-wider" style={{ color: textPrimary }}>
-                <FontAwesomeIcon icon={faTag} style={{ color: textSecondary }} />
-                {t('admission.discount.title')}
-              </h3>
-
-              {discountLoading ? (
-                <div className="text-center py-6" style={{ color: textSecondary }}>
-                  <FontAwesomeIcon icon={faSpinner} className="animate-spin text-xl mb-2" />
-                  <p className="text-xs font-mono">{t('admission.discount.loadingDiscount')}</p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {/* UDP Discounts */}
-                  {udpDef && (
-                    <div className="border rounded-lg overflow-hidden" style={{ borderColor, background: cardBg }}>
-                      <div className="px-4 py-2.5 flex items-center justify-between" style={{ background: isDark ? '#1C1C1F' : '#F9F9F8', borderBottom: '1px solid ' + borderColor }}>
-                        <div>
-                          <span className="font-mono text-xs font-bold uppercase tracking-wider" style={{ color: textPrimary }}>UDP</span>
-                          <span className="text-xs font-mono ml-2" style={{ color: textSecondary }}>
-                            Biaya Pokok: {formatCurrency(udpDef.total_amount)}
-                          </span>
-                        </div>
-                        <button
-                          className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-mono border rounded transition-colors hover:bg-black/5 dark:hover:bg-white/5"
-                          style={{ background: cardBg, borderColor, color: textPrimary, borderRadius: '6px' }}
-                          onClick={() => { setAddDiscountTarget('udp'); setShowAddDiscount(true); }}
-                          disabled={discountSaving}
-                        >
-                          <FontAwesomeIcon icon={faPlus} className="text-[10px]" /> {t('admission.discount.addBtn')}
-                        </button>
-                      </div>
-                      
-                      {(() => {
-                        const udpDiscounts = calculateDiscounts(discounts, 'udp');
-                        if (udpDiscounts.length === 0) {
-                          return (
-                            <div className="px-4 py-4 text-center text-xs font-mono" style={{ color: textSecondary }}>
-                              {t('admission.discount.noUdpDiscount')}
-                            </div>
-                          );
-                        }
-                        return (
-                          <div>
-                            {udpDiscounts.map((d, idx) => (
-                              <div key={d.app_discount_id} className="px-4 py-2.5 flex items-center gap-3 transition-colors hover:bg-black/5 dark:hover:bg-white/5 border-t" style={{ borderColor }}>
-                                <span className="flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-mono font-semibold" style={{ background: isDark ? '#27272A' : '#F4F4F5', color: textSecondary, border: '1px solid ' + borderColor }}>
-                                  {d.seq}
-                                </span>
-                                <div className="flex-1 min-w-0">
-                                  <p className="font-medium text-xs truncate" style={{ color: textPrimary }}>
-                                    {d.discount?.discount_name || d.discount?.discount_code || '-'}
-                                  </p>
-                                  <p className="text-[11px] font-mono" style={{ color: textSecondary }}>
-                                    {d.value_type === 'percentage' ? (
-                                      <><FontAwesomeIcon icon={faPercent} className="mr-1" />{d.value}% dari {formatCurrency(d.base_before)}</>
-                                    ) : (
-                                      <><FontAwesomeIcon icon={faMoneyBill} className="mr-1" />{formatCurrency(d.value)} (nominal)</>
-                                    )}
-                                  </p>
-                                </div>
-                                <div className="text-right flex-shrink-0">
-                                  <p className="text-xs font-semibold font-mono" style={{ color: isDark ? '#F87171' : '#DC2626' }}>-{formatCurrency(d.calculated_amount)}</p>
-                                  <p className="text-[11px] font-mono" style={{ color: textSecondary }}>→ {formatCurrency(d.subtotal_after)}</p>
-                                </div>
-                                <div className="flex flex-col gap-1 flex-shrink-0">
-                                  <button
-                                    onClick={() => handleMoveDiscount(d.app_discount_id, 'udp', 'up')}
-                                    disabled={idx === 0 || discountSaving}
-                                    className="p-1 hover:opacity-100 disabled:opacity-20"
-                                    style={{ color: textSecondary }}
-                                  >
-                                    <FontAwesomeIcon icon={faArrowUp} className="text-[10px]" />
-                                  </button>
-                                  <button
-                                    onClick={() => handleMoveDiscount(d.app_discount_id, 'udp', 'down')}
-                                    disabled={idx === udpDiscounts.length - 1 || discountSaving}
-                                    className="p-1 hover:opacity-100 disabled:opacity-20"
-                                    style={{ color: textSecondary }}
-                                  >
-                                    <FontAwesomeIcon icon={faArrowDown} className="text-[10px]" />
-                                  </button>
-                                </div>
-                                <button
-                                  onClick={() => handleRemoveDiscount(d.app_discount_id, 'udp')}
-                                  disabled={discountSaving}
-                                  className="p-1 hover:opacity-100 disabled:opacity-20"
-                                  style={{ color: isDark ? '#F87171' : '#DC2626' }}
-                                >
-                                  <FontAwesomeIcon icon={faTrash} className="text-[10px]" />
-                                </button>
-                              </div>
-                            ))}
-                            {/* Total */}
-                            <div className="px-4 py-2.5 flex items-center justify-between border-t" style={{ background: isDark ? 'rgba(52, 211, 153, 0.08)' : '#EDF3EC', borderColor }}>
-                              <span className="font-semibold text-xs font-mono uppercase" style={{ color: isDark ? '#34D399' : '#346538' }}>{t('admission.discount.totalUdpDiscount')}</span>
-                              <div className="text-right">
-                                <p className="font-bold text-xs font-mono" style={{ color: isDark ? '#F87171' : '#DC2626' }}>
-                                  -{formatCurrency(udpDiscounts.reduce((sum, d) => sum + d.calculated_amount, 0))}
-                                </p>
-                                <p className="text-xs font-semibold font-mono" style={{ color: isDark ? '#34D399' : '#346538' }}>
-                                  {t('admission.discount.final')} {formatCurrency(udpDiscounts[udpDiscounts.length - 1]?.subtotal_after || udpDef.total_amount)}
-                                </p>
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })()}
-                    </div>
-                  )}
-
-                  {/* USEK Discounts */}
-                  {usekDef && (
-                    <div className="border rounded-lg overflow-hidden" style={{ borderColor, background: cardBg }}>
-                      <div className="px-4 py-2.5 flex items-center justify-between" style={{ background: isDark ? '#1C1C1F' : '#F9F9F8', borderBottom: '1px solid ' + borderColor }}>
-                        <div>
-                          <span className="font-mono text-xs font-bold uppercase tracking-wider" style={{ color: textPrimary }}>USEK</span>
-                          <span className="text-xs font-mono ml-2" style={{ color: textSecondary }}>
-                            Biaya Pokok/bulan: {formatCurrency(usekDef.default_amount)}
-                          </span>
-                        </div>
-                        <button
-                          className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-mono border rounded transition-colors hover:bg-black/5 dark:hover:bg-white/5"
-                          style={{ background: cardBg, borderColor, color: textPrimary, borderRadius: '6px' }}
-                          onClick={() => { setAddDiscountTarget('usek'); setShowAddDiscount(true); }}
-                          disabled={discountSaving}
-                        >
-                          <FontAwesomeIcon icon={faPlus} className="text-[10px]" /> {t('admission.discount.addBtn')}
-                        </button>
-                      </div>
-                      
-                      {(() => {
-                        const usekDiscounts = calculateDiscounts(discounts, 'usek');
-                        if (usekDiscounts.length === 0) {
-                          return (
-                            <div className="px-4 py-4 text-center text-xs font-mono" style={{ color: textSecondary }}>
-                              {t('admission.discount.noUsekDiscount')}
-                            </div>
-                          );
-                        }
-                        return (
-                          <div>
-                            {usekDiscounts.map((d, idx) => (
-                              <div key={d.app_discount_id} className="px-4 py-2.5 flex items-center gap-3 transition-colors hover:bg-black/5 dark:hover:bg-white/5 border-t" style={{ borderColor }}>
-                                <span className="flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-mono font-semibold" style={{ background: isDark ? '#27272A' : '#F4F4F5', color: textSecondary, border: '1px solid ' + borderColor }}>
-                                  {d.seq}
-                                </span>
-                                <div className="flex-1 min-w-0">
-                                  <p className="font-medium text-xs truncate" style={{ color: textPrimary }}>
-                                    {d.discount?.discount_name || d.discount?.discount_code || '-'}
-                                  </p>
-                                  <p className="text-[11px] font-mono" style={{ color: textSecondary }}>
-                                    {d.value_type === 'percentage' ? (
-                                      <><FontAwesomeIcon icon={faPercent} className="mr-1" />{d.value}% dari {formatCurrency(d.base_before)}</>
-                                    ) : (
-                                      <><FontAwesomeIcon icon={faMoneyBill} className="mr-1" />{formatCurrency(d.value)} (nominal)</>
-                                    )}
-                                  </p>
-                                </div>
-                                <div className="text-right flex-shrink-0">
-                                  <p className="text-xs font-semibold font-mono" style={{ color: isDark ? '#F87171' : '#DC2626' }}>-{formatCurrency(d.calculated_amount)}</p>
-                                  <p className="text-[11px] font-mono" style={{ color: textSecondary }}>→ {formatCurrency(d.subtotal_after)}</p>
-                                </div>
-                                <div className="flex flex-col gap-1 flex-shrink-0">
-                                  <button
-                                    onClick={() => handleMoveDiscount(d.app_discount_id, 'usek', 'up')}
-                                    disabled={idx === 0 || discountSaving}
-                                    className="p-1 hover:opacity-100 disabled:opacity-20"
-                                    style={{ color: textSecondary }}
-                                  >
-                                    <FontAwesomeIcon icon={faArrowUp} className="text-[10px]" />
-                                  </button>
-                                  <button
-                                    onClick={() => handleMoveDiscount(d.app_discount_id, 'usek', 'down')}
-                                    disabled={idx === usekDiscounts.length - 1 || discountSaving}
-                                    className="p-1 hover:opacity-100 disabled:opacity-20"
-                                    style={{ color: textSecondary }}
-                                  >
-                                    <FontAwesomeIcon icon={faArrowDown} className="text-[10px]" />
-                                  </button>
-                                </div>
-                                <button
-                                  onClick={() => handleRemoveDiscount(d.app_discount_id, 'usek')}
-                                  disabled={discountSaving}
-                                  className="p-1 hover:opacity-100 disabled:opacity-20"
-                                  style={{ color: isDark ? '#F87171' : '#DC2626' }}
-                                >
-                                  <FontAwesomeIcon icon={faTrash} className="text-[10px]" />
-                                </button>
-                              </div>
-                            ))}
-                            {/* Total */}
-                            <div className="px-4 py-2.5 flex items-center justify-between border-t" style={{ background: isDark ? 'rgba(96, 165, 250, 0.08)' : '#E1F3FE', borderColor }}>
-                              <span className="font-semibold text-xs font-mono uppercase" style={{ color: isDark ? '#60A5FA' : '#0284C7' }}>{t('admission.discount.totalUsekDiscount')}</span>
-                              <div className="text-right">
-                                <p className="font-bold text-xs font-mono" style={{ color: isDark ? '#F87171' : '#DC2626' }}>
-                                  -{formatCurrency(usekDiscounts.reduce((sum, d) => sum + d.calculated_amount, 0))}
-                                </p>
-                                <p className="text-xs font-semibold font-mono" style={{ color: isDark ? '#60A5FA' : '#0284C7' }}>
-                                  {t('admission.discount.finalPerMonth')} {formatCurrency(usekDiscounts[usekDiscounts.length - 1]?.subtotal_after || usekDef.default_amount)}
-                                </p>
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })()}
-                    </div>
-                  )}
-
-                  {/* No fee definitions */}
-                  {!udpDef && !usekDef && (
-                    <div className="text-center py-6 border rounded-lg" style={{ background: isDark ? '#1C1C1F' : '#F9F9F8', borderColor, color: textSecondary }}>
-                      <FontAwesomeIcon icon={faInfoCircle} className="text-xl mb-2" />
-                      <p className="text-xs font-mono">{t('admission.discount.noFeeDef')}</p>
-                      <p className="text-[11px] mt-1 font-mono">{t('admission.discount.setFeeFirst')}</p>
-                    </div>
-                  )}
-
-                  {/* Add Discount Dropdown */}
-                  {showAddDiscount && (
-                    <div className="border rounded-lg p-4" style={{ background: cardBg, borderColor, borderRadius: '8px' }}>
-                      <div className="flex items-center justify-between mb-3">
-                        <h4 className="font-mono text-xs font-semibold uppercase tracking-wider" style={{ color: textPrimary }}>
-                          {t('admission.discount.addDiscountTitle')} {addDiscountTarget === 'udp' ? 'DPP / UDP' : 'SPP / USEK'}
-                        </h4>
-                        <button onClick={() => setShowAddDiscount(false)} className="hover:opacity-100" style={{ color: textSecondary }}>
-                          <FontAwesomeIcon icon={faTimes} />
-                        </button>
-                      </div>
-                      <div className="space-y-2">
-                        {masterDiscounts
-                          .filter(m => m.applies_to === addDiscountTarget || m.applies_to === 'both')
-                          .filter(m => !discounts.some(d => d.discount_id === m.discount_id && d.fee_target === addDiscountTarget))
-                          .map(m => (
-                            <button
-                              key={m.discount_id}
-                              onClick={() => handleAddDiscount(m.discount_id, addDiscountTarget)}
-                              disabled={discountSaving}
-                              className="w-full flex items-center justify-between p-2.5 rounded-lg border transition-colors text-left disabled:opacity-50 hover:bg-black/5 dark:hover:bg-white/5"
-                              style={{ background: isDark ? '#1C1C1F' : '#F9F9F8', borderColor }}
-                            >
-                              <div>
-                                <p className="font-medium text-xs" style={{ color: textPrimary }}>{m.discount_name}</p>
-                                <p className="text-[10px] font-mono" style={{ color: textSecondary }}>{m.discount_code}</p>
-                              </div>
-                              <span className="px-2 py-0.5 rounded-full text-[11px] font-mono font-medium border" style={m.discount_type === 'percentage' ? {
-                                background: isDark ? 'rgba(168, 85, 247, 0.15)' : '#F3E8FF',
-                                color: isDark ? '#C084FC' : '#7E22CE',
-                                borderColor: isDark ? '#7E22CE' : '#E9D5FF'
-                              } : {
-                                background: isDark ? 'rgba(52, 211, 153, 0.15)' : '#EDF3EC',
-                                color: isDark ? '#34D399' : '#346538',
-                                borderColor: isDark ? '#059669' : '#D1E7DD'
-                              }}>
-                                {m.discount_type === 'percentage' ? `${m.discount_value}%` : formatCurrency(m.discount_value)}
-                              </span>
-                            </button>
-                          ))
-                        }
-                        {masterDiscounts
-                          .filter(m => m.applies_to === addDiscountTarget || m.applies_to === 'both')
-                          .filter(m => !discounts.some(d => d.discount_id === m.discount_id && d.fee_target === addDiscountTarget))
-                          .length === 0 && (
-                          <p className="text-center text-xs font-mono py-3" style={{ color: textSecondary }}>
-                            Tidak ada potongan tersedia untuk {addDiscountTarget === 'udp' ? 'DPP / UDP' : 'SPP / USEK'}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {/* Riwayat Pengiriman Email */}
-            <div>
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="font-semibold flex items-center gap-2 text-xs font-mono uppercase tracking-wider" style={{ color: textPrimary }}>
-                  <FontAwesomeIcon icon={faEnvelope} style={{ color: textSecondary }} />
-                  Riwayat Pengiriman Email
-                </h3>
-                {selectedApplication.parent_email && (
-                  <button
-                    onClick={() => handleResendPaymentEmail(selectedApplication)}
-                    disabled={resendingEmailId === selectedApplication.application_id}
-                    className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-medium border rounded transition-colors disabled:opacity-50 hover:bg-sky-50 dark:hover:bg-sky-950/30"
-                    style={{
-                      background: isDark ? 'rgba(56, 189, 248, 0.12)' : '#F0F9FF',
-                      borderColor: isDark ? '#0284C7' : '#BAE6FD',
-                      color: isDark ? '#38BDF8' : '#0369A1',
-                      borderRadius: '6px'
-                    }}
-                  >
-                    {resendingEmailId === selectedApplication.application_id ? (
-                      <>
-                        <FontAwesomeIcon icon={faSpinner} className="animate-spin text-[10px]" />
-                        <span>Mengirim Ulang...</span>
-                      </>
-                    ) : (
-                      <>
-                        <FontAwesomeIcon icon={faPaperPlane} className="text-[10px]" />
-                        <span>Kirim Ulang Email Tagihan & Rekening</span>
-                      </>
-                    )}
-                  </button>
-                )}
-              </div>
-
-              {detailLogsLoading ? (
-                <div className="p-4 rounded-lg text-center" style={{ background: isDark ? '#1C1C1F' : '#F9F9F8', border: '1px solid ' + borderColor }}>
-                  <FontAwesomeIcon icon={faSpinner} className="animate-spin text-sm" style={{ color: textSecondary }} />
-                  <span className="text-xs font-mono ml-2" style={{ color: textSecondary }}>Memeriksa status pengiriman email...</span>
-                </div>
-              ) : detailApplicantLogs.length > 0 ? (
-                <div className="space-y-2">
-                  {detailApplicantLogs.map((log) => (
-                    <div
-                      key={log.id}
-                      className="p-3 rounded-lg border flex flex-col sm:flex-row sm:items-center justify-between gap-2"
-                      style={{ background: isDark ? '#1C1C1F' : '#F9F9F8', borderColor }}
-                    >
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-semibold" style={{ color: textPrimary }}>{getEmailTypeLabel(log.email_type)}</span>
-                          <span
-                            className="px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase tracking-wider border"
-                            style={
-                              log.status === 'delivered'
-                                ? { background: isDark ? 'rgba(16, 185, 129, 0.15)' : '#EDF3EC', color: isDark ? '#34D399' : '#346538', borderColor: isDark ? '#059669' : '#A7F3D0' }
-                                : log.status === 'bounced' || log.status === 'failed'
-                                ? { background: isDark ? 'rgba(239, 68, 68, 0.15)' : '#FDEBEC', color: isDark ? '#F87171' : '#9F2F2D', borderColor: isDark ? '#DC2626' : '#FECACA' }
-                                : { background: isDark ? 'rgba(56, 189, 248, 0.15)' : '#E0F2FE', color: isDark ? '#38BDF8' : '#0369A1', borderColor: isDark ? '#0284C7' : '#BAE6FD' }
-                            }
-                          >
-                            {getEmailStatusLabel(log.status)}
-                          </span>
-                        </div>
-                        <p className="text-[11px] font-mono mt-0.5" style={{ color: textSecondary }}>
-                          Subjek: {log.subject}
-                        </p>
-                      </div>
-                      <div className="text-right sm:self-center">
-                        <span className="text-[11px] font-mono" style={{ color: textSecondary }}>
-                          {formatDateTime(log.created_at)}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="p-4 rounded-lg text-center" style={{ background: isDark ? '#1C1C1F' : '#F9F9F8', border: '1px solid ' + borderColor }}>
-                  <p className="text-xs font-mono" style={{ color: textSecondary }}>
-                    {selectedApplication.parent_email 
-                      ? `Belum ada riwayat email tercatat untuk ${selectedApplication.parent_email}` 
-                      : 'Pendaftar ini belum memiliki alamat email'}
-                  </p>
-                </div>
-              )}
-            </div>
-
-            {/* Action Buttons */}
-            <div className="flex justify-end gap-2.5 pt-4 border-t" style={{ borderColor }}>
-              <button
-                className="px-3.5 py-1.5 text-xs font-mono uppercase tracking-wider border rounded transition-colors hover:bg-black/5 dark:hover:bg-white/5"
-                style={{ borderColor, color: textSecondary, borderRadius: '6px' }}
-                onClick={() => setShowDetailModal(false)}
-              >
-                {t('admission.detail.closeBtn')}
-              </button>
-              {selectedApplication.status === 'pending' && (
-                <>
-                  <button
-                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-mono uppercase tracking-wider border rounded transition-colors"
-                    style={{ background: isDark ? '#059669' : '#10B981', color: '#FFFFFF', borderColor: isDark ? '#047857' : '#059669', borderRadius: '6px' }}
-                    onClick={() => {
-                      setShowDetailModal(false);
-                      handleActionClick(selectedApplication, 'approved');
-                    }}
-                  >
-                    <FontAwesomeIcon icon={faCheck} className="text-[10px]" />
-                    {t('admission.detail.approveBtn')}
-                  </button>
-                  <button
-                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-mono uppercase tracking-wider border rounded transition-colors"
-                    style={{ background: isDark ? '#DC2626' : '#EF4444', color: '#FFFFFF', borderColor: isDark ? '#B91C1C' : '#DC2626', borderRadius: '6px' }}
-                    onClick={() => {
-                      setShowDetailModal(false);
-                      handleActionClick(selectedApplication, 'rejected');
-                    }}
-                  >
-                    <FontAwesomeIcon icon={faTimes} className="text-[10px]" />
-                    {t('admission.detail.rejectBtn')}
-                  </button>
-                </>
-              )}
-            </div>
-          </div>
-        )}
-      </Modal>
+        application={selectedApplication}
+        modalTab={modalTab}
+        setModalTab={setModalTab}
+        isDark={isDark}
+        cardBg={cardBg}
+        borderColor={borderColor}
+        textPrimary={textPrimary}
+        textSecondary={textSecondary}
+        inputStyle={inputStyle}
+        selectStyle={selectStyle}
+        statusConfig={statusConfig}
+        statusLabels={statusLabels}
+        formatDate={formatDate}
+        formatDateTime={formatDateTime}
+        formatCurrency={formatCurrency}
+        cleanAdditionalNotes={cleanAdditionalNotes}
+        handleSendStepEmail={handleSendStepEmail}
+        sendingEmailStep={sendingEmailStep}
+        handleVerifyFormFee={handleVerifyFormFee}
+        processing={processing}
+        isEditing={isEditing}
+        setIsEditing={setIsEditing}
+        editData={editData}
+        setEditData={setEditData}
+        editSaving={editSaving}
+        handleStartEdit={handleStartEdit}
+        handleSaveEdit={handleSaveEdit}
+        allCities={allCities}
+        scheduleData={scheduleData}
+        setScheduleData={setScheduleData}
+        sameDaySchedule={sameDaySchedule}
+        setSameDaySchedule={setSameDaySchedule}
+        handleSaveSchedule={handleSaveSchedule}
+        scheduleSaving={scheduleSaving}
+        discounts={discounts}
+        masterDiscounts={masterDiscounts}
+        udpDef={udpDef}
+        usekDef={usekDef}
+        discountLoading={discountLoading}
+        discountSaving={discountSaving}
+        showAddDiscount={showAddDiscount}
+        setShowAddDiscount={setShowAddDiscount}
+        addDiscountTarget={addDiscountTarget}
+        setAddDiscountTarget={setAddDiscountTarget}
+        handleAddDiscount={handleAddDiscount}
+        handleRemoveDiscount={handleRemoveDiscount}
+        handleMoveDiscount={handleMoveDiscount}
+        installmentConfig={installmentConfig}
+        setInstallmentConfig={setInstallmentConfig}
+        installmentLoading={installmentLoading}
+        installmentSaving={installmentSaving}
+        allInstallments={allInstallments}
+        handleSaveInstallment={handleSaveInstallment}
+        handlePrintInstallment={handlePrintInstallment}
+        handleEmailInstallment={handleEmailInstallment}
+        emailSending={emailSending}
+        calculateInstallmentSchedule={calculateInstallmentSchedule}
+        monthNames={monthNames}
+        actionType={actionType}
+        setActionType={setActionType}
+        adminNotes={adminNotes}
+        setAdminNotes={setAdminNotes}
+        handleUpdateStatus={handleUpdateStatus}
+        detailApplicantLogs={detailApplicantLogs}
+        detailLogsLoading={detailLogsLoading}
+        fetchLogsForApplicant={fetchLogsForApplicant}
+        handleResendPaymentEmail={handleResendPaymentEmail}
+        resendingEmailId={resendingEmailId}
+        getEmailTypeLabel={getEmailTypeLabel}
+        getEmailStatusLabel={getEmailStatusLabel}
+      />
 
       {/* Action Confirmation Modal */}
       <Modal

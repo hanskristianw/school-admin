@@ -146,54 +146,243 @@ export const emailTemplates = {
     return { subject, html }
   },
 
-  admissionApproved: ({ parentName, studentName, applicationNumber }) => {
-    const subject = `🎉 Application Approved — ${applicationNumber}`
+  formFeeVerified: ({
+    parentName,
+    parentEmail,
+    parentPhone,
+    studentName,
+    applicationNumber,
+    levelName,
+    feeAmount = 250000,
+    hostingUrl = 'https://ccs.sch.id/registrasi'
+  }) => {
+    const formattedAmount = `Rp ${Number(feeAmount || 250000).toLocaleString('id-ID')}`
+    const queryTarget = parentEmail || applicationNumber
+    const queryPhone = parentPhone ? `&phone=${encodeURIComponent(parentPhone)}` : ''
+    const checkUrl = `${String(hostingUrl || 'https://ccs.sch.id/registrasi').replace(/\/$/, '')}/status.php?cek=${encodeURIComponent(queryTarget)}${queryPhone}#tempat-unggah`
+    const subject = `Pembayaran Biaya Formulir Terverifikasi (Lunas) — ${applicationNumber}`
     const html = wrapHtml(`
       <div class="container">
-        <div class="header">
-          <h1>🎉 Application Approved!</h1>
-          <p>Chung Chung Christian School</p>
+        <div class="header" style="background: linear-gradient(135deg, #059669, #0d9488); color: #fff; padding: 28px 24px; text-align: center;">
+          <h1 style="margin:0; font-size: 20px; font-weight: 700; color: #ffffff;">Chung Chung Christian School</h1>
+          <p style="margin:6px 0 0; opacity: 0.9; font-size: 13px; color: #ccfbf1;">Konfirmasi Pembayaran Biaya Formulir Lunas</p>
         </div>
-        <div class="body">
-          <p>Dear <strong>${parentName}</strong>,</p>
-          <p>Congratulations! Your child's application has been <span class="badge badge-success">APPROVED</span>.</p>
+        <div class="body" style="padding: 24px; color: #334155; line-height: 1.6;">
+          <p>Yth. Bapak/Ibu <strong>${parentName || 'Orang Tua / Wali Calon Siswa'}</strong>,</p>
+          <p>Kami mengonfirmasikan bahwa pembayaran biaya pendaftaran formulir calon siswa di <strong>Chung Chung Christian School</strong> telah <strong>BERHASIL DIVERIFIKASI & LUNAS</strong>.</p>
           
-          <div class="detail-box">
-            <div class="detail-row"><span class="detail-label">Student Name</span><span class="detail-value">${studentName}</span></div>
-            <div class="detail-row"><span class="detail-label">Application No.</span><span class="detail-value">${applicationNumber}</span></div>
+          <div class="detail-box" style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 12px; padding: 16px; margin: 16px 0;">
+            <div class="detail-row" style="display:flex; justify-content:space-between; padding:6px 0; border-bottom: 1px dashed #bbf7d0; font-size: 14px;">
+              <span class="detail-label" style="color:#166534;">Nomor Registrasi:</span>
+              <span class="detail-value" style="font-weight:700; font-family:monospace; color:#14532d; font-size: 15px;">${applicationNumber}</span>
+            </div>
+            <div class="detail-row" style="display:flex; justify-content:space-between; padding:6px 0; border-bottom: 1px dashed #bbf7d0; font-size: 14px;">
+              <span class="detail-label" style="color:#166534;">Nama Calon Siswa:</span>
+              <span class="detail-value" style="font-weight:600; color:#14532d;">${studentName || '-'}</span>
+            </div>
+            <div class="detail-row" style="display:flex; justify-content:space-between; padding:6px 0; border-bottom: 1px dashed #bbf7d0; font-size: 14px;">
+              <span class="detail-label" style="color:#166534;">Jenjang Dituju:</span>
+              <span class="detail-value" style="font-weight:600; color:#14532d;">${levelName || '-'}</span>
+            </div>
+            <div class="detail-row" style="display:flex; justify-content:space-between; padding:6px 0; font-size: 14px;">
+              <span class="detail-label" style="color:#166534;">Nominal Diterima:</span>
+              <span class="detail-value" style="font-weight:700; color:#047857;">${formattedAmount} (LUNAS)</span>
+            </div>
           </div>
-          
-          <p>Please contact the school for the next steps.</p>
+
+          <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 10px; padding: 16px; margin: 18px 0;">
+            <h4 style="margin: 0 0 8px 0; font-size: 14px; color: #1e40af; font-weight: 700;">Langkah Selanjutnya (Tahap 3 - Pengisian Biodata & Jadwal):</h4>
+            <p style="margin: 0; font-size: 13px; color: #1e3a8a;">
+              Silakan akses portal pendaftaran untuk melengkapi biodata calon siswa dan orang tua serta menentukan tanggal tes penempatan siswa & wawancara orang tua.
+            </p>
+          </div>
+
+          <div style="text-align: center; margin: 24px 0 16px 0;">
+            <a href="${checkUrl}" style="background: #059669; color: #ffffff; padding: 12px 28px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 14px; display: inline-block;">
+              Lengkapi Biodata & Jadwal &rarr;
+            </a>
+          </div>
+
+          <p style="font-size: 12px; color: #94a3b8; margin-top: 16px;">
+            Tautan Alternatif: <a href="${checkUrl}" style="color: #0284c7; word-break: break-all;">${checkUrl}</a>
+          </p>
         </div>
-        <div class="footer">
-          This message is automatically generated by the CCS System — Chung Chung Christian School
+        <div class="footer" style="padding: 16px 24px; text-align: center; font-size: 12px; color: #94a3b8; border-top: 1px solid #f1f5f9;">
+          Chung Chung Christian School &bull; Jl. Raya Gn. Anyar Sawah No.18, Surabaya &bull; Hotline: +62 859-5986-0430
         </div>
       </div>
     `)
     return { subject, html }
   },
 
-  admissionRejected: ({ parentName, studentName, applicationNumber }) => {
-    const subject = `Application Update — ${applicationNumber}`
+  placementTestSchedule: ({
+    parentName,
+    parentEmail,
+    studentName,
+    applicationNumber,
+    levelName,
+    testDate,
+    testSession,
+    interviewDate,
+    interviewSession,
+    scheduleNotes,
+    hostingUrl = 'https://ccs.sch.id/registrasi'
+  }) => {
+    const checkUrl = `${String(hostingUrl || 'https://ccs.sch.id/registrasi').replace(/\/$/, '')}/status.php?cek=${encodeURIComponent(parentEmail || applicationNumber)}`
+    const subject = `Jadwal Tes Penempatan Siswa & Wawancara Orang Tua — ${applicationNumber}`
     const html = wrapHtml(`
       <div class="container">
-        <div class="header" style="background: linear-gradient(135deg, #dc2626, #ef4444);">
-          <h1>Application Update</h1>
-          <p>Chung Chung Christian School</p>
+        <div class="header" style="background: linear-gradient(135deg, #4f46e5, #7c3aed); color: #fff; padding: 28px 24px; text-align: center;">
+          <h1 style="margin:0; font-size: 20px; font-weight: 700; color: #ffffff;">Chung Chung Christian School</h1>
+          <p style="margin:6px 0 0; opacity: 0.9; font-size: 13px; color: #e0e7ff;">Konfirmasi Jadwal Tes Penempatan & Wawancara</p>
         </div>
-        <div class="body">
-          <p>Dear <strong>${parentName}</strong>,</p>
-          <p>We regret to inform you that your child's application <span class="badge badge-danger">cannot be accepted</span> at this time.</p>
+        <div class="body" style="padding: 24px; color: #334155; line-height: 1.6;">
+          <p>Yth. Bapak/Ibu <strong>${parentName || 'Orang Tua / Wali Calon Siswa'}</strong>,</p>
+          <p>Berikut adalah rincian jadwal resmi pelaksanaan <strong>Tes Penempatan Calon Siswa</strong> dan <strong>Wawancara Orang Tua</strong> di Chung Chung Christian School:</p>
           
-          <div class="detail-box rejected">
-            <div class="detail-row"><span class="detail-label">Student Name</span><span class="detail-value">${studentName}</span></div>
-            <div class="detail-row"><span class="detail-label">Application No.</span><span class="detail-value">${applicationNumber}</span></div>
+          <div class="detail-box" style="background: #fdf4ff; border: 1px solid #f5d0fe; border-radius: 12px; padding: 16px; margin: 16px 0;">
+            <div class="detail-row" style="display:flex; justify-content:space-between; padding:6px 0; border-bottom: 1px dashed #f5d0fe; font-size: 14px;">
+              <span class="detail-label" style="color:#86198f;">Nomor Registrasi:</span>
+              <span class="detail-value" style="font-weight:700; font-family:monospace; color:#701a75;">${applicationNumber}</span>
+            </div>
+            <div class="detail-row" style="display:flex; justify-content:space-between; padding:6px 0; border-bottom: 1px dashed #f5d0fe; font-size: 14px;">
+              <span class="detail-label" style="color:#86198f;">Nama Calon Siswa:</span>
+              <span class="detail-value" style="font-weight:600; color:#701a75;">${studentName}</span>
+            </div>
+            <div class="detail-row" style="display:flex; justify-content:space-between; padding:6px 0; border-bottom: 1px dashed #f5d0fe; font-size: 14px;">
+              <span class="detail-label" style="color:#86198f;">Jenjang Dituju:</span>
+              <span class="detail-value" style="font-weight:600; color:#701a75;">${levelName || '-'}</span>
+            </div>
+          </div>
+
+          <div style="display:grid; grid-template-columns: 1fr; gap: 12px; margin: 16px 0;">
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px;">
+              <div style="font-weight: 700; font-size: 13px; color: #4338ca; margin-bottom: 4px;">📝 1. Tes Penempatan Calon Siswa</div>
+              <div style="font-size: 14px; font-weight: 600; color: #0f172a;">Tanggal: ${testDate || 'Akan dihubungi staf'}</div>
+              <div style="font-size: 13px; color: #64748b;">Sesi Waktu: ${testSession || '08:30 - 10:00 WIB'}</div>
+            </div>
+            
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px;">
+              <div style="font-weight: 700; font-size: 13px; color: #7e22ce; margin-bottom: 4px;">🤝 2. Wawancara Orang Tua & Observasi</div>
+              <div style="font-size: 14px; font-weight: 600; color: #0f172a;">Tanggal: ${interviewDate || testDate || 'Akan dihubungi staf'}</div>
+              <div style="font-size: 13px; color: #64748b;">Sesi Waktu: ${interviewSession || '08:30 - 10:00 WIB'}</div>
+            </div>
+          </div>
+
+          ${scheduleNotes ? `
+          <div style="background: #f0fdfa; border: 1px solid #99f6e4; border-radius: 8px; padding: 12px; margin: 14px 0; font-size: 13px; color: #115e59;">
+            <strong>Catatan Pendampingan / Tambahan:</strong><br/>
+            &ldquo;${scheduleNotes}&rdquo;
+          </div>
+          ` : ''}
+
+          <div style="background: #f1f5f9; border-radius: 8px; padding: 12px; margin-top: 14px; font-size: 12px; color: #475569;">
+            <strong>📍 Lokasi Kampus:</strong><br/>
+            Chung Chung Christian School<br/>
+            Jl. Raya Gn. Anyar Sawah No.18, Gn. Anyar, Kec. Gn. Anyar, Surabaya, Jawa Timur 60294<br/>
+            <em>(Mohon hadir 15 menit sebelum sesi dimulai dengan membawa alat tulis dan kartu identitas).</em>
+          </div>
+
+          <div style="text-align: center; margin: 20px 0 12px 0;">
+            <a href="${checkUrl}" style="background: #4f46e5; color: #ffffff; padding: 10px 24px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 13px; display: inline-block;">
+              Cek Status Jadwal &rarr;
+            </a>
+          </div>
+        </div>
+        <div class="footer" style="padding: 16px 24px; text-align: center; font-size: 12px; color: #94a3b8; border-top: 1px solid #f1f5f9;">
+          Chung Chung Christian School &bull; Hotline Admissions: +62 859-5986-0430
+        </div>
+      </div>
+    `)
+    return { subject, html }
+  },
+
+  admissionApproved: ({ parentName, studentName, applicationNumber, levelName, adminNotes }) => {
+    const subject = `🎉 Pengumuman Hasil Seleksi: DITERIMA — ${applicationNumber}`
+    const html = wrapHtml(`
+      <div class="container">
+        <div class="header" style="background: linear-gradient(135deg, #059669, #10b981); color: #fff; padding: 32px 24px; text-align: center;">
+          <h1 style="margin: 0; font-size: 22px; font-weight: 700; color: #ffffff;">🎉 Selamat! Calon Siswa Diterima</h1>
+          <p style="margin: 6px 0 0; opacity: 0.95; font-size: 14px; color: #d1fae5;">Chung Chung Christian School</p>
+        </div>
+        <div class="body" style="padding: 28px 24px; color: #334155; line-height: 1.6;">
+          <p>Yth. Bapak/Ibu <strong>${parentName || 'Orang Tua / Wali Calon Siswa'}</strong>,</p>
+          <p>Dengan sukacita kami memberitahukan bahwa berdasarkan hasil tes penempatan dan observasi wawancara, calon siswa berikut dinyatakan <strong>DITERIMA</strong> di <strong>Chung Chung Christian School</strong>:</p>
+          
+          <div class="detail-box" style="background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 12px; padding: 18px; margin: 20px 0;">
+            <div class="detail-row" style="display:flex; justify-content:space-between; padding:6px 0; border-bottom: 1px dashed #a7f3d0; font-size: 14px;">
+              <span class="detail-label" style="color:#065f46;">Nama Siswa:</span>
+              <span class="detail-value" style="font-weight:700; color:#064e3b; font-size: 15px;">${studentName}</span>
+            </div>
+            <div class="detail-row" style="display:flex; justify-content:space-between; padding:6px 0; border-bottom: 1px dashed #a7f3d0; font-size: 14px;">
+              <span class="detail-label" style="color:#065f46;">Nomor Registrasi:</span>
+              <span class="detail-value" style="font-weight:700; font-family:monospace; color:#064e3b;">${applicationNumber}</span>
+            </div>
+            ${levelName ? `
+            <div class="detail-row" style="display:flex; justify-content:space-between; padding:6px 0; border-bottom: 1px dashed #a7f3d0; font-size: 14px;">
+              <span class="detail-label" style="color:#065f46;">Jenjang:</span>
+              <span class="detail-value" style="font-weight:600; color:#064e3b;">${levelName}</span>
+            </div>
+            ` : ''}
+            <div class="detail-row" style="display:flex; justify-content:space-between; padding:6px 0; font-size: 14px;">
+              <span class="detail-label" style="color:#065f46;">Status Keputusan:</span>
+              <span class="badge badge-success" style="background: #10b981; color: #ffffff; padding: 4px 12px; border-radius: 9999px; font-weight: 700; font-size: 12px;">DITERIMA / ACCEPTED</span>
+            </div>
           </div>
           
-          <p>Please contact the school for further information.</p>
+          ${adminNotes ? `
+          <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px; margin: 16px 0; font-size: 13px;">
+            <strong style="color: #0f172a;">Catatan Panitia Penerimaan:</strong>
+            <p style="margin: 4px 0 0 0; color: #475569;">${adminNotes}</p>
+          </div>
+          ` : ''}
+
+          <p>Langkah selanjutnya mengenai administrasi daftar ulang dan biaya pendidikan akan disampaikan lebih lanjut oleh staf Admissions kami.</p>
+          <p>Selamat bergabung dalam keluarga besar <strong>Chung Chung Christian School</strong>!</p>
         </div>
-        <div class="footer">
-          This message is automatically generated by the CCS System — Chung Chung Christian School
+        <div class="footer" style="padding: 16px 24px; text-align: center; font-size: 12px; color: #94a3b8; border-top: 1px solid #f1f5f9;">
+          Chung Chung Christian School &bull; Jl. Raya Gn. Anyar Sawah No.18, Surabaya &bull; Hotline: +62 859-5986-0430
+        </div>
+      </div>
+    `)
+    return { subject, html }
+  },
+
+  admissionRejected: ({ parentName, studentName, applicationNumber, adminNotes }) => {
+    const subject = `Pemberitahuan Hasil Seleksi Penerimaan Siswa — ${applicationNumber}`
+    const html = wrapHtml(`
+      <div class="container">
+        <div class="header" style="background: linear-gradient(135deg, #475569, #334155); color: #fff; padding: 32px 24px; text-align: center;">
+          <h1 style="margin: 0; font-size: 20px; font-weight: 700; color: #ffffff;">Pemberitahuan Hasil Seleksi</h1>
+          <p style="margin: 6px 0 0; opacity: 0.9; font-size: 13px; color: #cbd5e1;">Chung Chung Christian School</p>
+        </div>
+        <div class="body" style="padding: 28px 24px; color: #334155; line-height: 1.6;">
+          <p>Yth. Bapak/Ibu <strong>${parentName || 'Orang Tua / Wali Calon Siswa'}</strong>,</p>
+          <p>Terima kasih atas kepercayaan dan antusiasme Anda mendaftarkan putra/putri di <strong>Chung Chung Christian School</strong>.</p>
+          <p>Setelah melalui proses peninjauan berkas serta evaluasi hasil tes dan wawancara dengan seksama, kami menginformasikan bahwa saat ini kami belum dapat menerima calon siswa:</p>
+          
+          <div class="detail-box" style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 12px; padding: 16px; margin: 18px 0;">
+            <div class="detail-row" style="display:flex; justify-content:space-between; padding:6px 0; border-bottom: 1px dashed #fecaca; font-size: 14px;">
+              <span class="detail-label" style="color:#991b1b;">Nama Calon Siswa:</span>
+              <span class="detail-value" style="font-weight:600; color:#7f1d1d;">${studentName}</span>
+            </div>
+            <div class="detail-row" style="display:flex; justify-content:space-between; padding:6px 0; font-size: 14px;">
+              <span class="detail-label" style="color:#991b1b;">Nomor Registrasi:</span>
+              <span class="detail-value" style="font-weight:600; font-family:monospace; color:#7f1d1d;">${applicationNumber}</span>
+            </div>
+          </div>
+          
+          ${adminNotes ? `
+          <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px; margin: 16px 0; font-size: 13px;">
+            <strong style="color: #0f172a;">Catatan:</strong>
+            <p style="margin: 4px 0 0 0; color: #475569;">${adminNotes}</p>
+          </div>
+          ` : ''}
+
+          <p>Keputusan ini diambil dengan mempertimbangkan daya tampung kuota kelas yang terbatas pada tahun ajaran ini. Kami senantiasa mendoakan kesuksesan calon siswa pada jenjang pendidikan selanjutnya.</p>
+        </div>
+        <div class="footer" style="padding: 16px 24px; text-align: center; font-size: 12px; color: #94a3b8; border-top: 1px solid #f1f5f9;">
+          Chung Chung Christian School &bull; Jl. Raya Gn. Anyar Sawah No.18, Surabaya
         </div>
       </div>
     `)
