@@ -45,12 +45,15 @@ import {
   faDownload,
   faEdit,
   faFileInvoice,
-  faPrint
+  faPrint,
+  faSync,
+  faPaperPlane,
+  faHistory
 } from '@fortawesome/free-solid-svg-icons';
 
 const statusConfig = {
   pending: {
-    label: 'Menunggu Review',
+    label: 'Menunggu Peninjauan',
     icon: faClock,
     color: 'text-amber-700 dark:text-amber-400',
     bgColor: 'bg-amber-50 dark:bg-amber-950/30',
@@ -71,6 +74,30 @@ const statusConfig = {
     borderColor: 'border-rose-200 dark:border-rose-800'
   }
 };
+
+const getEmailTypeLabel = (type) => {
+  switch (type) {
+    case 'payment_instruction': return 'Instruksi Pembayaran & Tagihan';
+    case 'submission_confirmation': return 'Konfirmasi Pendaftaran';
+    case 'form_fee_receipt': return 'Kuitansi Pembayaran Formulir';
+    case 'installment_plan': return 'Perjanjian Skema Cicilan';
+    default: return type ? type.replace(/_/g, ' ') : '-';
+  }
+};
+
+const getEmailStatusLabel = (status) => {
+  switch (status) {
+    case 'delivered': return 'Terkirim';
+    case 'sent': return 'Terkirim';
+    case 'bounced': return 'Gagal Terkirim';
+    case 'failed': return 'Gagal';
+    case 'queued': return 'Dalam Antrean';
+    case 'opened': return 'Telah Dibuka';
+    case 'clicked': return 'Tautan Diklik';
+    default: return status || '-';
+  }
+};
+
 
 export default function AdmissionManagement() {
   const router = useRouter();
@@ -188,6 +215,15 @@ export default function AdmissionManagement() {
     start_year: new Date().getFullYear(),
     notes: ''
   });
+
+  // Email Logs & Tab states
+  const [activeTab, setActiveTab] = useState('applications'); // 'applications' | 'email_logs'
+  const [emailLogs, setEmailLogs] = useState([]);
+  const [emailLogsLoading, setEmailLogsLoading] = useState(false);
+  const [emailLogSearch, setEmailLogSearch] = useState('');
+  const [resendingEmailId, setResendingEmailId] = useState(null);
+  const [detailApplicantLogs, setDetailApplicantLogs] = useState([]);
+  const [detailLogsLoading, setDetailLogsLoading] = useState(false);
 
   const monthNames = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
 
@@ -547,11 +583,91 @@ export default function AdmissionManagement() {
     }
   };
 
+  const fetchEmailLogs = async (search = '') => {
+    setEmailLogsLoading(true);
+    try {
+      const url = `/api/email/admission/logs${search ? `?search=${encodeURIComponent(search)}` : ''}`;
+      const res = await fetch(url);
+      const json = await res.json();
+      if (json.success) {
+        setEmailLogs(json.data || []);
+      } else {
+        console.warn('Gagal memuat log email:', json.message);
+      }
+    } catch (err) {
+      console.error('Error fetching email logs:', err);
+    } finally {
+      setEmailLogsLoading(false);
+    }
+  };
+
+  const fetchLogsForApplicant = async (email) => {
+    if (!email) {
+      setDetailApplicantLogs([]);
+      return;
+    }
+    setDetailLogsLoading(true);
+    try {
+      const res = await fetch(`/api/email/admission/logs?email=${encodeURIComponent(email)}`);
+      const json = await res.json();
+      if (json.success) {
+        setDetailApplicantLogs(json.data || []);
+      } else {
+        setDetailApplicantLogs([]);
+      }
+    } catch (err) {
+      console.error('Error fetching logs for applicant:', err);
+      setDetailApplicantLogs([]);
+    } finally {
+      setDetailLogsLoading(false);
+    }
+  };
+
+  const handleResendPaymentEmail = async (app) => {
+    if (!app || !app.parent_email) {
+      showNotification('Peringatan', 'Pendaftar ini belum memiliki alamat email orang tua yang terdaftar.', 'error');
+      return;
+    }
+    setResendingEmailId(app.application_id);
+    try {
+      const res = await fetch('/api/email/admission/resend', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          application_id: app.application_id,
+          type: 'payment_instruction'
+        })
+      });
+      const json = await res.json();
+      if (json.success) {
+        showNotification('Berhasil', json.message || `Email tagihan berhasil dikirim ulang ke ${app.parent_email}`, 'success');
+        if (selectedApplication && selectedApplication.application_id === app.application_id) {
+          fetchLogsForApplicant(app.parent_email);
+        }
+        if (activeTab === 'email_logs') {
+          fetchEmailLogs(emailLogSearch);
+        }
+      } else {
+        showNotification('Gagal', json.message || 'Gagal mengirim ulang email', 'error');
+      }
+    } catch (err) {
+      console.error('Error resending payment email:', err);
+      showNotification('Error', 'Gagal mengirim email: ' + err.message, 'error');
+    } finally {
+      setResendingEmailId(null);
+    }
+  };
+
   const handleViewDetail = (application) => {
     setSelectedApplication(application);
     setShowDetailModal(true);
     setIsEditing(false);
     fetchDiscountsForApplication(application);
+    if (application?.parent_email) {
+      fetchLogsForApplicant(application.parent_email);
+    } else {
+      setDetailApplicantLogs([]);
+    }
   };
 
   const handleStartEdit = () => {
@@ -749,7 +865,7 @@ export default function AdmissionManagement() {
         setSelectedApplication({ ...selectedApplication, ...updateData });
       }
       setApplications(prev => prev.map(a => a.application_id === applicationId ? { ...a, ...updateData } : a));
-      showNotification('Berhasil', `Status pembayaran formulir berhasil diubah menjadi ${newStatus === 'verified' ? 'Disetujui (Approved)' : 'Ditolak'}`, 'success');
+      showNotification('Berhasil', `Status pembayaran formulir berhasil diubah menjadi ${newStatus === 'verified' ? 'Disetujui' : 'Ditolak'}`, 'success');
     } catch (err) {
       console.error('Error verifying form fee:', err);
       showNotification('Error', 'Gagal memverifikasi formulir: ' + err.message, 'error');
@@ -1294,7 +1410,7 @@ export default function AdmissionManagement() {
   // Excel export
   const handleExportExcel = async () => {
     if (filteredApplications.length === 0) {
-      showNotification('Info', 'Tidak ada data untuk di-export', 'error');
+      showNotification('Informasi', 'Tidak ada data untuk diekspor', 'error');
       return;
     }
 
@@ -1337,14 +1453,14 @@ export default function AdmissionManagement() {
         'Tahun Ajaran': app.year?.year_name || '',
         'Tanggal Daftar': formatDate(app.created_at),
         'Status': statusLabels[app.status] || app.status,
-        'UDP (Base)': fee.udpBase,
+        'UDP Pokok': fee.udpBase,
         'Detail Potongan UDP': udpDetail || '-',
         'Total Potongan UDP': fee.udpBase - fee.udpFinal,
-        'UDP (Final)': fee.udpFinal,
-        'USEK/bln (Base)': fee.usekBase,
+        'UDP Akhir (Netto)': fee.udpFinal,
+        'USEK/bln Pokok': fee.usekBase,
         'Detail Potongan USEK': usekDetail || '-',
         'Total Potongan USEK/bln': fee.usekBase - fee.usekFinal,
-        'USEK/bln (Final)': fee.usekFinal,
+        'USEK/bln Akhir': fee.usekFinal,
         'Catatan Admin': app.admin_notes || '',
       };
     });
@@ -1368,7 +1484,7 @@ export default function AdmissionManagement() {
     link.download = filename
     link.click()
     URL.revokeObjectURL(link.href)
-    showNotification('Berhasil', `Data berhasil di-export (${filteredApplications.length} baris)`, 'success');
+    showNotification('Berhasil', `Data pendaftaran berhasil diekspor (${filteredApplications.length} baris)`, 'success');
   };
 
   // Count by status
@@ -1401,11 +1517,11 @@ export default function AdmissionManagement() {
       <div className="pb-5 border-b flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6" style={{ borderColor }}>
         <div>
           <div className="flex items-center gap-2 text-[10px] font-mono tracking-wider uppercase mb-1.5" style={{ color: textSecondary }}>
-            <span>[ADMISSIONS]</span>
+            <span>[PENDAFTARAN]</span>
             <span>/</span>
-            <span>[STUDENT ENROLLMENT]</span>
+            <span>[PENERIMAAN SISWA]</span>
             <span>/</span>
-            <span className="font-semibold" style={{ color: isDark ? '#60A5FA' : '#0284C7' }}>[APPLICATIONS]</span>
+            <span className="font-semibold" style={{ color: isDark ? '#60A5FA' : '#0284C7' }}>[DATA PENDAFTARAN]</span>
           </div>
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded flex items-center justify-center border" style={{ background: isDark ? 'rgba(59, 130, 246, 0.15)' : '#E1F3FE', borderColor: isDark ? '#2563EB' : '#BAE6FD', color: isDark ? '#60A5FA' : '#0284C7' }}>
@@ -1557,7 +1673,39 @@ export default function AdmissionManagement() {
         </div>
       </div>
 
-      {/* ── PENDING FORM FEE PROOFS ALERT (MINIMALIST BANNER) ─────────────── */}
+      {/* ── MINIMALIST TAB SWITCHER: DATA PENDAFTAR VS LOG PENGIRIMAN EMAIL ─── */}
+      <div className="flex items-center gap-6 border-b mb-6" style={{ borderColor }}>
+        <button
+          onClick={() => setActiveTab('applications')}
+          className="pb-2.5 text-xs font-mono uppercase tracking-wider font-semibold transition-all relative flex items-center gap-2"
+          style={{
+            color: activeTab === 'applications' ? textPrimary : textSecondary,
+            borderBottom: activeTab === 'applications' ? `2px solid ${textPrimary}` : '2px solid transparent'
+          }}
+        >
+          <FontAwesomeIcon icon={faUserGraduate} className="text-[11px]" />
+          <span>Data Pendaftar ({applications.length})</span>
+        </button>
+
+        <button
+          onClick={() => {
+            setActiveTab('email_logs');
+            if (emailLogs.length === 0) fetchEmailLogs();
+          }}
+          className="pb-2.5 text-xs font-mono uppercase tracking-wider font-semibold transition-all relative flex items-center gap-2"
+          style={{
+            color: activeTab === 'email_logs' ? textPrimary : textSecondary,
+            borderBottom: activeTab === 'email_logs' ? `2px solid ${textPrimary}` : '2px solid transparent'
+          }}
+        >
+          <FontAwesomeIcon icon={faEnvelope} className="text-[11px]" />
+          <span>Log Pengiriman Email {emailLogs.length > 0 ? `(${emailLogs.length})` : ''}</span>
+        </button>
+      </div>
+
+      {activeTab === 'applications' && (
+        <>
+          {/* ── PENDING FORM FEE PROOFS ALERT (MINIMALIST BANNER) ─────────────── */}
       {applications.filter(a => a.form_fee_status === 'proof_uploaded').length > 0 && (
         <div 
           className="p-3.5 rounded border mb-6 flex items-center justify-between flex-wrap gap-3"
@@ -1690,7 +1838,7 @@ export default function AdmissionManagement() {
           }}
         >
           <FontAwesomeIcon icon={faClock} style={{ fontSize: '12px' }} />
-          Menunggu Review
+          {statusLabels.pending}
           <span
             className="px-1.5 py-0.5 rounded text-[10px] font-mono"
             style={{
@@ -1811,7 +1959,7 @@ export default function AdmissionManagement() {
               {t('admission.table.title')}
             </span>
             <span className="text-[10px] font-mono px-2 py-0.5 rounded border" style={{ background: isDark ? '#27272A' : '#F4F4F5', borderColor, color: textSecondary }}>
-              {filteredApplications.length} baris
+              {filteredApplications.length} pendaftar
             </span>
           </div>
         </div>
@@ -1952,12 +2100,12 @@ export default function AdmissionManagement() {
                             >
                               <FontAwesomeIcon icon={app.form_fee_status === 'verified' ? faCheck : (app.form_fee_status === 'rejected' ? faTimes : faClock)} className="text-[8px]" />
                               {app.form_fee_status === 'verified'
-                                ? 'Form Lunas'
+                                ? 'Formulir Lunas'
                                 : app.form_fee_status === 'proof_uploaded'
-                                ? 'Verif Bukti Form'
+                                ? 'Perlu Verifikasi Bukti'
                                 : app.form_fee_status === 'rejected'
                                 ? 'Bukti Ditolak'
-                                : 'Form Belum Bayar'}
+                                : 'Belum Bayar Formulir'}
                             </span>
                           ) : null}
                         </div>
@@ -1998,6 +2146,16 @@ export default function AdmissionManagement() {
                             <FontAwesomeIcon icon={faCalculator} className="text-xs" />
                           </button>
 
+                          <button
+                            onClick={() => handleResendPaymentEmail(app)}
+                            disabled={resendingEmailId === app.application_id || !app.parent_email}
+                            className="p-1.5 rounded border transition-colors hover:bg-sky-50 dark:hover:bg-sky-950/30 disabled:opacity-30"
+                            style={{ borderColor, color: isDark ? '#38BDF8' : '#0284C7' }}
+                            title={app.parent_email ? `Kirim Ulang Email Tagihan & Rekening (${app.parent_email})` : 'Email orang tua belum terdaftar'}
+                          >
+                            <FontAwesomeIcon icon={resendingEmailId === app.application_id ? faSpinner : faEnvelope} className={`text-xs ${resendingEmailId === app.application_id ? 'animate-spin' : ''}`} />
+                          </button>
+
                           {app.status === 'pending' && (
                             <>
                               <button
@@ -2028,6 +2186,141 @@ export default function AdmissionManagement() {
           </div>
         )}
       </div>
+      </>
+      )}
+
+      {/* ── EMAIL LOGS VIEW (RESEND REAL-TIME AUDIT TRAIL) ───────────────── */}
+      {activeTab === 'email_logs' && (
+        <div className="space-y-6">
+          {/* Email Logs Filter Bar */}
+          <div className="p-3.5 rounded border" style={{ background: cardBg, borderColor, borderRadius: '8px' }}>
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+              <div className="relative w-full sm:w-80">
+                <FontAwesomeIcon icon={faSearch} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs" style={{ color: textSecondary }} />
+                <input
+                  type="text"
+                  placeholder="Cari email penerima, subjek, atau REG-..."
+                  value={emailLogSearch}
+                  onChange={(e) => setEmailLogSearch(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && fetchEmailLogs(emailLogSearch)}
+                  className="w-full pl-8 pr-2.5 py-1.5 text-xs font-mono rounded border outline-none"
+                  style={inputStyle}
+                />
+              </div>
+
+              <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+                <button
+                  onClick={() => fetchEmailLogs(emailLogSearch)}
+                  disabled={emailLogsLoading}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-mono uppercase tracking-wider border rounded font-medium transition-colors hover:bg-black/5 dark:hover:bg-white/5"
+                  style={{ background: cardBg, borderColor, color: textPrimary, borderRadius: '6px' }}
+                >
+                  <FontAwesomeIcon icon={faSync} className={`text-[10px] ${emailLogsLoading ? 'animate-spin' : ''}`} />
+                  <span>Segarkan Log</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Email Logs Table */}
+          <div className="border rounded overflow-hidden" style={{ borderColor, background: cardBg, borderRadius: '8px' }}>
+            {emailLogsLoading ? (
+              <div className="p-12 text-center" style={{ color: textSecondary }}>
+                <FontAwesomeIcon icon={faSpinner} className="text-2xl animate-spin mb-3" style={{ color: isDark ? '#60A5FA' : '#0284C7' }} />
+                <p className="text-xs font-mono">Memuat riwayat pengiriman email dari server...</p>
+              </div>
+            ) : emailLogs.length === 0 ? (
+              <div className="p-12 text-center" style={{ color: textSecondary }}>
+                <FontAwesomeIcon icon={faEnvelope} className="text-2xl mb-2 opacity-40" />
+                <p className="text-xs font-mono font-medium">Tidak ada log pengiriman email ditemukan.</p>
+                <p className="text-[11px] font-mono mt-1">Klik tombol &apos;Segarkan Log&apos; atau sesuaikan kata kunci pencarian Anda.</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="border-b text-left" style={{ borderColor, background: isDark ? '#1C1C1F' : '#F9F9F8' }}>
+                      <th className="py-2.5 px-3.5 font-mono uppercase tracking-wider text-[10px]" style={{ color: textSecondary }}>Waktu Kirim</th>
+                      <th className="py-2.5 px-3.5 font-mono uppercase tracking-wider text-[10px]" style={{ color: textSecondary }}>Penerima (Email)</th>
+                      <th className="py-2.5 px-3.5 font-mono uppercase tracking-wider text-[10px]" style={{ color: textSecondary }}>No. Registrasi</th>
+                      <th className="py-2.5 px-3.5 font-mono uppercase tracking-wider text-[10px]" style={{ color: textSecondary }}>Tipe / Subjek Email</th>
+                      <th className="py-2.5 px-3.5 font-mono uppercase tracking-wider text-[10px]" style={{ color: textSecondary }}>Status Pengiriman</th>
+                      <th className="py-2.5 px-3.5 font-mono uppercase tracking-wider text-[10px] text-right" style={{ color: textSecondary }}>Tindakan</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {emailLogs.map((log) => {
+                      const matchedApp = applications.find(a => 
+                        (log.application_number && a.application_number === log.application_number) ||
+                        (a.parent_email && log.to.includes(a.parent_email))
+                      );
+
+                      return (
+                        <tr key={log.id} className="border-b transition-colors hover:bg-black/5 dark:hover:bg-white/5" style={{ borderColor }}>
+                          <td className="py-2.5 px-3.5 font-mono text-xs whitespace-nowrap" style={{ color: textSecondary }}>
+                            {formatDateTime(log.created_at)}
+                          </td>
+                          <td className="py-2.5 px-3.5 font-medium whitespace-nowrap" style={{ color: textPrimary }}>
+                            <div className="flex items-center gap-1.5">
+                              <FontAwesomeIcon icon={faEnvelope} className="text-[10px]" style={{ color: textSecondary }} />
+                              <span>{log.to.join(', ')}</span>
+                            </div>
+                          </td>
+                          <td className="py-2.5 px-3.5 font-mono font-bold whitespace-nowrap" style={{ color: isDark ? '#60A5FA' : '#0284C7' }}>
+                            {log.application_number || '-'}
+                          </td>
+                          <td className="py-2.5 px-3.5 max-w-xs truncate" style={{ color: textPrimary }} title={log.subject}>
+                            <span className="font-semibold block">{getEmailTypeLabel(log.email_type)}</span>
+                            <span className="text-[11px] font-mono text-gray-400 block truncate">{log.subject}</span>
+                          </td>
+                          <td className="py-2.5 px-3.5 whitespace-nowrap">
+                            <span
+                              className="px-2.5 py-1 rounded text-[10px] font-mono font-bold uppercase tracking-wider border inline-flex items-center gap-1.5"
+                              style={
+                                log.status === 'delivered'
+                                  ? { background: isDark ? 'rgba(16, 185, 129, 0.15)' : '#EDF3EC', color: isDark ? '#34D399' : '#346538', borderColor: isDark ? '#059669' : '#A7F3D0' }
+                                  : log.status === 'bounced' || log.status === 'failed'
+                                  ? { background: isDark ? 'rgba(239, 68, 68, 0.15)' : '#FDEBEC', color: isDark ? '#F87171' : '#9F2F2D', borderColor: isDark ? '#DC2626' : '#FECACA' }
+                                  : { background: isDark ? 'rgba(56, 189, 248, 0.15)' : '#E0F2FE', color: isDark ? '#38BDF8' : '#0369A1', borderColor: isDark ? '#0284C7' : '#BAE6FD' }
+                              }
+                            >
+                              <FontAwesomeIcon
+                                icon={log.status === 'delivered' ? faCheck : (log.status === 'bounced' ? faTimes : faClock)}
+                                className="text-[9px]"
+                              />
+                              <span>{getEmailStatusLabel(log.status)}</span>
+                            </span>
+                          </td>
+                          <td className="py-2.5 px-3.5 text-right whitespace-nowrap">
+                            {matchedApp ? (
+                              <button
+                                onClick={() => handleResendPaymentEmail(matchedApp)}
+                                disabled={resendingEmailId === matchedApp.application_id}
+                                className="px-2.5 py-1 text-[11px] font-mono uppercase tracking-wider border rounded font-medium transition-colors hover:bg-black/5 dark:hover:bg-white/5 disabled:opacity-50"
+                                style={{ background: cardBg, borderColor, color: textPrimary, borderRadius: '6px' }}
+                                title={`Kirim ulang ke ${matchedApp.parent_email}`}
+                              >
+                                {resendingEmailId === matchedApp.application_id ? (
+                                  <FontAwesomeIcon icon={faSpinner} className="animate-spin text-[10px]" />
+                                ) : (
+                                  <FontAwesomeIcon icon={faPaperPlane} className="text-[10px]" />
+                                )}
+                                <span className="ml-1.5">Kirim Ulang</span>
+                              </button>
+                            ) : (
+                              <span className="text-[10px] font-mono text-gray-400">-</span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Detail Modal */}
       <Modal
@@ -2170,11 +2463,11 @@ export default function AdmissionManagement() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
                   <div>
-                    <span className="text-[10px] font-mono uppercase block" style={{ color: textSecondary }}>Status Form Lengkap Siswa:</span>
+                    <span className="text-[10px] font-mono uppercase block" style={{ color: textSecondary }}>Kelengkapan Formulir Siswa:</span>
                     {selectedApplication.is_form_completed ? (
                       <span className="font-medium" style={{ color: isDark ? '#34D399' : '#346538' }}>Sudah Dilengkapi oleh Orang Tua</span>
                     ) : (
-                      <span className="font-medium" style={{ color: isDark ? '#FBBF24' : '#956400' }}>Belum Lengkap (Hanya data awal)</span>
+                      <span className="font-medium" style={{ color: isDark ? '#FBBF24' : '#956400' }}>Belum Lengkap (Hanya Data Awal)</span>
                     )}
                   </div>
                   <div>
@@ -2213,7 +2506,7 @@ export default function AdmissionManagement() {
                         disabled={processing}
                       >
                         <FontAwesomeIcon icon={faCheck} className="text-[10px]" />
-                        Approve Pembayaran Formulir
+                        Setujui Pembayaran Formulir
                       </button>
                     )}
                     {selectedApplication.form_fee_status !== 'rejected' && (
@@ -2224,7 +2517,7 @@ export default function AdmissionManagement() {
                         disabled={processing}
                       >
                         <FontAwesomeIcon icon={faTimes} className="text-[10px]" />
-                        Tolak Bukti
+                        Tolak Bukti Transfer
                       </button>
                     )}
                   </div>
@@ -2546,7 +2839,7 @@ export default function AdmissionManagement() {
                         <div>
                           <span className="font-mono text-xs font-bold uppercase tracking-wider" style={{ color: textPrimary }}>UDP</span>
                           <span className="text-xs font-mono ml-2" style={{ color: textSecondary }}>
-                            Base: {formatCurrency(udpDef.total_amount)}
+                            Biaya Pokok: {formatCurrency(udpDef.total_amount)}
                           </span>
                         </div>
                         <button
@@ -2583,7 +2876,7 @@ export default function AdmissionManagement() {
                                     {d.value_type === 'percentage' ? (
                                       <><FontAwesomeIcon icon={faPercent} className="mr-1" />{d.value}% dari {formatCurrency(d.base_before)}</>
                                     ) : (
-                                      <><FontAwesomeIcon icon={faMoneyBill} className="mr-1" />{formatCurrency(d.value)} (fixed)</>
+                                      <><FontAwesomeIcon icon={faMoneyBill} className="mr-1" />{formatCurrency(d.value)} (nominal)</>
                                     )}
                                   </p>
                                 </div>
@@ -2644,7 +2937,7 @@ export default function AdmissionManagement() {
                         <div>
                           <span className="font-mono text-xs font-bold uppercase tracking-wider" style={{ color: textPrimary }}>USEK</span>
                           <span className="text-xs font-mono ml-2" style={{ color: textSecondary }}>
-                            Base/bulan: {formatCurrency(usekDef.default_amount)}
+                            Biaya Pokok/bulan: {formatCurrency(usekDef.default_amount)}
                           </span>
                         </div>
                         <button
@@ -2681,7 +2974,7 @@ export default function AdmissionManagement() {
                                     {d.value_type === 'percentage' ? (
                                       <><FontAwesomeIcon icon={faPercent} className="mr-1" />{d.value}% dari {formatCurrency(d.base_before)}</>
                                     ) : (
-                                      <><FontAwesomeIcon icon={faMoneyBill} className="mr-1" />{formatCurrency(d.value)} (fixed)</>
+                                      <><FontAwesomeIcon icon={faMoneyBill} className="mr-1" />{formatCurrency(d.value)} (nominal)</>
                                     )}
                                   </p>
                                 </div>
@@ -2749,7 +3042,7 @@ export default function AdmissionManagement() {
                     <div className="border rounded-lg p-4" style={{ background: cardBg, borderColor, borderRadius: '8px' }}>
                       <div className="flex items-center justify-between mb-3">
                         <h4 className="font-mono text-xs font-semibold uppercase tracking-wider" style={{ color: textPrimary }}>
-                          {t('admission.discount.addDiscountTitle')} {addDiscountTarget.toUpperCase()}
+                          {t('admission.discount.addDiscountTitle')} {addDiscountTarget === 'udp' ? 'DPP / UDP' : 'SPP / USEK'}
                         </h4>
                         <button onClick={() => setShowAddDiscount(false)} className="hover:opacity-100" style={{ color: textSecondary }}>
                           <FontAwesomeIcon icon={faTimes} />
@@ -2790,12 +3083,98 @@ export default function AdmissionManagement() {
                           .filter(m => !discounts.some(d => d.discount_id === m.discount_id && d.fee_target === addDiscountTarget))
                           .length === 0 && (
                           <p className="text-center text-xs font-mono py-3" style={{ color: textSecondary }}>
-                            Tidak ada potongan tersedia untuk {addDiscountTarget.toUpperCase()}
+                            Tidak ada potongan tersedia untuk {addDiscountTarget === 'udp' ? 'DPP / UDP' : 'SPP / USEK'}
                           </p>
                         )}
                       </div>
                     </div>
                   )}
+                </div>
+              )}
+            </div>
+
+            {/* Riwayat Pengiriman Email */}
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-semibold flex items-center gap-2 text-xs font-mono uppercase tracking-wider" style={{ color: textPrimary }}>
+                  <FontAwesomeIcon icon={faEnvelope} style={{ color: textSecondary }} />
+                  Riwayat Pengiriman Email
+                </h3>
+                {selectedApplication.parent_email && (
+                  <button
+                    onClick={() => handleResendPaymentEmail(selectedApplication)}
+                    disabled={resendingEmailId === selectedApplication.application_id}
+                    className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-medium border rounded transition-colors disabled:opacity-50 hover:bg-sky-50 dark:hover:bg-sky-950/30"
+                    style={{
+                      background: isDark ? 'rgba(56, 189, 248, 0.12)' : '#F0F9FF',
+                      borderColor: isDark ? '#0284C7' : '#BAE6FD',
+                      color: isDark ? '#38BDF8' : '#0369A1',
+                      borderRadius: '6px'
+                    }}
+                  >
+                    {resendingEmailId === selectedApplication.application_id ? (
+                      <>
+                        <FontAwesomeIcon icon={faSpinner} className="animate-spin text-[10px]" />
+                        <span>Mengirim Ulang...</span>
+                      </>
+                    ) : (
+                      <>
+                        <FontAwesomeIcon icon={faPaperPlane} className="text-[10px]" />
+                        <span>Kirim Ulang Email Tagihan & Rekening</span>
+                      </>
+                    )}
+                  </button>
+                )}
+              </div>
+
+              {detailLogsLoading ? (
+                <div className="p-4 rounded-lg text-center" style={{ background: isDark ? '#1C1C1F' : '#F9F9F8', border: '1px solid ' + borderColor }}>
+                  <FontAwesomeIcon icon={faSpinner} className="animate-spin text-sm" style={{ color: textSecondary }} />
+                  <span className="text-xs font-mono ml-2" style={{ color: textSecondary }}>Memeriksa status pengiriman email...</span>
+                </div>
+              ) : detailApplicantLogs.length > 0 ? (
+                <div className="space-y-2">
+                  {detailApplicantLogs.map((log) => (
+                    <div
+                      key={log.id}
+                      className="p-3 rounded-lg border flex flex-col sm:flex-row sm:items-center justify-between gap-2"
+                      style={{ background: isDark ? '#1C1C1F' : '#F9F9F8', borderColor }}
+                    >
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-semibold" style={{ color: textPrimary }}>{getEmailTypeLabel(log.email_type)}</span>
+                          <span
+                            className="px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase tracking-wider border"
+                            style={
+                              log.status === 'delivered'
+                                ? { background: isDark ? 'rgba(16, 185, 129, 0.15)' : '#EDF3EC', color: isDark ? '#34D399' : '#346538', borderColor: isDark ? '#059669' : '#A7F3D0' }
+                                : log.status === 'bounced' || log.status === 'failed'
+                                ? { background: isDark ? 'rgba(239, 68, 68, 0.15)' : '#FDEBEC', color: isDark ? '#F87171' : '#9F2F2D', borderColor: isDark ? '#DC2626' : '#FECACA' }
+                                : { background: isDark ? 'rgba(56, 189, 248, 0.15)' : '#E0F2FE', color: isDark ? '#38BDF8' : '#0369A1', borderColor: isDark ? '#0284C7' : '#BAE6FD' }
+                            }
+                          >
+                            {getEmailStatusLabel(log.status)}
+                          </span>
+                        </div>
+                        <p className="text-[11px] font-mono mt-0.5" style={{ color: textSecondary }}>
+                          Subjek: {log.subject}
+                        </p>
+                      </div>
+                      <div className="text-right sm:self-center">
+                        <span className="text-[11px] font-mono" style={{ color: textSecondary }}>
+                          {formatDateTime(log.created_at)}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="p-4 rounded-lg text-center" style={{ background: isDark ? '#1C1C1F' : '#F9F9F8', border: '1px solid ' + borderColor }}>
+                  <p className="text-xs font-mono" style={{ color: textSecondary }}>
+                    {selectedApplication.parent_email 
+                      ? `Belum ada riwayat email tercatat untuk ${selectedApplication.parent_email}` 
+                      : 'Pendaftar ini belum memiliki alamat email'}
+                  </p>
                 </div>
               )}
             </div>
@@ -2957,7 +3336,7 @@ export default function AdmissionManagement() {
                       <div>
                         <span className="font-mono text-xs font-bold uppercase tracking-wider" style={{ color: textPrimary }}>UDP</span>
                         <span className="text-xs font-mono ml-2" style={{ color: textSecondary }}>
-                          Base: {formatCurrency(udpDef.total_amount)}
+                          Biaya Pokok: {formatCurrency(udpDef.total_amount)}
                         </span>
                       </div>
                       <button
@@ -2982,7 +3361,7 @@ export default function AdmissionManagement() {
                               <div className="flex-1 min-w-0">
                                 <p className="font-medium text-xs truncate" style={{ color: textPrimary }}>{d.discount?.discount_name || '-'}</p>
                                 <p className="text-[11px] font-mono" style={{ color: textSecondary }}>
-                                  {d.value_type === 'percentage' ? <><FontAwesomeIcon icon={faPercent} className="mr-1" />{d.value}% dari {formatCurrency(d.base_before)}</> : <><FontAwesomeIcon icon={faMoneyBill} className="mr-1" />{formatCurrency(d.value)} (fixed)</>}
+                                  {d.value_type === 'percentage' ? <><FontAwesomeIcon icon={faPercent} className="mr-1" />{d.value}% dari {formatCurrency(d.base_before)}</> : <><FontAwesomeIcon icon={faMoneyBill} className="mr-1" />{formatCurrency(d.value)} (nominal)</>}
                                 </p>
                               </div>
                               <div className="text-right flex-shrink-0">
@@ -3016,7 +3395,7 @@ export default function AdmissionManagement() {
                       <div>
                         <span className="font-mono text-xs font-bold uppercase tracking-wider" style={{ color: textPrimary }}>USEK</span>
                         <span className="text-xs font-mono ml-2" style={{ color: textSecondary }}>
-                          Base/bulan: {formatCurrency(usekDef.default_amount)}
+                          Biaya Pokok/bulan: {formatCurrency(usekDef.default_amount)}
                         </span>
                       </div>
                       <button
@@ -3041,7 +3420,7 @@ export default function AdmissionManagement() {
                               <div className="flex-1 min-w-0">
                                 <p className="font-medium text-xs truncate" style={{ color: textPrimary }}>{d.discount?.discount_name || '-'}</p>
                                 <p className="text-[11px] font-mono" style={{ color: textSecondary }}>
-                                  {d.value_type === 'percentage' ? <><FontAwesomeIcon icon={faPercent} className="mr-1" />{d.value}% dari {formatCurrency(d.base_before)}</> : <><FontAwesomeIcon icon={faMoneyBill} className="mr-1" />{formatCurrency(d.value)} (fixed)</>}
+                                  {d.value_type === 'percentage' ? <><FontAwesomeIcon icon={faPercent} className="mr-1" />{d.value}% dari {formatCurrency(d.base_before)}</> : <><FontAwesomeIcon icon={faMoneyBill} className="mr-1" />{formatCurrency(d.value)} (nominal)</>}
                                 </p>
                               </div>
                               <div className="text-right flex-shrink-0">
@@ -3082,7 +3461,7 @@ export default function AdmissionManagement() {
                   <div className="border rounded-lg p-4" style={{ background: cardBg, borderColor, borderRadius: '8px' }}>
                     <div className="flex items-center justify-between mb-3">
                       <h4 className="font-mono text-xs font-semibold uppercase tracking-wider" style={{ color: textPrimary }}>
-                        {t('admission.discount.addDiscountTitle')} {addDiscountTarget.toUpperCase()}
+                        {t('admission.discount.addDiscountTitle')} {addDiscountTarget === 'udp' ? 'DPP / UDP' : 'SPP / USEK'}
                       </h4>
                       <button onClick={() => setShowAddDiscount(false)} className="hover:opacity-100" style={{ color: textSecondary }}>
                         <FontAwesomeIcon icon={faTimes} />
@@ -3123,7 +3502,7 @@ export default function AdmissionManagement() {
                         .filter(m => !discounts.some(d => d.discount_id === m.discount_id && d.fee_target === addDiscountTarget))
                         .length === 0 && (
                         <p className="text-center text-xs font-mono py-3" style={{ color: textSecondary }}>
-                          {t('admission.discount.noDiscountAvailable')} {addDiscountTarget.toUpperCase()}
+                          Tidak ada potongan tersedia untuk {addDiscountTarget === 'udp' ? 'DPP / UDP' : 'SPP / USEK'}
                         </p>
                       )}
                     </div>

@@ -462,7 +462,7 @@ function LoginContent() {
 
                   <Button 
                     type="button"
-                    onClick={() => window.open('https://ccs.sch.id/registrasi/?page=portal', '_blank')}
+                    onClick={() => window.open('https://ccs.sch.id/registrasi/status.php', '_blank')}
                     variant="outline"
                     className="w-full h-11 bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white border-0 font-semibold rounded-xl transition-all duration-200 hover:shadow-lg active:scale-95 text-sm"
                   >

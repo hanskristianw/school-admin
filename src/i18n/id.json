@@ -1118,14 +1118,14 @@
   },
   "admission": {
     "status": {
-      "pending": "Menunggu Review",
+      "pending": "Menunggu Peninjauan",
       "approved": "Diterima",
       "rejected": "Ditolak"
     },
     "title": "Manajemen Pendaftaran Siswa",
-    "subtitle": "Review dan kelola pendaftaran siswa baru",
-    "masterDiscountBtn": "Master Potongan",
-    "exportExcel": "Export Excel",
+    "subtitle": "Tinjau dan kelola pendaftaran calon siswa baru",
+    "masterDiscountBtn": "Master Potongan & Diskon",
+    "exportExcel": "Ekspor Excel",
     "filter": {
       "title": "Filter",
       "searchLabel": "Cari",
@@ -1145,13 +1145,13 @@
       "colRegDate": "Tanggal Daftar",
       "colStatus": "Status",
       "colActions": "Aksi",
-      "tabAll": "Semua",
-      "noInstallmentBadge": "Belum cicilan",
+      "tabAll": "Semua Pendaftar",
+      "noInstallmentBadge": "Belum Ada Cicilan",
       "noData": "Tidak ada data pendaftaran"
     },
     "detail": {
       "title": "Detail Pendaftaran",
-      "editDataBtn": "Edit Data",
+      "editDataBtn": "Ubah Data",
       "saveBtn": "Simpan",
       "cancelBtn": "Batal",
       "closeBtn": "Tutup",
@@ -1168,7 +1168,7 @@
       "gender": "Jenis Kelamin",
       "male": "Laki-laki",
       "female": "Perempuan",
-      "selectGender": "Pilih",
+      "selectGender": "Pilih Jenis Kelamin",
       "birthPlace": "Tempat Lahir",
       "birthDate": "Tanggal Lahir",
       "birthPlaceDate": "Tempat, Tanggal Lahir",
@@ -1204,23 +1204,23 @@
     "notes": {
       "applicantNotesTitle": "Catatan dari Pendaftar",
       "adminNotesTitle": "Catatan Admin",
-      "updatedAt": "Diupdate:",
+      "updatedAt": "Diperbarui:",
       "by": "oleh",
       "notesOptional": "Catatan (Opsional)",
       "notesPlaceholder": "Tambahkan catatan untuk pendaftaran ini..."
     },
     "discount": {
-      "title": "Potongan / Diskon",
+      "title": "Potongan & Diskon Biaya",
       "loadingDiscount": "Memuat data potongan...",
       "noUdpDiscount": "Belum ada potongan UDP",
       "noUsekDiscount": "Belum ada potongan USEK",
       "totalUdpDiscount": "Total Potongan UDP",
       "totalUsekDiscount": "Total Potongan USEK/bulan",
       "addBtn": "Tambah",
-      "final": "Final:",
-      "finalPerMonth": "Final/bulan:",
+      "final": "Akhir (Netto):",
+      "finalPerMonth": "Akhir per bulan:",
       "noFeeDef": "Belum ada definisi biaya (UDP/USEK) untuk unit & tahun ajaran ini.",
-      "setFeeFirst": "Silakan atur di menu Fee Management terlebih dahulu.",
+      "setFeeFirst": "Silakan atur di menu Manajemen Biaya (Fee Management) terlebih dahulu.",
       "addDiscountTitle": "Tambah Potongan",
       "noDiscountAvailable": "Tidak ada potongan tersedia untuk"
     },
@@ -1234,7 +1234,7 @@
       "processing": "Memproses..."
     },
     "discountModal": {
-      "title": "Kelola Potongan"
+      "title": "Kelola Potongan & Diskon"
     },
     "installment": {
       "title": "Skema Cicilan",

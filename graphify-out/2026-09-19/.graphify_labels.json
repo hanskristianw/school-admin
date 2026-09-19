@@ -269,7 +269,6 @@
   "267": "School Admin AI Guide",
   "268": "1.1 Tables",
   "269": "🎓 **IB MYP Assessment Grading System**",
-  "270": "2.1 Tables",
   "271": "9.1 Tables",
   "272": "Database Schema & Relationships",
   "273": "8.1 Tables",
@@ -450,5 +449,7 @@
   "448": "update_language_keywords.sql",
   "449": "verify-attendance-schema.sql",
   "450": "SUPPLIER SERAGAM STOCK.md",
-  "451": "Users.md"
+  "451": "Users.md",
+  "452": "browser-image-compression",
+  "453": "route.js"
 }

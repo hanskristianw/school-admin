@@ -74,7 +74,7 @@ export const emailTemplates = {
     const formattedAmount = `Rp ${Number(feeAmount || 250000).toLocaleString('id-ID')}`
     const queryTarget = parentEmail || applicationNumber
     const queryPhone = parentPhone ? `&phone=${encodeURIComponent(parentPhone)}` : ''
-    const checkUrl = `${String(hostingUrl || 'https://ccs.sch.id/registrasi').replace(/\/$/, '')}/?cek=${encodeURIComponent(queryTarget)}${queryPhone}#tempat-unggah`
+    const checkUrl = `${String(hostingUrl || 'https://ccs.sch.id/registrasi').replace(/\/$/, '')}/status.php?cek=${encodeURIComponent(queryTarget)}${queryPhone}#tempat-unggah`
     const subject = `Instruksi Pembayaran Pendaftaran Siswa Baru CCS — ${applicationNumber}`
     const html = wrapHtml(`
       <div class="container">

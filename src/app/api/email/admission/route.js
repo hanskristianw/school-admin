@@ -49,6 +49,8 @@ export async function POST(request) {
 
     const { subject, html } = templateFn({
       parentName,
+      parentEmail: email,
+      parentPhone: body.parentPhone || body.phone || '',
       studentName,
       applicationNumber,
       schoolName,

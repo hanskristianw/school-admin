@@ -260,7 +260,7 @@
       "label": "callNextJsApi()",
       "file_type": "code",
       "source_file": "cpanel-registrasi/index.php",
-      "source_location": "L402",
+      "source_location": "L405",
       "_origin": "ast",
       "id": "cpanel_registrasi_index_callnextjsapi",
       "community": 369,
@@ -5001,7 +5001,7 @@
       "source_location": "L24",
       "_origin": "ast",
       "id": "c_users_user_documents_github_school_admin_package_dependencies_browser_image_compression",
-      "community": 347,
+      "community": 452,
       "community_name": "browser-image-compression",
       "norm_label": "browser-image-compression"
     },
@@ -5012,7 +5012,7 @@
       "source_location": "L24",
       "_origin": "ast",
       "id": "browser_image_compression",
-      "community": 347,
+      "community": 452,
       "community_name": "browser-image-compression",
       "norm_label": "browser-image-compression"
     },
@@ -7395,6 +7395,61 @@
     {
       "label": "route.js",
       "file_type": "code",
+      "source_file": "src/app/api/email/admission/logs/route.js",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "src_app_api_email_admission_logs_route",
+      "community": 453,
+      "community_name": "route.js",
+      "norm_label": "route.js"
+    },
+    {
+      "label": "GET()",
+      "file_type": "code",
+      "source_file": "src/app/api/email/admission/logs/route.js",
+      "source_location": "L17",
+      "_origin": "ast",
+      "id": "src_app_api_email_admission_logs_route_get",
+      "community": 453,
+      "community_name": "route.js",
+      "norm_label": "get()"
+    },
+    {
+      "label": "route.js",
+      "file_type": "code",
+      "source_file": "src/app/api/email/admission/resend/route.js",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "src_app_api_email_admission_resend_route",
+      "community": 347,
+      "community_name": "browser-image-compression",
+      "norm_label": "route.js"
+    },
+    {
+      "label": "supabaseAdmin",
+      "file_type": "code",
+      "source_file": "src/app/api/email/admission/resend/route.js",
+      "source_location": "L6",
+      "_origin": "ast",
+      "id": "src_app_api_email_admission_resend_route_supabaseadmin",
+      "community": 347,
+      "community_name": "browser-image-compression",
+      "norm_label": "supabaseadmin"
+    },
+    {
+      "label": "POST()",
+      "file_type": "code",
+      "source_file": "src/app/api/email/admission/resend/route.js",
+      "source_location": "L22",
+      "_origin": "ast",
+      "id": "src_app_api_email_admission_resend_route_post",
+      "community": 347,
+      "community_name": "browser-image-compression",
+      "norm_label": "post()"
+    },
+    {
+      "label": "route.js",
+      "file_type": "code",
       "source_file": "src/app/api/email/admission/route.js",
       "source_location": "L1",
       "_origin": "ast",
@@ -8265,7 +8320,7 @@
       "label": "statusConfig",
       "file_type": "code",
       "source_file": "src/app/data/admission/page.jsx",
-      "source_location": "L51",
+      "source_location": "L54",
       "_origin": "ast",
       "id": "src_app_data_admission_page_statusconfig",
       "community": 0,
@@ -8273,10 +8328,32 @@
       "norm_label": "statusconfig"
     },
     {
+      "label": "getEmailTypeLabel()",
+      "file_type": "code",
+      "source_file": "src/app/data/admission/page.jsx",
+      "source_location": "L78",
+      "_origin": "ast",
+      "id": "src_app_data_admission_page_getemailtypelabel",
+      "community": 0,
+      "community_name": "Admission Management",
+      "norm_label": "getemailtypelabel()"
+    },
+    {
+      "label": "getEmailStatusLabel()",
+      "file_type": "code",
+      "source_file": "src/app/data/admission/page.jsx",
+      "source_location": "L88",
+      "_origin": "ast",
+      "id": "src_app_data_admission_page_getemailstatuslabel",
+      "community": 0,
+      "community_name": "Admission Management",
+      "norm_label": "getemailstatuslabel()"
+    },
+    {
       "label": "AdmissionManagement()",
       "file_type": "code",
       "source_file": "src/app/data/admission/page.jsx",
-      "source_location": "L75",
+      "source_location": "L102",
       "_origin": "ast",
       "id": "src_app_data_admission_page_admissionmanagement",
       "community": 0,
@@ -8290,8 +8367,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_app_data_admission_simulation_page",
-      "community": 0,
-      "community_name": "Admission Management",
+      "community": 269,
+      "community_name": "\ud83c\udf93 **IB MYP Assessment Grading System**",
       "norm_label": "page.jsx"
     },
     {
@@ -8301,8 +8378,8 @@
       "source_location": "L20",
       "_origin": "ast",
       "id": "src_app_data_admission_simulation_page_formatcurrency",
-      "community": 0,
-      "community_name": "Admission Management",
+      "community": 269,
+      "community_name": "\ud83c\udf93 **IB MYP Assessment Grading System**",
       "norm_label": "formatcurrency()"
     },
     {
@@ -8312,8 +8389,8 @@
       "source_location": "L24",
       "_origin": "ast",
       "id": "src_app_data_admission_simulation_page_monthnames",
-      "community": 0,
-      "community_name": "Admission Management",
+      "community": 269,
+      "community_name": "\ud83c\udf93 **IB MYP Assessment Grading System**",
       "norm_label": "monthnames"
     },
     {
@@ -8323,8 +8400,8 @@
       "source_location": "L27",
       "_origin": "ast",
       "id": "src_app_data_admission_simulation_page_formatdateid",
-      "community": 0,
-      "community_name": "Admission Management",
+      "community": 269,
+      "community_name": "\ud83c\udf93 **IB MYP Assessment Grading System**",
       "norm_label": "formatdateid()"
     },
     {
@@ -8334,8 +8411,8 @@
       "source_location": "L34",
       "_origin": "ast",
       "id": "src_app_data_admission_simulation_page_feesimulationpage",
-      "community": 0,
-      "community_name": "Admission Management",
+      "community": 269,
+      "community_name": "\ud83c\udf93 **IB MYP Assessment Grading System**",
       "norm_label": "feesimulationpage()"
     },
     {
@@ -20379,8 +20456,8 @@
       "source_location": "L1024",
       "_origin": "ast",
       "id": "c_users_user_documents_github_school_admin_database_schema_6_assessment_grading_domain_data_topic_new_reports",
-      "community": 108,
-      "community_name": "Module 108",
+      "community": 238,
+      "community_name": "Module 238",
       "norm_label": "6. assessment & grading domain (`/data/topic-new` / reports)"
     },
     {
@@ -20390,8 +20467,8 @@
       "source_location": "L1028",
       "_origin": "ast",
       "id": "c_users_user_documents_github_school_admin_database_schema_6_1_tables",
-      "community": 108,
-      "community_name": "Module 108",
+      "community": 238,
+      "community_name": "Module 238",
       "norm_label": "6.1 tables"
     },
     {
@@ -20401,8 +20478,8 @@
       "source_location": "L1030",
       "_origin": "ast",
       "id": "c_users_user_documents_github_school_admin_database_schema_assessment_grades",
-      "community": 108,
-      "community_name": "Module 108",
+      "community": 238,
+      "community_name": "Module 238",
       "norm_label": "`assessment_grades`"
     },
     {
@@ -20412,8 +20489,8 @@
       "source_location": "L1052",
       "_origin": "ast",
       "id": "c_users_user_documents_github_school_admin_database_schema_assessment_grade_strands",
-      "community": 108,
-      "community_name": "Module 108",
+      "community": 238,
+      "community_name": "Module 238",
       "norm_label": "`assessment_grade_strands`"
     },
     {
@@ -20423,8 +20500,8 @@
       "source_location": "L1063",
       "_origin": "ast",
       "id": "c_users_user_documents_github_school_admin_database_schema_6_2_erd_relationships_assessment_grading",
-      "community": 108,
-      "community_name": "Module 108",
+      "community": 238,
+      "community_name": "Module 238",
       "norm_label": "6.2 erd / relationships (assessment & grading)"
     },
     {
@@ -20434,8 +20511,8 @@
       "source_location": "L1093",
       "_origin": "ast",
       "id": "c_users_user_documents_github_school_admin_database_schema_7_menu_role_permissions_domain_data_menu_management",
-      "community": 237,
-      "community_name": "Module 237",
+      "community": 108,
+      "community_name": "Module 108",
       "norm_label": "7. menu & role permissions domain (`/data/menu_management`)"
     },
     {
@@ -20445,8 +20522,8 @@
       "source_location": "L1097",
       "_origin": "ast",
       "id": "c_users_user_documents_github_school_admin_database_schema_7_1_tables",
-      "community": 237,
-      "community_name": "Module 237",
+      "community": 108,
+      "community_name": "Module 108",
       "norm_label": "7.1 tables"
     },
     {
@@ -20456,8 +20533,8 @@
       "source_location": "L1099",
       "_origin": "ast",
       "id": "c_users_user_documents_github_school_admin_database_schema_menus",
-      "community": 237,
-      "community_name": "Module 237",
+      "community": 108,
+      "community_name": "Module 108",
       "norm_label": "`menus`"
     },
     {
@@ -20467,8 +20544,8 @@
       "source_location": "L1112",
       "_origin": "ast",
       "id": "c_users_user_documents_github_school_admin_database_schema_menu_permissions",
-      "community": 237,
-      "community_name": "Module 237",
+      "community": 108,
+      "community_name": "Module 108",
       "norm_label": "`menu_permissions`"
     },
     {
@@ -20478,8 +20555,8 @@
       "source_location": "L1124",
       "_origin": "ast",
       "id": "c_users_user_documents_github_school_admin_database_schema_7_2_erd_relationships_menu_domain",
-      "community": 237,
-      "community_name": "Module 237",
+      "community": 108,
+      "community_name": "Module 108",
       "norm_label": "7.2 erd / relationships (menu domain)"
     },
     {
@@ -21809,8 +21886,8 @@
       "source_location": "L5",
       "_origin": "ast",
       "id": "c_users_user_documents_github_school_admin_main_documentation_2026_07_16_timetable_refactor_weekly_plan_dates_weekly_overview",
-      "community": 58,
-      "community_name": "Module 58",
+      "community": 237,
+      "community_name": "Module 237",
       "norm_label": "2026-07-16 \u2014 timetable refactor + weekly plan dates + weekly overview"
     },
     {
@@ -21820,8 +21897,8 @@
       "source_location": "L7",
       "_origin": "ast",
       "id": "c_users_user_documents_github_school_admin_main_documentation_timetable_refactor_data_timetable",
-      "community": 58,
-      "community_name": "Module 58",
+      "community": 237,
+      "community_name": "Module 237",
       "norm_label": "timetable refactor (`/data/timetable`)"
     },
     {
@@ -21831,8 +21908,8 @@
       "source_location": "L17",
       "_origin": "ast",
       "id": "c_users_user_documents_github_school_admin_main_documentation_timetable_exceptions_timetable_exception_new_table",
-      "community": 58,
-      "community_name": "Module 58",
+      "community": 237,
+      "community_name": "Module 237",
       "norm_label": "timetable exceptions (`timetable_exception`) \u2014 new table"
     },
     {
@@ -21842,8 +21919,8 @@
       "source_location": "L46",
       "_origin": "ast",
       "id": "c_users_user_documents_github_school_admin_main_documentation_weekly_plan_dates_topic_weekly_plan_week_date",
-      "community": 58,
-      "community_name": "Module 58",
+      "community": 237,
+      "community_name": "Module 237",
       "norm_label": "weekly plan dates \u2014 `topic_weekly_plan.week_date`"
     },
     {
@@ -21853,8 +21930,8 @@
       "source_location": "L54",
       "_origin": "ast",
       "id": "c_users_user_documents_github_school_admin_main_documentation_weekly_overview_data_weekly_overview_new_page",
-      "community": 58,
-      "community_name": "Module 58",
+      "community": 237,
+      "community_name": "Module 237",
       "norm_label": "weekly overview (`/data/weekly-overview`) \u2014 new page"
     },
     {
@@ -21864,8 +21941,8 @@
       "source_location": "L73",
       "_origin": "ast",
       "id": "c_users_user_documents_github_school_admin_main_documentation_weekly_overview_draft_table_new",
-      "community": 58,
-      "community_name": "Module 58",
+      "community": 237,
+      "community_name": "Module 237",
       "norm_label": "`weekly_overview_draft` table \u2014 new"
     },
     {
@@ -21875,8 +21952,8 @@
       "source_location": "L87",
       "_origin": "ast",
       "id": "c_users_user_documents_github_school_admin_main_documentation_topic_weekly_plan_complete_schema_reference",
-      "community": 58,
-      "community_name": "Module 58",
+      "community": 237,
+      "community_name": "Module 237",
       "norm_label": "`topic_weekly_plan` \u2014 complete schema reference"
     },
     {
@@ -21886,8 +21963,8 @@
       "source_location": "L103",
       "_origin": "ast",
       "id": "c_users_user_documents_github_school_admin_main_documentation_full_data_flow_timetable_weekly_overview",
-      "community": 58,
-      "community_name": "Module 58",
+      "community": 237,
+      "community_name": "Module 237",
       "norm_label": "full data flow: timetable \u2192 weekly overview"
     },
     {
@@ -22040,8 +22117,8 @@
       "source_location": "L287",
       "_origin": "ast",
       "id": "c_users_user_documents_github_school_admin_main_documentation_database_structure",
-      "community": 253,
-      "community_name": "IB MYP Criteria, Strands & Rubrics System Documentation",
+      "community": 109,
+      "community_name": "Module 109",
       "norm_label": "\ufffd\ud83c\udfd7\ufe0f **database structure**"
     },
     {
@@ -22051,8 +22128,8 @@
       "source_location": "L289",
       "_origin": "ast",
       "id": "c_users_user_documents_github_school_admin_main_documentation_core_tables",
-      "community": 253,
-      "community_name": "IB MYP Criteria, Strands & Rubrics System Documentation",
+      "community": 109,
+      "community_name": "Module 109",
       "norm_label": "**core tables:**"
     },
     {
@@ -22062,8 +22139,8 @@
       "source_location": "L524",
       "_origin": "ast",
       "id": "c_users_user_documents_github_school_admin_main_documentation_grades_nilai_table",
-      "community": 253,
-      "community_name": "IB MYP Criteria, Strands & Rubrics System Documentation",
+      "community": 109,
+      "community_name": "Module 109",
       "norm_label": "grades (nilai) table"
     },
     {
@@ -22073,8 +22150,8 @@
       "source_location": "L539",
       "_origin": "ast",
       "id": "c_users_user_documents_github_school_admin_main_documentation_attendance_qr_tables",
-      "community": 253,
-      "community_name": "IB MYP Criteria, Strands & Rubrics System Documentation",
+      "community": 109,
+      "community_name": "Module 109",
       "norm_label": "attendance (qr) tables"
     },
     {
@@ -22117,8 +22194,8 @@
       "source_location": "L618",
       "_origin": "ast",
       "id": "c_users_user_documents_github_school_admin_main_documentation_3_assessment_system",
-      "community": 269,
-      "community_name": "\ud83c\udf93 **IB MYP Assessment Grading System**",
+      "community": 101,
+      "community_name": "Module 101",
       "norm_label": "**3. assessment system**"
     },
     {
@@ -22128,8 +22205,8 @@
       "source_location": "L619",
       "_origin": "ast",
       "id": "c_users_user_documents_github_school_admin_main_documentation_teacher_workflow",
-      "community": 269,
-      "community_name": "\ud83c\udf93 **IB MYP Assessment Grading System**",
+      "community": 101,
+      "community_name": "Module 101",
       "norm_label": "**teacher workflow**:"
     },
     {
@@ -22139,8 +22216,8 @@
       "source_location": "L628",
       "_origin": "ast",
       "id": "c_users_user_documents_github_school_admin_main_documentation_admin_workflow",
-      "community": 269,
-      "community_name": "\ud83c\udf93 **IB MYP Assessment Grading System**",
+      "community": 101,
+      "community_name": "Module 101",
       "norm_label": "**admin workflow**:"
     },
     {
@@ -22315,8 +22392,8 @@
       "source_location": "L881",
       "_origin": "ast",
       "id": "c_users_user_documents_github_school_admin_main_documentation_setup_deployment",
-      "community": 109,
-      "community_name": "Module 109",
+      "community": 253,
+      "community_name": "IB MYP Criteria, Strands & Rubrics System Documentation",
       "norm_label": "\ud83d\ude80 **setup & deployment**"
     },
     {
@@ -22326,8 +22403,8 @@
       "source_location": "L883",
       "_origin": "ast",
       "id": "c_users_user_documents_github_school_admin_main_documentation_database_migration_files_execute_in_order",
-      "community": 109,
-      "community_name": "Module 109",
+      "community": 253,
+      "community_name": "IB MYP Criteria, Strands & Rubrics System Documentation",
       "norm_label": "**database migration files (execute in order):**"
     },
     {
@@ -22337,8 +22414,8 @@
       "source_location": "L911",
       "_origin": "ast",
       "id": "c_users_user_documents_github_school_admin_main_documentation_development",
-      "community": 109,
-      "community_name": "Module 109",
+      "community": 253,
+      "community_name": "IB MYP Criteria, Strands & Rubrics System Documentation",
       "norm_label": "**development:**"
     },
     {
@@ -22348,8 +22425,8 @@
       "source_location": "L918",
       "_origin": "ast",
       "id": "c_users_user_documents_github_school_admin_main_documentation_key_environment",
-      "community": 109,
-      "community_name": "Module 109",
+      "community": 253,
+      "community_name": "IB MYP Criteria, Strands & Rubrics System Documentation",
       "norm_label": "**key environment:**"
     },
     {
@@ -22359,8 +22436,8 @@
       "source_location": "L928",
       "_origin": "ast",
       "id": "c_users_user_documents_github_school_admin_main_documentation_additional_files",
-      "community": 109,
-      "community_name": "Module 109",
+      "community": 253,
+      "community_name": "IB MYP Criteria, Strands & Rubrics System Documentation",
       "norm_label": "**additional files:**"
     },
     {
@@ -22623,8 +22700,8 @@
       "source_location": "L1119",
       "_origin": "ast",
       "id": "c_users_user_documents_github_school_admin_main_documentation_key_components",
-      "community": 238,
-      "community_name": "Module 238",
+      "community": 124,
+      "community_name": "Module 124",
       "norm_label": "**key components**"
     },
     {
@@ -22634,8 +22711,8 @@
       "source_location": "L1121",
       "_origin": "ast",
       "id": "c_users_user_documents_github_school_admin_main_documentation_1_myp_year_level_selection",
-      "community": 238,
-      "community_name": "Module 238",
+      "community": 124,
+      "community_name": "Module 124",
       "norm_label": "**1. myp year level selection**"
     },
     {
@@ -22645,8 +22722,8 @@
       "source_location": "L1128",
       "_origin": "ast",
       "id": "c_users_user_documents_github_school_admin_main_documentation_2_criterion_grades_a_b_c_d",
-      "community": 238,
-      "community_name": "Module 238",
+      "community": 124,
+      "community_name": "Module 124",
       "norm_label": "**2. criterion grades (a, b, c, d)**"
     },
     {
@@ -22656,8 +22733,8 @@
       "source_location": "L1138",
       "_origin": "ast",
       "id": "c_users_user_documents_github_school_admin_main_documentation_3_strand_grades",
-      "community": 238,
-      "community_name": "Module 238",
+      "community": 124,
+      "community_name": "Module 124",
       "norm_label": "**3. strand grades**"
     },
     {
@@ -22667,8 +22744,8 @@
       "source_location": "L1147",
       "_origin": "ast",
       "id": "c_users_user_documents_github_school_admin_main_documentation_4_final_grade_1_7",
-      "community": 238,
-      "community_name": "Module 238",
+      "community": 124,
+      "community_name": "Module 124",
       "norm_label": "**4. final grade (1-7)**"
     },
     {
@@ -22744,8 +22821,8 @@
       "source_location": "L1221",
       "_origin": "ast",
       "id": "c_users_user_documents_github_school_admin_main_documentation_project_structure",
-      "community": 270,
-      "community_name": "2.1 Tables",
+      "community": 109,
+      "community_name": "Module 109",
       "norm_label": "\ud83d\udcc1 **project structure**"
     },
     {
@@ -22755,8 +22832,8 @@
       "source_location": "L1223",
       "_origin": "ast",
       "id": "c_users_user_documents_github_school_admin_main_documentation_key_directories",
-      "community": 270,
-      "community_name": "2.1 Tables",
+      "community": 109,
+      "community_name": "Module 109",
       "norm_label": "**key directories:**"
     },
     {
@@ -22766,8 +22843,8 @@
       "source_location": "L1229",
       "_origin": "ast",
       "id": "c_users_user_documents_github_school_admin_main_documentation_important_files",
-      "community": 270,
-      "community_name": "2.1 Tables",
+      "community": 109,
+      "community_name": "Module 109",
       "norm_label": "**important files:**"
     },
     {
@@ -26697,7 +26774,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "cpanel-registrasi/index.php",
-      "source_location": "L402",
+      "source_location": "L405",
       "weight": 1.0,
       "_origin": "ast",
       "source": "cpanel_registrasi_index",
@@ -30882,7 +30959,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/app/data/admission/page.jsx",
-      "source_location": "L947",
+      "source_location": "L1063",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_admission_page_admissionmanagement",
@@ -33227,6 +33304,39 @@
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
+      "source_file": "src/app/api/email/admission/logs/route.js",
+      "source_location": "L17",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_api_email_admission_logs_route",
+      "target": "src_app_api_email_admission_logs_route_get",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/email/admission/resend/route.js",
+      "source_location": "L22",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_api_email_admission_resend_route",
+      "target": "src_app_api_email_admission_resend_route_post",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/email/admission/resend/route.js",
+      "source_location": "L6",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_api_email_admission_resend_route",
+      "target": "src_app_api_email_admission_resend_route_supabaseadmin",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
       "source_file": "src/app/api/email/admission/route.js",
       "source_location": "L11",
       "weight": 1.0,
@@ -34027,7 +34137,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/app/data/admission/page.jsx",
-      "source_location": "L75",
+      "source_location": "L102",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_admission_page",
@@ -34038,11 +34148,57 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/app/data/admission/page.jsx",
-      "source_location": "L51",
+      "source_location": "L88",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_admission_page",
+      "target": "src_app_data_admission_page_getemailstatuslabel",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/admission/page.jsx",
+      "source_location": "L78",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_admission_page",
+      "target": "src_app_data_admission_page_getemailtypelabel",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/admission/page.jsx",
+      "source_location": "L54",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_admission_page",
       "target": "src_app_data_admission_page_statusconfig",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/admission/page.jsx",
+      "source_location": "L2273",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_admission_page_admissionmanagement",
+      "target": "src_app_data_admission_page_getemailtypelabel",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/admission/page.jsx",
+      "source_location": "L2291",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_admission_page_admissionmanagement",
+      "target": "src_app_data_admission_page_getemailstatuslabel",
       "confidence_score": 1.0
     },
     {
@@ -53288,5 +53444,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "72caffeb8bdcc0e2cca69aed1954ede9ad9592c9"
+  "built_at_commit": "27754f6c2bf2471e3b959f1d4d7cd6364cf52e6b"
 }

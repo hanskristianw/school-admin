@@ -874,7 +874,7 @@ export default function DiscountMasterPage() {
 
           {/* Preview */}
           <div className={`p-3 rounded-lg border ${selectedUnitIds.length === units.length && units.length > 0 ? 'bg-amber-50 border-amber-200' : 'bg-gray-50 border-gray-200'}`}>
-            <p className="text-xs text-gray-500 mb-1">Preview:</p>
+            <p className="text-xs text-gray-500 mb-1">Pratinjau:</p>
             <p className="font-medium text-gray-900">
               {formData.discount_type === 'percentage'
                 ? `Potongan ${formData.discount_value || 0}% dari subtotal`

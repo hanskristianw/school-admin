@@ -89,7 +89,7 @@ const statusConfig = {
 export default function AdmissionStatusPage() {
   // Redirect to official web registration portal on ccs.sch.id
   useEffect(() => {
-    window.location.href = 'https://ccs.sch.id/registrasi/?page=portal';
+    window.location.href = 'https://ccs.sch.id/registrasi/status.php';
   }, []);
 
   const [searching, setSearching] = useState(false)

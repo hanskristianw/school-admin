@@ -18,6 +18,12 @@ if (session_status() === PHP_SESSION_NONE) {
 
 define('CCS_REG_LOADED', true);
 
+// ─── PENGALIHAN OTOMATIS: JIKA AKSES CEK STATUS, REDIRECT KE status.php ──────
+if (isset($_GET['cek'])) {
+    header('Location: status.php?' . http_build_query($_GET));
+    exit;
+}
+
 // ─── 0. SISTEM MULTI-BAHASA (INDONESIA, ENGLISH, CHINESE) ───────────────────
 if (isset($_GET['lang'])) {
     $reqLang = strtolower($_GET['lang']);
@@ -36,9 +42,8 @@ $i18n = [
         'nav_home' => 'Home',
         'nav_admission' => 'Pendaftaran Siswa Baru',
         'nav_check_status' => 'Cek Status Pendaftaran',
-        'nav_court' => 'Sewa Lapangan',
-        'btn_check_status' => 'Cek Status Pendaftaran',
-        'btn_back_form' => 'Kembali ke Formulir',
+        'banner_already_registered' => 'Sudah pernah mendaftar?',
+        'banner_check_link' => 'Cek Status Pendaftaran & Unggah Bukti Bayar di Sini',
 
         // Form Section
         'form_title' => 'Formulir Pendaftaran Siswa Baru',
@@ -48,7 +53,7 @@ $i18n = [
         'ph_level' => '-- Pilih Jenjang Pendidikan --',
         'step2_title' => 'Data Calon Siswa',
         'lbl_student_name' => 'Nama Lengkap Calon Siswa',
-        'hint_student_name' => 'Tuliskan nama lengkap ananda sesuai dokumen akta kelahiran.',
+        'hint_student_name' => 'Tuliskan nama lengkap calon siswa sesuai dokumen akta kelahiran.',
         'step3_title' => 'Data Kontak Orang Tua / Wali',
         'lbl_parent_email' => 'Alamat Email Orang Tua / Pendaftar',
         'hint_parent_email' => 'Rincian tagihan formulir dan link akses status pendaftaran dikirimkan ke email ini.',
@@ -74,65 +79,7 @@ $i18n = [
         'lbl_form_fee' => 'Total Biaya Formulir',
         'success_reg_email_note' => 'Rincian biaya formulir & instruksi transfer Bank Mayapada telah dikirimkan ke email Anda.',
         'btn_check_this' => 'Cek Status & Unggah Bukti Bayar',
-
-        // Cek Status Section (1:1 Mirip Sewa Lapangan)
-        'status_section_title' => 'Cek Status Pendaftaran Siswa Baru',
-        'status_section_desc' => 'Gunakan alamat email terdaftar dan nomor WhatsApp/HP orang tua untuk mengecek status verifikasi berkas dan mengunggah bukti pembayaran formulir.',
-        'status_input_ph' => 'Masukkan Alamat Email Terdaftar (contoh: orangtua@gmail.com)',
-        'btn_check' => 'Cek Status',
-        'status_verified' => 'Disetujui (Lunas)',
-        'status_proof_uploaded' => 'Verifikasi Bukti Struk',
-        'status_rejected' => 'Bukti Ditolak',
-        'status_pending' => 'Menunggu Pembayaran',
-        'dash_status_lbl' => 'Status Pendaftaran:',
-
-        // Kartu Rekening Bank
-        'bank_card_title' => 'Rekening Resmi Sekolah',
-        'bank_card_nom' => 'Nominal Pembelian Formulir',
-        'bank_card_rek' => 'Nomor Rekening Bank',
-        'bank_card_an' => 'Atas Nama:',
-        'bank_card_remark' => 'Berita Transfer:',
-        'btn_copy' => 'Salin',
-        'lbl_copy_rek' => 'Salin',
-        'msg_copied' => 'Nomor rekening berhasil disalin!',
-
-        // Upload Bukti
-        'upload_title' => 'Unggah Bukti Transfer Pembayaran',
-        'upload_title_re' => 'Unggah Ulang Bukti Transfer',
-        'upload_drag_title' => 'Pilih Berkas Struk Transfer (Foto atau PDF)',
-        'upload_drag_hint' => 'Format file yang diperbolehkan: JPG, PNG, WEBP, atau PDF (Maksimal 5 MB).',
-        'btn_upload' => 'Kirim Bukti Pembayaran',
-        'proof_stored_notice' => 'Bukti tersimpan:',
-        'btn_view_file' => 'Lihat Berkas &rarr;',
-        'notice_waiting_approval' => 'Bukti pembayaran Anda telah diterima dan sedang menunggu proses verifikasi staf Admissions di sistem sekolah.',
-
-        // Formulir Lengkap (Ketika verified)
-        'fullform_badge' => 'Pembayaran Formulir Telah Diverifikasi',
-        'fullform_title' => 'Formulir Detail Calon Siswa & Orang Tua',
-        'fullform_subtitle' => 'Silakan lengkapi seluruh data siswa dan orang tua di bawah ini untuk tahapan observasi dan administrasi sekolah.',
-        'sec1_student' => '1. Biodata Lengkap Calon Siswa',
-        'lbl_nickname' => 'Nama Panggilan',
-        'lbl_gender' => 'Jenis Kelamin',
-        'gender_male' => 'Laki-laki',
-        'gender_female' => 'Perempuan',
-        'lbl_birth_place' => 'Tempat Lahir',
-        'lbl_birth_date' => 'Tanggal Lahir',
-        'lbl_religion' => 'Agama',
-        'lbl_nationality' => 'Kewarganegaraan',
-        'lbl_prev_school' => 'Asal Sekolah Sebelumnya',
-        'lbl_domicile' => 'Alamat Tempat Tinggal Saat Ini',
-        'sec2_parent' => '2. Data Orang Tua / Wali',
-        'lbl_parent_full' => 'Nama Lengkap Orang Tua / Wali',
-        'lbl_nik' => 'NIK Orang Tua (KTP/Paspor)',
-        'lbl_occupation' => 'Pekerjaan Orang Tua',
-        'lbl_notes' => 'Catatan Tambahan (Kondisi Khusus / Riwayat Belajar)',
-        'btn_save_fullform' => 'Simpan Formulir Pendaftaran Lengkap',
-
-        // Tanda Terima Selesai
-        'receipt_title' => 'Formulir Pendaftaran Lengkap Telah Diterima!',
-        'receipt_desc' => 'Seluruh data calon siswa telah tersimpan resmi di sistem Chung Chung Christian School.',
-        'receipt_status' => 'Pembayaran Lunas & Data Lengkap',
-        'receipt_contact_soon' => 'Tim Admissions CCS akan segera menghubungi nomor WhatsApp Anda untuk konfirmasi jadwal observasi dan tes penempatan.',
+        'btn_register_another' => 'Daftarkan Siswa Lainnya',
 
         // Modal Error
         'modal_error_title' => 'Periksa Kembali Formulir Anda',
@@ -149,9 +96,8 @@ $i18n = [
         'nav_home' => 'Home',
         'nav_admission' => 'New Student Admission',
         'nav_check_status' => 'Check Admission Status',
-        'nav_court' => 'Court Rental',
-        'btn_check_status' => 'Check Admission Status',
-        'btn_back_form' => 'Back to Registration Form',
+        'banner_already_registered' => 'Already registered?',
+        'banner_check_link' => 'Check Admission Status & Upload Payment Proof Here',
 
         // Form Section
         'form_title' => 'New Student Registration Form',
@@ -161,7 +107,7 @@ $i18n = [
         'ph_level' => '-- Select Educational Program --',
         'step2_title' => 'Student Candidate Details',
         'lbl_student_name' => 'Student Candidate Full Name',
-        'hint_student_name' => 'Please write the child\'s full legal name as in birth certificate or passport.',
+        'hint_student_name' => 'Please write the student candidate\'s full legal name as in birth certificate or passport.',
         'step3_title' => 'Parent / Guardian Contact Details',
         'lbl_parent_email' => 'Parent / Guardian Email Address',
         'hint_parent_email' => 'Payment invoice details and status access links will be delivered to this email.',
@@ -187,65 +133,7 @@ $i18n = [
         'lbl_form_fee' => 'Total Form Fee',
         'success_reg_email_note' => 'Form fee details and Bank Mayapada transfer instructions have been sent to your email.',
         'btn_check_this' => 'Check Status & Upload Payment Proof',
-
-        // Cek Status Section (1:1 Mirip Sewa Lapangan)
-        'status_section_title' => 'Check New Student Admission Status',
-        'status_section_desc' => 'Enter your registered email address and parent WhatsApp/phone number to check document status and upload your form payment receipt.',
-        'status_input_ph' => 'Enter Registered Email Address (e.g. parent@example.com)',
-        'btn_check' => 'Check Status',
-        'status_verified' => 'Approved (Verified)',
-        'status_proof_uploaded' => 'Verifying Payment Receipt',
-        'status_rejected' => 'Receipt Rejected',
-        'status_pending' => 'Pending Form Payment',
-        'dash_status_lbl' => 'Admission Status:',
-
-        // Kartu Rekening Bank
-        'bank_card_title' => 'Official School Bank Account',
-        'bank_card_nom' => 'Application Form Fee Amount',
-        'bank_card_rek' => 'Bank Account Number',
-        'bank_card_an' => 'Beneficiary Name:',
-        'bank_card_remark' => 'Transfer Remarks:',
-        'btn_copy' => 'Copy',
-        'lbl_copy_rek' => 'Copy',
-        'msg_copied' => 'Account number copied successfully!',
-
-        // Upload Proof
-        'upload_title' => 'Upload Payment Transfer Receipt',
-        'upload_title_re' => 'Re-upload Payment Transfer Receipt',
-        'upload_drag_title' => 'Select Transfer Receipt File (Image or PDF)',
-        'upload_drag_hint' => 'Accepted formats: JPG, PNG, WEBP, or PDF (Maximum 5 MB).',
-        'btn_upload' => 'Submit Payment Proof',
-        'proof_stored_notice' => 'Receipt stored:',
-        'btn_view_file' => 'View Document &rarr;',
-        'notice_waiting_approval' => 'Your payment receipt has been received and is currently under verification by the Admissions team in our school system.',
-
-        // Full Form
-        'fullform_badge' => 'Application Form Payment Verified',
-        'fullform_title' => 'Complete Student & Parent Background Form',
-        'fullform_subtitle' => 'Please complete all details below for academic observation and school enrollment procedures.',
-        'sec1_student' => '1. Student Personal Information',
-        'lbl_nickname' => 'Preferred Nickname',
-        'lbl_gender' => 'Gender',
-        'gender_male' => 'Male',
-        'gender_female' => 'Female',
-        'lbl_birth_place' => 'Place of Birth',
-        'lbl_birth_date' => 'Date of Birth',
-        'lbl_religion' => 'Religion',
-        'lbl_nationality' => 'Nationality',
-        'lbl_prev_school' => 'Previous School Attended',
-        'lbl_domicile' => 'Current Residential Address',
-        'sec2_parent' => '2. Parent / Guardian Information',
-        'lbl_parent_full' => 'Parent / Guardian Full Legal Name',
-        'lbl_nik' => 'Parent ID / Passport Number',
-        'lbl_occupation' => 'Occupation',
-        'lbl_notes' => 'Additional Notes (Special Needs / Learning History)',
-        'btn_save_fullform' => 'Save & Submit Complete Form',
-
-        // Receipt Done
-        'receipt_title' => 'Complete Application Form Received!',
-        'receipt_desc' => 'All candidate background details have been recorded in Chung Chung Christian School\'s official database.',
-        'receipt_status' => 'Payment Settled & Data Complete',
-        'receipt_contact_soon' => 'The CCS Admissions team will contact your WhatsApp number shortly to schedule the student observation and parent interview.',
+        'btn_register_another' => 'Register Another Student',
 
         // Modal Error
         'modal_error_title' => 'Please Review Your Form',
@@ -262,9 +150,8 @@ $i18n = [
         'nav_home' => '首页',
         'nav_admission' => '新生招生报名',
         'nav_check_status' => '查询报名状态',
-        'nav_court' => '场地租赁',
-        'btn_check_status' => '查询报名审核状态',
-        'btn_back_form' => '返回报名表单',
+        'banner_already_registered' => '已经提交报名？',
+        'banner_check_link' => '在此查询报名状态并上传缴费凭证',
 
         // Form Section
         'form_title' => '新生入学报名申请表',
@@ -300,65 +187,7 @@ $i18n = [
         'lbl_form_fee' => '报名表费用金额',
         'success_reg_email_note' => '报名费明细及 Bank Mayapada 银行转账指引已发送至您的电子邮箱。',
         'btn_check_this' => '查询状态并上传付款凭证',
-
-        // Cek Status Section (1:1 Mirip Sewa Lapangan)
-        'status_section_title' => '查询新生入学报名状态',
-        'status_section_desc' => '使用您注册时填写的电子邮箱和家长手机号码，查询审核状态或上传报名表格付款凭证。',
-        'status_input_ph' => '请输入注册时填写的电子邮箱 (例如: parent@example.com)',
-        'btn_check' => '查询状态',
-        'status_verified' => '已审核批准 (已缴费)',
-        'status_proof_uploaded' => '凭证审核中',
-        'status_rejected' => '凭证被驳回',
-        'status_pending' => '等待支付报名表费用',
-        'dash_status_lbl' => '报名审核状态：',
-
-        // Kartu Rekening Bank
-        'bank_card_title' => '学校官方指定收款账户',
-        'bank_card_nom' => '报名表格购买费用',
-        'bank_card_rek' => '银行账号',
-        'bank_card_an' => '账户户名：',
-        'bank_card_remark' => '转账附言：',
-        'btn_copy' => '复制',
-        'lbl_copy_rek' => '复制',
-        'msg_copied' => '银行账号复制成功！',
-
-        // Upload Proof
-        'upload_title' => '上传银行转账付款凭证',
-        'upload_title_re' => '重新上传转账凭证',
-        'upload_drag_title' => '选择转账凭证文件 (照片或 PDF)',
-        'upload_drag_hint' => '支持的文件格式：JPG, PNG, WEBP 或 PDF（最大 5 MB）。',
-        'btn_upload' => '提交付款凭证',
-        'proof_stored_notice' => '已归档凭证：',
-        'btn_view_file' => '查看文件 &rarr;',
-        'notice_waiting_approval' => '您的转账凭证已成功接收，正在等待学校招生团队在后台管理系统中核实确认。',
-
-        // Full Form
-        'fullform_badge' => '报名表格费用已审核确认',
-        'fullform_title' => '学生及家庭详细背景信息表',
-        'fullform_subtitle' => '请填写以下完整的学生与家庭信息，以供学校安排后续观察面试及正式入学建档。',
-        'sec1_student' => '1. 学生个人详细资料',
-        'lbl_nickname' => '学生昵称',
-        'lbl_gender' => '性别',
-        'gender_male' => '男',
-        'gender_female' => '女',
-        'lbl_birth_place' => '出生地点',
-        'lbl_birth_date' => '出生日期',
-        'lbl_religion' => '宗教信仰',
-        'lbl_nationality' => '国籍',
-        'lbl_prev_school' => '原就读学校',
-        'lbl_domicile' => '当前居住地址',
-        'sec2_parent' => '2. 家长 / 监护人信息',
-        'lbl_parent_full' => '家长/监护人法定全名',
-        'lbl_nik' => '家长身份证号 / 护照号',
-        'lbl_occupation' => '职业',
-        'lbl_notes' => '补充说明 (特殊情况或过往学习经历)',
-        'btn_save_fullform' => '保存并提交完整报名资料',
-
-        // Receipt Done
-        'receipt_title' => '完整报名表已成功接收！',
-        'receipt_desc' => '学生所有详细资料已完整录入并安全归档于崇崇基督教学校官方管理系统。',
-        'receipt_status' => '费用结清 & 资料完整',
-        'receipt_contact_soon' => 'CCS 招生团队将尽快通过 WhatsApp 与您联系安排后续入学观察及面谈时间。',
+        'btn_register_another' => '登记其他新生',
 
         // Modal Error
         'modal_error_title' => '请检查并完善表单内容',
@@ -562,142 +391,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action_register_simpl
         }
     }
 }
-
-// ─── 7. PROSES UPLOAD BUKTI TRANSFER DARI HASIL PENCARIAN / STATUS ──────────
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action_upload_proof'])) {
-    $csrf = $_POST['csrf_token'] ?? '';
-    $targetAppNo = trim($_POST['target_app_no'] ?? ($_SESSION['applicant_app_no'] ?? ''));
-
-    if ($csrf !== $_SESSION['csrf_token']) {
-        $flashMsg = 'Sesi formulir kadaluarsa. Silakan muat ulang halaman.';
-        $flashType = 'error';
-    } elseif (empty($targetAppNo)) {
-        $flashMsg = 'Nomor registrasi pendaftar tidak ditemukan.';
-        $flashType = 'error';
-    } elseif (!isset($_FILES['payment_proof']) || $_FILES['payment_proof']['error'] !== UPLOAD_ERR_OK) {
-        $flashMsg = 'Wajib melampirkan berkas bukti transfer (foto atau PDF).';
-        $flashType = 'error';
-    } else {
-        $file = $_FILES['payment_proof'];
-        $maxBytes = 5 * 1024 * 1024; // 5 MB
-        $allowedExts = ['jpg', 'jpeg', 'png', 'webp', 'pdf'];
-        $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
-
-        if ($file['size'] > $maxBytes) {
-            $flashMsg = 'Ukuran berkas bukti transfer melebihi batas maksimum 5 MB.';
-            $flashType = 'error';
-        } elseif (!in_array($ext, $allowedExts)) {
-            $flashMsg = 'Format berkas tidak didukung. Harap gunakan file JPG, PNG, WEBP, atau PDF.';
-            $flashType = 'error';
-        } else {
-            $appNoClean = preg_replace('/[^A-Za-z0-9]/', '', $targetAppNo);
-            $newFilename = 'proof_' . $appNoClean . '_' . time() . '_' . bin2hex(random_bytes(4)) . '.' . $ext;
-            $destination = $uploadDir . '/' . $newFilename;
-
-            if (move_uploaded_file($file['tmp_name'], $destination)) {
-                $payload = [
-                    'action' => 'upload_proof',
-                    'application_number' => $targetAppNo,
-                    'payment_proof_file' => $newFilename,
-                    'hosting_url' => HOSTING_URL
-                ];
-
-                $res = callNextJsApi('POST', [], $payload);
-
-                if (!empty($res['success'])) {
-                    $_SESSION['applicant_proof_file'] = $newFilename;
-                    $flashMsg = 'Bukti transfer berhasil dikirimkan! Staf Admissions akan segera memverifikasi.';
-                    $flashType = 'success';
-                } else {
-                    $flashMsg = 'Bukti tersimpan di server namun gagal sinkron: ' . ($res['message'] ?? 'Error');
-                    $flashType = 'error';
-                }
-            } else {
-                $flashMsg = 'Gagal menyimpan file bukti transfer ke direktori server hosting.';
-                $flashType = 'error';
-            }
-        }
-    }
-}
-
-// ─── 8. PROSES SIMPAN FORMULIR LENGKAP (KONDISIONAL HANYA JIKA VERIFIED) ────
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action_complete_form'])) {
-    $csrf = $_POST['csrf_token'] ?? '';
-    $targetAppNo = trim($_POST['target_app_no'] ?? ($_SESSION['applicant_app_no'] ?? ''));
-
-    if ($csrf !== $_SESSION['csrf_token']) {
-        $flashMsg = 'Sesi formulir kadaluarsa. Silakan coba lagi.';
-        $flashType = 'error';
-    } elseif (empty($targetAppNo)) {
-        $flashMsg = 'Nomor registrasi pendaftar tidak valid.';
-        $flashType = 'error';
-    } else {
-        $payload = [
-            'action' => 'complete_form',
-            'application_number' => $targetAppNo,
-            'student_name' => trim($_POST['student_name'] ?? ''),
-            'student_nickname' => trim($_POST['student_nickname'] ?? ''),
-            'student_gender' => trim($_POST['student_gender'] ?? ''),
-            'student_birth_place' => trim($_POST['student_birth_place'] ?? ''),
-            'student_birth_date' => trim($_POST['student_birth_date'] ?? ''),
-            'student_religion' => trim($_POST['student_religion'] ?? ''),
-            'student_nationality' => trim($_POST['student_nationality'] ?? 'WNI'),
-            'student_previous_school' => trim($_POST['student_previous_school'] ?? ''),
-            'student_domicile_address' => trim($_POST['student_domicile_address'] ?? ''),
-            'parent_name' => trim($_POST['parent_name'] ?? ''),
-            'parent_phone' => trim($_POST['parent_phone'] ?? ''),
-            'parent_email' => trim($_POST['parent_email'] ?? ''),
-            'parent_occupation' => trim($_POST['parent_occupation'] ?? ''),
-            'parent_nik' => trim($_POST['parent_nik'] ?? ''),
-            'additional_notes' => trim($_POST['additional_notes'] ?? '')
-        ];
-
-        $res = callNextJsApi('POST', [], $payload);
-
-        if (!empty($res['success'])) {
-            $flashMsg = 'Selamat! Formulir biodata calon siswa telah lengkap tersimpan.';
-            $flashType = 'success';
-        } else {
-            $flashMsg = 'Gagal menyimpan formulir lengkap: ' . ($res['message'] ?? 'Error');
-            $flashType = 'error';
-        }
-    }
-}
-
-// ─── 9. PENCARIAN STATUS PENDAFTARAN (1:1 DENGAN SEWA LAPANGAN) ─────────────
-$searchQuery = trim($_GET['cek'] ?? ($_SESSION['applicant_email'] ?? ''));
-$searchPhone = trim($_GET['phone'] ?? ($_SESSION['applicant_phone'] ?? ''));
-$currentApplicant = null;
-$searchError = '';
-
-if (!empty($searchQuery)) {
-    $isEmail = filter_var($searchQuery, FILTER_VALIDATE_EMAIL);
-    $queryParams = [
-        'action' => 'check_status',
-        'phone' => $searchPhone
-    ];
-    if ($isEmail) {
-        $queryParams['email'] = strtolower($searchQuery);
-    } else {
-        $queryParams['code'] = $searchQuery;
-    }
-
-    $res = callNextJsApi('GET', $queryParams);
-
-    if (!empty($res['success']) && !empty($res['data'])) {
-        $currentApplicant = $res['data'];
-        $_SESSION['applicant_email']  = $currentApplicant['parent_email'] ?? $currentApplicant['father_email'] ?? '';
-        $_SESSION['applicant_phone']  = $currentApplicant['parent_phone'] ?? $currentApplicant['father_phone'] ?? $searchPhone;
-        $_SESSION['applicant_app_no'] = $currentApplicant['application_number'];
-        if (!empty($currentApplicant['payment_proof_file'])) {
-            $_SESSION['applicant_proof_file'] = $currentApplicant['payment_proof_file'];
-        }
-    } else {
-        if (isset($_GET['cek'])) {
-            $searchError = !empty($res['message']) ? $res['message'] : "Data pendaftaran dengan kata kunci '{$searchQuery}' tidak ditemukan.";
-        }
-    }
-}
 ?>
 <!DOCTYPE html>
 <html lang="<?= $currLang === 'cn' ? 'zh-CN' : $currLang ?>">
@@ -876,28 +569,27 @@ if (!empty($searchQuery)) {
 <body class="min-h-screen flex flex-col justify-between">
 
   <!-- ═══════════════════════════════════════════════════════════════════════ -->
-  <!-- 1. TOP BAR BAHASA RESMI CCS (ENGLISH | BAHASA | 中文) 1:1 SEWA LAPANGAN -->
+  <!-- 1. TOP BAR BAHASA RESMI CCS (ENGLISH | BAHASA | 中文)                   -->
   <!-- ═══════════════════════════════════════════════════════════════════════ -->
   <div class="bg-ccsNavy text-white py-2">
     <div class="max-w-6xl mx-auto px-4 sm:px-6 flex items-center justify-end">
-      <!-- Sisi Kanan: Multi-Bahasa (English | Bahasa | 中文) -->
       <div class="flex items-center gap-3 text-[13px] font-medium text-gray-200">
         <a 
-          href="?lang=en<?= !empty($searchQuery) ? '&cek=' . urlencode($searchQuery) : '' ?><?= !empty($searchPhone) ? '&phone=' . urlencode($searchPhone) : '' ?>" 
+          href="index.php?lang=en" 
           class="<?= $currLang === 'en' ? 'text-ccsOrangeLight font-semibold' : 'hover:text-ccsOrangeLight transition' ?>"
         >
           English
         </a>
         <span class="text-gray-500">|</span>
         <a 
-          href="?lang=id<?= !empty($searchQuery) ? '&cek=' . urlencode($searchQuery) : '' ?><?= !empty($searchPhone) ? '&phone=' . urlencode($searchPhone) : '' ?>" 
+          href="index.php?lang=id" 
           class="<?= $currLang === 'id' ? 'text-ccsOrangeLight font-semibold' : 'hover:text-ccsOrangeLight transition' ?>"
         >
           Bahasa
         </a>
         <span class="text-gray-500">|</span>
         <a 
-          href="?lang=cn<?= !empty($searchQuery) ? '&cek=' . urlencode($searchQuery) : '' ?><?= !empty($searchPhone) ? '&phone=' . urlencode($searchPhone) : '' ?>" 
+          href="index.php?lang=cn" 
           class="<?= $currLang === 'cn' ? 'text-ccsOrangeLight font-semibold' : 'hover:text-ccsOrangeLight transition' ?>"
         >
           中文
@@ -921,15 +613,15 @@ if (!empty($searchQuery)) {
         />
       </a>
 
-      <!-- Menu Navigasi: Home, Formulir Pendaftaran, Cek Status -->
+      <!-- Menu Navigasi: Home, Formulir Pendaftaran (Aktif), Cek Status Pendaftaran -->
       <nav class="flex items-center gap-8 text-[15px] font-medium">
         <a href="https://ccs.sch.id/" class="text-gray-800 hover:text-ccsOrange transition-colors">
           <?= htmlspecialchars($L['nav_home']) ?>
         </a>
-        <a href="#form-pendaftaran" class="text-ccsOrange font-semibold border-b-2 border-ccsOrange pb-1 transition-colors">
+        <a href="index.php?lang=<?= $currLang ?>" class="text-ccsOrange font-semibold border-b-2 border-ccsOrange pb-1 transition-colors">
           <?= htmlspecialchars($L['nav_admission']) ?>
         </a>
-        <a href="#cek-status" class="text-gray-800 hover:text-ccsOrange transition-colors">
+        <a href="status.php?lang=<?= $currLang ?>" class="text-gray-800 hover:text-ccsOrange transition-colors">
           <?= htmlspecialchars($L['nav_check_status']) ?>
         </a>
       </nav>
@@ -959,9 +651,20 @@ if (!empty($searchQuery)) {
   <?php endif; ?>
 
   <!-- ═══════════════════════════════════════════════════════════════════════ -->
-  <!-- 3. KONTEN UTAMA HALAMAN                                                 -->
+  <!-- 3. KONTEN UTAMA HALAMAN: KHUSUS FORMULIR PENDAFTARAN SISWA BARU         -->
   <!-- ═══════════════════════════════════════════════════════════════════════ -->
-  <main class="max-w-4xl mx-auto px-4 sm:px-6 py-8 flex-1 w-full space-y-10">
+  <main class="max-w-4xl mx-auto px-4 sm:px-6 py-8 flex-1 w-full space-y-8">
+
+    <!-- BANNER PANDUAN: SUDAH PERNAH MENDAFTAR? CEK STATUS DI SINI -->
+    <div class="bg-gradient-to-r from-orange-50 to-slate-50 border border-orange-200 rounded-md p-3.5 sm:p-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+      <div class="flex items-center gap-2.5 text-slate-700 font-medium text-center sm:text-left">
+        <i class="fas fa-info-circle text-ccsOrange text-base shrink-0"></i>
+        <span><?= htmlspecialchars($L['banner_already_registered']) ?></span>
+      </div>
+      <a href="status.php?lang=<?= $currLang ?>" class="text-ccsNavy hover:text-ccsOrange font-semibold underline underline-offset-2 shrink-0">
+        <?= htmlspecialchars($L['banner_check_link']) ?> &rarr;
+      </a>
+    </div>
 
     <!-- ─── NOTIFIKASI SUKSES PENDAFTARAN AWAL ─────────── -->
     <?php if ($successReg): ?>
@@ -994,27 +697,28 @@ if (!empty($searchQuery)) {
         </div>
 
         <div class="space-y-3 pt-2">
-          <a href="?cek=<?= urlencode($successReg['parent_email'] ?? '') ?>&phone=<?= urlencode($successReg['parent_phone'] ?? '') ?>&lang=<?= $currLang ?>#tempat-unggah" class="thm-btn w-full sm:w-auto">
+          <a href="status.php?cek=<?= urlencode($successReg['parent_email'] ?? '') ?>&phone=<?= urlencode($successReg['parent_phone'] ?? '') ?>&lang=<?= $currLang ?>#tempat-unggah" class="thm-btn w-full sm:w-auto">
             <i class="fas fa-eye mr-1.5"></i> <?= htmlspecialchars($L['btn_check_this']) ?>
           </a>
           <div>
-            <a href="?lang=<?= $currLang ?>" class="text-xs text-gray-500 hover:text-ccsNavy underline"><?= htmlspecialchars($L['btn_back_form']) ?></a>
+            <a href="index.php?lang=<?= $currLang ?>" class="text-xs text-gray-500 hover:text-ccsNavy underline"><?= htmlspecialchars($L['btn_register_another']) ?></a>
           </div>
         </div>
       </div>
     <?php endif; ?>
 
     <!-- ═════════════════════════════════════════════════════════════════════ -->
-    <!-- SECTION 1: FORMULIR PENDAFTARAN SISWA BARU (BERSIH & INSTITUSIONAL)  -->
+    <!-- FORMULIR PENDAFTARAN SISWA BARU (BERSIH & INSTITUSIONAL)              -->
     <!-- ═════════════════════════════════════════════════════════════════════ -->
     <section id="form-pendaftaran" class="bg-white border border-gray-200 rounded-md p-6 sm:p-8 space-y-6 shadow-xs">
       
       <!-- Header Form Institusional Bersih -->
       <div class="border-b border-gray-200 pb-4">
-        <h2 class="text-2xl font-bold text-ccsHeading"><?= htmlspecialchars($L['form_title']) ?></h2>
+        <h1 class="text-2xl font-bold text-ccsHeading"><?= htmlspecialchars($L['form_title']) ?></h1>
+        <p class="text-xs text-gray-500 mt-1"><?= htmlspecialchars($L['form_subtitle']) ?></p>
       </div>
 
-      <form method="POST" id="registrationForm" class="space-y-6" novalidate>
+      <form method="POST" action="index.php?lang=<?= $currLang ?>" id="registrationForm" class="space-y-6" novalidate>
         <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
         <input type="hidden" name="action_register_simple" value="1">
 
@@ -1046,9 +750,9 @@ if (!empty($searchQuery)) {
 
         <!-- LANGKAH 2: DATA CALON SISWA -->
         <div class="border-t border-gray-100 pt-5 space-y-3">
-          <h3 class="text-sm font-bold text-ccsHeading">
+          <h2 class="text-sm font-bold text-ccsHeading">
             2. <?= htmlspecialchars($L['step2_title']) ?>
-          </h3>
+          </h2>
           <div class="max-w-xl">
             <label class="school-label" for="inputStudentName">
               <?= htmlspecialchars($L['lbl_student_name']) ?> <span class="text-rose-500">*</span>
@@ -1067,9 +771,9 @@ if (!empty($searchQuery)) {
 
         <!-- LANGKAH 3: DATA KONTAK ORANG TUA / WALI -->
         <div class="border-t border-gray-100 pt-5 space-y-3">
-          <h3 class="text-sm font-bold text-ccsHeading">
+          <h2 class="text-sm font-bold text-ccsHeading">
             3. <?= htmlspecialchars($L['step3_title']) ?>
-          </h3>
+          </h2>
 
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-5 max-w-2xl">
             <div>
@@ -1106,14 +810,14 @@ if (!empty($searchQuery)) {
 
         <!-- LANGKAH 4: KETENTUAN PENDAFTARAN & TATA TERTIB -->
         <div class="border-t border-gray-100 pt-5 space-y-3">
-          <h3 class="text-sm font-bold text-ccsHeading">
+          <h2 class="text-sm font-bold text-ccsHeading">
             4. <?= htmlspecialchars($L['step4_title']) ?>
-          </h3>
+          </h2>
 
           <div class="bg-slate-50 border border-slate-200 rounded-md p-4 sm:p-5 space-y-3">
-            <h4 class="font-semibold text-ccsHeading text-xs uppercase tracking-wide">
+            <h3 class="font-semibold text-ccsHeading text-xs uppercase tracking-wide">
               <?= htmlspecialchars($L['rules_header']) ?>
-            </h4>
+            </h3>
             <ul class="list-disc list-outside pl-4 text-xs text-gray-600 space-y-2 leading-relaxed">
               <?php foreach ($L['rules'] as $rule): ?>
                 <li><?= htmlspecialchars($rule) ?></li>
@@ -1150,319 +854,6 @@ if (!empty($searchQuery)) {
         </div>
 
       </form>
-    </section>
-
-    <!-- ═════════════════════════════════════════════════════════════════════ -->
-    <!-- SECTION 2: CEK STATUS PENDAFTARAN (INSTITUSIONAL & BERSIH)            -->
-    <!-- ═════════════════════════════════════════════════════════════════════ -->
-    <section id="cek-status" class="bg-white border border-gray-200 rounded-md p-6 sm:p-8 shadow-xs space-y-6 scroll-mt-28">
-      <div class="border-b border-gray-200 pb-3">
-        <h2 class="text-2xl font-bold text-ccsHeading"><?= htmlspecialchars($L['status_section_title']) ?></h2>
-        <p class="text-xs text-gray-500 mt-1"><?= htmlspecialchars($L['status_section_desc'] ?? '') ?></p>
-      </div>
-
-      <!-- Search Form (Email + Nomor HP) -->
-      <form method="GET" class="flex flex-wrap sm:flex-nowrap gap-2.5 max-w-2xl">
-        <input type="hidden" name="lang" value="<?= htmlspecialchars($currLang) ?>" />
-        <input
-          type="text"
-          name="cek"
-          value="<?= htmlspecialchars($searchQuery) ?>"
-          placeholder="<?= htmlspecialchars($L['status_input_ph']) ?>"
-          required
-          class="school-input font-medium"
-        />
-        <input
-          type="tel"
-          name="phone"
-          value="<?= htmlspecialchars($searchPhone) ?>"
-          placeholder="<?= htmlspecialchars($L['lbl_parent_phone']) ?>"
-          required
-          class="school-input sm:w-56"
-        />
-        <button type="submit" class="thm-btn px-6 py-2.5 whitespace-nowrap text-xs font-semibold shrink-0">
-          <?= htmlspecialchars($L['btn_check']) ?>
-        </button>
-      </form>
-
-      <?php if (!empty($searchError)): ?>
-        <div class="p-3.5 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-md max-w-2xl flex items-center gap-2">
-          <i class="fas fa-exclamation-circle text-rose-500 shrink-0"></i>
-          <span><?= htmlspecialchars($searchError) ?></span>
-        </div>
-      <?php endif; ?>
-
-      <!-- Hasil Pencarian Status Pendaftar -->
-      <?php if ($currentApplicant): ?>
-        <div class="bg-white border border-gray-200 rounded-md p-5 sm:p-6 space-y-5 max-w-3xl">
-          
-          <div class="flex flex-col sm:flex-row sm:items-center justify-between border-b border-gray-200 pb-4 gap-2">
-            <div>
-              <span class="text-xs text-gray-500 uppercase tracking-wide font-medium"><?= htmlspecialchars($L['lbl_code']) ?></span>
-              <div class="text-xl font-bold font-mono text-ccsHeading mt-0.5"><?= htmlspecialchars($currentApplicant['application_number']) ?></div>
-            </div>
-            <div>
-              <?php
-                $statusVal = $currentApplicant['form_fee_status'] ?? 'pending';
-                if ($statusVal === 'verified') {
-                    $badgeClass = 'bg-emerald-50 text-emerald-800 border border-emerald-200';
-                    $badgeText = $L['status_verified'];
-                } elseif ($statusVal === 'proof_uploaded') {
-                    $badgeClass = 'bg-sky-50 text-sky-800 border border-sky-200';
-                    $badgeText = $L['status_proof_uploaded'];
-                } elseif ($statusVal === 'rejected') {
-                    $badgeClass = 'bg-rose-50 text-rose-800 border border-rose-200';
-                    $badgeText = $L['status_rejected'];
-                } else {
-                    $badgeClass = 'bg-amber-50 text-amber-800 border border-amber-200';
-                    $badgeText = $L['status_pending'];
-                }
-              ?>
-              <span class="px-3 py-1 rounded-md text-xs font-semibold inline-flex items-center gap-1.5 <?= $badgeClass ?>">
-                <?= htmlspecialchars($badgeText) ?>
-              </span>
-            </div>
-          </div>
-
-          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm bg-slate-50 p-4 rounded-md border border-slate-200">
-            <div>
-              <span class="text-gray-500 block text-xs"><?= htmlspecialchars($L['lbl_student']) ?></span>
-              <strong class="text-gray-900"><?= htmlspecialchars($currentApplicant['student_name']) ?></strong>
-            </div>
-            <div>
-              <span class="text-gray-500 block text-xs"><?= htmlspecialchars($L['lbl_level_selected']) ?></span>
-              <strong class="text-gray-900"><?= htmlspecialchars($currentApplicant['level_name'] ?? $currentApplicant['preferred_grade'] ?? '-') ?></strong>
-            </div>
-            <div>
-              <span class="text-gray-500 block text-xs"><?= htmlspecialchars($L['lbl_form_fee']) ?></span>
-              <strong class="text-ccsOrange font-mono font-bold">
-                Rp <?= number_format($currentApplicant['form_fee_amount'] ?? DEFAULT_FORM_FEE, 0, ',', '.') ?>
-              </strong>
-            </div>
-          </div>
-
-          <!-- KONDISI A: FORMULIR BELUM VERIFIED (TAMPILKAN FORM UPLOAD STRUK) -->
-          <?php if (($currentApplicant['form_fee_status'] ?? '') !== 'verified'): ?>
-            <div id="tempat-unggah" class="border-t border-gray-200 pt-5 space-y-4 scroll-mt-28">
-              <!-- Informasi Rekening Bank Mayapada: Tampilan Formal & Dignified (No AI gradient) -->
-              <div class="bg-[#022c46] text-white p-5 rounded-md border border-[#0b4877] space-y-3">
-                <div class="flex items-center justify-between border-b border-white/10 pb-2.5">
-                  <div class="flex items-center gap-2">
-                    <span class="font-bold text-sm tracking-wide text-white"><?= htmlspecialchars(BANK_NAME) ?></span>
-                  </div>
-                  <span class="text-[11px] font-mono bg-white/10 px-2 py-0.5 rounded text-gray-200">IDR</span>
-                </div>
-                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
-                  <div>
-                    <span class="text-[11px] text-gray-300 block"><?= htmlspecialchars($L['bank_card_rek']) ?></span>
-                    <span class="text-lg font-mono font-bold tracking-wider text-white select-all"><?= htmlspecialchars(BANK_REK) ?></span>
-                    <span class="text-xs text-gray-300 block mt-0.5"><?= htmlspecialchars($L['bank_card_an']) ?> <strong class="text-white"><?= htmlspecialchars(BANK_AN) ?></strong></span>
-                  </div>
-                  <button 
-                    type="button" 
-                    id="copyRekBtn"
-                    onclick="copyRekeningNumber()" 
-                    class="self-start sm:self-center px-3 py-1.5 rounded bg-white/15 hover:bg-white/25 text-xs font-semibold text-white transition flex items-center gap-1.5"
-                  >
-                    <i class="far fa-copy"></i> <span><?= htmlspecialchars($L['lbl_copy_rek'] ?? $L['btn_copy'] ?? 'Salin') ?></span>
-                  </button>
-                </div>
-                <div class="text-[11px] text-gray-300 pt-2 border-t border-white/10 flex flex-wrap items-center gap-1.5">
-                  <span><?= htmlspecialchars($L['bank_card_remark']) ?> <strong class="text-white font-mono"><?= htmlspecialchars($currentApplicant['application_number']) ?> <?= htmlspecialchars($currentApplicant['student_name']) ?></strong></span>
-                </div>
-              </div>
-
-              <div class="pt-2">
-                <h4 class="text-sm font-bold text-ccsHeading">
-                  <?= empty($currentApplicant['payment_proof_file']) ? htmlspecialchars($L['upload_title']) : htmlspecialchars($L['upload_title_re']) ?>
-                </h4>
-              </div>
-
-              <form method="POST" enctype="multipart/form-data" class="space-y-4">
-                <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
-                <input type="hidden" name="action_upload_proof" value="1">
-                <input type="hidden" name="target_app_no" value="<?= htmlspecialchars($currentApplicant['application_number']) ?>">
-
-                <div class="border border-dashed border-gray-300 hover:border-ccsOrange rounded-md p-6 text-center transition bg-slate-50/50">
-                  <input 
-                    type="file" 
-                    name="payment_proof" 
-                    id="paymentProofFile" 
-                    required 
-                    accept=".jpg,.jpeg,.png,.webp,.pdf" 
-                    class="hidden" 
-                    onchange="handleProofFileSelect(this)"
-                  >
-                  <label for="paymentProofFile" class="cursor-pointer block">
-                    <span class="text-sm font-semibold text-ccsHeading block"><?= htmlspecialchars($L['upload_drag_title']) ?></span>
-                    <span class="text-xs text-gray-500 block mt-1"><?= htmlspecialchars($L['upload_drag_hint']) ?></span>
-                    <div id="proofFileNameDisplay" class="text-xs font-mono font-bold text-ccsOrange mt-2 hidden"></div>
-                  </label>
-                </div>
-
-                <button 
-                  type="submit" 
-                  class="thm-btn w-full sm:w-auto"
-                >
-                  <?= htmlspecialchars($L['btn_upload']) ?>
-                </button>
-              </form>
-
-              <?php if (!empty($currentApplicant['payment_proof_file'])): ?>
-                <div class="p-3 bg-sky-50 border border-sky-200 rounded-md text-xs text-sky-900 flex items-center justify-between">
-                  <div class="flex items-center gap-2">
-                    <i class="fas fa-info-circle text-sky-600 shrink-0"></i>
-                    <span><?= htmlspecialchars($L['notice_waiting_approval']) ?></span>
-                  </div>
-                  <a href="?action=view_proof&file=<?= urlencode($currentApplicant['payment_proof_file']) ?>" target="_blank" class="text-ccsOrange font-semibold hover:underline ml-2 whitespace-nowrap">
-                    <?= $L['btn_view_file'] ?>
-                  </a>
-                </div>
-              <?php endif; ?>
-            </div>
-
-          <!-- KONDISI B: SUDAH VERIFIED (FORMULIR DETAIL TERBUKA) -->
-          <?php else: ?>
-            <?php if (empty($currentApplicant['is_form_completed'])): ?>
-              <div class="border-t border-gray-200 pt-5 space-y-5">
-                <div class="border-b border-gray-200 pb-3">
-                  <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-xs font-semibold bg-emerald-50 text-emerald-800 mb-1 border border-emerald-200">
-                    <i class="fas fa-check-circle text-emerald-600"></i> <?= htmlspecialchars($L['fullform_badge']) ?>
-                  </span>
-                  <h3 class="text-xl font-bold text-ccsHeading"><?= htmlspecialchars($L['fullform_title']) ?></h3>
-                  <p class="text-xs text-gray-500 mt-0.5"><?= htmlspecialchars($L['fullform_subtitle']) ?></p>
-                </div>
-
-                <form method="POST" class="space-y-6">
-                  <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
-                  <input type="hidden" name="action_complete_form" value="1">
-                  <input type="hidden" name="target_app_no" value="<?= htmlspecialchars($currentApplicant['application_number']) ?>">
-
-                  <!-- Bagian 1: Data Siswa -->
-                  <div class="space-y-4">
-                    <h4 class="text-xs font-bold text-ccsHeading uppercase tracking-wider border-b border-gray-100 pb-2">
-                      <?= htmlspecialchars($L['sec1_student']) ?>
-                    </h4>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-                      <div class="sm:col-span-2">
-                        <label class="school-label"><?= htmlspecialchars($L['lbl_student_name']) ?> <span class="text-rose-500">*</span></label>
-                        <input type="text" name="student_name" required value="<?= htmlspecialchars($currentApplicant['student_name'] ?? '') ?>" class="school-input">
-                      </div>
-                      <div>
-                        <label class="school-label"><?= htmlspecialchars($L['lbl_nickname']) ?></label>
-                        <input type="text" name="student_nickname" value="<?= htmlspecialchars($currentApplicant['student_nickname'] ?? '') ?>" class="school-input">
-                      </div>
-                      <div>
-                        <label class="school-label"><?= htmlspecialchars($L['lbl_gender']) ?> <span class="text-rose-500">*</span></label>
-                        <select name="student_gender" required class="school-select">
-                          <option value="male" <?= ($currentApplicant['student_gender'] ?? '') === 'male' ? 'selected' : '' ?>><?= htmlspecialchars($L['gender_male']) ?></option>
-                          <option value="female" <?= ($currentApplicant['student_gender'] ?? '') === 'female' ? 'selected' : '' ?>><?= htmlspecialchars($L['gender_female']) ?></option>
-                        </select>
-                      </div>
-                      <div>
-                        <label class="school-label"><?= htmlspecialchars($L['lbl_birth_place']) ?></label>
-                        <input type="text" name="student_birth_place" value="<?= htmlspecialchars($currentApplicant['student_birth_place'] ?? '') ?>" class="school-input">
-                      </div>
-                      <div>
-                        <label class="school-label"><?= htmlspecialchars($L['lbl_birth_date']) ?> <span class="text-rose-500">*</span></label>
-                        <input type="date" name="student_birth_date" required value="<?= htmlspecialchars($currentApplicant['student_birth_date'] ?? '') ?>" class="school-input">
-                      </div>
-                      <div>
-                        <label class="school-label"><?= htmlspecialchars($L['lbl_religion']) ?></label>
-                        <select name="student_religion" class="school-select">
-                          <option value="">-- <?= htmlspecialchars($L['lbl_religion']) ?> --</option>
-                          <?php foreach (['Kristen', 'Katolik', 'Islam', 'Buddha', 'Hindu', 'Konghucu', 'Lainnya'] as $rel): ?>
-                            <option value="<?= $rel ?>" <?= ($currentApplicant['student_religion'] ?? '') === $rel ? 'selected' : '' ?>><?= $rel ?></option>
-                          <?php endforeach; ?>
-                        </select>
-                      </div>
-                      <div>
-                        <label class="school-label"><?= htmlspecialchars($L['lbl_nationality']) ?></label>
-                        <select name="student_nationality" class="school-select">
-                          <option value="WNI" <?= ($currentApplicant['student_nationality'] ?? 'WNI') === 'WNI' ? 'selected' : '' ?>>WNI</option>
-                          <option value="WNA" <?= ($currentApplicant['student_nationality'] ?? '') === 'WNA' ? 'selected' : '' ?>>WNA</option>
-                        </select>
-                      </div>
-                      <div class="sm:col-span-2">
-                        <label class="school-label"><?= htmlspecialchars($L['lbl_prev_school']) ?></label>
-                        <input type="text" name="student_previous_school" value="<?= htmlspecialchars($currentApplicant['student_previous_school'] ?? '') ?>" class="school-input">
-                      </div>
-                      <div class="sm:col-span-2">
-                        <label class="school-label"><?= htmlspecialchars($L['lbl_domicile']) ?></label>
-                        <textarea name="student_domicile_address" rows="2" class="school-textarea"><?= htmlspecialchars($currentApplicant['student_domicile_address'] ?? '') ?></textarea>
-                      </div>
-                    </div>
-                  </div>
-
-                  <!-- Bagian 2: Data Orang Tua -->
-                  <div class="space-y-4 pt-4 border-t border-gray-200">
-                    <h4 class="text-xs font-bold text-ccsHeading uppercase tracking-wider border-b border-gray-100 pb-2">
-                      <?= htmlspecialchars($L['sec2_parent']) ?>
-                    </h4>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-                      <div class="sm:col-span-2">
-                        <label class="school-label"><?= htmlspecialchars($L['lbl_parent_full']) ?> <span class="text-rose-500">*</span></label>
-                        <input type="text" name="parent_name" required value="<?= htmlspecialchars($currentApplicant['parent_name'] ?? '') ?>" class="school-input">
-                      </div>
-                      <div>
-                        <label class="school-label"><?= htmlspecialchars($L['lbl_parent_phone']) ?> <span class="text-rose-500">*</span></label>
-                        <input type="tel" name="parent_phone" required value="<?= htmlspecialchars($currentApplicant['parent_phone'] ?? '') ?>" class="school-input">
-                      </div>
-                      <div>
-                        <label class="school-label"><?= htmlspecialchars($L['lbl_parent_email']) ?> <span class="text-rose-500">*</span></label>
-                        <input type="email" name="parent_email" required value="<?= htmlspecialchars($currentApplicant['parent_email'] ?? '') ?>" class="school-input">
-                      </div>
-                      <div>
-                        <label class="school-label"><?= htmlspecialchars($L['lbl_nik']) ?></label>
-                        <input type="text" name="parent_nik" value="<?= htmlspecialchars($currentApplicant['parent_nik'] ?? '') ?>" class="school-input">
-                      </div>
-                      <div>
-                        <label class="school-label"><?= htmlspecialchars($L['lbl_occupation']) ?></label>
-                        <input type="text" name="parent_occupation" value="<?= htmlspecialchars($currentApplicant['parent_occupation'] ?? '') ?>" class="school-input">
-                      </div>
-                      <div class="sm:col-span-2">
-                        <label class="school-label"><?= htmlspecialchars($L['lbl_notes']) ?></label>
-                        <textarea name="additional_notes" rows="2" class="school-textarea"><?= htmlspecialchars($currentApplicant['additional_notes'] ?? '') ?></textarea>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div class="pt-2">
-                    <button 
-                      type="submit" 
-                      class="thm-btn w-full sm:w-auto"
-                    >
-                      <?= htmlspecialchars($L['btn_save_fullform']) ?>
-                    </button>
-                  </div>
-                </form>
-              </div>
-
-            <?php else: ?>
-              <!-- TANDA TERIMA FORMULIR LENGKAP SELESAI -->
-              <div class="bg-white border border-gray-200 rounded-md p-6 text-center space-y-3">
-                <div class="w-10 h-10 rounded-full bg-emerald-50 text-emerald-700 mx-auto flex items-center justify-center text-xl border border-emerald-200">
-                  <i class="fas fa-check"></i>
-                </div>
-                <h3 class="text-xl font-bold text-ccsHeading"><?= htmlspecialchars($L['receipt_title']) ?></h3>
-                <p class="text-xs text-gray-500 max-w-md mx-auto"><?= htmlspecialchars($L['receipt_desc']) ?></p>
-
-                <div class="p-4 bg-slate-50 rounded-md border border-slate-200 max-w-sm mx-auto text-left text-xs space-y-1.5 text-gray-700">
-                  <div><strong><?= htmlspecialchars($L['lbl_code']) ?>:</strong> <span class="font-mono text-ccsHeading font-bold"><?= htmlspecialchars($currentApplicant['application_number']) ?></span></div>
-                  <div><strong><?= htmlspecialchars($L['lbl_level_selected']) ?>:</strong> <?= htmlspecialchars($currentApplicant['level_name'] ?? $currentApplicant['preferred_grade'] ?? '') ?></div>
-                  <div><strong>Status:</strong> <span class="text-emerald-700 font-semibold"><i class="fas fa-check-circle mr-1"></i> <?= htmlspecialchars($L['receipt_status']) ?></span></div>
-                </div>
-
-                <p class="text-xs text-gray-400 mt-1 max-w-md mx-auto">
-                  <?= htmlspecialchars($L['receipt_contact_soon']) ?>
-                </p>
-              </div>
-            <?php endif; ?>
-          <?php endif; ?>
-
-        </div>
-      <?php endif; ?>
-
     </section>
 
   </main>
@@ -1547,41 +938,10 @@ if (!empty($searchQuery)) {
   </div>
 
   <!-- ═══════════════════════════════════════════════════════════════════════ -->
-  <!-- 7. LOGIKA JAVASCRIPT: COPY REK, PREVIEW FILE, VALIDASI INTERAKTIF      -->
+  <!-- 7. LOGIKA JAVASCRIPT: VALIDASI INTERAKTIF & MODAL POPUP                 -->
   <!-- ═══════════════════════════════════════════════════════════════════════ -->
   <script>
     const currentLang = "<?= $currLang ?>";
-
-    // ─── SALIN NOMOR REKENING ─────────────────────────────────────────────
-    function copyRekeningNumber() {
-      const rek = "<?= htmlspecialchars(BANK_REK) ?>";
-      navigator.clipboard.writeText(rek).then(() => {
-        const btn = document.getElementById('copyRekBtn');
-        const copiedLabel = currentLang === 'en' ? 'Copied!' : (currentLang === 'cn' ? '已复制！' : 'Tersalin!');
-        if (btn) {
-          const orig = btn.innerHTML;
-          btn.innerHTML = '<i class="fas fa-check text-emerald-400"></i> ' + copiedLabel;
-          setTimeout(() => { btn.innerHTML = orig; }, 2000);
-        } else {
-          alert(copiedLabel);
-        }
-      }).catch(() => {
-        alert("Nomor Rekening: " + rek);
-      });
-    }
-
-    // ─── PREVIEW FILE BUKTI TRANSFER ──────────────────────────────────────
-    function handleProofFileSelect(input) {
-      const disp = document.getElementById('proofFileNameDisplay');
-      if (input.files && input.files[0]) {
-        const file = input.files[0];
-        const sizeMb = (file.size / (1024 * 1024)).toFixed(2);
-        if (disp) {
-          disp.textContent = `✓ ${file.name} (${sizeMb} MB)`;
-          disp.classList.remove('hidden');
-        }
-      }
-    }
 
     // ─── MODAL VALIDASI ERROR POPUP ───────────────────────────────────────
     let firstErrorElement = null;
@@ -1718,28 +1078,6 @@ if (!empty($searchQuery)) {
         }
       });
     }
-
-    // Auto-scroll halus ke tempat unggah / cek status jika ada hash atau data pendaftar aktif
-    window.addEventListener('load', function() {
-      var hash = window.location.hash;
-      var target = null;
-      if (hash) {
-        try {
-          target = document.querySelector(hash);
-        } catch(e) {}
-      }
-      <?php if ($currentApplicant): ?>
-      if (!target) {
-        target = document.getElementById('tempat-unggah') || document.getElementById('cek-status');
-      }
-      <?php endif; ?>
-
-      if (target) {
-        setTimeout(function() {
-          target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }, 250);
-      }
-    });
   </script>
 
 </body>

@@ -18,9 +18,10 @@ Aplikasi ini **TIDAK menggunakan database terpisah / SQLite lokal**. Seluruh dat
 3. Buat folder baru bernama **`registrasi`** (sehingga dapat diakses di `https://ccs.sch.id/registrasi/`).
 
 ### 2. Unggah File
-Upload 2 file berikut ke dalam folder `public_html/registrasi/`:
-- **`index.php`**
-- **`config.php`**
+Upload 3 file berikut ke dalam folder `public_html/registrasi/`:
+- **`index.php`** (Halaman formulir pendaftaran siswa baru / PPDB awal)
+- **`status.php`** (Halaman cek status pendaftaran, info rekening, upload bukti bayar, dan biodata lengkap)
+- **`config.php`** (File konfigurasi token API & URL sekolah)
 
 ### 3. Konfigurasi `config.php`
 Buka file `config.php` di File Manager (klik kanan -> Edit):
