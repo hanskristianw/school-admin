@@ -67,6 +67,28 @@ async function resolveCurrentFormFee(targetDateStr = null) {
   }
 }
 
+// Helper: Ekstraksi fallback jadwal jika disimpan di format JSON [SCHEDULE_META]
+function extractScheduleMeta(app) {
+  if (!app) return app
+  let meta = {}
+  if (app.additional_notes && app.additional_notes.includes('[SCHEDULE_META]:')) {
+    try {
+      const parts = app.additional_notes.split('[SCHEDULE_META]:')
+      meta = JSON.parse(parts[1].trim())
+    } catch (e) {
+      // ignore parse error
+    }
+  }
+  return {
+    ...app,
+    test_date: app.test_date || meta.test_date || null,
+    test_session: app.test_session || meta.test_session || null,
+    interview_date: app.interview_date || meta.interview_date || null,
+    interview_session: app.interview_session || meta.interview_session || null,
+    schedule_notes: app.schedule_notes || meta.schedule_notes || null,
+  }
+}
+
 // GET:
 // 1. Ambil tarif gelombang aktif & jenjang untuk form awal
 // 2. Login / Cek Status pendaftar menggunakan kombinasi Email & Nomor HP (?action=check_status&email=...&phone=...)
@@ -96,41 +118,7 @@ export async function GET(request) {
       let query = supabaseAdmin
         .from('student_applications')
         .select(`
-          application_id,
-          application_number,
-          access_token,
-          student_name,
-          student_nickname,
-          student_gender,
-          student_birth_date,
-          student_birth_place,
-          student_religion,
-          student_nationality,
-          student_address,
-          student_domicile_address,
-          student_city,
-          student_province,
-          student_postal_code,
-          student_previous_school,
-          preferred_grade,
-          level_id,
-          parent_name,
-          parent_phone,
-          parent_email,
-          parent_occupation,
-          parent_address,
-          parent_nik,
-          additional_notes,
-          wave_name,
-          form_fee_amount,
-          form_fee_status,
-          payment_proof_file,
-          is_form_completed,
-          status,
-          created_at,
-          paid_at,
-          verified_at,
-          admin_notes,
+          *,
           admission_level (
             level_name
           )
@@ -158,7 +146,7 @@ export async function GET(request) {
         )
       }
 
-      const app = apps[0]
+      const app = extractScheduleMeta(apps[0])
       return NextResponse.json({
         success: true,
         data: {
@@ -180,23 +168,7 @@ export async function GET(request) {
       const { data: apps, error } = await supabaseAdmin
         .from('student_applications')
         .select(`
-          application_id,
-          application_number,
-          access_token,
-          student_name,
-          preferred_grade,
-          parent_name,
-          parent_phone,
-          parent_email,
-          wave_name,
-          form_fee_amount,
-          form_fee_status,
-          payment_proof_file,
-          is_form_completed,
-          status,
-          created_at,
-          paid_at,
-          verified_at,
+          *,
           admission_level (
             level_name
           )
@@ -207,11 +179,14 @@ export async function GET(request) {
         return NextResponse.json({ success: false, message: error.message }, { status: 500 })
       }
 
-      const formatted = (apps || []).map(a => ({
-        ...a,
-        id: a.application_id,
-        level_name: a.admission_level?.level_name || a.preferred_grade || 'Umum'
-      }))
+      const formatted = (apps || []).map(a => {
+        const item = extractScheduleMeta(a)
+        return {
+          ...item,
+          id: item.application_id,
+          level_name: item.admission_level?.level_name || item.preferred_grade || 'Umum'
+        }
+      })
 
       return NextResponse.json({ success: true, data: formatted })
     }
@@ -494,7 +469,12 @@ export async function POST(request) {
         parent_occupation,
         parent_address,
         parent_nik,
-        additional_notes
+        additional_notes,
+        test_date,
+        test_session,
+        interview_date,
+        interview_session,
+        schedule_notes
       } = body
 
       if (!application_number) {
@@ -507,7 +487,7 @@ export async function POST(request) {
       // Pastikan status formulir sudah verified
       const { data: currentApp } = await supabaseAdmin
         .from('student_applications')
-        .select('form_fee_status')
+        .select('form_fee_status, additional_notes')
         .eq('application_number', application_number)
         .single()
 
@@ -518,7 +498,7 @@ export async function POST(request) {
         )
       }
 
-      const updatePayload = {
+      let updatePayload = {
         student_name: student_name?.trim() || 'Calon Siswa',
         student_nickname: student_nickname?.trim() || null,
         student_gender: student_gender || null,
@@ -539,15 +519,49 @@ export async function POST(request) {
         parent_address: parent_address?.trim() || null,
         parent_nik: parent_nik?.trim() || null,
         additional_notes: additional_notes?.trim() || null,
+        test_date: test_date || null,
+        test_session: test_session || null,
+        interview_date: interview_date || null,
+        interview_session: interview_session || null,
+        schedule_notes: schedule_notes || null,
         is_form_completed: true,
         status: 'under_review'
       }
 
-      const { data: updated, error: updateErr } = await supabaseAdmin
+      let { data: updated, error: updateErr } = await supabaseAdmin
         .from('student_applications')
         .update(updatePayload)
         .eq('application_number', application_number)
         .select()
+
+      // Fallback jika kolom jadwal belum ditambahkan pada tabel database Supabase
+      if (updateErr && updateErr.message && (updateErr.message.includes('column') || updateErr.message.includes('test_date'))) {
+        const schedMeta = {
+          test_date: test_date || null,
+          test_session: test_session || null,
+          interview_date: interview_date || null,
+          interview_session: interview_session || null,
+          schedule_notes: schedule_notes || null
+        }
+        delete updatePayload.test_date
+        delete updatePayload.test_session
+        delete updatePayload.interview_date
+        delete updatePayload.interview_session
+        delete updatePayload.schedule_notes
+
+        const cleanNotes = (additional_notes || '').replace(/\[SCHEDULE_META\]:.*$/s, '').trim()
+        updatePayload.additional_notes = cleanNotes 
+          ? `${cleanNotes}\n[SCHEDULE_META]:${JSON.stringify(schedMeta)}` 
+          : `[SCHEDULE_META]:${JSON.stringify(schedMeta)}`
+
+        const retry = await supabaseAdmin
+          .from('student_applications')
+          .update(updatePayload)
+          .eq('application_number', application_number)
+          .select()
+        updated = retry.data
+        updateErr = retry.error
+      }
 
       if (updateErr) {
         return NextResponse.json({ success: false, message: updateErr.message }, { status: 500 })
@@ -555,7 +569,95 @@ export async function POST(request) {
 
       return NextResponse.json({
         success: true,
-        message: 'Formulir lengkap pendaftaran siswa berhasil disimpan di Supabase',
+        message: 'Formulir lengkap pendaftaran siswa & pemilihan jadwal berhasil disimpan',
+        data: updated
+      })
+    }
+
+    // ─── TAHAP 5: UPDATE JADWAL TES & WAWANCARA (RESCHEDULE OLEH USER / ADMIN) ─
+    if (action === 'update_schedule') {
+      const {
+        application_number,
+        application_id,
+        test_date,
+        test_session,
+        interview_date,
+        interview_session,
+        schedule_notes
+      } = body
+
+      if (!application_number && !application_id) {
+        return NextResponse.json(
+          { success: false, message: 'Nomor aplikasi atau ID pendaftaran diperlukan' },
+          { status: 400 }
+        )
+      }
+
+      let checkQuery = supabaseAdmin
+        .from('student_applications')
+        .select('application_id, application_number, form_fee_status, additional_notes')
+      if (application_id) {
+        checkQuery = checkQuery.eq('application_id', application_id)
+      } else {
+        checkQuery = checkQuery.eq('application_number', application_number)
+      }
+      const { data: currentApp } = await checkQuery.maybeSingle()
+
+      if (!currentApp || currentApp.form_fee_status !== 'verified') {
+        return NextResponse.json(
+          { success: false, message: 'Jadwal tes dan wawancara hanya dapat diatur setelah pembayaran formulir diverifikasi.' },
+          { status: 403 }
+        )
+      }
+
+      const updatePayload = {
+        test_date: test_date || null,
+        test_session: test_session || null,
+        interview_date: interview_date || null,
+        interview_session: interview_session || null,
+        schedule_notes: schedule_notes || null
+      }
+
+      let query = supabaseAdmin.from('student_applications').update(updatePayload)
+      if (application_id) {
+        query = query.eq('application_id', application_id)
+      } else {
+        query = query.eq('application_number', application_number)
+      }
+      let { data: updated, error: updateErr } = await query.select()
+
+      // Fallback jika kolom belum ada di Supabase
+      if (updateErr && updateErr.message && (updateErr.message.includes('column') || updateErr.message.includes('test_date'))) {
+        const schedMeta = {
+          test_date: test_date || null,
+          test_session: test_session || null,
+          interview_date: interview_date || null,
+          interview_session: interview_session || null,
+          schedule_notes: schedule_notes || null
+        }
+        const existingNotes = (currentApp.additional_notes || '').replace(/\[SCHEDULE_META\]:.*$/s, '').trim()
+        const newNotes = existingNotes 
+          ? `${existingNotes}\n[SCHEDULE_META]:${JSON.stringify(schedMeta)}` 
+          : `[SCHEDULE_META]:${JSON.stringify(schedMeta)}`
+
+        let retryQ = supabaseAdmin.from('student_applications').update({ additional_notes: newNotes })
+        if (application_id) {
+          retryQ = retryQ.eq('application_id', application_id)
+        } else {
+          retryQ = retryQ.eq('application_number', application_number)
+        }
+        const retry = await retryQ.select()
+        updated = retry.data
+        updateErr = retry.error
+      }
+
+      if (updateErr) {
+        return NextResponse.json({ success: false, message: updateErr.message }, { status: 500 })
+      }
+
+      return NextResponse.json({
+        success: true,
+        message: 'Jadwal tes dan wawancara berhasil diperbarui',
         data: updated
       })
     }

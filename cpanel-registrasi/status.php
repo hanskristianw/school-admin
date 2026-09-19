@@ -68,6 +68,45 @@ $i18n = [
         'lbl_level_selected' => 'Jenjang Pendidikan',
         'lbl_form_fee' => 'Total Biaya Formulir',
 
+        // Stepper Visual Lingkaran-Lingkaran (Multi-Stage Track)
+        'stepper_title' => 'Alur & Status Posisi Pendaftaran',
+        'stepper_subtitle' => 'Pantau setiap tahap proses pendaftaran calon siswa secara transparan dari awal hingga penerimaan.',
+        'stepper_step1_title' => '1. Registrasi',
+        'stepper_step1_sub' => 'Nomor Registrasi Terbit',
+        'stepper_step2_title' => '2. Biaya Formulir',
+        'stepper_step2_sub_upload' => 'Unggah Bukti Bayar',
+        'stepper_step2_sub_review' => 'Verifikasi Struk',
+        'stepper_step2_sub_rejected' => 'Bukti Ditolak',
+        'stepper_step2_sub_done' => 'Lunas Terverifikasi',
+        'stepper_step3_title' => '3. Biodata Lengkap',
+        'stepper_step3_sub_locked' => 'Menunggu Pelunasan',
+        'stepper_step3_sub_fill' => 'Lengkapi Biodata',
+        'stepper_step3_sub_done' => 'Biodata Lengkap',
+        'stepper_step4_title' => '4. Observasi & Review',
+        'stepper_step4_sub_locked' => 'Menunggu Berkas',
+        'stepper_step4_sub_process' => 'Peninjauan Berkas',
+        'stepper_step4_sub_done' => 'Observasi Selesai',
+        'stepper_step5_title' => '5. Hasil Seleksi',
+        'stepper_step5_sub_locked' => 'Tahap Akhir',
+        'stepper_step5_sub_approved' => 'Resmi Diterima!',
+        'stepper_step5_sub_rejected' => 'Belum Lolos Seleksi',
+
+        // Callout Kotak Posisi Saat Ini
+        'callout_title_fee_upload' => 'Posisi Anda Saat Ini: Tahap 2 — Menunggu Bukti Pembayaran Formulir',
+        'callout_text_fee_upload' => 'Pendaftaran awal berhasil diajukan. Silakan lakukan transfer biaya formulir ke rekening resmi Bank Mayapada di bawah, lalu unggah struk bukti bayar pada formulir yang tersedia.',
+        'callout_title_fee_wait' => 'Posisi Anda Saat Ini: Tahap 2 — Menunggu Verifikasi Struk Pembayaran',
+        'callout_text_fee_wait' => 'Bukti transfer Anda telah kami terima dan sedang diverifikasi oleh staf Admissions CCS. Segera setelah pembayaran diverifikasi, Tahap 3 (Formulir Biodata Lengkap) akan terbuka otomatis.',
+        'callout_title_fee_rejected' => 'Posisi Anda Saat Ini: Tahap 2 — Bukti Pembayaran Perlu Diperbaiki',
+        'callout_text_fee_rejected' => 'Bukti pembayaran sebelumnya ditolak oleh admin sekolah. Silakan periksa kembali rincian nominal dan rekening, lalu unggah kembali struk bukti transfer yang jelas dan sah.',
+        'callout_title_fill' => 'Posisi Anda Saat Ini: Tahap 3 — Pengisian Formulir Biodata Calon Siswa & Orang Tua',
+        'callout_text_fill' => 'Pembayaran biaya formulir telah LUNAS & DIVERIFIKASI! Silakan lengkapi biodata calon siswa dan orang tua di bawah ini untuk persiapan jadwal observasi dan tes penempatan.',
+        'callout_title_review' => 'Posisi Anda Saat Ini: Tahap 4 — Peninjauan Berkas & Penjadwalan Observasi',
+        'callout_text_review' => 'Seluruh biodata calon siswa telah lengkap tersimpan. Tim Admissions CCS sedang meninjau berkas dan akan segera menghubungi nomor WhatsApp Anda untuk konfirmasi jadwal observasi dan wawancara.',
+        'callout_title_approved' => '🎉 Selamat! Calon Siswa Resmi DITERIMA di Chung Chung Christian School',
+        'callout_text_approved' => 'Selamat, pendaftaran calon siswa telah disetujui dan dinyatakan resmi diterima. Tim sekolah akan segera menghubungi Anda untuk pengiriman surat penerimaan dan prosedur daftar ulang.',
+        'callout_title_rejected' => 'Status Pendaftaran: Belum Memenuhi Kriteria Penerimaan',
+        'callout_text_rejected' => 'Mohon maaf, pendaftaran calon siswa belum dapat diterima pada periode saat ini. Terima kasih atas minat dan kepercayaan Anda terhadap Chung Chung Christian School.',
+
         // Kartu Rekening Bank
         'bank_card_title' => 'Rekening Resmi Sekolah',
         'bank_card_nom' => 'Nominal Pembelian Formulir',
@@ -114,11 +153,30 @@ $i18n = [
         'lbl_notes' => 'Catatan Tambahan (Kondisi Khusus / Riwayat Belajar)',
         'btn_save_fullform' => 'Simpan Formulir Pendaftaran Lengkap',
 
+        // Pilihan Jadwal Tes & Wawancara (Section 3)
+        'sec3_schedule' => '3. Pilihan Jadwal Tes Penempatan Siswa & Wawancara Orang Tua',
+        'sec3_schedule_desc' => 'Silakan tentukan jadwal tes penempatan calon siswa dan jadwal wawancara orang tua. Tes dan wawancara dapat dijadwalkan pada hari yang sama maupun pada hari yang berbeda sesuai kenyamanan Anda.',
+        'lbl_same_day_toggle' => 'Jadwalkan Tes & Wawancara pada Hari yang Sama (Direkomendasikan)',
+        'lbl_test_date' => 'Tanggal Tes Penempatan Siswa',
+        'lbl_test_session' => 'Pilihan Sesi Waktu Tes',
+        'lbl_interview_date' => 'Tanggal Wawancara Orang Tua',
+        'lbl_interview_session' => 'Pilihan Sesi Waktu Wawancara',
+        'lbl_schedule_notes' => 'Catatan Tambahan Mengenai Jadwal (Opsional)',
+        'session_opt_1' => 'Sesi 1 (08:30 - 10:00 WIB)',
+        'session_opt_2' => 'Sesi 2 (10:30 - 12:00 WIB)',
+        'session_opt_3' => 'Sesi 3 (13:00 - 14:30 WIB)',
+        'session_opt_4' => 'Sesi 4 (15:00 - 16:30 WIB)',
+        'confirmed_schedule_title' => 'Jadwal Tes Penempatan & Wawancara Orang Tua',
+        'test_schedule_badge' => 'Tes Penempatan Calon Siswa',
+        'interview_schedule_badge' => 'Wawancara Orang Tua & Observasi',
+        'btn_reschedule' => 'Ajukan Perubahan Jadwal (Reschedule)',
+        'schedule_location' => 'Lokasi: Kampus Chung Chung Christian School, Jl. Mayjend Sungkono No. 100, Surabaya',
+
         // Tanda Terima Selesai
         'receipt_title' => 'Formulir Pendaftaran Lengkap Telah Diterima!',
         'receipt_desc' => 'Seluruh data calon siswa telah tersimpan resmi di sistem Chung Chung Christian School.',
         'receipt_status' => 'Pembayaran Lunas & Data Lengkap',
-        'receipt_contact_soon' => 'Tim Admissions CCS akan segera menghubungi nomor WhatsApp Anda untuk konfirmasi jadwal observasi dan tes penempatan.',
+        'receipt_contact_soon' => 'Tim Admissions CCS akan segera menghubungi nomor WhatsApp Anda untuk konfirmasi pelaksanaan jadwal observasi dan tes penempatan.',
 
         // Floating WhatsApp
         'wa_title' => 'Hubungi Admissions via WhatsApp',
@@ -161,6 +219,45 @@ $i18n = [
         'lbl_student' => 'Student Candidate',
         'lbl_level_selected' => 'Target Program',
         'lbl_form_fee' => 'Total Form Fee',
+
+        // Stepper Visual Multi-Stage Circles
+        'stepper_title' => 'Admission Process & Stage Status',
+        'stepper_subtitle' => 'Track each milestone of your application journey from submission to enrollment.',
+        'stepper_step1_title' => '1. Registration',
+        'stepper_step1_sub' => 'Registration Code Issued',
+        'stepper_step2_title' => '2. Form Fee',
+        'stepper_step2_sub_upload' => 'Upload Receipt',
+        'stepper_step2_sub_review' => 'Verifying Payment',
+        'stepper_step2_sub_rejected' => 'Receipt Rejected',
+        'stepper_step2_sub_done' => 'Payment Verified',
+        'stepper_step3_title' => '3. Complete Profile',
+        'stepper_step3_sub_locked' => 'Locked (Pending Fee)',
+        'stepper_step3_sub_fill' => 'Fill Candidate Profile',
+        'stepper_step3_sub_done' => 'Profile Completed',
+        'stepper_step4_title' => '4. Observation',
+        'stepper_step4_sub_locked' => 'Waiting Profile',
+        'stepper_step4_sub_process' => 'Document Review',
+        'stepper_step4_sub_done' => 'Observation Done',
+        'stepper_step5_title' => '5. Final Admission',
+        'stepper_step5_sub_locked' => 'Final Stage',
+        'stepper_step5_sub_approved' => 'Officially Accepted!',
+        'stepper_step5_sub_rejected' => 'Not Accepted',
+
+        // Callout Current Position
+        'callout_title_fee_upload' => 'Current Position: Stage 2 — Awaiting Form Fee Transfer Receipt',
+        'callout_text_fee_upload' => 'Initial registration recorded. Please transfer the form fee to the official Bank Mayapada account below and upload your transfer receipt.',
+        'callout_title_fee_wait' => 'Current Position: Stage 2 — Verifying Payment Receipt',
+        'callout_text_fee_wait' => 'Your transfer receipt has been received and is being verified by Admissions staff. Once verified, Stage 3 (Complete Student Background Profile) will open automatically.',
+        'callout_title_fee_rejected' => 'Current Position: Stage 2 — Payment Receipt Needs Correction',
+        'callout_text_fee_rejected' => 'Your previous receipt was rejected. Please review the transfer details and re-upload a clear, valid payment receipt.',
+        'callout_title_fill' => 'Current Position: Stage 3 — Complete Candidate & Parent Profile',
+        'callout_text_fill' => 'Form fee payment has been VERIFIED! Please complete all student candidate and parent details below for observation and placement procedures.',
+        'callout_title_review' => 'Current Position: Stage 4 — Document Review & Observation Scheduling',
+        'callout_text_review' => 'All candidate details have been successfully recorded. Admissions staff will contact your WhatsApp shortly to confirm observation and interview schedules.',
+        'callout_title_approved' => '🎉 Congratulations! Candidate Officially ACCEPTED at CCS',
+        'callout_text_approved' => 'Congratulations, the candidate application has been approved and officially accepted. Our school team will contact you regarding enrollment procedures.',
+        'callout_title_rejected' => 'Application Status: Not Accepted',
+        'callout_text_rejected' => 'We regret to inform you that the application does not meet the admission criteria for this intake. Thank you for your interest in Chung Chung Christian School.',
 
         // Bank Card
         'bank_card_title' => 'Official School Bank Account',
@@ -208,11 +305,30 @@ $i18n = [
         'lbl_notes' => 'Additional Notes (Special Needs / Learning History)',
         'btn_save_fullform' => 'Save & Submit Complete Form',
 
+        // Schedule Selection (Section 3)
+        'sec3_schedule' => '3. Student Placement Test & Parent Interview Schedule',
+        'sec3_schedule_desc' => 'Please select the candidate placement test date and parent interview date. Both can be scheduled on the same day or on different dates according to your availability.',
+        'lbl_same_day_toggle' => 'Schedule Test & Interview on the Same Day (Recommended)',
+        'lbl_test_date' => 'Student Placement Test Date',
+        'lbl_test_session' => 'Test Time Session',
+        'lbl_interview_date' => 'Parent Interview Date',
+        'lbl_interview_session' => 'Interview Time Session',
+        'lbl_schedule_notes' => 'Additional Schedule Notes (Optional)',
+        'session_opt_1' => 'Session 1 (08:30 - 10:00 WIB)',
+        'session_opt_2' => 'Session 2 (10:30 - 12:00 WIB)',
+        'session_opt_3' => 'Session 3 (13:00 - 14:30 WIB)',
+        'session_opt_4' => 'Session 4 (15:00 - 16:30 WIB)',
+        'confirmed_schedule_title' => 'Confirmed Placement Test & Parent Interview Schedule',
+        'test_schedule_badge' => 'Student Placement Test',
+        'interview_schedule_badge' => 'Parent Interview & Observation',
+        'btn_reschedule' => 'Request Schedule Adjustment (Reschedule)',
+        'schedule_location' => 'Venue: Chung Chung Christian School Campus, Jl. Mayjend Sungkono No. 100, Surabaya',
+
         // Receipt Done
         'receipt_title' => 'Complete Application Form Received!',
         'receipt_desc' => 'All candidate background details have been recorded in Chung Chung Christian School\'s official database.',
         'receipt_status' => 'Payment Settled & Data Complete',
-        'receipt_contact_soon' => 'The CCS Admissions team will contact your WhatsApp number shortly to schedule the student observation and parent interview.',
+        'receipt_contact_soon' => 'The CCS Admissions team will contact your WhatsApp number shortly to confirm your scheduled observation and placement test.',
 
         // Floating WhatsApp
         'wa_title' => 'Contact Admissions on WhatsApp',
@@ -255,6 +371,45 @@ $i18n = [
         'lbl_student' => '报名学生',
         'lbl_level_selected' => '报读学段',
         'lbl_form_fee' => '报名表费用金额',
+
+        // Stepper Visual Multi-Stage Circles
+        'stepper_title' => '新生入学报名进度与状态',
+        'stepper_subtitle' => '实时查看学生入学申请的各项环节进度与录取状态。',
+        'stepper_step1_title' => '1. 初始申请',
+        'stepper_step1_sub' => '报名编号已生成',
+        'stepper_step2_title' => '2. 表格缴费',
+        'stepper_step2_sub_upload' => '上传转账凭证',
+        'stepper_step2_sub_review' => '凭证核实中',
+        'stepper_step2_sub_rejected' => '凭证被驳回',
+        'stepper_step2_sub_done' => '已核实缴费',
+        'stepper_step3_title' => '3. 完善档案',
+        'stepper_step3_sub_locked' => '锁定 (待缴费)',
+        'stepper_step3_sub_fill' => '请完善学生档案',
+        'stepper_step3_sub_done' => '档案已录入',
+        'stepper_step4_title' => '4. 观察审核',
+        'stepper_step4_sub_locked' => '待档案录入',
+        'stepper_step4_sub_process' => '资料审核中',
+        'stepper_step4_sub_done' => '评估已完成',
+        'stepper_step5_title' => '5. 录取结果',
+        'stepper_step5_sub_locked' => '最终结果',
+        'stepper_step5_sub_approved' => '正式录取！',
+        'stepper_step5_sub_rejected' => '未予录取',
+
+        // Callout Current Position
+        'callout_title_fee_upload' => '当前所处阶段：第 2 步 — 等待上传转账付款凭证',
+        'callout_text_fee_upload' => '初步申请已登记成功。请向下方官方 Bank Mayapada 银行账户转账报名费，并在下方表单中上传转账凭证。',
+        'callout_title_fee_wait' => '当前所处阶段：第 2 步 — 凭证正在核查中',
+        'callout_text_fee_wait' => '您的转账凭证已收到并正在由 CCS 招生团队审核。一旦通过核准，系统将自动开启第 3 步（学生与家庭详细档案表）。',
+        'callout_title_fee_rejected' => '当前所处阶段：第 2 步 — 付款凭证需重新上传',
+        'callout_text_fee_rejected' => '您之前提交的转账凭证已被驳回。请仔细核对转账单据，重新上传清晰有效的转账凭证。',
+        'callout_title_fill' => '当前所处阶段：第 3 步 — 填写学生与家庭详细背景档案',
+        'callout_text_fill' => '报名费已审核确认！请在下方完整填写拟入学学生与家长的详细背景资料，以供学校安排后续观察与面谈。',
+        'callout_title_review' => '当前所处阶段：第 4 步 — 资料审核与安排入学观察',
+        'callout_text_review' => '学生详细档案已全部录入归档。CCS 招生团队正在审核资料并将尽快通过 WhatsApp 联系您确定入学观察与面谈的时间。',
+        'callout_title_approved' => '🎉 祝贺！学生已被崇崇基督教学校 (CCS) 正式录取',
+        'callout_text_approved' => '祝贺您，学生入学申请已获审核批准并正式录取。学校招生处老师将尽快与您联系后续入学建档及注册手续。',
+        'callout_title_rejected' => '申请状态：暂未达到本次录取要求',
+        'callout_text_rejected' => '很遗憾，学生本次申请暂未符合本期录取标准。衷心感谢您对崇崇基督教学校的关注与支持。',
 
         // Bank Card
         'bank_card_title' => '学校官方指定收款账户',
@@ -302,11 +457,30 @@ $i18n = [
         'lbl_notes' => '补充说明 (特殊情况或过往学习经历)',
         'btn_save_fullform' => '保存并提交完整报名资料',
 
+        // Schedule Selection (Section 3)
+        'sec3_schedule' => '3. 学生入学测试与家长面谈时间预约',
+        'sec3_schedule_desc' => '请预约学生入学分班测试及家长面谈的时间。两项活动可根据您的方便安排在同一天或不同日期。',
+        'lbl_same_day_toggle' => '在同一天安排测试与面谈（推荐）',
+        'lbl_test_date' => '学生入学测试日期',
+        'lbl_test_session' => '测试时段选择',
+        'lbl_interview_date' => '家长面谈日期',
+        'lbl_interview_session' => '面谈时段选择',
+        'lbl_schedule_notes' => '日程特别备注（可选）',
+        'session_opt_1' => '第 1 场 (08:30 - 10:00 印尼西部时间)',
+        'session_opt_2' => '第 2 场 (10:30 - 12:00 印尼西部时间)',
+        'session_opt_3' => '第 3 场 (13:00 - 14:30 印尼西部时间)',
+        'session_opt_4' => '第 4 场 (15:00 - 16:30 印尼西部时间)',
+        'confirmed_schedule_title' => '已确认入学测试与家长面谈安排',
+        'test_schedule_badge' => '学生入学分班测试',
+        'interview_schedule_badge' => '家长面谈与入学观察',
+        'btn_reschedule' => '申请调整时间 (改期)',
+        'schedule_location' => '地点：崇崇基督教学校校园，Jl. Mayjend Sungkono No. 100, Surabaya',
+
         // Receipt Done
         'receipt_title' => '完整报名表已成功接收！',
         'receipt_desc' => '学生所有详细资料已完整录入并安全归档于崇崇基督教学校官方管理系统。',
         'receipt_status' => '费用结清 & 资料完整',
-        'receipt_contact_soon' => 'CCS 招生团队将尽快通过 WhatsApp 与您联系安排后续入学观察及面谈时间。',
+        'receipt_contact_soon' => 'CCS 招生团队将尽快通过 WhatsApp 与您联系确认测试与面谈安排。',
 
         // Floating WhatsApp
         'wa_title' => '通过 WhatsApp 联系招生处',
@@ -512,6 +686,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action_complete_form'
         $flashMsg = 'Nomor registrasi pendaftar tidak valid.';
         $flashType = 'error';
     } else {
+        $sameDay = !empty($_POST['same_day_schedule']);
+        $testDate = trim($_POST['test_date'] ?? '');
+        $interviewDate = $sameDay ? $testDate : trim($_POST['interview_date'] ?? '');
+
         $payload = [
             'action' => 'complete_form',
             'application_number' => $targetAppNo,
@@ -529,16 +707,59 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action_complete_form'
             'parent_email' => trim($_POST['parent_email'] ?? ''),
             'parent_occupation' => trim($_POST['parent_occupation'] ?? ''),
             'parent_nik' => trim($_POST['parent_nik'] ?? ''),
-            'additional_notes' => trim($_POST['additional_notes'] ?? '')
+            'additional_notes' => trim($_POST['additional_notes'] ?? ''),
+            'test_date' => $testDate,
+            'test_session' => trim($_POST['test_session'] ?? 'Sesi 1 (08:30 - 10:00 WIB)'),
+            'interview_date' => $interviewDate,
+            'interview_session' => trim($_POST['interview_session'] ?? 'Sesi 1 (08:30 - 10:00 WIB)'),
+            'schedule_notes' => trim($_POST['schedule_notes'] ?? '')
         ];
 
         $res = callNextJsApi('POST', [], $payload);
 
         if (!empty($res['success'])) {
-            $flashMsg = 'Selamat! Formulir biodata calon siswa telah lengkap tersimpan.';
+            $flashMsg = 'Selamat! Formulir biodata calon siswa dan pilihan jadwal tes/wawancara telah lengkap tersimpan.';
             $flashType = 'success';
         } else {
             $flashMsg = 'Gagal menyimpan formulir lengkap: ' . ($res['message'] ?? 'Error');
+            $flashType = 'error';
+        }
+    }
+}
+
+// ─── 6b. PROSES PERUBAHAN JADWAL TES & WAWANCARA (RESCHEDULE OLEH USER) ──────
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action_update_schedule'])) {
+    $csrf = $_POST['csrf_token'] ?? '';
+    $targetAppNo = trim($_POST['target_app_no'] ?? ($_SESSION['applicant_app_no'] ?? ''));
+
+    if ($csrf !== $_SESSION['csrf_token']) {
+        $flashMsg = 'Sesi formulir kadaluarsa. Silakan coba lagi.';
+        $flashType = 'error';
+    } elseif (empty($targetAppNo)) {
+        $flashMsg = 'Nomor registrasi pendaftar tidak valid.';
+        $flashType = 'error';
+    } else {
+        $sameDay = !empty($_POST['same_day_schedule']);
+        $testDate = trim($_POST['test_date'] ?? '');
+        $interviewDate = $sameDay ? $testDate : trim($_POST['interview_date'] ?? '');
+
+        $payload = [
+            'action' => 'update_schedule',
+            'application_number' => $targetAppNo,
+            'test_date' => $testDate,
+            'test_session' => trim($_POST['test_session'] ?? 'Sesi 1 (08:30 - 10:00 WIB)'),
+            'interview_date' => $interviewDate,
+            'interview_session' => trim($_POST['interview_session'] ?? 'Sesi 1 (08:30 - 10:00 WIB)'),
+            'schedule_notes' => trim($_POST['schedule_notes'] ?? '')
+        ];
+
+        $res = callNextJsApi('POST', [], $payload);
+
+        if (!empty($res['success'])) {
+            $flashMsg = 'Jadwal tes penempatan dan wawancara orang tua berhasil diperbarui!';
+            $flashType = 'success';
+        } else {
+            $flashMsg = 'Gagal memperbarui jadwal: ' . ($res['message'] ?? 'Error');
             $flashType = 'error';
         }
     }
@@ -577,6 +798,81 @@ if (!empty($searchQuery)) {
             $searchError = !empty($res['message']) ? $res['message'] : "Data pendaftaran dengan kata kunci '{$searchQuery}' tidak ditemukan.";
         }
     }
+}
+
+// Helper untuk styling badge lingkaran stepper
+function getCircleBadge($step) {
+    $st = $step['state'];
+    if ($st === 'done') {
+        return [
+            'circle' => 'bg-emerald-500 text-white shadow-sm ring-4 ring-emerald-100',
+            'icon' => 'fas fa-check text-sm',
+            'subClass' => 'text-emerald-700 font-semibold'
+        ];
+    } elseif ($st === 'waiting_review') {
+        return [
+            'circle' => 'bg-sky-500 text-white shadow-md ring-4 ring-sky-200 animate-pulse',
+            'icon' => 'fas fa-clock text-sm',
+            'subClass' => 'text-sky-700 font-bold'
+        ];
+    } elseif ($st === 'waiting_upload') {
+        return [
+            'circle' => 'bg-ccsOrange text-white shadow-md ring-4 ring-orange-200',
+            'icon' => 'fas fa-arrow-down text-sm',
+            'subClass' => 'text-ccsOrange font-bold'
+        ];
+    } elseif ($st === 'active_fill') {
+        return [
+            'circle' => 'bg-ccsOrange text-white shadow-md ring-4 ring-orange-200',
+            'icon' => 'fas fa-edit text-sm',
+            'subClass' => 'text-ccsOrange font-bold'
+        ];
+    } elseif ($st === 'in_review') {
+        return [
+            'circle' => 'bg-sky-600 text-white shadow-md ring-4 ring-sky-200 animate-pulse',
+            'icon' => 'fas fa-search text-sm',
+            'subClass' => 'text-sky-700 font-bold'
+        ];
+    } elseif ($st === 'approved') {
+        return [
+            'circle' => 'bg-emerald-600 text-white shadow-md ring-4 ring-emerald-200',
+            'icon' => 'fas fa-graduation-cap text-sm',
+            'subClass' => 'text-emerald-700 font-extrabold'
+        ];
+    } elseif ($st === 'rejected') {
+        return [
+            'circle' => 'bg-rose-500 text-white shadow-md ring-4 ring-rose-200',
+            'icon' => 'fas fa-exclamation text-sm',
+            'subClass' => 'text-rose-700 font-bold'
+        ];
+    } else {
+        // locked
+        return [
+            'circle' => 'bg-slate-200 text-slate-400 ring-4 ring-slate-50',
+            'icon' => 'fas fa-lock text-xs',
+            'subClass' => 'text-slate-400 font-normal'
+        ];
+    }
+}
+
+// Helper format tanggal multi-bahasa
+function formatTanggalIndo($dateStr, $lang = 'id') {
+    if (!$dateStr) return '-';
+    $t = strtotime($dateStr);
+    if (!$t) return $dateStr;
+    if ($lang === 'en') {
+        return date('d M Y', $t);
+    } elseif ($lang === 'cn') {
+        return date('Y年m月d日', $t);
+    }
+    $bulan = [
+        1 => 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+        'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+    ];
+    $d = date('j', $t);
+    $m = (int)date('n', $t);
+    $y = date('Y', $t);
+    return "$d " . ($bulan[$m] ?? date('M', $t)) . " $y";
 }
 ?>
 <!DOCTYPE html>
@@ -838,7 +1134,7 @@ if (!empty($searchQuery)) {
   <?php endif; ?>
 
   <!-- ═══════════════════════════════════════════════════════════════════════ -->
-  <!-- 3. KONTEN UTAMA: CEK STATUS, REKENING, UPLOAD STRUK & FORM DETAIL      -->
+  <!-- 3. KONTEN UTAMA: CEK STATUS, STEPPER LINGKARAN, REKENING & UPLOAD      -->
   <!-- ═══════════════════════════════════════════════════════════════════════ -->
   <main class="max-w-4xl mx-auto px-4 sm:px-6 py-8 flex-1 w-full space-y-8">
 
@@ -941,7 +1237,137 @@ if (!empty($searchQuery)) {
       <!-- HASIL PENCARIAN STATUS PENDAFTAR                                    -->
       <!-- ═══════════════════════════════════════════════════════════════════ -->
       <?php if ($currentApplicant): ?>
-        <div class="bg-white border border-gray-200 rounded-md p-5 sm:p-6 space-y-5">
+        <?php
+          $feeStatus     = $currentApplicant['form_fee_status'] ?? 'pending';
+          $isFormDone    = !empty($currentApplicant['is_form_completed']);
+          $overallStatus = $currentApplicant['status'] ?? 'pending';
+
+          // 1. Pendaftaran Awal (Selalu selesai jika record ada)
+          $s1 = ['state' => 'done', 'title' => $L['stepper_step1_title'], 'sub' => $L['stepper_step1_sub']];
+
+          // 2. Biaya Formulir
+          if ($feeStatus === 'verified') {
+              $s2 = ['state' => 'done', 'title' => $L['stepper_step2_title'], 'sub' => $L['stepper_step2_sub_done']];
+          } elseif ($feeStatus === 'proof_uploaded') {
+              $s2 = ['state' => 'waiting_review', 'title' => $L['stepper_step2_title'], 'sub' => $L['stepper_step2_sub_review']];
+          } elseif ($feeStatus === 'rejected') {
+              $s2 = ['state' => 'rejected', 'title' => $L['stepper_step2_title'], 'sub' => $L['stepper_step2_sub_rejected']];
+          } else {
+              $s2 = ['state' => 'waiting_upload', 'title' => $L['stepper_step2_title'], 'sub' => $L['stepper_step2_sub_upload']];
+          }
+
+          // 3. Formulir Biodata
+          if ($isFormDone) {
+              $s3 = ['state' => 'done', 'title' => $L['stepper_step3_title'], 'sub' => $L['stepper_step3_sub_done']];
+          } elseif ($feeStatus === 'verified') {
+              $s3 = ['state' => 'active_fill', 'title' => $L['stepper_step3_title'], 'sub' => $L['stepper_step3_sub_fill']];
+          } else {
+              $s3 = ['state' => 'locked', 'title' => $L['stepper_step3_title'], 'sub' => $L['stepper_step3_sub_locked']];
+          }
+
+          // 4. Observasi & Review
+          if ($overallStatus === 'approved' || $overallStatus === 'rejected') {
+              $s4 = ['state' => 'done', 'title' => $L['stepper_step4_title'], 'sub' => $L['stepper_step4_sub_done']];
+          } elseif ($isFormDone) {
+              $s4 = ['state' => 'in_review', 'title' => $L['stepper_step4_title'], 'sub' => $L['stepper_step4_sub_process']];
+          } else {
+              $s4 = ['state' => 'locked', 'title' => $L['stepper_step4_title'], 'sub' => $L['stepper_step4_sub_locked']];
+          }
+
+          // 5. Hasil Penerimaan
+          if ($overallStatus === 'approved') {
+              $s5 = ['state' => 'approved', 'title' => $L['stepper_step5_title'], 'sub' => $L['stepper_step5_sub_approved']];
+          } elseif ($overallStatus === 'rejected') {
+              $s5 = ['state' => 'rejected', 'title' => $L['stepper_step5_title'], 'sub' => $L['stepper_step5_sub_rejected']];
+          } else {
+              $s5 = ['state' => 'locked', 'title' => $L['stepper_step5_title'], 'sub' => $L['stepper_step5_sub_locked']];
+          }
+
+          $allSteps = [$s1, $s2, $s3, $s4, $s5];
+
+          // Persentase garis track desktop
+          if ($s5['state'] === 'approved' || $s5['state'] === 'rejected') {
+              $progressPct = 100;
+          } elseif ($s4['state'] === 'in_review' || $s4['state'] === 'done') {
+              $progressPct = 75;
+          } elseif ($s3['state'] === 'done' || $s3['state'] === 'active_fill') {
+              $progressPct = 50;
+          } elseif ($s2['state'] === 'done') {
+              $progressPct = 50;
+          } elseif ($s2['state'] === 'waiting_review') {
+              $progressPct = 37.5;
+          } else {
+              $progressPct = 25;
+          }
+
+          // Callout Box Content
+          if ($s5['state'] === 'approved') {
+              $callout = [
+                  'title' => $L['callout_title_approved'],
+                  'text' => $L['callout_text_approved'],
+                  'icon' => 'fas fa-graduation-cap text-emerald-800 text-lg',
+                  'boxClass' => 'bg-emerald-50 border-emerald-300 text-emerald-900',
+                  'iconBg' => 'bg-emerald-200/80',
+                  'titleClass' => 'text-emerald-950 font-bold'
+              ];
+          } elseif ($s5['state'] === 'rejected') {
+              $callout = [
+                  'title' => $L['callout_title_rejected'],
+                  'text' => $L['callout_text_rejected'],
+                  'icon' => 'fas fa-times-circle text-rose-700 text-lg',
+                  'boxClass' => 'bg-rose-50 border-rose-300 text-rose-900',
+                  'iconBg' => 'bg-rose-200/80',
+                  'titleClass' => 'text-rose-950 font-bold'
+              ];
+          } elseif ($s4['state'] === 'in_review') {
+              $callout = [
+                  'title' => $L['callout_title_review'],
+                  'text' => $L['callout_text_review'],
+                  'icon' => 'fas fa-user-clock text-sky-700 text-lg',
+                  'boxClass' => 'bg-sky-50 border-sky-300 text-sky-900',
+                  'iconBg' => 'bg-sky-200/80',
+                  'titleClass' => 'text-sky-950 font-bold'
+              ];
+          } elseif ($s3['state'] === 'active_fill') {
+              $callout = [
+                  'title' => $L['callout_title_fill'],
+                  'text' => $L['callout_text_fill'],
+                  'icon' => 'fas fa-edit text-orange-700 text-lg',
+                  'boxClass' => 'bg-orange-50 border-orange-300 text-orange-950',
+                  'iconBg' => 'bg-orange-200/80',
+                  'titleClass' => 'text-orange-950 font-bold'
+              ];
+          } elseif ($s2['state'] === 'waiting_review') {
+              $callout = [
+                  'title' => $L['callout_title_fee_wait'],
+                  'text' => $L['callout_text_fee_wait'],
+                  'icon' => 'fas fa-clock text-sky-700 text-lg',
+                  'boxClass' => 'bg-sky-50 border-sky-300 text-sky-900',
+                  'iconBg' => 'bg-sky-200/80',
+                  'titleClass' => 'text-sky-950 font-bold'
+              ];
+          } elseif ($s2['state'] === 'rejected') {
+              $callout = [
+                  'title' => $L['callout_title_fee_rejected'],
+                  'text' => $L['callout_text_fee_rejected'],
+                  'icon' => 'fas fa-exclamation-triangle text-rose-700 text-lg',
+                  'boxClass' => 'bg-rose-50 border-rose-300 text-rose-900',
+                  'iconBg' => 'bg-rose-200/80',
+                  'titleClass' => 'text-rose-950 font-bold'
+              ];
+          } else {
+              $callout = [
+                  'title' => $L['callout_title_fee_upload'],
+                  'text' => $L['callout_text_fee_upload'],
+                  'icon' => 'fas fa-arrow-down text-orange-700 text-lg',
+                  'boxClass' => 'bg-orange-50 border-orange-300 text-orange-950',
+                  'iconBg' => 'bg-orange-200/80',
+                  'titleClass' => 'text-orange-950 font-bold'
+              ];
+          }
+        ?>
+
+        <div class="bg-white border border-gray-200 rounded-md p-5 sm:p-6 space-y-6">
           
           <!-- Baris Header: Nomor Registrasi & Badge Status -->
           <div class="flex flex-col sm:flex-row sm:items-center justify-between border-b border-gray-200 pb-4 gap-2">
@@ -951,16 +1377,23 @@ if (!empty($searchQuery)) {
             </div>
             <div>
               <?php
-                $statusVal = $currentApplicant['form_fee_status'] ?? 'pending';
-                if ($statusVal === 'verified') {
+                if ($overallStatus === 'approved') {
+                    $badgeClass = 'bg-emerald-100 text-emerald-800 border border-emerald-300';
+                    $badgeIcon  = 'fas fa-graduation-cap text-emerald-700';
+                    $badgeText  = 'Diterima di CCS';
+                } elseif ($overallStatus === 'rejected') {
+                    $badgeClass = 'bg-rose-100 text-rose-800 border border-rose-300';
+                    $badgeIcon  = 'fas fa-times-circle text-rose-700';
+                    $badgeText  = 'Belum Diterima';
+                } elseif ($feeStatus === 'verified') {
                     $badgeClass = 'bg-emerald-50 text-emerald-800 border border-emerald-200';
                     $badgeIcon  = 'fas fa-check-circle text-emerald-600';
                     $badgeText  = $L['status_verified'];
-                } elseif ($statusVal === 'proof_uploaded') {
+                } elseif ($feeStatus === 'proof_uploaded') {
                     $badgeClass = 'bg-sky-50 text-sky-800 border border-sky-200';
                     $badgeIcon  = 'fas fa-clock text-sky-600';
                     $badgeText  = $L['status_proof_uploaded'];
-                } elseif ($statusVal === 'rejected') {
+                } elseif ($feeStatus === 'rejected') {
                     $badgeClass = 'bg-rose-50 text-rose-800 border border-rose-200';
                     $badgeIcon  = 'fas fa-times-circle text-rose-600';
                     $badgeText  = $L['status_rejected'];
@@ -993,6 +1426,102 @@ if (!empty($searchQuery)) {
               </strong>
             </div>
           </div>
+
+          <!-- ═══════════════════════════════════════════════════════════════ -->
+          <!-- STEPPER VISUAL LINGKARAN-LINGKARAN (STATUS TRACKER)             -->
+          <!-- ═══════════════════════════════════════════════════════════════ -->
+          <div class="border border-slate-200 rounded-lg p-4 sm:p-6 bg-slate-50/70 shadow-xs space-y-4">
+            
+            <div class="flex items-center justify-between border-b border-slate-200/80 pb-2.5">
+              <div>
+                <h2 class="text-xs font-bold text-ccsHeading uppercase tracking-wider flex items-center gap-2">
+                  <i class="fas fa-route text-ccsOrange"></i> <?= htmlspecialchars($L['stepper_title']) ?>
+                </h2>
+                <p class="text-[11px] text-gray-500 mt-0.5"><?= htmlspecialchars($L['stepper_subtitle']) ?></p>
+              </div>
+            </div>
+
+            <!-- TAMPILAN DESKTOP: 5 LINGKARAN HORIZONTAL & GARIS PROGRESS -->
+            <div class="hidden sm:block relative py-3">
+              <!-- Garis Penghubung Track Belakang -->
+              <div class="absolute top-[28px] left-[10%] right-[10%] h-[3px] bg-slate-200 rounded-full -z-0">
+                <div class="h-full bg-emerald-500 rounded-full transition-all duration-700" style="width: <?= $progressPct ?>%;"></div>
+              </div>
+
+              <!-- Grid 5 Lingkaran -->
+              <div class="grid grid-cols-5 gap-2 relative z-10 text-center">
+                <?php foreach ($allSteps as $idx => $step): 
+                  $b = getCircleBadge($step);
+                ?>
+                  <div class="flex flex-col items-center">
+                    <div class="w-11 h-11 rounded-full flex items-center justify-center <?= $b['circle'] ?> transition-transform hover:scale-105">
+                      <i class="<?= $b['icon'] ?>"></i>
+                    </div>
+                    <div class="font-bold text-xs mt-2 text-ccsHeading leading-snug">
+                      <?= htmlspecialchars($step['title']) ?>
+                    </div>
+                    <div class="text-[11px] mt-0.5 <?= $b['subClass'] ?> leading-tight">
+                      <?= htmlspecialchars($step['sub']) ?>
+                    </div>
+                  </div>
+                <?php endforeach; ?>
+              </div>
+            </div>
+
+            <!-- TAMPILAN MOBILE: LIST VERTIKAL 5 TAHAP DENGAN INDIKATOR -->
+            <div class="sm:hidden space-y-2.5 pt-1">
+              <?php foreach ($allSteps as $idx => $step): 
+                $b = getCircleBadge($step);
+                $isActive = in_array($step['state'], ['waiting_upload', 'waiting_review', 'active_fill', 'in_review', 'approved']);
+              ?>
+                <div class="flex items-center gap-3 p-2.5 rounded-md <?= $isActive ? 'bg-white border-2 border-ccsOrange/50 shadow-xs' : 'bg-slate-100/70 border border-slate-200' ?>">
+                  <div class="w-9 h-9 rounded-full flex items-center justify-center shrink-0 <?= $b['circle'] ?>">
+                    <i class="<?= $b['icon'] ?>"></i>
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <div class="text-xs font-bold text-ccsHeading truncate"><?= htmlspecialchars($step['title']) ?></div>
+                    <div class="text-[11px] <?= $b['subClass'] ?> truncate"><?= htmlspecialchars($step['sub']) ?></div>
+                  </div>
+                  <?php if ($isActive): ?>
+                    <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-orange-100 text-orange-800 uppercase tracking-wider shrink-0">
+                      Aktif
+                    </span>
+                  <?php endif; ?>
+                </div>
+              <?php endforeach; ?>
+            </div>
+
+            <!-- KOTAK NOTIFIKASI POSISI SAAT INI (CALLOUT BOX) -->
+            <div class="p-3.5 sm:p-4 rounded-md border flex items-start gap-3 <?= $callout['boxClass'] ?>">
+              <div class="w-8 h-8 rounded-full flex items-center justify-center shrink-0 mt-0.5 <?= $callout['iconBg'] ?>">
+                <i class="<?= $callout['icon'] ?>"></i>
+              </div>
+              <div class="space-y-0.5">
+                <h3 class="text-xs uppercase tracking-wide <?= $callout['titleClass'] ?>">
+                  <?= htmlspecialchars($callout['title']) ?>
+                </h3>
+                <p class="text-xs leading-relaxed opacity-95">
+                  <?= htmlspecialchars($callout['text']) ?>
+                </p>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- ═══════════════════════════════════════════════════════════════ -->
+          <!-- KONDISI JIKA RESMI DITERIMA (APPROVED HERO BANNER)              -->
+          <!-- ═══════════════════════════════════════════════════════════════ -->
+          <?php if ($overallStatus === 'approved'): ?>
+            <div class="bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 text-white rounded-md p-6 sm:p-8 shadow-sm space-y-3 text-center">
+              <div class="w-14 h-14 rounded-full bg-white/20 text-white flex items-center justify-center text-3xl mx-auto backdrop-blur-xs border border-white/30">
+                <i class="fas fa-graduation-cap"></i>
+              </div>
+              <h2 class="text-2xl font-bold tracking-wide">Selamat! Calon Siswa Resmi Diterima di CCS</h2>
+              <p class="text-xs sm:text-sm text-emerald-100 max-w-xl mx-auto leading-relaxed">
+                Pendaftaran atas nama <strong class="text-white"><?= htmlspecialchars($currentApplicant['student_name']) ?></strong> pada jenjang <strong class="text-white"><?= htmlspecialchars($currentApplicant['level_name'] ?? $currentApplicant['preferred_grade'] ?? '-') ?></strong> telah resmi disetujui. Tim sekolah akan segera mengirimkan surat tanda terima resmi dan jadwal daftar ulang ke email Anda.
+              </p>
+            </div>
+          <?php endif; ?>
 
           <!-- ───────────────────────────────────────────────────────────── -->
           <!-- KONDISI A: BELUM VERIFIED (REKENING BANK & UPLOAD STRUK)       -->
@@ -1195,6 +1724,101 @@ if (!empty($searchQuery)) {
                     </div>
                   </div>
 
+                  <!-- Bagian 3: Pilihan Jadwal Tes Penempatan & Wawancara Orang Tua -->
+                  <div class="space-y-4 pt-4 border-t border-gray-200">
+                    <div class="border-b border-gray-100 pb-2">
+                      <h3 class="text-xs font-bold text-ccsHeading uppercase tracking-wider">
+                        <?= htmlspecialchars($L['sec3_schedule']) ?>
+                      </h3>
+                      <p class="text-[11px] text-gray-500 mt-0.5 leading-relaxed">
+                        <?= htmlspecialchars($L['sec3_schedule_desc']) ?>
+                      </p>
+                    </div>
+
+                    <!-- Checkbox Jadwal Hari Sama -->
+                    <div class="flex items-center gap-2.5 p-3 bg-blue-50/70 border border-blue-200 rounded-md">
+                      <input 
+                        type="checkbox" 
+                        id="sameDayScheduleToggle" 
+                        name="same_day_schedule" 
+                        value="1" 
+                        checked 
+                        onchange="toggleSameDaySchedule(this.checked)"
+                        class="w-4 h-4 text-ccsHeading rounded border-gray-300 focus:ring-ccsHeading cursor-pointer"
+                      >
+                      <label for="sameDayScheduleToggle" class="text-xs font-semibold text-ccsHeading cursor-pointer select-none">
+                        <?= htmlspecialchars($L['lbl_same_day_toggle']) ?>
+                      </label>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                      <!-- Kolom 1: Tes Penempatan Siswa -->
+                      <div class="p-3.5 bg-slate-50 border border-slate-200 rounded-md space-y-3">
+                        <div class="font-bold text-ccsHeading flex items-center gap-1.5 pb-1.5 border-b border-slate-200 text-xs">
+                          <i class="fas fa-graduation-cap text-ccsOrange"></i>
+                          <span><?= htmlspecialchars($L['test_schedule_badge']) ?></span>
+                        </div>
+                        <div>
+                          <label class="school-label"><?= htmlspecialchars($L['lbl_test_date']) ?> <span class="text-rose-500">*</span></label>
+                          <input 
+                            type="date" 
+                            name="test_date" 
+                            id="testDateInput" 
+                            required 
+                            min="<?= date('Y-m-d', strtotime('+1 day')) ?>"
+                            value="<?= htmlspecialchars($currentApplicant['test_date'] ?? date('Y-m-d', strtotime('+3 days'))) ?>" 
+                            onchange="syncInterviewDate(this.value)"
+                            class="school-input"
+                          >
+                        </div>
+                        <div>
+                          <label class="school-label"><?= htmlspecialchars($L['lbl_test_session']) ?> <span class="text-rose-500">*</span></label>
+                          <select name="test_session" required class="school-select">
+                            <option value="Sesi 1 (08:30 - 10:00 WIB)" <?= ($currentApplicant['test_session'] ?? '') === 'Sesi 1 (08:30 - 10:00 WIB)' ? 'selected' : '' ?>><?= $L['session_opt_1'] ?></option>
+                            <option value="Sesi 2 (10:30 - 12:00 WIB)" <?= ($currentApplicant['test_session'] ?? '') === 'Sesi 2 (10:30 - 12:00 WIB)' ? 'selected' : '' ?>><?= $L['session_opt_2'] ?></option>
+                            <option value="Sesi 3 (13:00 - 14:30 WIB)" <?= ($currentApplicant['test_session'] ?? '') === 'Sesi 3 (13:00 - 14:30 WIB)' ? 'selected' : '' ?>><?= $L['session_opt_3'] ?></option>
+                            <option value="Sesi 4 (15:00 - 16:30 WIB)" <?= ($currentApplicant['test_session'] ?? '') === 'Sesi 4 (15:00 - 16:30 WIB)' ? 'selected' : '' ?>><?= $L['session_opt_4'] ?></option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <!-- Kolom 2: Wawancara Orang Tua -->
+                      <div class="p-3.5 bg-slate-50 border border-slate-200 rounded-md space-y-3">
+                        <div class="font-bold text-ccsHeading flex items-center gap-1.5 pb-1.5 border-b border-slate-200 text-xs">
+                          <i class="fas fa-users text-ccsHeading"></i>
+                          <span><?= htmlspecialchars($L['interview_schedule_badge']) ?></span>
+                        </div>
+                        <div>
+                          <label class="school-label"><?= htmlspecialchars($L['lbl_interview_date']) ?> <span class="text-rose-500">*</span></label>
+                          <input 
+                            type="date" 
+                            name="interview_date" 
+                            id="interviewDateInput" 
+                            required 
+                            min="<?= date('Y-m-d', strtotime('+1 day')) ?>"
+                            value="<?= htmlspecialchars($currentApplicant['interview_date'] ?? date('Y-m-d', strtotime('+3 days'))) ?>" 
+                            readonly 
+                            class="school-input bg-gray-100 cursor-not-allowed"
+                          >
+                        </div>
+                        <div>
+                          <label class="school-label"><?= htmlspecialchars($L['lbl_interview_session']) ?> <span class="text-rose-500">*</span></label>
+                          <select name="interview_session" required class="school-select">
+                            <option value="Sesi 1 (08:30 - 10:00 WIB)" <?= ($currentApplicant['interview_session'] ?? '') === 'Sesi 1 (08:30 - 10:00 WIB)' ? 'selected' : '' ?>><?= $L['session_opt_1'] ?></option>
+                            <option value="Sesi 2 (10:30 - 12:00 WIB)" <?= ($currentApplicant['interview_session'] ?? '') === 'Sesi 2 (10:30 - 12:00 WIB)' ? 'selected' : '' ?>><?= $L['session_opt_2'] ?></option>
+                            <option value="Sesi 3 (13:00 - 14:30 WIB)" <?= ($currentApplicant['interview_session'] ?? '') === 'Sesi 3 (13:00 - 14:30 WIB)' ? 'selected' : '' ?>><?= $L['session_opt_3'] ?></option>
+                            <option value="Sesi 4 (15:00 - 16:30 WIB)" <?= ($currentApplicant['interview_session'] ?? '') === 'Sesi 4 (15:00 - 16:30 WIB)' ? 'selected' : '' ?>><?= $L['session_opt_4'] ?></option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <div class="sm:col-span-2">
+                        <label class="school-label"><?= htmlspecialchars($L['lbl_schedule_notes']) ?></label>
+                        <input type="text" name="schedule_notes" value="<?= htmlspecialchars($currentApplicant['schedule_notes'] ?? '') ?>" placeholder="Misal: Hadir didampingi ayah dan ibu" class="school-input">
+                      </div>
+                    </div>
+                  </div>
+
                   <div class="pt-2">
                     <button 
                       type="submit" 
@@ -1207,23 +1831,208 @@ if (!empty($searchQuery)) {
               </div>
 
             <?php else: ?>
-              <!-- TANDA TERIMA FORMULIR LENGKAP SELESAI -->
-              <div class="bg-white border border-gray-200 rounded-md p-6 text-center space-y-3">
-                <div class="w-12 h-12 rounded-full bg-emerald-50 text-emerald-700 mx-auto flex items-center justify-center text-2xl border border-emerald-200">
-                  <i class="fas fa-check"></i>
-                </div>
-                <h2 class="text-xl font-bold text-ccsHeading"><?= htmlspecialchars($L['receipt_title']) ?></h2>
-                <p class="text-xs text-gray-500 max-w-md mx-auto"><?= htmlspecialchars($L['receipt_desc']) ?></p>
+              <!-- TANDA TERIMA FORMULIR LENGKAP & JADWAL TERKONFIRMASI -->
+              <div class="space-y-4">
+                <div class="bg-white border border-gray-200 rounded-md p-6 text-center space-y-3">
+                  <div class="w-12 h-12 rounded-full bg-emerald-50 text-emerald-700 mx-auto flex items-center justify-center text-2xl border border-emerald-200">
+                    <i class="fas fa-check"></i>
+                  </div>
+                  <h2 class="text-xl font-bold text-ccsHeading"><?= htmlspecialchars($L['receipt_title']) ?></h2>
+                  <p class="text-xs text-gray-500 max-w-md mx-auto"><?= htmlspecialchars($L['receipt_desc']) ?></p>
 
-                <div class="p-4 bg-slate-50 rounded-md border border-slate-200 max-w-sm mx-auto text-left text-xs space-y-1.5 text-gray-700">
-                  <div><strong><?= htmlspecialchars($L['lbl_code']) ?>:</strong> <span class="font-mono text-ccsHeading font-bold"><?= htmlspecialchars($currentApplicant['application_number']) ?></span></div>
-                  <div><strong><?= htmlspecialchars($L['lbl_level_selected']) ?>:</strong> <?= htmlspecialchars($currentApplicant['level_name'] ?? $currentApplicant['preferred_grade'] ?? '') ?></div>
-                  <div><strong>Status:</strong> <span class="text-emerald-700 font-semibold"><i class="fas fa-check-circle mr-1"></i> <?= htmlspecialchars($L['receipt_status']) ?></span></div>
+                  <div class="p-4 bg-slate-50 rounded-md border border-slate-200 max-w-sm mx-auto text-left text-xs space-y-1.5 text-gray-700">
+                    <div><strong><?= htmlspecialchars($L['lbl_code']) ?>:</strong> <span class="font-mono text-ccsHeading font-bold"><?= htmlspecialchars($currentApplicant['application_number']) ?></span></div>
+                    <div><strong><?= htmlspecialchars($L['lbl_level_selected']) ?>:</strong> <?= htmlspecialchars($currentApplicant['level_name'] ?? $currentApplicant['preferred_grade'] ?? '') ?></div>
+                    <div><strong>Status:</strong> <span class="text-emerald-700 font-semibold"><i class="fas fa-check-circle mr-1"></i> <?= htmlspecialchars($L['receipt_status']) ?></span></div>
+                  </div>
+
+                  <p class="text-xs text-gray-400 mt-1 max-w-md mx-auto">
+                    <?= htmlspecialchars($L['receipt_contact_soon']) ?>
+                  </p>
                 </div>
 
-                <p class="text-xs text-gray-400 mt-1 max-w-md mx-auto">
-                  <?= htmlspecialchars($L['receipt_contact_soon']) ?>
-                </p>
+                <!-- KARTU JADWAL TES & WAWANCARA TERKONFIRMASI -->
+                <div class="bg-white border border-gray-200 rounded-md p-5 space-y-4 shadow-xs">
+                  <div class="flex items-center justify-between flex-wrap gap-2 pb-3 border-b border-gray-200">
+                    <div class="flex items-center gap-2">
+                      <div class="w-8 h-8 rounded-full bg-blue-50 text-ccsHeading flex items-center justify-center border border-blue-200 text-sm">
+                        <i class="far fa-calendar-alt"></i>
+                      </div>
+                      <div>
+                        <h3 class="text-sm font-bold text-ccsHeading"><?= htmlspecialchars($L['confirmed_schedule_title']) ?></h3>
+                        <p class="text-[11px] text-gray-500 font-mono"><?= htmlspecialchars($currentApplicant['application_number']) ?> &bull; <?= htmlspecialchars($currentApplicant['student_name']) ?></p>
+                      </div>
+                    </div>
+
+                    <button 
+                      type="button" 
+                      onclick="toggleRescheduleForm()" 
+                      class="px-3 py-1.5 rounded border border-ccsOrange text-ccsOrange hover:bg-orange-50 text-xs font-semibold transition flex items-center gap-1.5"
+                    >
+                      <i class="fas fa-calendar-check"></i>
+                      <span><?= htmlspecialchars($L['btn_reschedule']) ?></span>
+                    </button>
+                  </div>
+
+                  <!-- Detail Jadwal 2 Kolom -->
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                    <!-- Tes Penempatan -->
+                    <div class="p-3.5 bg-slate-50 border border-slate-200 rounded-md space-y-2">
+                      <div class="flex items-center justify-between pb-1.5 border-b border-slate-200">
+                        <span class="font-bold text-ccsHeading flex items-center gap-1.5 text-xs">
+                          <i class="fas fa-graduation-cap text-ccsOrange"></i>
+                          <?= htmlspecialchars($L['test_schedule_badge']) ?>
+                        </span>
+                        <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
+                          Terkonfirmasi
+                        </span>
+                      </div>
+                      <div class="space-y-1 pt-1">
+                        <div>
+                          <span class="text-[10px] text-gray-500 uppercase block font-mono"><?= htmlspecialchars($L['lbl_test_date']) ?>:</span>
+                          <span class="text-sm font-bold text-ccsHeading">
+                            <?= formatTanggalIndo($currentApplicant['test_date'] ?? null, $currLang) ?>
+                          </span>
+                        </div>
+                        <div>
+                          <span class="text-[10px] text-gray-500 uppercase block font-mono"><?= htmlspecialchars($L['lbl_test_session']) ?>:</span>
+                          <span class="text-xs font-semibold text-gray-700">
+                            <?= htmlspecialchars($currentApplicant['test_session'] ?? 'Sesi 1 (08:30 - 10:00 WIB)') ?>
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Wawancara Orang Tua -->
+                    <div class="p-3.5 bg-slate-50 border border-slate-200 rounded-md space-y-2">
+                      <div class="flex items-center justify-between pb-1.5 border-b border-slate-200">
+                        <span class="font-bold text-ccsHeading flex items-center gap-1.5 text-xs">
+                          <i class="fas fa-users text-ccsHeading"></i>
+                          <?= htmlspecialchars($L['interview_schedule_badge']) ?>
+                        </span>
+                        <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
+                          Terkonfirmasi
+                        </span>
+                      </div>
+                      <div class="space-y-1 pt-1">
+                        <div>
+                          <span class="text-[10px] text-gray-500 uppercase block font-mono"><?= htmlspecialchars($L['lbl_interview_date']) ?>:</span>
+                          <span class="text-sm font-bold text-ccsHeading">
+                            <?= formatTanggalIndo($currentApplicant['interview_date'] ?? null, $currLang) ?>
+                          </span>
+                        </div>
+                        <div>
+                          <span class="text-[10px] text-gray-500 uppercase block font-mono"><?= htmlspecialchars($L['lbl_interview_session']) ?>:</span>
+                          <span class="text-xs font-semibold text-gray-700">
+                            <?= htmlspecialchars($currentApplicant['interview_session'] ?? 'Sesi 1 (08:30 - 10:00 WIB)') ?>
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Info Lokasi & Catatan -->
+                  <div class="p-3 bg-amber-50/70 border border-amber-200 rounded-md text-xs text-amber-900 flex items-start gap-2.5">
+                    <i class="fas fa-map-marker-alt text-amber-600 shrink-0 mt-0.5"></i>
+                    <div>
+                      <span class="font-semibold block"><?= htmlspecialchars($L['schedule_location']) ?></span>
+                      <?php if (!empty($currentApplicant['schedule_notes'])): ?>
+                        <span class="text-[11px] text-amber-800 block mt-1">Catatan Pendaftar: <?= htmlspecialchars($currentApplicant['schedule_notes']) ?></span>
+                      <?php endif; ?>
+                    </div>
+                  </div>
+
+                  <!-- FORM RESCHEDULE (TERSEMBUNYI, DITAMPILKAN KETIKA KLIK UBAH JADWAL) -->
+                  <div id="rescheduleFormContainer" class="hidden border-t border-gray-200 pt-4 mt-2">
+                    <form method="POST" action="status.php?cek=<?= urlencode($searchQuery) ?>&phone=<?= urlencode($searchPhone) ?>&lang=<?= $currLang ?>" class="space-y-4">
+                      <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
+                      <input type="hidden" name="action_update_schedule" value="1">
+                      <input type="hidden" name="target_app_no" value="<?= htmlspecialchars($currentApplicant['application_number']) ?>">
+
+                      <div class="border-b border-gray-100 pb-2 flex items-center justify-between">
+                        <h4 class="text-xs font-bold text-ccsHeading uppercase tracking-wider">
+                          <?= htmlspecialchars($L['reschedule_modal_title'] ?? 'Formulir Perubahan Jadwal') ?>
+                        </h4>
+                        <button type="button" onclick="toggleRescheduleForm()" class="text-xs text-gray-400 hover:text-gray-600">
+                          <i class="fas fa-times"></i>
+                        </button>
+                      </div>
+
+                      <div class="flex items-center gap-2.5 p-2.5 bg-blue-50/70 border border-blue-200 rounded-md">
+                        <input 
+                          type="checkbox" 
+                          id="sameDayScheduleToggleResched" 
+                          name="same_day_schedule" 
+                          value="1" 
+                          checked 
+                          onchange="toggleSameDaySchedule(this.checked, 'Resched')"
+                          class="w-4 h-4 text-ccsHeading rounded border-gray-300 focus:ring-ccsHeading cursor-pointer"
+                        >
+                        <label for="sameDayScheduleToggleResched" class="text-xs font-semibold text-ccsHeading cursor-pointer select-none">
+                          <?= htmlspecialchars($L['lbl_same_day_toggle']) ?>
+                        </label>
+                      </div>
+
+                      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                        <div class="p-3 bg-slate-50 border border-slate-200 rounded-md space-y-2.5">
+                          <label class="school-label"><?= htmlspecialchars($L['lbl_test_date']) ?> <span class="text-rose-500">*</span></label>
+                          <input 
+                            type="date" 
+                            name="test_date" 
+                            id="testDateInputResched" 
+                            required 
+                            min="<?= date('Y-m-d', strtotime('+1 day')) ?>"
+                            value="<?= htmlspecialchars($currentApplicant['test_date'] ?? date('Y-m-d', strtotime('+3 days'))) ?>" 
+                            onchange="syncInterviewDate(this.value, 'Resched')"
+                            class="school-input"
+                          >
+                          <label class="school-label"><?= htmlspecialchars($L['lbl_test_session']) ?> <span class="text-rose-500">*</span></label>
+                          <select name="test_session" required class="school-select">
+                            <option value="Sesi 1 (08:30 - 10:00 WIB)" <?= ($currentApplicant['test_session'] ?? '') === 'Sesi 1 (08:30 - 10:00 WIB)' ? 'selected' : '' ?>><?= $L['session_opt_1'] ?></option>
+                            <option value="Sesi 2 (10:30 - 12:00 WIB)" <?= ($currentApplicant['test_session'] ?? '') === 'Sesi 2 (10:30 - 12:00 WIB)' ? 'selected' : '' ?>><?= $L['session_opt_2'] ?></option>
+                            <option value="Sesi 3 (13:00 - 14:30 WIB)" <?= ($currentApplicant['test_session'] ?? '') === 'Sesi 3 (13:00 - 14:30 WIB)' ? 'selected' : '' ?>><?= $L['session_opt_3'] ?></option>
+                            <option value="Sesi 4 (15:00 - 16:30 WIB)" <?= ($currentApplicant['test_session'] ?? '') === 'Sesi 4 (15:00 - 16:30 WIB)' ? 'selected' : '' ?>><?= $L['session_opt_4'] ?></option>
+                          </select>
+                        </div>
+
+                        <div class="p-3 bg-slate-50 border border-slate-200 rounded-md space-y-2.5">
+                          <label class="school-label"><?= htmlspecialchars($L['lbl_interview_date']) ?> <span class="text-rose-500">*</span></label>
+                          <input 
+                            type="date" 
+                            name="interview_date" 
+                            id="interviewDateInputResched" 
+                            required 
+                            min="<?= date('Y-m-d', strtotime('+1 day')) ?>"
+                            value="<?= htmlspecialchars($currentApplicant['interview_date'] ?? date('Y-m-d', strtotime('+3 days'))) ?>" 
+                            readonly 
+                            class="school-input bg-gray-100 cursor-not-allowed"
+                          >
+                          <label class="school-label"><?= htmlspecialchars($L['lbl_interview_session']) ?> <span class="text-rose-500">*</span></label>
+                          <select name="interview_session" required class="school-select">
+                            <option value="Sesi 1 (08:30 - 10:00 WIB)" <?= ($currentApplicant['interview_session'] ?? '') === 'Sesi 1 (08:30 - 10:00 WIB)' ? 'selected' : '' ?>><?= $L['session_opt_1'] ?></option>
+                            <option value="Sesi 2 (10:30 - 12:00 WIB)" <?= ($currentApplicant['interview_session'] ?? '') === 'Sesi 2 (10:30 - 12:00 WIB)' ? 'selected' : '' ?>><?= $L['session_opt_2'] ?></option>
+                            <option value="Sesi 3 (13:00 - 14:30 WIB)" <?= ($currentApplicant['interview_session'] ?? '') === 'Sesi 3 (13:00 - 14:30 WIB)' ? 'selected' : '' ?>><?= $L['session_opt_3'] ?></option>
+                            <option value="Sesi 4 (15:00 - 16:30 WIB)" <?= ($currentApplicant['interview_session'] ?? '') === 'Sesi 4 (15:00 - 16:30 WIB)' ? 'selected' : '' ?>><?= $L['session_opt_4'] ?></option>
+                          </select>
+                        </div>
+
+                        <div class="sm:col-span-2">
+                          <label class="school-label"><?= htmlspecialchars($L['lbl_schedule_notes']) ?></label>
+                          <input type="text" name="schedule_notes" value="<?= htmlspecialchars($currentApplicant['schedule_notes'] ?? '') ?>" placeholder="Alasan perubahan atau catatan khusus" class="school-input">
+                        </div>
+                      </div>
+
+                      <div class="flex items-center gap-2 pt-1">
+                        <button type="submit" class="thm-btn text-xs py-2 px-4">
+                          <i class="fas fa-save mr-1"></i> Simpan Jadwal Baru
+                        </button>
+                        <button type="button" onclick="toggleRescheduleForm()" class="px-3 py-2 text-xs border border-gray-300 rounded text-gray-600 hover:bg-gray-50">
+                          Batal
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
               </div>
             <?php endif; ?>
           <?php endif; ?>
@@ -1293,6 +2102,43 @@ if (!empty($searchQuery)) {
         if (disp) {
           disp.textContent = `✓ ${file.name} (${sizeMb} MB)`;
           disp.classList.remove('hidden');
+        }
+      }
+    }
+
+    // Toggle Jadwal Tes & Wawancara Sama Hari
+    function toggleSameDaySchedule(checked, suffix = '') {
+      const interviewInput = document.getElementById('interviewDateInput' + suffix);
+      const testInput = document.getElementById('testDateInput' + suffix);
+      if (!interviewInput || !testInput) return;
+      if (checked) {
+        interviewInput.value = testInput.value;
+        interviewInput.setAttribute('readonly', 'readonly');
+        interviewInput.classList.add('bg-gray-100', 'cursor-not-allowed');
+      } else {
+        interviewInput.removeAttribute('readonly');
+        interviewInput.classList.remove('bg-gray-100', 'cursor-not-allowed');
+      }
+    }
+
+    // Sinkronisasi Tanggal Wawancara jika checkbox sama hari aktif
+    function syncInterviewDate(val, suffix = '') {
+      const toggle = document.getElementById('sameDayScheduleToggle' + suffix);
+      if (toggle && toggle.checked) {
+        const interviewInput = document.getElementById('interviewDateInput' + suffix);
+        if (interviewInput) {
+          interviewInput.value = val;
+        }
+      }
+    }
+
+    // Toggle Tampilan Form Reschedule di Tahap 4
+    function toggleRescheduleForm() {
+      const form = document.getElementById('rescheduleFormContainer');
+      if (form) {
+        form.classList.toggle('hidden');
+        if (!form.classList.contains('hidden')) {
+          form.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
       }
     }

@@ -216,6 +216,18 @@ export default function AdmissionManagement() {
     notes: ''
   });
 
+  // Schedule Modal & Edit States
+  const [showScheduleModal, setShowScheduleModal] = useState(false);
+  const [scheduleData, setScheduleData] = useState({
+    test_date: '',
+    test_session: 'Sesi 1 (08:30 - 10:00 WIB)',
+    interview_date: '',
+    interview_session: 'Sesi 1 (08:30 - 10:00 WIB)',
+    schedule_notes: ''
+  });
+  const [sameDaySchedule, setSameDaySchedule] = useState(true);
+  const [scheduleSaving, setScheduleSaving] = useState(false);
+
   // Email Logs & Tab states
   const [activeTab, setActiveTab] = useState('applications'); // 'applications' | 'email_logs'
   const [emailLogs, setEmailLogs] = useState([]);
@@ -542,7 +554,25 @@ export default function AdmissionManagement() {
 
       if (yearsError) throw yearsError;
 
-      setApplications(applicationsData || []);
+      const parsedApps = (applicationsData || []).map(app => {
+        if (app.test_date || app.interview_date) return app;
+        if (app.additional_notes && app.additional_notes.includes('[SCHEDULE_META]:')) {
+          try {
+            const meta = JSON.parse(app.additional_notes.split('[SCHEDULE_META]:')[1].trim());
+            return {
+              ...app,
+              test_date: meta.test_date || null,
+              test_session: meta.test_session || null,
+              interview_date: meta.interview_date || null,
+              interview_session: meta.interview_session || null,
+              schedule_notes: meta.schedule_notes || null,
+            };
+          } catch (e) {}
+        }
+        return app;
+      });
+
+      setApplications(parsedApps);
       setUnits(unitsData || []);
       setYears(yearsData || []);
 
@@ -659,12 +689,26 @@ export default function AdmissionManagement() {
   };
 
   const handleViewDetail = (application) => {
-    setSelectedApplication(application);
+    let app = application;
+    if (app && !app.test_date && app.additional_notes && app.additional_notes.includes('[SCHEDULE_META]:')) {
+      try {
+        const meta = JSON.parse(app.additional_notes.split('[SCHEDULE_META]:')[1].trim());
+        app = {
+          ...app,
+          test_date: meta.test_date || null,
+          test_session: meta.test_session || null,
+          interview_date: meta.interview_date || null,
+          interview_session: meta.interview_session || null,
+          schedule_notes: meta.schedule_notes || null,
+        };
+      } catch (e) {}
+    }
+    setSelectedApplication(app);
     setShowDetailModal(true);
     setIsEditing(false);
-    fetchDiscountsForApplication(application);
-    if (application?.parent_email) {
-      fetchLogsForApplicant(application.parent_email);
+    fetchDiscountsForApplication(app);
+    if (app?.parent_email) {
+      fetchLogsForApplicant(app.parent_email);
     } else {
       setDetailApplicantLogs([]);
     }
@@ -692,6 +736,11 @@ export default function AdmissionManagement() {
       parent_email: app.parent_email || '',
       parent_occupation: app.parent_occupation || '',
       parent_address: app.parent_address || '',
+      test_date: app.test_date || '',
+      test_session: app.test_session || 'Sesi 1 (08:30 - 10:00 WIB)',
+      interview_date: app.interview_date || '',
+      interview_session: app.interview_session || 'Sesi 1 (08:30 - 10:00 WIB)',
+      schedule_notes: app.schedule_notes || '',
     });
     setEditCitySearch(app.student_city || '');
     setIsEditing(true);
@@ -704,7 +753,7 @@ export default function AdmissionManagement() {
     }
     setEditSaving(true);
     try {
-      const updatePayload = {
+      let updatePayload = {
         student_name: editData.student_name.trim(),
         student_nickname: editData.student_nickname.trim() || null,
         student_gender: editData.student_gender || null,
@@ -724,24 +773,149 @@ export default function AdmissionManagement() {
         parent_email: editData.parent_email.trim() || null,
         parent_occupation: editData.parent_occupation.trim() || null,
         parent_address: editData.parent_address.trim() || null,
+        test_date: editData.test_date || null,
+        test_session: editData.test_session || null,
+        interview_date: editData.interview_date || null,
+        interview_session: editData.interview_session || null,
+        schedule_notes: editData.schedule_notes || null,
       };
-      const { error } = await supabase
+
+      let { error } = await supabase
         .from('student_applications')
         .update(updatePayload)
         .eq('application_id', selectedApplication.application_id);
+
+      // Fallback jika kolom jadwal belum ada di tabel Supabase
+      if (error && error.message && (error.message.includes('column') || error.message.includes('test_date'))) {
+        const schedMeta = {
+          test_date: editData.test_date || null,
+          test_session: editData.test_session || null,
+          interview_date: editData.interview_date || null,
+          interview_session: editData.interview_session || null,
+          schedule_notes: editData.schedule_notes || null,
+        };
+        delete updatePayload.test_date;
+        delete updatePayload.test_session;
+        delete updatePayload.interview_date;
+        delete updatePayload.interview_session;
+        delete updatePayload.schedule_notes;
+
+        const cleanNotes = (selectedApplication.additional_notes || '').replace(/\[SCHEDULE_META\]:.*$/s, '').trim();
+        updatePayload.additional_notes = cleanNotes 
+          ? `${cleanNotes}\n[SCHEDULE_META]:${JSON.stringify(schedMeta)}` 
+          : `[SCHEDULE_META]:${JSON.stringify(schedMeta)}`;
+
+        const retry = await supabase
+          .from('student_applications')
+          .update(updatePayload)
+          .eq('application_id', selectedApplication.application_id);
+        error = retry.error;
+      }
+
       if (error) throw error;
 
       // Update local state
-      const updated = { ...selectedApplication, ...updatePayload };
+      const updated = { 
+        ...selectedApplication, 
+        ...updatePayload,
+        test_date: editData.test_date || null,
+        test_session: editData.test_session || null,
+        interview_date: editData.interview_date || null,
+        interview_session: editData.interview_session || null,
+        schedule_notes: editData.schedule_notes || null
+      };
       setSelectedApplication(updated);
-      setApplications(prev => prev.map(a => a.application_id === updated.application_id ? { ...a, ...updatePayload } : a));
+      setApplications(prev => prev.map(a => a.application_id === updated.application_id ? { ...a, ...updated } : a));
       setIsEditing(false);
-      showNotification('Berhasil', 'Data pendaftaran berhasil diperbarui', 'success');
+      showNotification('Berhasil', 'Data pendaftaran & jadwal berhasil diperbarui', 'success');
     } catch (err) {
       console.error('Error saving edit:', err);
       showNotification('Error', 'Gagal menyimpan: ' + err.message, 'error');
     } finally {
       setEditSaving(false);
+    }
+  };
+
+  const handleOpenScheduleModal = (app) => {
+    const target = app || selectedApplication;
+    if (!target) return;
+    const tDate = target.test_date || '';
+    const iDate = target.interview_date || '';
+    setScheduleData({
+      test_date: tDate,
+      test_session: target.test_session || 'Sesi 1 (08:30 - 10:00 WIB)',
+      interview_date: iDate,
+      interview_session: target.interview_session || 'Sesi 1 (08:30 - 10:00 WIB)',
+      schedule_notes: target.schedule_notes || ''
+    });
+    setSameDaySchedule(!tDate || !iDate || tDate === iDate);
+    setShowScheduleModal(true);
+  };
+
+  const handleSaveSchedule = async () => {
+    if (!selectedApplication) return;
+    setScheduleSaving(true);
+    try {
+      let updatePayload = {
+        test_date: scheduleData.test_date || null,
+        test_session: scheduleData.test_session || null,
+        interview_date: sameDaySchedule ? (scheduleData.test_date || null) : (scheduleData.interview_date || null),
+        interview_session: scheduleData.interview_session || null,
+        schedule_notes: scheduleData.schedule_notes || null
+      };
+
+      let { error } = await supabase
+        .from('student_applications')
+        .update(updatePayload)
+        .eq('application_id', selectedApplication.application_id);
+
+      // Fallback jika kolom jadwal belum ada di tabel Supabase
+      if (error && error.message && (error.message.includes('column') || error.message.includes('test_date'))) {
+        const schedMeta = {
+          test_date: updatePayload.test_date,
+          test_session: updatePayload.test_session,
+          interview_date: updatePayload.interview_date,
+          interview_session: updatePayload.interview_session,
+          schedule_notes: updatePayload.schedule_notes
+        };
+        delete updatePayload.test_date;
+        delete updatePayload.test_session;
+        delete updatePayload.interview_date;
+        delete updatePayload.interview_session;
+        delete updatePayload.schedule_notes;
+
+        const cleanNotes = (selectedApplication.additional_notes || '').replace(/\[SCHEDULE_META\]:.*$/s, '').trim();
+        updatePayload.additional_notes = cleanNotes 
+          ? `${cleanNotes}\n[SCHEDULE_META]:${JSON.stringify(schedMeta)}` 
+          : `[SCHEDULE_META]:${JSON.stringify(schedMeta)}`;
+
+        const retry = await supabase
+          .from('student_applications')
+          .update(updatePayload)
+          .eq('application_id', selectedApplication.application_id);
+        error = retry.error;
+      }
+
+      if (error) throw error;
+
+      showNotification('Berhasil', 'Jadwal tes dan wawancara berhasil disimpan', 'success');
+      const updated = {
+        ...selectedApplication,
+        ...updatePayload,
+        test_date: scheduleData.test_date || null,
+        test_session: scheduleData.test_session || null,
+        interview_date: sameDaySchedule ? (scheduleData.test_date || null) : (scheduleData.interview_date || null),
+        interview_session: scheduleData.interview_session || null,
+        schedule_notes: scheduleData.schedule_notes || null
+      };
+      setSelectedApplication(updated);
+      setApplications(prev => prev.map(a => a.application_id === updated.application_id ? { ...a, ...updated } : a));
+      setShowScheduleModal(false);
+    } catch (err) {
+      console.error('Error saving schedule:', err);
+      showNotification('Error', 'Gagal menyimpan: ' + err.message, 'error');
+    } finally {
+      setScheduleSaving(false);
     }
   };
 
@@ -2786,6 +2960,188 @@ export default function AdmissionManagement() {
               </div>
             </div>
 
+            {/* Jadwal Tes Penempatan & Wawancara Orang Tua Card */}
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-semibold flex items-center gap-2 text-xs font-mono uppercase tracking-wider" style={{ color: textPrimary }}>
+                  <FontAwesomeIcon icon={faCalendar} style={{ color: isDark ? '#60A5FA' : '#0284C7' }} />
+                  Jadwal Tes Penempatan & Wawancara Orang Tua
+                </h3>
+                {!isEditing && (
+                  <button
+                    type="button"
+                    onClick={() => handleOpenScheduleModal(selectedApplication)}
+                    className="flex items-center gap-1.5 px-2.5 py-1 text-xs border rounded font-medium transition-colors hover:bg-black/5 dark:hover:bg-white/5"
+                    style={{
+                      background: cardBg,
+                      borderColor: isDark ? '#3B82F6' : '#93C5FD',
+                      color: isDark ? '#60A5FA' : '#0284C7',
+                      borderRadius: '6px'
+                    }}
+                  >
+                    <FontAwesomeIcon icon={faEdit} className="text-[10px]" />
+                    Atur / Ubah Jadwal
+                  </button>
+                )}
+              </div>
+
+              {isEditing ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 rounded-lg" style={{ background: isDark ? '#1C1C1F' : '#F9F9F8', border: '1px solid ' + borderColor, borderRadius: '8px' }}>
+                  {/* Kolom Tes Penempatan */}
+                  <div className="space-y-3 p-3 rounded border" style={{ borderColor, background: cardBg }}>
+                    <div className="flex items-center gap-1.5 font-semibold text-xs text-blue-600 dark:text-blue-400">
+                      <FontAwesomeIcon icon={faUserGraduate} className="text-xs" />
+                      Tes Penempatan Siswa
+                    </div>
+                    <div>
+                      <Label className="text-xs font-mono uppercase tracking-wider" style={{ color: textSecondary }}>Tanggal Tes</Label>
+                      <Input 
+                        type="date" 
+                        className="mt-1" 
+                        style={inputStyle} 
+                        value={editData.test_date || ''} 
+                        onChange={(e) => setEditData(p => ({ ...p, test_date: e.target.value }))} 
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs font-mono uppercase tracking-wider" style={{ color: textSecondary }}>Sesi & Waktu Tes</Label>
+                      <select 
+                        className="mt-1 w-full px-3 py-2 rounded-md focus:outline-none" 
+                        style={selectStyle} 
+                        value={editData.test_session || 'Sesi 1 (08:30 - 10:00 WIB)'} 
+                        onChange={(e) => setEditData(p => ({ ...p, test_session: e.target.value }))}
+                      >
+                        <option value="Sesi 1 (08:30 - 10:00 WIB)">Sesi 1 (08:30 - 10:00 WIB)</option>
+                        <option value="Sesi 2 (10:30 - 12:00 WIB)">Sesi 2 (10:30 - 12:00 WIB)</option>
+                        <option value="Sesi 3 (13:00 - 14:30 WIB)">Sesi 3 (13:00 - 14:30 WIB)</option>
+                        <option value="Sesi 4 (15:00 - 16:30 WIB)">Sesi 4 (15:00 - 16:30 WIB)</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Kolom Wawancara */}
+                  <div className="space-y-3 p-3 rounded border" style={{ borderColor, background: cardBg }}>
+                    <div className="flex items-center gap-1.5 font-semibold text-xs text-purple-600 dark:text-purple-400">
+                      <FontAwesomeIcon icon={faUser} className="text-xs" />
+                      Wawancara Orang Tua & Observasi
+                    </div>
+                    <div>
+                      <Label className="text-xs font-mono uppercase tracking-wider" style={{ color: textSecondary }}>Tanggal Wawancara</Label>
+                      <Input 
+                        type="date" 
+                        className="mt-1" 
+                        style={inputStyle} 
+                        value={editData.interview_date || ''} 
+                        onChange={(e) => setEditData(p => ({ ...p, interview_date: e.target.value }))} 
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs font-mono uppercase tracking-wider" style={{ color: textSecondary }}>Sesi & Waktu Wawancara</Label>
+                      <select 
+                        className="mt-1 w-full px-3 py-2 rounded-md focus:outline-none" 
+                        style={selectStyle} 
+                        value={editData.interview_session || 'Sesi 1 (08:30 - 10:00 WIB)'} 
+                        onChange={(e) => setEditData(p => ({ ...p, interview_session: e.target.value }))}
+                      >
+                        <option value="Sesi 1 (08:30 - 10:00 WIB)">Sesi 1 (08:30 - 10:00 WIB)</option>
+                        <option value="Sesi 2 (10:30 - 12:00 WIB)">Sesi 2 (10:30 - 12:00 WIB)</option>
+                        <option value="Sesi 3 (13:00 - 14:30 WIB)">Sesi 3 (13:00 - 14:30 WIB)</option>
+                        <option value="Sesi 4 (15:00 - 16:30 WIB)">Sesi 4 (15:00 - 16:30 WIB)</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="col-span-1 md:col-span-2">
+                    <Label className="text-xs font-mono uppercase tracking-wider" style={{ color: textSecondary }}>Catatan Khusus Jadwal</Label>
+                    <Input 
+                      className="mt-1" 
+                      style={inputStyle} 
+                      value={editData.schedule_notes || ''} 
+                      onChange={(e) => setEditData(p => ({ ...p, schedule_notes: e.target.value }))} 
+                      placeholder="Contoh: Tes dan wawancara diadakan di Ruang Observasi CCS Lantai 2"
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div className="p-4 rounded-lg border space-y-3" style={{ background: isDark ? '#1C1C1F' : '#F9F9F8', borderColor, borderRadius: '8px' }}>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {/* Tes Penempatan Info */}
+                    <div className="p-3 rounded border" style={{ background: cardBg, borderColor }}>
+                      <div className="flex items-center justify-between pb-1.5 border-b" style={{ borderColor }}>
+                        <span className="text-[10px] font-mono uppercase tracking-wider font-semibold text-blue-600 dark:text-blue-400 flex items-center gap-1.5">
+                          <FontAwesomeIcon icon={faUserGraduate} className="text-[10px]" />
+                          Tes Penempatan Siswa
+                        </span>
+                        {selectedApplication.test_date ? (
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded text-[9px] font-mono bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
+                            <FontAwesomeIcon icon={faCheck} className="text-[8px]" /> Terjadwal
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded text-[9px] font-mono bg-slate-100 text-slate-600 dark:bg-zinc-800 dark:text-zinc-400 border border-slate-200 dark:border-zinc-700">
+                            Belum Ditentukan
+                          </span>
+                        )}
+                      </div>
+                      <div className="pt-2 space-y-1">
+                        <div>
+                          <span className="text-[10px] font-mono uppercase text-gray-500 block">Tanggal Pelaksanaan:</span>
+                          <span className="text-xs font-semibold" style={{ color: textPrimary }}>
+                            {selectedApplication.test_date ? formatDate(selectedApplication.test_date) : '-'}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-[10px] font-mono uppercase text-gray-500 block">Sesi / Jam:</span>
+                          <span className="text-xs font-mono" style={{ color: textPrimary }}>
+                            {selectedApplication.test_session || '-'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Wawancara Info */}
+                    <div className="p-3 rounded border" style={{ background: cardBg, borderColor }}>
+                      <div className="flex items-center justify-between pb-1.5 border-b" style={{ borderColor }}>
+                        <span className="text-[10px] font-mono uppercase tracking-wider font-semibold text-purple-600 dark:text-purple-400 flex items-center gap-1.5">
+                          <FontAwesomeIcon icon={faUser} className="text-[10px]" />
+                          Wawancara Orang Tua & Observasi
+                        </span>
+                        {selectedApplication.interview_date ? (
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded text-[9px] font-mono bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
+                            <FontAwesomeIcon icon={faCheck} className="text-[8px]" /> Terjadwal
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded text-[9px] font-mono bg-slate-100 text-slate-600 dark:bg-zinc-800 dark:text-zinc-400 border border-slate-200 dark:border-zinc-700">
+                            Belum Ditentukan
+                          </span>
+                        )}
+                      </div>
+                      <div className="pt-2 space-y-1">
+                        <div>
+                          <span className="text-[10px] font-mono uppercase text-gray-500 block">Tanggal Pelaksanaan:</span>
+                          <span className="text-xs font-semibold" style={{ color: textPrimary }}>
+                            {selectedApplication.interview_date ? formatDate(selectedApplication.interview_date) : '-'}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-[10px] font-mono uppercase text-gray-500 block">Sesi / Jam:</span>
+                          <span className="text-xs font-mono" style={{ color: textPrimary }}>
+                            {selectedApplication.interview_session || '-'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {selectedApplication.schedule_notes && (
+                    <div className="text-xs p-2.5 rounded border" style={{ borderColor, background: cardBg }}>
+                      <span className="text-[10px] font-mono uppercase text-gray-500 block">Catatan Jadwal:</span>
+                      <span style={{ color: textPrimary }}>{selectedApplication.schedule_notes}</span>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
             {/* Additional Notes */}
             {selectedApplication.additional_notes && (
               <div>
@@ -3766,6 +4122,168 @@ export default function AdmissionManagement() {
                 </div>
               );
             })()}
+          </div>
+        )}
+      </Modal>
+
+      {/* Quick Schedule Modal */}
+      <Modal
+        isOpen={showScheduleModal}
+        onClose={() => setShowScheduleModal(false)}
+        title={`Atur / Ubah Jadwal Tes & Wawancara - ${selectedApplication?.student_name || ''}`}
+        size="md"
+      >
+        {selectedApplication && (
+          <div className="space-y-4">
+            <div className="p-3 rounded-lg border flex items-center justify-between" style={{ background: isDark ? '#1C1C1F' : '#F9F9F8', borderColor }}>
+              <div>
+                <p className="font-semibold text-xs" style={{ color: textPrimary }}>{selectedApplication.student_name}</p>
+                <p className="text-[11px] font-mono mt-0.5" style={{ color: textSecondary }}>
+                  {selectedApplication.application_number} &bull; {selectedApplication.level?.level_name || selectedApplication.unit?.unit_name || '-'}
+                </p>
+              </div>
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-blue-50 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400 border border-blue-200 dark:border-blue-800">
+                Jadwal PPDB
+              </span>
+            </div>
+
+            {/* Checkbox Same Day */}
+            <div className="flex items-center gap-2 p-3 rounded border bg-blue-50/50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-900">
+              <input
+                type="checkbox"
+                id="sameDayScheduleToggle"
+                checked={sameDaySchedule}
+                onChange={(e) => {
+                  const checked = e.target.checked;
+                  setSameDaySchedule(checked);
+                  if (checked && scheduleData.test_date) {
+                    setScheduleData(p => ({ ...p, interview_date: p.test_date }));
+                  }
+                }}
+                className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 cursor-pointer"
+              />
+              <label htmlFor="sameDayScheduleToggle" className="text-xs font-medium cursor-pointer" style={{ color: textPrimary }}>
+                Jadwalkan Tes & Wawancara pada hari yang sama
+              </label>
+            </div>
+
+            {/* Form Fields */}
+            <div className="space-y-3 text-xs">
+              {/* Tes Penempatan */}
+              <div className="p-3 rounded border space-y-2.5" style={{ borderColor, background: cardBg }}>
+                <div className="flex items-center gap-1.5 font-semibold text-xs text-blue-600 dark:text-blue-400">
+                  <FontAwesomeIcon icon={faUserGraduate} className="text-xs" />
+                  1. Tes Penempatan Siswa
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <div>
+                    <Label className="text-[10px] font-mono uppercase tracking-wider" style={{ color: textSecondary }}>Tanggal Tes</Label>
+                    <Input
+                      type="date"
+                      className="mt-1"
+                      style={inputStyle}
+                      value={scheduleData.test_date}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setScheduleData(p => ({
+                          ...p,
+                          test_date: val,
+                          ...(sameDaySchedule ? { interview_date: val } : {})
+                        }));
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-[10px] font-mono uppercase tracking-wider" style={{ color: textSecondary }}>Sesi Tes</Label>
+                    <select
+                      className="mt-1 w-full px-2.5 py-2 rounded-md focus:outline-none"
+                      style={selectStyle}
+                      value={scheduleData.test_session}
+                      onChange={(e) => setScheduleData(p => ({ ...p, test_session: e.target.value }))}
+                    >
+                      <option value="Sesi 1 (08:30 - 10:00 WIB)">Sesi 1 (08:30 - 10:00 WIB)</option>
+                      <option value="Sesi 2 (10:30 - 12:00 WIB)">Sesi 2 (10:30 - 12:00 WIB)</option>
+                      <option value="Sesi 3 (13:00 - 14:30 WIB)">Sesi 3 (13:00 - 14:30 WIB)</option>
+                      <option value="Sesi 4 (15:00 - 16:30 WIB)">Sesi 4 (15:00 - 16:30 WIB)</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Wawancara Orang Tua */}
+              <div className="p-3 rounded border space-y-2.5" style={{ borderColor, background: cardBg }}>
+                <div className="flex items-center gap-1.5 font-semibold text-xs text-purple-600 dark:text-purple-400">
+                  <FontAwesomeIcon icon={faUser} className="text-xs" />
+                  2. Wawancara Orang Tua & Observasi
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <div>
+                    <Label className="text-[10px] font-mono uppercase tracking-wider" style={{ color: textSecondary }}>Tanggal Wawancara</Label>
+                    <Input
+                      type="date"
+                      className="mt-1"
+                      style={inputStyle}
+                      disabled={sameDaySchedule}
+                      value={sameDaySchedule ? scheduleData.test_date : scheduleData.interview_date}
+                      onChange={(e) => setScheduleData(p => ({ ...p, interview_date: e.target.value }))}
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-[10px] font-mono uppercase tracking-wider" style={{ color: textSecondary }}>Sesi Wawancara</Label>
+                    <select
+                      className="mt-1 w-full px-2.5 py-2 rounded-md focus:outline-none"
+                      style={selectStyle}
+                      value={scheduleData.interview_session}
+                      onChange={(e) => setScheduleData(p => ({ ...p, interview_session: e.target.value }))}
+                    >
+                      <option value="Sesi 1 (08:30 - 10:00 WIB)">Sesi 1 (08:30 - 10:00 WIB)</option>
+                      <option value="Sesi 2 (10:30 - 12:00 WIB)">Sesi 2 (10:30 - 12:00 WIB)</option>
+                      <option value="Sesi 3 (13:00 - 14:30 WIB)">Sesi 3 (13:00 - 14:30 WIB)</option>
+                      <option value="Sesi 4 (15:00 - 16:30 WIB)">Sesi 4 (15:00 - 16:30 WIB)</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <Label className="text-[10px] font-mono uppercase tracking-wider" style={{ color: textSecondary }}>Catatan Jadwal / Lokasi Observasi</Label>
+                <textarea
+                  className="mt-1 w-full px-3 py-2 rounded-md focus:outline-none"
+                  style={inputStyle}
+                  rows={2}
+                  placeholder="Contoh: Orang tua hadir mendampingi siswa di Kampus CCS"
+                  value={scheduleData.schedule_notes}
+                  onChange={(e) => setScheduleData(p => ({ ...p, schedule_notes: e.target.value }))}
+                />
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex justify-end gap-2 pt-3 border-t" style={{ borderColor }}>
+              <button
+                type="button"
+                className="px-3 py-1.5 text-xs border rounded transition-colors hover:bg-black/5 dark:hover:bg-white/5"
+                style={{ borderColor, color: textSecondary, borderRadius: '6px' }}
+                onClick={() => setShowScheduleModal(false)}
+                disabled={scheduleSaving}
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                className="inline-flex items-center gap-1.5 px-4 py-1.5 text-xs font-medium rounded transition-colors"
+                style={{
+                  background: isDark ? '#F4F4F5' : '#111111',
+                  color: isDark ? '#111111' : '#FFFFFF',
+                  borderRadius: '6px'
+                }}
+                onClick={handleSaveSchedule}
+                disabled={scheduleSaving}
+              >
+                {scheduleSaving ? <FontAwesomeIcon icon={faSpinner} className="animate-spin text-xs" /> : <FontAwesomeIcon icon={faSave} className="text-xs" />}
+                {scheduleSaving ? 'Menyimpan...' : 'Simpan Perubahan Jadwal'}
+              </button>
+            </div>
           </div>
         )}
       </Modal>

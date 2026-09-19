@@ -345,7 +345,6 @@
   "343": "5. CONTEXT-AWARE PROACTIVITY",
   "344": "8. DARK MODE PROTOCOL",
   "345": "21. MOBILE ANTI-AI-TELLS RULE",
-  "346": "SKILL.md",
   "347": "browser-image-compression",
   "348": "33. DEFAULT SECTION PACKS",
   "349": "14. HERO MINIMALISM RULES",
@@ -453,8 +452,5 @@
   "451": "Users.md",
   "452": "browser-image-compression",
   "453": "route.js",
-  "454": "@radix-ui/react-select",
-  "455": "@radix-ui/react-slot",
-  "456": "recharts",
   "457": "status.php"
 }
