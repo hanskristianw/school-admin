@@ -1,11 +1,17 @@
 import { NextResponse } from 'next/server'
+import { createClient } from '@supabase/supabase-js'
 import { sendEmail } from '@/lib/mailer'
+
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+  process.env.SUPABASE_SERVICE_ROLE_KEY || ''
+)
 
 /**
  * POST /api/email/installment
  * 
  * Send installment agreement PDF to parent via Resend
- * Body: { email, parentName, studentName, applicationNumber, unitName, pdfBase64, fileName }
+ * Body: FormData { email, parentName, studentName, applicationNumber, applicationId, unitName, pdf }
  */
 export async function POST(request) {
   try {
@@ -15,6 +21,7 @@ export async function POST(request) {
     const parentName = formData.get('parentName') || ''
     const studentName = formData.get('studentName') || ''
     const applicationNumber = formData.get('applicationNumber') || ''
+    const applicationId = formData.get('applicationId') || null
     const unitName = formData.get('unitName') || '-'
     const fileName = pdfFile?.name || 'Perjanjian_Cicilan.pdf'
 
@@ -108,6 +115,44 @@ export async function POST(request) {
         }
       ]
     })
+
+    // Audit log to admission_email_logs & update student_applications
+    if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      try {
+        const now = new Date().toISOString()
+        const parsedAppId = applicationId ? parseInt(applicationId, 10) : null
+
+        await supabaseAdmin.from('admission_email_logs').insert({
+          application_id: parsedAppId || null,
+          application_number: applicationNumber || null,
+          recipient_email: email,
+          recipient_name: parentName || null,
+          email_step: 4,
+          email_type: 'installment_plan',
+          subject,
+          status: result?.id ? 'sent' : 'delivered',
+          resend_id: result?.id || null,
+          metadata: {
+            studentName,
+            unitName,
+            fileName
+          }
+        })
+
+        if (parsedAppId || applicationNumber) {
+          const updatePayload = {
+            step4_email_sent_at: now,
+            last_email_sent_type: 'installment_plan'
+          }
+          const query = parsedAppId
+            ? supabaseAdmin.from('student_applications').update(updatePayload).eq('application_id', parsedAppId)
+            : supabaseAdmin.from('student_applications').update(updatePayload).eq('application_number', applicationNumber)
+          await query
+        }
+      } catch (logErr) {
+        console.warn('Logging installment email to database skipped/failed (non-critical):', logErr.message)
+      }
+    }
 
     return NextResponse.json({
       success: true,

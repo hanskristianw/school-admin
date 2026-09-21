@@ -1473,10 +1473,26 @@ export default function AdmissionManagement() {
       });
       // Non-square logo: compute proportional size, max height 18mm
       const maxH = 18;
-      const ratio = logoImg.width / logoImg.height;
+      const naturalW = logoImg.naturalWidth || logoImg.width || 1565;
+      const naturalH = logoImg.naturalHeight || logoImg.height || 1089;
+      const ratio = naturalW / naturalH;
       const imgH = maxH;
       const imgW = imgH * ratio;
-      doc.addImage(logoImg, 'PNG', (pageW - imgW) / 2, y, imgW, imgH);
+
+      // Downsample logo to optimal resolution (target height 160px)
+      // This prevents the raw 1565x1089 uncompressed PNG bitmap from ballooning the PDF to 7MB
+      const canvas = document.createElement('canvas');
+      const targetH = 160;
+      const targetW = Math.round(targetH * ratio);
+      canvas.width = targetW;
+      canvas.height = targetH;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillRect(0, 0, targetW, targetH);
+      ctx.drawImage(logoImg, 0, 0, targetW, targetH);
+      const optimizedLogo = canvas.toDataURL('image/jpeg', 0.88);
+
+      doc.addImage(optimizedLogo, 'JPEG', (pageW - imgW) / 2, y, imgW, imgH, undefined, 'FAST');
       y += imgH + 8;
     } catch {
       // If logo fails to load, just skip and continue
@@ -1707,14 +1723,27 @@ export default function AdmissionManagement() {
       formData.append('parentName', app.parent_name || '');
       formData.append('studentName', app.student_name || '');
       formData.append('applicationNumber', app.application_number || '');
+      formData.append('applicationId', app.application_id ? String(app.application_id) : '');
       formData.append('unitName', app.level?.level_name || app.unit?.unit_name || '-');
 
       const res = await fetch('/api/email/installment', {
         method: 'POST',
         body: formData
       });
-      const data = await res.json();
+
+      let data;
+      const contentType = res.headers.get('content-type') || '';
+      if (contentType.includes('application/json')) {
+        data = await res.json();
+      } else {
+        const textErr = await res.text();
+        throw new Error(textErr || `Server error (${res.status})`);
+      }
+
       if (data.success) {
+        const now = new Date().toISOString();
+        setSelectedApplication(prev => prev ? { ...prev, step4_email_sent_at: now, last_email_sent_type: 'installment_plan' } : null);
+        setApplications(prev => prev.map(a => a.application_id === app.application_id ? { ...a, step4_email_sent_at: now, last_email_sent_type: 'installment_plan' } : a));
         showNotification(`PDF perjanjian cicilan berhasil dikirim ke ${app.parent_email}`, 'success');
       } else {
         showNotification(data.message || 'Gagal mengirim email', 'error');
