@@ -1,7 +1,7 @@
 # Graph Report - school-admin  (2026-09-21)
 
 ## Corpus Check
-- 396 files · ~675,350 words
+- 396 files · ~677,270 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
@@ -10,7 +10,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `81f772d6`
+- Built from commit: `e6fa5130`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -200,7 +200,7 @@
 - 📌 Changelog
 - Sistem Penomoran PO Otomatis
 - 🎯 **System Modules & Features**
-- MYP Year Level Implementation
+- �🏗️ **Database Structure**
 - DDL
 - Database Migrations
 - 5.1 Tables
@@ -281,8 +281,8 @@
 - route.js
 - route.js
 - route.js
+- docx
 - browser-image-compression
-- bcryptjs
 
 ## God Nodes (most connected - your core abstractions)
 1. `CORE DIRECTIVE: IMAGE-FIRST WEBSITE DESIGN TO CODE` - 39 edges
@@ -631,7 +631,7 @@ Nodes (10): 10. REFERENCE VOCABULARY (Pattern Names the Agent Should Know), Anim
 
 ### Community 110 - "Module 110"
 Cohesion: 0.20
-Nodes (10): 13. OUT OF SCOPE, 14. FINAL PRE-FLIGHT CHECK, 2.A When to reach for a real design system (use official packages), 2.B When the brief is an aesthetic, not a system, 2. BRIEF → DESIGN SYSTEM MAP, 7. DIAL DEFINITIONS (Technical Reference), DESIGN_VARIANCE (Level 1-10), MOTION_INTENSITY (Level 1-10) (+2 more)
+Nodes (10): 13. OUT OF SCOPE, 14. FINAL PRE-FLIGHT CHECK, 1.A Dial Inference (design read → dial values), 1.B Use-Case Presets, 1.C How the Dials Drive Output, 1. THE THREE DIALS (Core Configuration), 2.A When to reach for a real design system (use official packages), 2.B When the brief is an aesthetic, not a system (+2 more)
 
 ### Community 111 - "Module 111"
 Cohesion: 0.20
@@ -831,7 +831,7 @@ Nodes (4): FeeSimulationPage(), formatCurrency(), formatDateID(), monthNames
 
 ### Community 241 - "Module 241"
 Cohesion: 0.50
-Nodes (4): 1.A Dial Inference (design read → dial values), 1.B Use-Case Presets, 1.C How the Dials Drive Output, 1. THE THREE DIALS (Core Configuration)
+Nodes (4): 7. DIAL DEFINITIONS (Technical Reference), DESIGN_VARIANCE (Level 1-10), MOTION_INTENSITY (Level 1-10), VISUAL_DENSITY (Level 1-10)
 
 ### Community 242 - "Module 242"
 Cohesion: 0.50
@@ -889,7 +889,7 @@ Nodes (3): generate_topic_weeks(), topic_weekly_plan, trigger_generate_topic_wee
 Cohesion: 0.67
 Nodes (3): absen, attendance_scan_log, attendance_session
 
-### Community 258 - "MYP Year Level Implementation"
+### Community 258 - "�🏗️ **Database Structure**"
 Cohesion: 0.50
 Nodes (4): Attendance (QR) Tables, **Core Tables:**, �🏗️ **Database Structure**, Grades (Nilai) Table
 
@@ -937,7 +937,7 @@ Nodes (6): extractScheduleMeta(), GET(), POST(), resolveCurrentFormFee(), supaba
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `dependencies` connect `�🏗️ **Database Structure**` to `Admission Management`, `Package Dependencies & Config`, `Module 133`, `Module 134`, `Module 140`, `🎓 **IB MYP Assessment Grading System**`, `clsx`, `2026-07-16 — Timetable Refactor + Weekly Plan Dates + Weekly Overview`, `Third-party Libraries`, `Module 145`, `React UI Components`, `Module 148`, `docx`, `Module 153`, `Module 154`, `Module 155`, `bcryptjs`, `@googleapis/chat`, `react-hook-form`, `dotenv`, `zod`, `bcryptjs`, `Appendix B - Canonical Sources (read these before reinventing)`, `Design Audit`, `Analysis & Synthesis Instructions`, `Agent Skill: Principal UI/UX Architect & Motion Choreographer (Awwwards-Tier)`, `CORE DIRECTIVE: AWWWARDS-LEVEL IMAGE ART DIRECTION`, `browser-image-compression`, `bcryptjs`, `12. THE COMBINATORIAL VARIATION ENGINE`, `8. ANTI-AI-SLOP RULES`, `@sparticuz/chromium-min`, `11. REDESIGN PROTOCOL`, `3. DEFAULT ARCHITECTURE & CONVENTIONS`, `6. PERFORMANCE & ACCESSIBILITY GUARDRAILS`, `Full-Output Enforcement`, `33. CATEGORY-SPECIFIC BIAS`, `pngjs`?**
+- **Why does `dependencies` connect `�🏗️ **Database Structure**` to `Admission Management`, `Package Dependencies & Config`, `Module 133`, `Module 134`, `Module 140`, `🎓 **IB MYP Assessment Grading System**`, `clsx`, `2026-07-16 — Timetable Refactor + Weekly Plan Dates + Weekly Overview`, `Third-party Libraries`, `Module 145`, `React UI Components`, `Module 148`, `docx`, `Module 153`, `Module 154`, `Module 155`, `bcryptjs`, `@googleapis/chat`, `react-hook-form`, `dotenv`, `zod`, `bcryptjs`, `Appendix B - Canonical Sources (read these before reinventing)`, `Design Audit`, `Analysis & Synthesis Instructions`, `Agent Skill: Principal UI/UX Architect & Motion Choreographer (Awwwards-Tier)`, `CORE DIRECTIVE: AWWWARDS-LEVEL IMAGE ART DIRECTION`, `12. THE COMBINATORIAL VARIATION ENGINE`, `8. ANTI-AI-SLOP RULES`, `@sparticuz/chromium-min`, `11. REDESIGN PROTOCOL`, `3. DEFAULT ARCHITECTURE & CONVENTIONS`, `6. PERFORMANCE & ACCESSIBILITY GUARDRAILS`, `Full-Output Enforcement`, `33. CATEGORY-SPECIFIC BIAS`, `pngjs`, `docx`, `browser-image-compression`?**
   _High betweenness centrality (0.006) - this node is a cross-community bridge._
 - **Why does `Database Schema & Relationships` connect `Module 126` to `Module 103`, `Module 107`, `Module 235`, `Module 108`, `Module 237`, `Module 238`, `Module 139`, `Module 114`, `Module 115`, `Module 118`, `Module 151`?**
   _High betweenness centrality (0.003) - this node is a cross-community bridge._

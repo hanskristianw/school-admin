@@ -69,6 +69,13 @@ const statusConfig = {
     bgColor: 'bg-amber-50 dark:bg-amber-950/30',
     borderColor: 'border-amber-200 dark:border-amber-800'
   },
+  under_review: {
+    label: 'Dalam Review / Seleksi',
+    icon: faClock,
+    color: 'text-blue-700 dark:text-blue-400',
+    bgColor: 'bg-blue-50 dark:bg-blue-950/30',
+    borderColor: 'border-blue-200 dark:border-blue-800'
+  },
   approved: {
     label: 'Diterima',
     icon: faCheck,
@@ -88,23 +95,23 @@ const statusConfig = {
 const getEmailTypeLabel = (type) => {
   switch (type) {
     case 'payment_instruction': return 'Instruksi Pembayaran & Tagihan';
-    case 'submission_confirmation': return 'Konfirmasi Pendaftaran';
-    case 'form_fee_receipt': return 'Kuitansi Pembayaran Formulir';
-    case 'installment_plan': return 'Perjanjian Skema Cicilan';
-    default: return type ? type.replace(/_/g, ' ') : '-';
+    case 'admissionRegistrationPayment': return 'Instruksi Pembayaran Formulir';
+    case 'formFeeVerified': return 'Verifikasi Pembayaran Formulir';
+    case 'placementTestSchedule': return 'Jadwal Observasi & Wawancara';
+    case 'installmentSchemeAgreement': return 'Perjanjian Skema Cicilan';
+    case 'admissionApproved': return 'Surat Keputusan Diterima (LoA)';
+    case 'admissionRejected': return 'Surat Keputusan Belum Diterima';
+    default: return type;
   }
 };
 
 const getEmailStatusLabel = (status) => {
   switch (status) {
-    case 'delivered': return 'Terkirim';
+    case 'delivered':
     case 'sent': return 'Terkirim';
-    case 'bounced': return 'Gagal Terkirim';
     case 'failed': return 'Gagal';
-    case 'queued': return 'Dalam Antrean';
-    case 'opened': return 'Telah Dibuka';
-    case 'clicked': return 'Tautan Diklik';
-    default: return status || '-';
+    case 'bounced': return 'Bounced';
+    default: return status;
   }
 };
 
@@ -139,9 +146,10 @@ export default function AdmissionManagement() {
   };
 
   const statusLabels = {
-    pending: t('admission.status.pending'),
-    approved: t('admission.status.approved'),
-    rejected: t('admission.status.rejected'),
+    pending: t('admission.status.pending') || 'Menunggu Peninjauan',
+    under_review: 'Dalam Review / Seleksi',
+    approved: t('admission.status.approved') || 'Diterima',
+    rejected: t('admission.status.rejected') || 'Ditolak',
   };
 
   const statusPillStyles = {
@@ -149,6 +157,11 @@ export default function AdmissionManagement() {
       background: isDark ? 'rgba(245, 158, 11, 0.15)' : '#FBF3DB',
       borderColor: isDark ? '#D97706' : '#FDE68A',
       color: isDark ? '#FBBF24' : '#956400'
+    },
+    under_review: {
+      background: isDark ? 'rgba(59, 130, 246, 0.15)' : '#EFF6FF',
+      borderColor: isDark ? '#2563EB' : '#BFDBFE',
+      color: isDark ? '#60A5FA' : '#1D4ED8'
     },
     approved: {
       background: isDark ? 'rgba(16, 185, 129, 0.15)' : '#EDF3EC',
@@ -295,18 +308,41 @@ export default function AdmissionManagement() {
       if (adErr) throw adErr;
       setDiscounts(appDiscounts || []);
 
-      // 2. Fetch master discounts matching this application's level (or unit-wide)
+      // Keep allAppDiscounts in sync so getAppFeeInfo and calculateInstallmentSchedule recalculate immediately
+      setAllAppDiscounts(prev => {
+        const filtered = prev.filter(d => d.application_id !== application.application_id);
+        return [...filtered, ...(appDiscounts || [])];
+      });
+
+      // 2. Fetch master discounts matching this application's level/unit (and include claimed promo coupon)
       const { data: masters, error: mErr } = await supabase
         .from('fee_discount')
         .select('*')
         .eq('unit_id', application.unit_id)
-        .eq('year_id', application.year_id)
         .eq('is_active', true);
       if (mErr) throw mErr;
-      // Filter: show discounts that match this level, or have no level (unit-wide)
-      const filtered = (masters || []).filter(m =>
-        !m.level_id || m.level_id === application.level_id
-      );
+
+      let allMasters = masters || [];
+      // Guarantee that if application claimed a promo coupon, it is fetched even if created under a different year/unit
+      if (application.promo_discount_id && !allMasters.some(m => m.discount_id === application.promo_discount_id)) {
+        const { data: promoMaster } = await supabase
+          .from('fee_discount')
+          .select('*')
+          .eq('discount_id', application.promo_discount_id)
+          .maybeSingle();
+        if (promoMaster) {
+          allMasters.push(promoMaster);
+        }
+      }
+
+      // Filter: match year_id or no year constraint, and match level or no level constraint (or specifically claimed promo coupon)
+      const filtered = allMasters.filter(m => {
+        const isClaimedPromo = (application.promo_discount_id && m.discount_id === application.promo_discount_id) ||
+          (application.promo_code && m.discount_code && m.discount_code.toUpperCase() === application.promo_code.toUpperCase());
+        const matchesYear = !m.year_id || m.year_id === application.year_id;
+        const matchesLevel = !m.level_id || m.level_id === application.level_id;
+        return isClaimedPromo || (matchesYear && matchesLevel);
+      });
       setMasterDiscounts(filtered);
 
       // 3. Fetch UDP definition (match by level, year, period, category)
@@ -383,53 +419,117 @@ export default function AdmissionManagement() {
       });
   };
 
-  const handleAddDiscount = async (discountId, feeTarget) => {
+  const handleAddDiscount = async (discountId, feeTarget = 'udp') => {
     if (!selectedApplication) return;
-    const master = masterDiscounts.find(m => m.discount_id === parseInt(discountId));
-    if (!master) return;
 
-    const existing = discounts.filter(d => d.fee_target === feeTarget);
-    const nextSeq = existing.length > 0 ? Math.max(...existing.map(d => d.seq)) + 1 : 1;
+    let master = null;
+    if (discountId) {
+      master = masterDiscounts.find(m => m.discount_id === parseInt(discountId));
+    }
 
-    // Check if already added
-    if (existing.some(d => d.discount_id === master.discount_id)) {
-      showNotification('Peringatan', 'Diskon ini sudah ditambahkan', 'error');
+    // 1. Fallback: query fee_discount by discount_id if not found in memory
+    if (!master && discountId) {
+      try {
+        const { data: directMaster } = await supabase
+          .from('fee_discount')
+          .select('*')
+          .eq('discount_id', parseInt(discountId))
+          .maybeSingle();
+        if (directMaster) master = directMaster;
+      } catch (err) {
+        console.error('Error fetching discount directly:', err);
+      }
+    }
+
+    // 2. Fallback: query fee_discount by promo_code if still not found
+    if (!master && selectedApplication.promo_code) {
+      try {
+        const { data: promoMaster } = await supabase
+          .from('fee_discount')
+          .select('*')
+          .eq('discount_code', selectedApplication.promo_code.toUpperCase().trim())
+          .maybeSingle();
+        if (promoMaster) master = promoMaster;
+      } catch (err) {
+        console.error('Error fetching discount by promo_code:', err);
+      }
+    }
+
+    if (!master) {
+      showNotification('Peringatan', 'Data kupon/diskon tidak ditemukan di database.', 'error');
       return;
     }
+
+    const targetFee = feeTarget || (master.applies_to === 'usek' ? 'usek' : 'udp');
+
+    // Check if already applied
+    const isAlreadyAdded = discounts.some(d => 
+      d.discount_id === master.discount_id || 
+      (master.discount_code && d.discount?.discount_code?.toUpperCase() === master.discount_code.toUpperCase())
+    );
+
+    if (isAlreadyAdded) {
+      showNotification('Peringatan', `Potongan/Kupon "${master.discount_name || master.discount_code}" sudah pernah diterapkan.`, 'warning');
+      return;
+    }
+
+    const existing = discounts.filter(d => d.fee_target === targetFee);
+    const nextSeq = existing.length > 0 ? Math.max(...existing.map(d => d.seq)) + 1 : 1;
 
     setDiscountSaving(true);
     try {
       const calcList = [...discounts, {
-        fee_target: feeTarget,
+        fee_target: targetFee,
         seq: nextSeq,
         value_type: master.discount_type,
         value: master.discount_value,
         discount_id: master.discount_id
       }];
-      const calculated = calculateDiscounts(calcList, feeTarget);
+      const calculated = calculateDiscounts(calcList, targetFee);
       const thisCalc = calculated.find(c => c.seq === nextSeq);
 
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('application_discount')
         .insert({
           application_id: selectedApplication.application_id,
           discount_id: master.discount_id,
-          fee_target: feeTarget,
+          fee_target: targetFee,
           seq: nextSeq,
           value_type: master.discount_type,
           value: master.discount_value,
           base_before: thisCalc?.base_before || 0,
           calculated_amount: thisCalc?.calculated_amount || 0,
           subtotal_after: thisCalc?.subtotal_after || 0,
-        })
-        .select('*, discount:discount_id(discount_id, discount_code, discount_name, discount_type, discount_value, applies_to)')
-        .single();
+        });
       if (error) throw error;
-      
-      // Refresh all discounts and recalculate
+
+      // If this matches the applicant's claimed promo code, update promo_status in student_applications
+      if (selectedApplication.promo_code && (
+        selectedApplication.promo_discount_id === master.discount_id || 
+        selectedApplication.promo_code.toUpperCase() === master.discount_code?.toUpperCase()
+      )) {
+        await supabase
+          .from('student_applications')
+          .update({ promo_status: 'applied' })
+          .eq('application_id', selectedApplication.application_id);
+
+        setSelectedApplication(prev => prev ? ({ ...prev, promo_status: 'applied' }) : null);
+        setApplications(prev => prev.map(app => app.application_id === selectedApplication.application_id ? { ...app, promo_status: 'applied' } : app));
+      }
+
+      await recalculateAndSave(targetFee);
       await fetchDiscountsForApplication(selectedApplication);
       setShowAddDiscount(false);
-      showNotification('Berhasil', 'Potongan berhasil ditambahkan', 'success');
+
+      const formattedAmount = master.discount_type === 'percentage'
+        ? `${master.discount_value}% (-${formatCurrency(thisCalc?.calculated_amount || 0)})`
+        : `-${formatCurrency(thisCalc?.calculated_amount || master.discount_value)}`;
+
+      showNotification(
+        'Kupon Berhasil Diterapkan',
+        `Kupon "${master.discount_name || master.discount_code}" (${formattedAmount}) berhasil diterapkan ke rincian biaya siswa!`,
+        'success'
+      );
     } catch (err) {
       console.error('Error adding discount:', err);
       showNotification('Error', 'Gagal menambah potongan: ' + err.message, 'error');
@@ -441,11 +541,27 @@ export default function AdmissionManagement() {
   const handleRemoveDiscount = async (appDiscountId, feeTarget) => {
     setDiscountSaving(true);
     try {
+      const removedItem = discounts.find(d => d.app_discount_id === appDiscountId);
+
       const { error } = await supabase
         .from('application_discount')
         .delete()
         .eq('app_discount_id', appDiscountId);
       if (error) throw error;
+
+      // Revert promo_status if it was the applicant's claimed promo coupon
+      if (removedItem && selectedApplication?.promo_code && (
+        selectedApplication.promo_discount_id === removedItem.discount_id || 
+        (removedItem.discount?.discount_code && selectedApplication.promo_code.toUpperCase() === removedItem.discount.discount_code.toUpperCase())
+      )) {
+        await supabase
+          .from('student_applications')
+          .update({ promo_status: 'claimed' })
+          .eq('application_id', selectedApplication.application_id);
+
+        setSelectedApplication(prev => prev ? ({ ...prev, promo_status: 'claimed' }) : null);
+        setApplications(prev => prev.map(app => app.application_id === selectedApplication.application_id ? { ...app, promo_status: 'claimed' } : app));
+      }
 
       // Re-sequence remaining discounts
       const remaining = discounts
@@ -463,7 +579,7 @@ export default function AdmissionManagement() {
 
       await recalculateAndSave(feeTarget);
       await fetchDiscountsForApplication(selectedApplication);
-      showNotification('Berhasil', 'Potongan berhasil dihapus', 'success');
+      showNotification('Berhasil Dihapus', 'Potongan berhasil dihapus dari rincian biaya.', 'success');
     } catch (err) {
       console.error('Error removing discount:', err);
       showNotification('Error', 'Gagal menghapus potongan: ' + err.message, 'error');
@@ -776,8 +892,9 @@ export default function AdmissionManagement() {
     });
     setSameDaySchedule(!app?.interview_date || app?.interview_date === app?.test_date);
 
-    // Setup action notes
-    setActionType(app?.status === 'pending' ? 'approved' : (app?.status || 'approved'));
+    // Setup action notes: strictly 'approved' or 'rejected'
+    const initialDecision = app?.status === 'rejected' ? 'rejected' : 'approved';
+    setActionType(initialDecision);
     setAdminNotes(app?.admin_notes || '');
 
     // Preload discounts & applicant email logs
@@ -870,8 +987,33 @@ export default function AdmissionManagement() {
         }
         const now = new Date().toISOString();
         const key = `step${stepNumber}_email_sent_at`;
-        setSelectedApplication(prev => ({ ...prev, [key]: now, last_email_sent_type: emailType }));
-        setApplications(prev => prev.map(a => a.application_id === selectedApplication.application_id ? { ...a, [key]: now, last_email_sent_type: emailType } : a));
+
+        let extraUpdate = {};
+        if (stepNumber === 5) {
+          const targetStatus = emailType === 'admissionApproved' ? 'approved' : (emailType === 'admissionRejected' ? 'rejected' : null);
+          if (targetStatus) {
+            let reviewerId = null;
+            try {
+              const userData = JSON.parse(localStorage.getItem('user_data') || '{}');
+              reviewerId = userData.userID || userData.user_id || null;
+            } catch (e) {}
+
+            extraUpdate = {
+              status: targetStatus,
+              reviewed_at: now,
+              ...(reviewerId ? { reviewed_by: reviewerId } : {}),
+              ...(adminNotes.trim() ? { admin_notes: adminNotes.trim() } : {})
+            };
+
+            await supabase
+              .from('student_applications')
+              .update(extraUpdate)
+              .eq('application_id', selectedApplication.application_id);
+          }
+        }
+
+        setSelectedApplication(prev => ({ ...prev, [key]: now, last_email_sent_type: emailType, ...extraUpdate }));
+        setApplications(prev => prev.map(a => a.application_id === selectedApplication.application_id ? { ...a, [key]: now, last_email_sent_type: emailType, ...extraUpdate } : a));
       } else {
         showNotification('Gagal Mengirim Email', json.message || 'Terjadi kesalahan saat mengirim email', 'error');
       }
@@ -1098,20 +1240,27 @@ export default function AdmissionManagement() {
   };
 
   const handleUpdateStatus = async () => {
-    if (!selectedApplication || !actionType) return;
+    if (!selectedApplication) return;
+
+    // Strict decision: approved or rejected
+    const targetStatus = actionType === 'rejected' ? 'rejected' : 'approved';
 
     try {
       setProcessing(true);
 
       // Get current user ID from localStorage
-      const userData = JSON.parse(localStorage.getItem('user_data') || '{}');
-      const reviewerId = userData.userID;
+      let reviewerId = null;
+      try {
+        const userData = JSON.parse(localStorage.getItem('user_data') || '{}');
+        reviewerId = userData.userID || userData.user_id || null;
+      } catch (e) {}
 
+      const now = new Date().toISOString();
       const updateData = {
-        status: actionType,
+        status: targetStatus,
         admin_notes: adminNotes.trim() || null,
         reviewed_by: reviewerId,
-        reviewed_at: new Date().toISOString()
+        reviewed_at: now
       };
 
       const { error } = await supabase
@@ -1121,26 +1270,31 @@ export default function AdmissionManagement() {
 
       if (error) throw error;
 
-      // Update local state
-      setApplications(applications.map(app => 
+      // Update local state - keep selectedApplication active so modal displays updated status live!
+      const updatedApp = {
+        ...selectedApplication,
+        ...updateData
+      };
+      setSelectedApplication(updatedApp);
+      setApplications(prev => prev.map(app => 
         app.application_id === selectedApplication.application_id
           ? { ...app, ...updateData }
           : app
       ));
 
       const actionLabels = {
-        approved: 'disetujui',
+        approved: 'disetujui (Diterima)',
         rejected: 'ditolak'
       };
 
-      showNotification('Berhasil', `Pendaftaran ${selectedApplication.application_number} berhasil ${actionLabels[actionType]}`, 'success');
+      showNotification('Berhasil', `Status keputusan pendaftaran ${selectedApplication.application_number} berhasil disimpan sebagai ${actionLabels[targetStatus]}.`, 'success');
 
       // Send WhatsApp notification to parent based on status change
       const waTemplateMap = {
         approved: 'admissionApproved',
         rejected: 'admissionRejected'
       };
-      const waType = waTemplateMap[actionType];
+      const waType = waTemplateMap[targetStatus];
       if (waType && selectedApplication.parent_phone) {
         try {
           await fetch('/api/whatsapp/send', {
@@ -1167,20 +1321,24 @@ export default function AdmissionManagement() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               type: waType,
+              step: 5,
+              applicationId: selectedApplication.application_id,
+              applicationNumber: selectedApplication.application_number,
               parentName: selectedApplication.parent_name,
               studentName: selectedApplication.student_name,
-              applicationNumber: selectedApplication.application_number,
-              email: selectedApplication.parent_email
+              email: selectedApplication.parent_email,
+              adminNotes: adminNotes.trim() || null,
+              reviewerId
             })
           });
+          const key = 'step5_email_sent_at';
+          setSelectedApplication(prev => prev ? ({ ...prev, [key]: now, last_email_sent_type: waType }) : null);
+          setApplications(prev => prev.map(a => a.application_id === selectedApplication.application_id ? { ...a, [key]: now, last_email_sent_type: waType } : a));
         } catch (emailErr) {
           console.warn('Email notification failed:', emailErr);
         }
       }
       setShowActionModal(false);
-      setSelectedApplication(null);
-      setActionType('');
-      setAdminNotes('');
 
       // Refresh data
       fetchData();
@@ -1443,9 +1601,8 @@ export default function AdmissionManagement() {
 
   // Generate installment agreement PDF (returns jsPDF doc)
   const generateInstallmentPDF = async () => {
-    if (!selectedApplication) return null;
     const calc = calculateInstallmentSchedule();
-    if (!calc) return null;
+    if (!calc || !selectedApplication) return null;
 
     const app = selectedApplication;
     const doc = new jsPDF('p', 'mm', 'a4');
@@ -1594,6 +1751,31 @@ export default function AdmissionManagement() {
     doc.text('1. Rincian Biaya Masuk', marginL, y);
     y += 6;
 
+    const feeTableBody = [];
+    if (calc.feeInfo?.udpHasDiscount) {
+      feeTableBody.push(['Uang Pendaftaran / Pangkal (UDP) - Tarif Standar', fmtIDR(calc.feeInfo.udpBase)]);
+      calc.feeInfo.udpDiscs.forEach(d => {
+        const discName = d.discount?.discount_name || d.discount?.discount_code || 'Potongan Kupon';
+        feeTableBody.push([`  Potongan Kupon: ${discName}`, `-${fmtIDR(d.calculated_amount)}`]);
+      });
+      feeTableBody.push(['Uang Pangkal (UDP) Bersih', fmtIDR(calc.udpFinal)]);
+    } else {
+      feeTableBody.push(['Uang Daftar / Pangkal (UDP)', fmtIDR(calc.udpFinal)]);
+    }
+
+    if (calc.feeInfo?.usekHasDiscount) {
+      feeTableBody.push(['SPP Bulan Pertama - Tarif Standar', fmtIDR(calc.feeInfo.usekBase)]);
+      calc.feeInfo.usekDiscs.forEach(d => {
+        const discName = d.discount?.discount_name || d.discount?.discount_code || 'Potongan SPP';
+        feeTableBody.push([`  Potongan: ${discName}`, `-${fmtIDR(d.calculated_amount)}`]);
+      });
+      feeTableBody.push(['SPP Bulan Pertama Bersih', fmtIDR(calc.sppFinal)]);
+    } else {
+      feeTableBody.push(['SPP Bulan Pertama', fmtIDR(calc.sppFinal)]);
+    }
+
+    feeTableBody.push([{ content: 'TOTAL BIAYA MASUK', styles: { fontStyle: 'bold' } }, { content: fmtIDR(calc.totalEntry), styles: { fontStyle: 'bold' } }]);
+
     autoTable(doc, {
       startY: y,
       margin: { left: marginL, right: marginR },
@@ -1601,15 +1783,11 @@ export default function AdmissionManagement() {
       styles: { fontSize: 9, cellPadding: 2.5 },
       headStyles: { fillColor: [80, 80, 80], textColor: 255, fontStyle: 'bold', halign: 'center' },
       columnStyles: {
-        0: { halign: 'left', cellWidth: 90 },
-        1: { halign: 'right', cellWidth: contentW - 90 }
+        0: { halign: 'left', cellWidth: 95 },
+        1: { halign: 'right', cellWidth: contentW - 95 }
       },
       head: [['Komponen', 'Jumlah']],
-      body: [
-        ['Uang Daftar / Pangkal (UDP)', fmtIDR(calc.udpFinal)],
-        ['SPP Bulan Pertama', fmtIDR(calc.sppFinal)],
-        [{ content: 'TOTAL BIAYA MASUK', styles: { fontStyle: 'bold' } }, { content: fmtIDR(calc.totalEntry), styles: { fontStyle: 'bold' } }]
-      ]
+      body: feeTableBody
     });
     y = doc.lastAutoTable.finalY + 8;
 
@@ -1764,7 +1942,7 @@ export default function AdmissionManagement() {
       app.parent_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       app.parent_phone?.includes(searchTerm);
     
-    const matchesStatus = !filterStatus || app.status === filterStatus;
+    const matchesStatus = !filterStatus || app.status === filterStatus || (filterStatus === 'pending' && (app.status === 'pending' || app.status === 'under_review'));
     const matchesLevel = !filterLevel || app.level_id === parseInt(filterLevel);
     const matchesYear = !filterYear || app.year_id === parseInt(filterYear);
 
@@ -1923,7 +2101,7 @@ export default function AdmissionManagement() {
 
   // Count by status
   const statusCounts = {
-    pending: applications.filter(a => a.status === 'pending').length,
+    pending: applications.filter(a => a.status === 'pending' || a.status === 'under_review').length,
     approved: applications.filter(a => a.status === 'approved').length,
     rejected: applications.filter(a => a.status === 'rejected').length
   };
@@ -2501,17 +2679,20 @@ export default function AdmissionManagement() {
                             style={{
                               background: app.status === 'approved' ? (isDark ? 'rgba(16, 185, 129, 0.15)' : '#EDF3EC') :
                                           app.status === 'rejected' ? (isDark ? 'rgba(239, 68, 68, 0.15)' : '#FDEBEC') :
+                                          app.status === 'under_review' ? (isDark ? 'rgba(59, 130, 246, 0.15)' : '#EFF6FF') :
                                           (isDark ? 'rgba(245, 158, 11, 0.15)' : '#FBF3DB'),
                               borderColor: app.status === 'approved' ? (isDark ? '#059669' : '#A7F3D0') :
                                            app.status === 'rejected' ? (isDark ? '#DC2626' : '#FECACA') :
+                                           app.status === 'under_review' ? (isDark ? '#2563EB' : '#BFDBFE') :
                                            (isDark ? '#D97706' : '#FDE68A'),
                               color: app.status === 'approved' ? (isDark ? '#34D399' : '#346538') :
                                      app.status === 'rejected' ? (isDark ? '#F87171' : '#9F2F2D') :
+                                     app.status === 'under_review' ? (isDark ? '#60A5FA' : '#1D4ED8') :
                                      (isDark ? '#FBBF24' : '#956400')
                             }}
                           >
-                            <FontAwesomeIcon icon={app.status === 'approved' ? faCheck : app.status === 'rejected' ? faTimes : faClock} className="text-[8px]" />
-                            {statusLabels[app.status]}
+                            <FontAwesomeIcon icon={app.status === 'approved' ? faCheck : (app.status === 'rejected' ? faTimes : faClock)} className="text-[8px]" />
+                            {statusLabels[app.status] || app.status}
                           </span>
 
                           {app.form_fee_amount ? (

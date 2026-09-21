@@ -282,7 +282,7 @@
       "label": "callNextJsApi()",
       "file_type": "code",
       "source_file": "cpanel-registrasi/status.php",
-      "source_location": "L525",
+      "source_location": "L591",
       "_origin": "ast",
       "id": "cpanel_registrasi_status_callnextjsapi",
       "community": 457,
@@ -293,7 +293,7 @@
       "label": "getCircleBadge()",
       "file_type": "code",
       "source_file": "cpanel-registrasi/status.php",
-      "source_location": "L807",
+      "source_location": "L873",
       "_origin": "ast",
       "id": "cpanel_registrasi_status_getcirclebadge",
       "community": 457,
@@ -304,7 +304,7 @@
       "label": "formatTanggalIndo()",
       "file_type": "code",
       "source_file": "cpanel-registrasi/status.php",
-      "source_location": "L862",
+      "source_location": "L928",
       "_origin": "ast",
       "id": "cpanel_registrasi_status_formattanggalindo",
       "community": 457,
@@ -2867,8 +2867,8 @@
       "source_location": "L12",
       "_origin": "ast",
       "id": "package_dependencies_fortawesome_fontawesome_svg_core",
-      "community": 454,
-      "community_name": "bcryptjs",
+      "community": 375,
+      "community_name": "docx",
       "norm_label": "@fortawesome/fontawesome-svg-core"
     },
     {
@@ -2878,8 +2878,8 @@
       "source_location": "L12",
       "_origin": "ast",
       "id": "fortawesome_fontawesome_svg_core",
-      "community": 454,
-      "community_name": "bcryptjs",
+      "community": 375,
+      "community_name": "docx",
       "norm_label": "@fortawesome/fontawesome-svg-core"
     },
     {
@@ -3131,7 +3131,7 @@
       "source_location": "L24",
       "_origin": "ast",
       "id": "package_dependencies_browser_image_compression",
-      "community": 452,
+      "community": 376,
       "community_name": "browser-image-compression",
       "norm_label": "browser-image-compression"
     },
@@ -3142,7 +3142,7 @@
       "source_location": "L24",
       "_origin": "ast",
       "id": "browser_image_compression",
-      "community": 452,
+      "community": 376,
       "community_name": "browser-image-compression",
       "norm_label": "browser-image-compression"
     },
@@ -6505,7 +6505,7 @@
       "label": "getEmailTypeLabel()",
       "file_type": "code",
       "source_file": "src/app/data/admission/page.jsx",
-      "source_location": "L88",
+      "source_location": "L95",
       "_origin": "ast",
       "id": "src_app_data_admission_page_getemailtypelabel",
       "community": 236,
@@ -6516,7 +6516,7 @@
       "label": "getEmailStatusLabel()",
       "file_type": "code",
       "source_file": "src/app/data/admission/page.jsx",
-      "source_location": "L98",
+      "source_location": "L108",
       "_origin": "ast",
       "id": "src_app_data_admission_page_getemailstatuslabel",
       "community": 236,
@@ -6527,7 +6527,7 @@
       "label": "AdmissionManagement()",
       "file_type": "code",
       "source_file": "src/app/data/admission/page.jsx",
-      "source_location": "L112",
+      "source_location": "L119",
       "_origin": "ast",
       "id": "src_app_data_admission_page_admissionmanagement",
       "community": 236,
@@ -12888,8 +12888,8 @@
       "source_location": "L43",
       "_origin": "ast",
       "id": "agents_skills_design_taste_frontend_skill_1_the_three_dials_core_configuration",
-      "community": 241,
-      "community_name": "Module 241",
+      "community": 110,
+      "community_name": "Module 110",
       "norm_label": "1. the three dials (core configuration)"
     },
     {
@@ -12899,8 +12899,8 @@
       "source_location": "L53",
       "_origin": "ast",
       "id": "agents_skills_design_taste_frontend_skill_1_a_dial_inference_design_read_dial_values",
-      "community": 241,
-      "community_name": "Module 241",
+      "community": 110,
+      "community_name": "Module 110",
       "norm_label": "1.a dial inference (design read \u2192 dial values)"
     },
     {
@@ -12910,8 +12910,8 @@
       "source_location": "L64",
       "_origin": "ast",
       "id": "agents_skills_design_taste_frontend_skill_1_b_use_case_presets",
-      "community": 241,
-      "community_name": "Module 241",
+      "community": 110,
+      "community_name": "Module 110",
       "norm_label": "1.b use-case presets"
     },
     {
@@ -12921,8 +12921,8 @@
       "source_location": "L77",
       "_origin": "ast",
       "id": "agents_skills_design_taste_frontend_skill_1_c_how_the_dials_drive_output",
-      "community": 241,
-      "community_name": "Module 241",
+      "community": 110,
+      "community_name": "Module 110",
       "norm_label": "1.c how the dials drive output"
     },
     {
@@ -13306,8 +13306,8 @@
       "source_location": "L552",
       "_origin": "ast",
       "id": "agents_skills_design_taste_frontend_skill_7_dial_definitions_technical_reference",
-      "community": 110,
-      "community_name": "Module 110",
+      "community": 241,
+      "community_name": "Module 241",
       "norm_label": "7. dial definitions (technical reference)"
     },
     {
@@ -13317,8 +13317,8 @@
       "source_location": "L554",
       "_origin": "ast",
       "id": "agents_skills_design_taste_frontend_skill_design_variance_level_1_10",
-      "community": 110,
-      "community_name": "Module 110",
+      "community": 241,
+      "community_name": "Module 241",
       "norm_label": "design_variance (level 1-10)"
     },
     {
@@ -13328,8 +13328,8 @@
       "source_location": "L560",
       "_origin": "ast",
       "id": "agents_skills_design_taste_frontend_skill_motion_intensity_level_1_10",
-      "community": 110,
-      "community_name": "Module 110",
+      "community": 241,
+      "community_name": "Module 241",
       "norm_label": "motion_intensity (level 1-10)"
     },
     {
@@ -13339,8 +13339,8 @@
       "source_location": "L565",
       "_origin": "ast",
       "id": "agents_skills_design_taste_frontend_skill_visual_density_level_1_10",
-      "community": 110,
-      "community_name": "Module 110",
+      "community": 241,
+      "community_name": "Module 241",
       "norm_label": "visual_density (level 1-10)"
     },
     {
@@ -20292,7 +20292,7 @@
       "_origin": "ast",
       "id": "main_documentation_database_structure",
       "community": 258,
-      "community_name": "MYP Year Level Implementation",
+      "community_name": "\ufffd\ud83c\udfd7\ufe0f **Database Structure**",
       "norm_label": "\ufffd\ud83c\udfd7\ufe0f **database structure**"
     },
     {
@@ -20303,7 +20303,7 @@
       "_origin": "ast",
       "id": "main_documentation_core_tables",
       "community": 258,
-      "community_name": "MYP Year Level Implementation",
+      "community_name": "\ufffd\ud83c\udfd7\ufe0f **Database Structure**",
       "norm_label": "**core tables:**"
     },
     {
@@ -20314,7 +20314,7 @@
       "_origin": "ast",
       "id": "main_documentation_grades_nilai_table",
       "community": 258,
-      "community_name": "MYP Year Level Implementation",
+      "community_name": "\ufffd\ud83c\udfd7\ufe0f **Database Structure**",
       "norm_label": "grades (nilai) table"
     },
     {
@@ -20325,7 +20325,7 @@
       "_origin": "ast",
       "id": "main_documentation_attendance_qr_tables",
       "community": 258,
-      "community_name": "MYP Year Level Implementation",
+      "community_name": "\ufffd\ud83c\udfd7\ufe0f **Database Structure**",
       "norm_label": "attendance (qr) tables"
     },
     {
@@ -24959,7 +24959,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "cpanel-registrasi/status.php",
-      "source_location": "L525",
+      "source_location": "L591",
       "weight": 1.0,
       "_origin": "ast",
       "source": "cpanel_registrasi_status",
@@ -24970,7 +24970,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "cpanel-registrasi/status.php",
-      "source_location": "L862",
+      "source_location": "L928",
       "weight": 1.0,
       "_origin": "ast",
       "source": "cpanel_registrasi_status",
@@ -24981,7 +24981,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "cpanel-registrasi/status.php",
-      "source_location": "L807",
+      "source_location": "L873",
       "weight": 1.0,
       "_origin": "ast",
       "source": "cpanel_registrasi_status",
@@ -28044,7 +28044,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/app/data/admission/page.jsx",
-      "source_location": "L1461",
+      "source_location": "L1618",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_admission_page_admissionmanagement",
@@ -31303,7 +31303,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/app/data/admission/page.jsx",
-      "source_location": "L112",
+      "source_location": "L119",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_admission_page",
@@ -31314,7 +31314,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/app/data/admission/page.jsx",
-      "source_location": "L98",
+      "source_location": "L108",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_admission_page",
@@ -31325,7 +31325,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/app/data/admission/page.jsx",
-      "source_location": "L88",
+      "source_location": "L95",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_admission_page",
@@ -31348,7 +31348,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/app/data/admission/page.jsx",
-      "source_location": "L2797",
+      "source_location": "L2978",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_admission_page_admissionmanagement",
@@ -31360,7 +31360,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/app/data/admission/page.jsx",
-      "source_location": "L2815",
+      "source_location": "L2996",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_admission_page_admissionmanagement",
@@ -50610,5 +50610,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "81f772d687bb665281d1ef100fb011937de90ae1"
+  "built_at_commit": "e6fa5130f8206fc9a8f24a96aeb9edc06f8bc3b4"
 }

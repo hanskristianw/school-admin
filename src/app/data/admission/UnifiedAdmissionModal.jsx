@@ -205,6 +205,8 @@ export default function UnifiedAdmissionModal({
                   ? { background: isDark ? 'rgba(16, 185, 129, 0.15)' : '#EDF3EC', color: isDark ? '#34D399' : '#346538', borderColor: isDark ? '#059669' : '#A7F3D0' }
                   : application.status === 'rejected'
                   ? { background: isDark ? 'rgba(239, 68, 68, 0.15)' : '#FDEBEC', color: isDark ? '#F87171' : '#9F2F2D', borderColor: isDark ? '#DC2626' : '#FECACA' }
+                  : application.status === 'under_review'
+                  ? { background: isDark ? 'rgba(59, 130, 246, 0.15)' : '#EFF6FF', color: isDark ? '#60A5FA' : '#1D4ED8', borderColor: isDark ? '#2563EB' : '#BFDBFE' }
                   : { background: isDark ? 'rgba(245, 158, 11, 0.15)' : '#FBF3DB', color: isDark ? '#FBBF24' : '#956400', borderColor: isDark ? '#D97706' : '#FDE68A' }
               }
             >
@@ -400,10 +402,10 @@ export default function UnifiedAdmissionModal({
                     </p>
                   </div>
                 </div>
-                {application.promo_status === 'confirmed' ? (
+                {['confirmed', 'applied'].includes(application.promo_status) || application.form_fee_status === 'verified' ? (
                   <span className="px-2.5 py-1 rounded text-[10px] font-mono font-bold uppercase bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 self-start sm:self-auto shrink-0 border border-emerald-300 dark:border-emerald-700 flex items-center gap-1">
                     <FontAwesomeIcon icon={faCheck} className="text-[9px]" />
-                    <span>Kuota Terkunci (Lunas)</span>
+                    <span>{application.promo_status === 'applied' ? 'Kupon Diterapkan' : 'Kuota Terkunci (Lunas)'}</span>
                   </span>
                 ) : application.promo_status === 'quota_exhausted' ? (
                   <span className="px-2.5 py-1 rounded text-[10px] font-mono font-bold uppercase bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 self-start sm:self-auto shrink-0 border border-rose-300 dark:border-rose-700">
@@ -411,7 +413,7 @@ export default function UnifiedAdmissionModal({
                   </span>
                 ) : (
                   <span className="px-2.5 py-1 rounded text-[10px] font-mono font-bold uppercase bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 self-start sm:self-auto shrink-0 border border-amber-300 dark:border-amber-700">
-                    Menunggu Lunas Formulir
+                    Menunggu Pelunasan Formulir
                   </span>
                 )}
               </div>
@@ -545,47 +547,67 @@ export default function UnifiedAdmissionModal({
         {modalTab === 'step2' && (
           <div className="space-y-4">
             {/* Promo Code Quota Alert in Step 2 */}
-            {application.promo_code && (
-              <div
-                className="p-3.5 rounded-lg border flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs"
-                style={{
-                  background: application.promo_status === 'confirmed'
-                    ? (isDark ? 'rgba(16, 185, 129, 0.1)' : '#ECFDF5')
-                    : (isDark ? 'rgba(245, 158, 11, 0.1)' : '#FFFBEB'),
-                  borderColor: application.promo_status === 'confirmed'
-                    ? (isDark ? '#059669' : '#A7F3D0')
-                    : (isDark ? '#D97706' : '#FDE68A')
-                }}
-              >
-                <div className="flex items-start gap-2.5">
-                  <FontAwesomeIcon
-                    icon={faTag}
-                    className={`mt-0.5 ${application.promo_status === 'confirmed' ? 'text-emerald-600' : 'text-amber-600'}`}
-                  />
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold" style={{ color: textPrimary }}>
-                        Kupon Promosi: <strong className="font-mono font-bold px-1.5 py-0.5 rounded bg-purple-100 dark:bg-purple-950 text-purple-900 dark:text-purple-200 border border-purple-300 dark:border-purple-800">{application.promo_code}</strong> ({application.promo_details?.discount_name || 'Diskon Masuk'})
+            {application.promo_code && (() => {
+              const isPromoConfirmed = ['confirmed', 'applied'].includes(application.promo_status) || application.form_fee_status === 'verified';
+              const isPromoExhausted = application.promo_status === 'quota_exhausted' && application.form_fee_status !== 'verified';
+              const isPromoApplied = application.promo_status === 'applied';
+
+              return (
+                <div
+                  className="p-3.5 rounded-lg border flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs"
+                  style={{
+                    background: isPromoConfirmed
+                      ? (isDark ? 'rgba(16, 185, 129, 0.1)' : '#ECFDF5')
+                      : isPromoExhausted
+                      ? (isDark ? 'rgba(239, 68, 68, 0.1)' : '#FEF2F2')
+                      : (isDark ? 'rgba(245, 158, 11, 0.1)' : '#FFFBEB'),
+                    borderColor: isPromoConfirmed
+                      ? (isDark ? '#059669' : '#A7F3D0')
+                      : isPromoExhausted
+                      ? (isDark ? '#DC2626' : '#FECACA')
+                      : (isDark ? '#D97706' : '#FDE68A')
+                  }}
+                >
+                  <div className="flex items-start gap-2.5">
+                    <FontAwesomeIcon
+                      icon={faTag}
+                      className={`mt-0.5 ${isPromoConfirmed ? 'text-emerald-600' : isPromoExhausted ? 'text-rose-600' : 'text-amber-600'}`}
+                    />
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold" style={{ color: textPrimary }}>
+                          Kupon Promosi: <strong className="font-mono font-bold px-1.5 py-0.5 rounded bg-purple-100 dark:bg-purple-950 text-purple-900 dark:text-purple-200 border border-purple-300 dark:border-purple-800">{application.promo_code}</strong> ({application.promo_details?.discount_name || 'Diskon Masuk'})
+                        </span>
+                      </div>
+                      <span className="block text-[11px] mt-0.5" style={{ color: textSecondary }}>
+                        {isPromoConfirmed
+                          ? (isPromoApplied
+                              ? 'Kupon promosi telah resmi diterapkan pada rincian skema pembiayaan siswa ini.'
+                              : 'Kuota promosi telah resmi terpotong dan terkunci untuk calon siswa ini karena pembayaran formulir telah lunas.')
+                          : isPromoExhausted
+                          ? 'Mohon maaf, kuota kode promosi ini telah habis terisi oleh pendaftar lain yang menyelesaikan pembayaran formulir lebih awal.'
+                          : 'Calon siswa mendaftar dengan kupon ini. Menyetujui pembayaran formulir di bawah ini akan resmi memotong & mengunci 1 slot kuota promosi.'}
                       </span>
                     </div>
-                    <span className="block text-[11px] mt-0.5" style={{ color: textSecondary }}>
-                      {application.promo_status === 'confirmed'
-                        ? 'Kuota promosi telah resmi terpotong dan terkunci untuk calon siswa ini karena pembayaran formulir telah lunas.'
-                        : 'Calon siswa mendaftar dengan kupon ini. Menyetujui pembayaran formulir di bawah ini akan resmi memotong & mengunci 1 slot kuota promosi.'}
-                    </span>
                   </div>
+                  <span
+                    className={`px-2.5 py-1 rounded text-[10px] font-mono font-bold uppercase shrink-0 border self-start sm:self-auto ${
+                      isPromoConfirmed
+                        ? 'bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800'
+                        : isPromoExhausted
+                        ? 'bg-rose-100 text-rose-800 border-rose-300 dark:bg-rose-950 dark:text-rose-300 dark:border-rose-800'
+                        : 'bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-800'
+                    }`}
+                  >
+                    {isPromoConfirmed 
+                      ? (isPromoApplied ? 'Kupon Diterapkan' : 'Kuota Terkunci') 
+                      : isPromoExhausted 
+                      ? 'Kuota Habis' 
+                      : 'Menunggu Pelunasan'}
+                  </span>
                 </div>
-                <span
-                  className={`px-2.5 py-1 rounded text-[10px] font-mono font-bold uppercase shrink-0 border self-start sm:self-auto ${
-                    application.promo_status === 'confirmed'
-                      ? 'bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800'
-                      : 'bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-800'
-                  }`}
-                >
-                  {application.promo_status === 'confirmed' ? 'Kuota Terkunci' : 'Menunggu Verifikasi'}
-                </span>
-              </div>
-            )}
+              );
+            })()}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Status Pembayaran & Tagihan */}
@@ -1134,16 +1156,26 @@ export default function UnifiedAdmissionModal({
                     </div>
                   </div>
 
-                  {application.promo_discount_id && !discounts.some(d => d.discount_id === application.promo_discount_id || d.discount?.discount_code === application.promo_code) && (
+                  {application.promo_code && !discounts.some(d => (application.promo_discount_id && d.discount_id === application.promo_discount_id) || (d.discount?.discount_code && d.discount?.discount_code?.toUpperCase() === application.promo_code?.toUpperCase())) ? (
                     <button
                       type="button"
+                      disabled={discountSaving}
                       onClick={() => handleAddDiscount(application.promo_discount_id, application.promo_details?.applies_to === 'usek' ? 'usek' : 'udp')}
-                      className="px-3 py-1.5 rounded text-xs font-bold text-white bg-purple-600 hover:bg-purple-700 active:scale-95 transition-all shadow-xs self-start sm:self-auto shrink-0 flex items-center gap-1.5"
+                      className={`px-3 py-1.5 rounded text-xs font-bold text-white transition-all shadow-xs self-start sm:self-auto shrink-0 flex items-center gap-1.5 ${
+                        discountSaving
+                          ? 'bg-purple-400 cursor-not-allowed opacity-80'
+                          : 'bg-purple-600 hover:bg-purple-700 active:scale-95'
+                      }`}
                     >
-                      <FontAwesomeIcon icon={faCheck} className="text-xs" />
-                      <span>Terapkan Kupon Pendaftar</span>
+                      <FontAwesomeIcon icon={discountSaving ? faSpinner : faCheck} className={`text-xs ${discountSaving ? 'animate-spin' : ''}`} />
+                      <span>{discountSaving ? 'Menerapkan Kupon...' : 'Terapkan Kupon Pendaftar'}</span>
                     </button>
-                  )}
+                  ) : application.promo_code ? (
+                    <span className="px-2.5 py-1 rounded-md text-xs font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 flex items-center gap-1.5 self-start sm:self-auto shrink-0">
+                      <FontAwesomeIcon icon={faCheckCircle} className="text-emerald-600 dark:text-emerald-400 text-xs" />
+                      <span>Kupon Telah Diterapkan</span>
+                    </span>
+                  ) : null}
                 </div>
               )}
 
@@ -1397,6 +1429,8 @@ export default function UnifiedAdmissionModal({
                       ? { background: isDark ? 'rgba(16, 185, 129, 0.15)' : '#EDF3EC', color: isDark ? '#34D399' : '#346538', borderColor: isDark ? '#059669' : '#A7F3D0' }
                       : application.status === 'rejected'
                       ? { background: isDark ? 'rgba(239, 68, 68, 0.15)' : '#FDEBEC', color: isDark ? '#F87171' : '#9F2F2D', borderColor: isDark ? '#DC2626' : '#FECACA' }
+                      : application.status === 'under_review'
+                      ? { background: isDark ? 'rgba(59, 130, 246, 0.15)' : '#EFF6FF', color: isDark ? '#60A5FA' : '#1D4ED8', borderColor: isDark ? '#2563EB' : '#BFDBFE' }
                       : { background: isDark ? 'rgba(245, 158, 11, 0.15)' : '#FBF3DB', color: isDark ? '#FBBF24' : '#956400', borderColor: isDark ? '#D97706' : '#FDE68A' }
                   }
                 >

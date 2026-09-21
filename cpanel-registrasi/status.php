@@ -179,6 +179,28 @@ $i18n = [
         'receipt_status' => 'Pembayaran Lunas & Data Lengkap',
         'receipt_contact_soon' => 'Tim Admissions CCS akan segera menghubungi nomor WhatsApp Anda untuk konfirmasi pelaksanaan jadwal observasi dan tes penempatan.',
 
+        // Hasil Seleksi Diterima (Official Acceptance)
+        'approved_card_title' => 'Selamat! Calon Siswa Resmi Diterima di CCS',
+        'approved_card_desc' => 'Pendaftaran atas nama %s pada jenjang %s telah resmi disetujui. Tim sekolah telah mengirimkan Surat Keputusan Penerimaan (Letter of Acceptance) dan panduan daftar ulang ke email Anda.',
+        'approved_card_badge' => 'Hasil Seleksi: Resmi Diterima',
+        'approved_card_status' => 'Resmi Diterima di CCS',
+        'approved_card_email_notice' => 'Surat Keputusan Penerimaan resmi (Letter of Acceptance) telah dikirimkan ke alamat email terdaftar. Silakan periksa kotak masuk atau folder spam email Anda untuk panduan registrasi ulang.',
+        'approved_card_admin_notes' => 'Catatan Tim Admissions:',
+        'approved_sched_history_title' => 'Riwayat Observasi & Tes Penempatan',
+        'approved_sched_history_sub' => 'Telah Dilaksanakan',
+        'approved_sched_history_badge' => 'Selesai',
+
+        // Kupon Promosi Status
+        'promo_default_title' => 'Kupon Promosi Pendaftaran',
+        'promo_applied_text' => 'Kupon promosi resmi terkonfirmasi dan telah diterapkan pada rincian pembiayaan calon siswa ini.',
+        'promo_confirmed_text' => 'Kupon promosi resmi terkonfirmasi dan kuota potongan biaya telah terkunci untuk calon siswa ini.',
+        'promo_exhausted_text' => 'Mohon maaf, kuota kode promosi ini telah habis terisi oleh pendaftar lain yang menyelesaikan pembayaran formulir lebih awal.',
+        'promo_pending_text' => 'Klaim kode promosi tercatat. Kuota promosi akan resmi terkunci setelah pembayaran biaya formulir diverifikasi lunas oleh pihak sekolah.',
+        'promo_badge_applied' => 'Kupon Diterapkan',
+        'promo_badge_confirmed' => 'Kuota Terkonfirmasi',
+        'promo_badge_exhausted' => 'Kuota Habis',
+        'promo_badge_pending' => 'Menunggu Pelunasan Formulir',
+
         // Floating WhatsApp
         'wa_title' => 'Hubungi Admissions via WhatsApp',
         'wa_text' => 'Halo Admin Admissions CCS, saya ingin bertanya mengenai status pendaftaran calon siswa.'
@@ -332,6 +354,28 @@ $i18n = [
         'receipt_status' => 'Payment Settled & Data Complete',
         'receipt_contact_soon' => 'The CCS Admissions team will contact your WhatsApp number shortly to confirm your scheduled observation and placement test.',
 
+        // Selection Result Accepted (Official Acceptance)
+        'approved_card_title' => 'Congratulations! Candidate Officially Accepted at CCS',
+        'approved_card_desc' => 'The application for %s for grade level %s has been officially approved. The school has issued the official Letter of Acceptance (LoA) and enrollment guidelines to your email.',
+        'approved_card_badge' => 'Selection Result: Officially Accepted',
+        'approved_card_status' => 'Officially Accepted at CCS',
+        'approved_card_email_notice' => 'The official Letter of Acceptance (LoA) has been sent to your registered email address. Please check your inbox or spam folder for re-registration details.',
+        'approved_card_admin_notes' => 'Admissions Notes:',
+        'approved_sched_history_title' => 'Observation & Placement Test Records',
+        'approved_sched_history_sub' => 'Successfully Completed',
+        'approved_sched_history_badge' => 'Completed',
+
+        // Promo Coupon Status
+        'promo_default_title' => 'Registration Promo Coupon',
+        'promo_applied_text' => 'Promo coupon officially confirmed and applied to this student\'s fee structure.',
+        'promo_confirmed_text' => 'Promo coupon officially confirmed and discount quota locked for this candidate.',
+        'promo_exhausted_text' => 'We apologize, the quota for this promo code has been filled by other applicants who completed form payment earlier.',
+        'promo_pending_text' => 'Promo code claim recorded. Promo quota will be officially locked once form fee payment is verified.',
+        'promo_badge_applied' => 'Coupon Applied',
+        'promo_badge_confirmed' => 'Quota Confirmed',
+        'promo_badge_exhausted' => 'Quota Exhausted',
+        'promo_badge_pending' => 'Awaiting Form Payment',
+
         // Floating WhatsApp
         'wa_title' => 'Contact Admissions on WhatsApp',
         'wa_text' => 'Hello CCS Admissions, I would like to inquire regarding student application status.'
@@ -484,6 +528,28 @@ $i18n = [
         'receipt_desc' => '学生所有详细资料已完整录入并安全归档于崇崇基督教学校官方管理系统。',
         'receipt_status' => '费用结清 & 资料完整',
         'receipt_contact_soon' => 'CCS 招生团队将尽快通过 WhatsApp 与您联系确认测试与面谈安排。',
+
+        // Selection Result Accepted (Official Acceptance)
+        'approved_card_title' => '热烈祝贺！学生已正式被崇崇基督教学校 (CCS) 录取',
+        'approved_card_desc' => '学生 %s 申请就读 %s 阶段已获得官方正式批准。学校已将正式录取通知书（Letter of Acceptance）及入学注册指引发送至您的邮箱。',
+        'approved_card_badge' => '审核结果：正式录取',
+        'approved_card_status' => '正式录取 (Approved)',
+        'approved_card_email_notice' => '官方录取通知书（Letter of Acceptance）已发送至您的注册邮箱。请查阅收件箱或垃圾邮件文件夹以获取后续注册及缴费指引。',
+        'approved_card_admin_notes' => '招生团队审核意见：',
+        'approved_sched_history_title' => '入学观察与分班测试记录',
+        'approved_sched_history_sub' => '已顺利完成',
+        'approved_sched_history_badge' => '已完成',
+
+        // Promo Coupon Status
+        'promo_default_title' => '新生优惠代码',
+        'promo_applied_text' => '优惠代码已正式确认，并已成功应用于该学生的学费明细中。',
+        'promo_confirmed_text' => '优惠代码已正式确认，折扣名额已为该候选学生成功锁定。',
+        'promo_exhausted_text' => '很抱歉，该优惠代码的名额已被更早完成缴费的其他申请人占满。',
+        'promo_pending_text' => '优惠代码登记成功。报名表费用经学校审核结清后，优惠名额将正式锁定。',
+        'promo_badge_applied' => '优惠已应用',
+        'promo_badge_confirmed' => '名额已锁定',
+        'promo_badge_exhausted' => '名额已满',
+        'promo_badge_pending' => '等待报名表缴费',
 
         // Floating WhatsApp
         'wa_title' => '通过 WhatsApp 联系招生处',
@@ -1142,7 +1208,7 @@ function formatTanggalIndo($dateStr, $lang = 'id') {
   <main class="max-w-4xl mx-auto px-4 sm:px-6 py-8 flex-1 w-full space-y-8">
 
     <!-- BANNER PANDUAN: JIKA BELUM MENDAFTAR -->
-    <div class="bg-gradient-to-r from-blue-50 to-slate-50 border border-blue-200 rounded-md p-3.5 sm:p-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+    <div class="bg-blue-50/60 border border-blue-200 rounded-md p-3.5 sm:p-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
       <div class="flex items-center gap-2.5 text-slate-700 font-medium text-center sm:text-left">
         <i class="fas fa-user-plus text-ccsOrange text-base shrink-0"></i>
         <span><?= htmlspecialchars($L['banner_not_registered']) ?></span>
@@ -1432,8 +1498,10 @@ function formatTanggalIndo($dateStr, $lang = 'id') {
 
           <?php if (!empty($currentApplicant['promo_code'])): 
             $pStatus = $currentApplicant['promo_status'] ?? 'pending_payment';
-            $isConfirmed = ($pStatus === 'confirmed');
-            $isExhausted = ($pStatus === 'quota_exhausted');
+            $isFormVerified = ($currentApplicant['form_fee_status'] ?? '') === 'verified';
+            $isConfirmed = in_array($pStatus, ['confirmed', 'applied']) || $isFormVerified;
+            $isExhausted = ($pStatus === 'quota_exhausted') && !$isFormVerified;
+            $isApplied = ($pStatus === 'applied');
           ?>
           <!-- Informasi Kupon Promosi Terdaftar -->
           <div class="border rounded-md p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs <?= $isConfirmed ? 'bg-emerald-50/70 border-emerald-200' : ($isExhausted ? 'bg-rose-50/70 border-rose-200' : 'bg-purple-50/70 border-purple-200') ?>">
@@ -1443,21 +1511,31 @@ function formatTanggalIndo($dateStr, $lang = 'id') {
               </span>
               <div>
                 <span class="font-bold block <?= $isConfirmed ? 'text-emerald-950' : ($isExhausted ? 'text-rose-950' : 'text-purple-950') ?>">
-                  <?= htmlspecialchars($currentApplicant['promo_details']['discount_name'] ?? 'Kupon Promosi Pendaftaran') ?>
+                  <?= htmlspecialchars($currentApplicant['promo_details']['discount_name'] ?? ($L['promo_default_title'] ?? 'Kupon Promosi Pendaftaran')) ?>
                 </span>
                 <span class="text-[11px] <?= $isConfirmed ? 'text-emerald-700' : ($isExhausted ? 'text-rose-700' : 'text-purple-700') ?>">
                   <?php if ($isConfirmed): ?>
-                    Kupon promosi resmi terkonfirmasi dan kuota potongan biaya telah terkunci untuk calon siswa ini.
+                    <?php if ($isApplied): ?>
+                      <?= htmlspecialchars($L['promo_applied_text'] ?? 'Kupon promosi resmi terkonfirmasi dan telah diterapkan pada rincian pembiayaan calon siswa ini.') ?>
+                    <?php else: ?>
+                      <?= htmlspecialchars($L['promo_confirmed_text'] ?? 'Kupon promosi resmi terkonfirmasi dan kuota potongan biaya telah terkunci untuk calon siswa ini.') ?>
+                    <?php endif; ?>
                   <?php elseif ($isExhausted): ?>
-                    Mohon maaf, kuota kode promosi ini telah habis terisi oleh pendaftar lain yang menyelesaikan pembayaran formulir lebih awal.
+                    <?= htmlspecialchars($L['promo_exhausted_text'] ?? 'Mohon maaf, kuota kode promosi ini telah habis terisi oleh pendaftar lain yang menyelesaikan pembayaran formulir lebih awal.') ?>
                   <?php else: ?>
-                    Klaim kode promosi tercatat. Kuota promosi akan resmi terkunci setelah pembayaran biaya formulir diverifikasi lunas oleh pihak sekolah.
+                    <?= htmlspecialchars($L['promo_pending_text'] ?? 'Klaim kode promosi tercatat. Kuota promosi akan resmi terkunci setelah pembayaran biaya formulir diverifikasi lunas oleh pihak sekolah.') ?>
                   <?php endif; ?>
                 </span>
               </div>
             </div>
             <span class="inline-block self-start sm:self-auto px-2.5 py-0.5 rounded text-[10px] font-mono font-bold uppercase border shrink-0 <?= $isConfirmed ? 'bg-emerald-100 text-emerald-800 border-emerald-300' : ($isExhausted ? 'bg-rose-100 text-rose-800 border-rose-300' : 'bg-amber-100 text-amber-800 border-amber-300') ?>">
-              <?= $isConfirmed ? 'Kuota Terkonfirmasi' : ($isExhausted ? 'Kuota Habis' : 'Menunggu Lunas Formulir') ?>
+              <?php if ($isConfirmed): ?>
+                <?= htmlspecialchars($isApplied ? ($L['promo_badge_applied'] ?? 'Kupon Diterapkan') : ($L['promo_badge_confirmed'] ?? 'Kuota Terkonfirmasi')) ?>
+              <?php elseif ($isExhausted): ?>
+                <?= htmlspecialchars($L['promo_badge_exhausted'] ?? 'Kuota Habis') ?>
+              <?php else: ?>
+                <?= htmlspecialchars($L['promo_badge_pending'] ?? 'Menunggu Pelunasan Formulir') ?>
+              <?php endif; ?>
             </span>
           </div>
           <?php endif; ?>
@@ -1544,24 +1622,111 @@ function formatTanggalIndo($dateStr, $lang = 'id') {
           </div>
 
           <!-- ═══════════════════════════════════════════════════════════════ -->
-          <!-- KONDISI JIKA RESMI DITERIMA (APPROVED HERO BANNER)              -->
+          <!-- KONDISI UTAMA: RESMI DITERIMA / BELUM VERIFIED / BIODATA / DST  -->
           <!-- ═══════════════════════════════════════════════════════════════ -->
           <?php if ($overallStatus === 'approved'): ?>
-            <div class="bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 text-white rounded-md p-6 sm:p-8 shadow-sm space-y-3 text-center">
-              <div class="w-14 h-14 rounded-full bg-white/20 text-white flex items-center justify-center text-3xl mx-auto backdrop-blur-xs border border-white/30">
-                <i class="fas fa-graduation-cap"></i>
+            <div class="border-t border-gray-200 pt-5 space-y-4">
+              <!-- Kartu Status Diterima: Institutional, Dignified, Sesuai Gaya Halaman (No AI gradient) -->
+              <div class="bg-white border border-gray-200 rounded-md p-6 sm:p-8 text-center space-y-4 shadow-xs">
+                
+                <div class="w-14 h-14 rounded-full bg-emerald-50 text-emerald-700 mx-auto flex items-center justify-center text-2xl border border-emerald-200">
+                  <i class="fas fa-graduation-cap"></i>
+                </div>
+
+                <div class="space-y-1">
+                  <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200 mb-1">
+                    <i class="fas fa-check-circle text-emerald-600"></i> <?= htmlspecialchars($L['approved_card_badge']) ?>
+                  </div>
+                  <h2 class="text-xl sm:text-2xl font-bold text-ccsHeading">
+                    <?= htmlspecialchars($L['approved_card_title']) ?>
+                  </h2>
+                  <p class="text-xs sm:text-sm text-gray-600 max-w-xl mx-auto leading-relaxed pt-1">
+                    <?= sprintf(
+                        $L['approved_card_desc'],
+                        htmlspecialchars($currentApplicant['student_name']),
+                        htmlspecialchars($currentApplicant['level_name'] ?? $currentApplicant['preferred_grade'] ?? '-')
+                    ) ?>
+                  </p>
+                </div>
+
+                <!-- Structured Metadata Box Sesuai Gaya Box Tanda Terima -->
+                <div class="p-4 bg-slate-50 rounded-md border border-slate-200 max-w-md mx-auto text-left text-xs space-y-2 text-gray-700">
+                  <div class="flex justify-between items-center pb-2 border-b border-slate-200/80">
+                    <span class="text-gray-500"><?= htmlspecialchars($L['lbl_code']) ?>:</span>
+                    <span class="font-mono text-ccsHeading font-bold"><?= htmlspecialchars($currentApplicant['application_number']) ?></span>
+                  </div>
+                  <div class="flex justify-between items-center pb-2 border-b border-slate-200/80">
+                    <span class="text-gray-500"><?= htmlspecialchars($L['lbl_student']) ?>:</span>
+                    <span class="font-semibold text-gray-900"><?= htmlspecialchars($currentApplicant['student_name']) ?></span>
+                  </div>
+                  <div class="flex justify-between items-center pb-2 border-b border-slate-200/80">
+                    <span class="text-gray-500"><?= htmlspecialchars($L['lbl_level_selected']) ?>:</span>
+                    <span class="font-medium text-gray-900"><?= htmlspecialchars($currentApplicant['level_name'] ?? $currentApplicant['preferred_grade'] ?? '-') ?></span>
+                  </div>
+                  <div class="flex justify-between items-center <?= !empty($currentApplicant['admin_notes']) ? 'pb-2 border-b border-slate-200/80' : '' ?>">
+                    <span class="text-gray-500">Status Seleksi:</span>
+                    <span class="text-emerald-700 font-bold inline-flex items-center gap-1">
+                      <i class="fas fa-check-circle"></i> <?= htmlspecialchars($L['approved_card_status']) ?>
+                    </span>
+                  </div>
+                  <?php if (!empty($currentApplicant['admin_notes'])): ?>
+                    <div class="pt-1">
+                      <span class="text-gray-500 block mb-1"><?= htmlspecialchars($L['approved_card_admin_notes']) ?></span>
+                      <div class="p-2.5 bg-white rounded border border-slate-200 text-gray-800 italic text-[11px] leading-relaxed">
+                        &ldquo;<?= nl2br(htmlspecialchars($currentApplicant['admin_notes'])) ?>&rdquo;
+                      </div>
+                    </div>
+                  <?php endif; ?>
+                </div>
+
+                <p class="text-xs text-gray-500 max-w-md mx-auto leading-relaxed pt-1">
+                  <?= htmlspecialchars($L['approved_card_email_notice']) ?>
+                </p>
               </div>
-              <h2 class="text-2xl font-bold tracking-wide">Selamat! Calon Siswa Resmi Diterima di CCS</h2>
-              <p class="text-xs sm:text-sm text-emerald-100 max-w-xl mx-auto leading-relaxed">
-                Pendaftaran atas nama <strong class="text-white"><?= htmlspecialchars($currentApplicant['student_name']) ?></strong> pada jenjang <strong class="text-white"><?= htmlspecialchars($currentApplicant['level_name'] ?? $currentApplicant['preferred_grade'] ?? '-') ?></strong> telah resmi disetujui. Tim sekolah akan segera mengirimkan surat tanda terima resmi dan jadwal daftar ulang ke email Anda.
-              </p>
+
+              <!-- Rekam Jadwal Observasi & Wawancara (Sebagai Arsip Riwayat, Tanpa Tombol Reschedule) -->
+              <?php if (!empty($currentApplicant['test_date']) || !empty($currentApplicant['interview_date'])): ?>
+                <div class="bg-white border border-gray-200 rounded-md p-5 space-y-4 shadow-xs">
+                  <div class="flex items-center justify-between flex-wrap gap-2 pb-3 border-b border-gray-200">
+                    <div class="flex items-center gap-2">
+                      <div class="w-8 h-8 rounded-full bg-slate-100 text-ccsHeading flex items-center justify-center border border-slate-200 text-sm">
+                        <i class="far fa-calendar-check"></i>
+                      </div>
+                      <div>
+                        <h3 class="text-xs font-bold text-ccsHeading uppercase tracking-wider"><?= htmlspecialchars($L['approved_sched_history_title']) ?></h3>
+                        <p class="text-[11px] text-gray-500 font-mono"><?= htmlspecialchars($currentApplicant['application_number']) ?> &bull; <?= htmlspecialchars($currentApplicant['student_name']) ?></p>
+                      </div>
+                    </div>
+                    <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                      <?= htmlspecialchars($L['approved_sched_history_badge']) ?>
+                    </span>
+                  </div>
+
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                    <?php if (!empty($currentApplicant['test_date'])): ?>
+                      <div class="p-3 bg-slate-50 border border-slate-200 rounded-md space-y-1">
+                        <span class="text-[10px] text-gray-500 uppercase block font-mono"><?= htmlspecialchars($L['test_schedule_badge']) ?>:</span>
+                        <div class="font-bold text-ccsHeading"><?= formatTanggalIndo($currentApplicant['test_date'], $currLang) ?></div>
+                        <div class="text-gray-600 text-[11px]"><?= htmlspecialchars($currentApplicant['test_session'] ?? '-') ?></div>
+                      </div>
+                    <?php endif; ?>
+                    <?php if (!empty($currentApplicant['interview_date'])): ?>
+                      <div class="p-3 bg-slate-50 border border-slate-200 rounded-md space-y-1">
+                        <span class="text-[10px] text-gray-500 uppercase block font-mono"><?= htmlspecialchars($L['interview_schedule_badge']) ?>:</span>
+                        <div class="font-bold text-ccsHeading"><?= formatTanggalIndo($currentApplicant['interview_date'], $currLang) ?></div>
+                        <div class="text-gray-600 text-[11px]"><?= htmlspecialchars($currentApplicant['interview_session'] ?? '-') ?></div>
+                      </div>
+                    <?php endif; ?>
+                  </div>
+                </div>
+              <?php endif; ?>
+
             </div>
-          <?php endif; ?>
 
           <!-- ───────────────────────────────────────────────────────────── -->
-          <!-- KONDISI A: BELUM VERIFIED (REKENING BANK & UPLOAD STRUK)       -->
+          <!-- KONDISI B: BELUM VERIFIED (REKENING BANK & UPLOAD STRUK)       -->
           <!-- ───────────────────────────────────────────────────────────── -->
-          <?php if (($currentApplicant['form_fee_status'] ?? '') !== 'verified'): ?>
+          <?php elseif (($currentApplicant['form_fee_status'] ?? '') !== 'verified'): ?>
             <div id="tempat-unggah" class="border-t border-gray-200 pt-5 space-y-4 scroll-mt-28">
               
               <!-- Info Rekening Bank Mayapada: Formal & Dignified (No AI gradient) -->

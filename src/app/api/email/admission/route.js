@@ -133,7 +133,14 @@ export async function POST(request) {
           if (step === 2 || type === 'formFeeVerified') updatePayload.step2_email_sent_at = now
           if (step === 3 || type === 'placementTestSchedule') updatePayload.step3_email_sent_at = now
           if (step === 4) updatePayload.step4_email_sent_at = now
-          if (step === 5 || type === 'admissionApproved' || type === 'admissionRejected') updatePayload.step5_email_sent_at = now
+          if (step === 5 || type === 'admissionApproved' || type === 'admissionRejected') {
+            updatePayload.step5_email_sent_at = now
+            if (type === 'admissionApproved') updatePayload.status = 'approved'
+            if (type === 'admissionRejected') updatePayload.status = 'rejected'
+            if (adminNotes) updatePayload.admin_notes = adminNotes
+            if (body.reviewerId) updatePayload.reviewed_by = body.reviewerId
+            updatePayload.reviewed_at = now
+          }
 
           const query = applicationId
             ? supabaseAdmin.from('student_applications').update(updatePayload).eq('application_id', applicationId)

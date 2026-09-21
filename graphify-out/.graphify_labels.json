@@ -257,7 +257,7 @@
   "255": "📌 Changelog",
   "256": "Sistem Penomoran PO Otomatis",
   "257": "🎯 **System Modules & Features**",
-  "258": "MYP Year Level Implementation",
+  "258": "�🏗️ **Database Structure**",
   "259": "DDL",
   "260": "Database Migrations",
   "261": "5.1 Tables",
@@ -374,8 +374,8 @@
   "372": "cleanup-discount-data.sql",
   "373": "config.sample.php",
   "374": "cleanup-scan-log-columns.sql",
-  "452": "browser-image-compression",
+  "375": "docx",
+  "376": "browser-image-compression",
   "453": "route.js",
-  "454": "bcryptjs",
   "457": "status.php"
 }
