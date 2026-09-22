@@ -1532,6 +1532,13 @@ export default function IncidentHandlingApprovalPage() {
                   <span className="text-[10px] font-mono font-semibold block mb-0.5" style={{ color: theme.textSecondary }}>CHRONOLOGY / CASE DESCRIPTION:</span>
                   <p className="whitespace-pre-wrap leading-relaxed" style={{ color: theme.textPrimary }}>{selectedReport.description}</p>
                 </div>
+
+                {selectedReport.action_taken && (
+                  <div className="pt-2 border-t text-[11px]" style={{ borderColor: theme.border }}>
+                    <span className="text-[10px] font-mono font-semibold block mb-0.5" style={{ color: theme.blueText }}>INITIAL ACTION / SOLUSI PELAPOR:</span>
+                    <p className="whitespace-pre-wrap leading-relaxed" style={{ color: theme.textPrimary }}>{selectedReport.action_taken}</p>
+                  </div>
+                )}
               </div>
 
               {/* 2-Column Bento: Left Timeline, Right Form */}

@@ -1,7 +1,7 @@
 # Graph Report - school-admin  (2026-09-22)
 
 ## Corpus Check
-- 396 files · ~678,458 words
+- 396 files · ~678,985 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
@@ -10,7 +10,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `00b9617b`
+- Built from commit: `92c1856b`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -200,6 +200,7 @@
 - 📌 Changelog
 - Sistem Penomoran PO Otomatis
 - 🎯 **System Modules & Features**
+- docx
 - DDL
 - Database Migrations
 - 5.1 Tables
@@ -273,7 +274,6 @@
 - Full-Output Enforcement
 - 33. CATEGORY-SPECIFIC BIAS
 - browser-image-compression
-- pngjs
 - route.js
 - route.js
 - route.js
@@ -754,7 +754,7 @@ Nodes (5): absen, attendance_scan_log, _backup_absen, _backup_attendance_scan_lo
 
 ### Community 147 - "�🏗️ **Database Structure**"
 Cohesion: 0.18
-Nodes (11): bcryptjs, class-variance-authority, googleapis, dependencies, bcryptjs, class-variance-authority, googleapis, pdf-lib (+3 more)
+Nodes (11): bcryptjs, googleapis, dependencies, bcryptjs, googleapis, pdf-lib, pngjs, puppeteer-core (+3 more)
 
 ### Community 149 - "bcryptjs"
 Cohesion: 0.33
@@ -932,7 +932,7 @@ Nodes (6): extractScheduleMeta(), GET(), POST(), resolveCurrentFormFee(), supaba
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `dependencies` connect `�🏗️ **Database Structure**` to `Admission Management`, `Package Dependencies & Config`, `Module 133`, `Module 134`, `Module 140`, `🎓 **IB MYP Assessment Grading System**`, `clsx`, `2026-07-16 — Timetable Refactor + Weekly Plan Dates + Weekly Overview`, `Third-party Libraries`, `Module 145`, `React UI Components`, `Module 148`, `docx`, `Module 153`, `Module 154`, `Module 155`, `bcryptjs`, `@googleapis/chat`, `react-hook-form`, `dotenv`, `zod`, `bcryptjs`, `Appendix B - Canonical Sources (read these before reinventing)`, `Design Audit`, `Analysis & Synthesis Instructions`, `Agent Skill: Principal UI/UX Architect & Motion Choreographer (Awwwards-Tier)`, `CORE DIRECTIVE: AWWWARDS-LEVEL IMAGE ART DIRECTION`, `12. THE COMBINATORIAL VARIATION ENGINE`, `8. ANTI-AI-SLOP RULES`, `@sparticuz/chromium-min`, `11. REDESIGN PROTOCOL`, `3. DEFAULT ARCHITECTURE & CONVENTIONS`, `6. PERFORMANCE & ACCESSIBILITY GUARDRAILS`, `Full-Output Enforcement`, `33. CATEGORY-SPECIFIC BIAS`, `pngjs`, `docx`, `browser-image-compression`?**
+- **Why does `dependencies` connect `�🏗️ **Database Structure**` to `Admission Management`, `Package Dependencies & Config`, `docx`, `Module 133`, `Module 134`, `Module 140`, `🎓 **IB MYP Assessment Grading System**`, `clsx`, `2026-07-16 — Timetable Refactor + Weekly Plan Dates + Weekly Overview`, `Third-party Libraries`, `Module 145`, `React UI Components`, `Module 148`, `docx`, `Module 153`, `Module 154`, `Module 155`, `bcryptjs`, `@googleapis/chat`, `react-hook-form`, `dotenv`, `zod`, `bcryptjs`, `Appendix B - Canonical Sources (read these before reinventing)`, `Design Audit`, `Analysis & Synthesis Instructions`, `Agent Skill: Principal UI/UX Architect & Motion Choreographer (Awwwards-Tier)`, `CORE DIRECTIVE: AWWWARDS-LEVEL IMAGE ART DIRECTION`, `12. THE COMBINATORIAL VARIATION ENGINE`, `8. ANTI-AI-SLOP RULES`, `@sparticuz/chromium-min`, `11. REDESIGN PROTOCOL`, `3. DEFAULT ARCHITECTURE & CONVENTIONS`, `6. PERFORMANCE & ACCESSIBILITY GUARDRAILS`, `Full-Output Enforcement`, `33. CATEGORY-SPECIFIC BIAS`, `docx`, `browser-image-compression`?**
   _High betweenness centrality (0.006) - this node is a cross-community bridge._
 - **Why does `Database Schema & Relationships` connect `Module 126` to `Module 103`, `Module 107`, `Module 235`, `Module 108`, `Module 237`, `Module 238`, `Module 139`, `Module 114`, `Module 115`, `Module 118`, `Module 151`?**
   _High betweenness centrality (0.003) - this node is a cross-community bridge._

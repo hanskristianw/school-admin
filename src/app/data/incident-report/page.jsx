@@ -619,6 +619,17 @@ export default function IncidentReportListPage() {
       return
     }
 
+    const isLevel1 = (formData.incident_record || '').trim() === 'Level 1'
+    if (isLevel1 && !formData.action_taken.trim()) {
+      setNotif({
+        isOpen: true,
+        title: 'Validation Error',
+        message: 'For Level 1 incidents, Investigation & Action Details (solution/actions taken) is required.',
+        type: 'error'
+      })
+      return
+    }
+
     try {
       setSubmitting(true)
       const primaryStudent = selectedStudents[0]
@@ -687,7 +698,7 @@ export default function IncidentReportListPage() {
         description: formattedDescription,
         place_of_incident: formData.place_of_incident.trim() || null,
         action_taken: formData.action_taken.trim() || null,
-        status: 'waiting'
+        status: isLevel1 ? 'on_progress' : 'waiting'
       }
 
       const { data: created, error: createErr } = await supabase
@@ -706,6 +717,24 @@ export default function IncidentReportListPage() {
         await supabase.from('incident_report_students').insert(studentInserts)
       } catch (stErr) {
         console.warn('Could not insert to incident_report_students:', stErr)
+      }
+
+      // If Level 1, record handler action into incident_followups
+      if (isLevel1 && formData.action_taken.trim() && reporterUserId) {
+        try {
+          await supabase.from('incident_followups').insert({
+            incident_id: created.id,
+            user_id: parseInt(reporterUserId, 10),
+            followup_date: formData.incident_date,
+            followup_time: formData.incident_time,
+            location: formData.place_of_incident.trim() || null,
+            action_details: formData.action_taken.trim(),
+            resulting_status: 'on_progress',
+            attachment_url: null
+          })
+        } catch (fErr) {
+          console.warn('Could not insert initial Level 1 followup to incident_followups:', fErr)
+        }
       }
 
       try {
@@ -1403,17 +1432,44 @@ export default function IncidentReportListPage() {
             />
           </div>
 
-          <div>
-            <label className="text-[10px] font-mono uppercase block mb-1" style={{ color: theme.textSecondary }}>Initial Immediate Action Taken (Optional)</label>
-            <input
-              type="text"
-              placeholder="e.g. Separated students, escorted to medical room, notified homeroom teacher..."
-              value={formData.action_taken}
-              onChange={e => setFormData(p => ({ ...p, action_taken: e.target.value }))}
-              className="w-full px-2.5 py-1.5 text-xs rounded border outline-none"
-              style={{ background: theme.inputBg, borderColor: theme.border, color: theme.textPrimary, borderRadius: '4px' }}
-            />
-          </div>
+          {formData.incident_record === 'Level 1' ? (
+            <div className="p-3 rounded-lg border space-y-1.5" style={{ background: theme.subtleBg, borderColor: theme.border }}>
+              <div className="flex items-center justify-between">
+                <label className="text-[10px] font-mono uppercase font-bold block" style={{ color: theme.blueText }}>
+                  Investigation & Action Details (Level 1 Handling) *
+                </label>
+                <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-[#FBF3DB] text-[#956400] border border-[#F5E6B3] font-semibold">
+                  Required by Reporter
+                </span>
+              </div>
+              <p className="text-[10px]" style={{ color: theme.textSecondary }}>
+                Level 1 incidents are handled directly by the reporting teacher. Describe the investigation, mediation actions, student agreements, or solutions implemented.
+              </p>
+              <textarea
+                required
+                rows={3}
+                placeholder="e.g. Counseled students in class, facilitated mediation and mutual reconciliation, recorded commitment for behavioral improvement..."
+                value={formData.action_taken}
+                onChange={e => setFormData(p => ({ ...p, action_taken: e.target.value }))}
+                className="w-full p-2.5 text-xs rounded border outline-none resize-y"
+                style={{ background: theme.inputBg, borderColor: theme.border, color: theme.textPrimary, borderRadius: '4px' }}
+              />
+            </div>
+          ) : (
+            <div>
+              <label className="text-[10px] font-mono uppercase block mb-1" style={{ color: theme.textSecondary }}>
+                Initial Immediate Action Taken (Optional)
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. Separated students, escorted to medical room, notified homeroom teacher..."
+                value={formData.action_taken}
+                onChange={e => setFormData(p => ({ ...p, action_taken: e.target.value }))}
+                className="w-full px-2.5 py-1.5 text-xs rounded border outline-none"
+                style={{ background: theme.inputBg, borderColor: theme.border, color: theme.textPrimary, borderRadius: '4px' }}
+              />
+            </div>
+          )}
 
           <div className="flex items-center justify-end gap-2 pt-3 border-t" style={{ borderColor: theme.border }}>
             <button

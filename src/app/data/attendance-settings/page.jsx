@@ -96,7 +96,8 @@ export default function AttendanceSettingsPage() {
   const [newName, setNewName]           = useState('')
   const [newDateStart, setNewDateStart] = useState('')
   const [newDateEnd, setNewDateEnd]     = useState('')
-  const [newRoleId, setNewRoleId]       = useState('') // '' = global
+  const [isNewGlobal, setIsNewGlobal]   = useState(true)
+  const [newRoleIds, setNewRoleIds]     = useState(new Set())
   const [addingHoliday, setAddingHoliday] = useState(false)
   const [holidayMsg, setHolidayMsg]     = useState('')
   // edit state
@@ -409,7 +410,8 @@ export default function AttendanceSettingsPage() {
     const { data } = await supabase
       .from('school_holidays')
       .select('id, date_start, date_end, name, role_id')
-      .order('date_start', { ascending: true })
+      .order('date_start', { ascending: false })
+      .order('id', { ascending: false })
     setHolidays(data || [])
   }
 
@@ -434,31 +436,64 @@ export default function AttendanceSettingsPage() {
       return
     }
 
-    const roleIdVal = newRoleId ? parseInt(newRoleId, 10) : null
-    const overlaps = checkHolidayOverlap(newDateStart, endDate, roleIdVal)
-    if (overlaps.length > 0) {
-      const o = overlaps[0]
-      setHolidayMsg(`❌ Bentrok dengan hari libur "${o.name}" (${formatDateRange(o.date_start, o.date_end)})`)
+    if (!isNewGlobal && newRoleIds.size === 0) {
+      setHolidayMsg('❌ Pilih minimal satu jabatan atau pilih Semua Jabatan (Global)')
       return
+    }
+
+    // Check overlaps
+    if (isNewGlobal) {
+      const overlaps = checkHolidayOverlap(newDateStart, endDate, null)
+      if (overlaps.length > 0) {
+        const o = overlaps[0]
+        setHolidayMsg(`❌ Bentrok dengan libur global "${o.name}" (${formatDateRange(o.date_start, o.date_end)})`)
+        return
+      }
+    } else {
+      const overlapList = []
+      for (const rid of newRoleIds) {
+        const overlaps = checkHolidayOverlap(newDateStart, endDate, rid)
+        if (overlaps.length > 0) {
+          overlapList.push(`${getRoleName(rid)} ("${overlaps[0].name}")`)
+        }
+      }
+      if (overlapList.length > 0) {
+        setHolidayMsg(`❌ Bentrok dengan hari libur untuk: ${overlapList.join(', ')}`)
+        return
+      }
     }
 
     setAddingHoliday(true)
     setHolidayMsg('')
-    const payload = {
-      name: newName.trim(),
-      date: newDateStart,
-      date_start: newDateStart,
-      date_end: endDate,
-      role_id: roleIdVal,
-    }
-    const { error } = await supabase.from('school_holidays').insert([payload])
+
+    const payloads = isNewGlobal
+      ? [{
+          name: newName.trim(),
+          date: newDateStart,
+          date_start: newDateStart,
+          date_end: endDate,
+          role_id: null,
+        }]
+      : [...newRoleIds].map(rid => ({
+          name: newName.trim(),
+          date: newDateStart,
+          date_start: newDateStart,
+          date_end: endDate,
+          role_id: rid,
+        }))
+
+    const { error } = await supabase.from('school_holidays').insert(payloads)
     setAddingHoliday(false)
     if (error) {
       const isDup = error.code === '23505' || error.message.includes('uq_holidays')
-      setHolidayMsg('❌ Gagal: ' + (isDup ? 'Periode libur ini sudah ada untuk role tersebut' : error.message))
+      setHolidayMsg('❌ Gagal: ' + (isDup ? 'Periode libur ini sudah ada untuk jabatan yang dipilih' : error.message))
     } else {
-      setHolidayMsg('✅ Hari libur berhasil ditambahkan')
-      setNewName(''); setNewDateStart(''); setNewDateEnd(''); setNewRoleId('')
+      setHolidayMsg(
+        isNewGlobal
+          ? '✅ Hari libur (Global) berhasil ditambahkan'
+          : `✅ Hari libur berhasil ditambahkan untuk ${payloads.length} jabatan`
+      )
+      setNewName(''); setNewDateStart(''); setNewDateEnd(''); setIsNewGlobal(true); setNewRoleIds(new Set())
       fetchHolidays()
       setTimeout(() => setHolidayMsg(''), 3000)
     }
@@ -523,11 +558,20 @@ export default function AttendanceSettingsPage() {
     else alert('Gagal menghapus: ' + error.message)
   }
 
-  const displayedHolidays = holidays.filter(h => {
-    if (filterRoleId === 'all') return true
-    if (filterRoleId === 'global') return h.role_id === null
-    return String(h.role_id) === filterRoleId
-  })
+  const displayedHolidays = useMemo(() => {
+    return holidays
+      .filter(h => {
+        if (filterRoleId === 'all') return true
+        if (filterRoleId === 'global') return h.role_id === null
+        return String(h.role_id) === filterRoleId
+      })
+      .sort((a, b) => {
+        const da = a.date_start || ''
+        const db = b.date_start || ''
+        if (db !== da) return db.localeCompare(da)
+        return (b.id || 0) - (a.id || 0)
+      })
+  }, [holidays, filterRoleId])
 
   const fetchSettings = async () => {
     const { data } = await supabase
@@ -845,12 +889,12 @@ export default function AttendanceSettingsPage() {
               )}
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-              <div>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+              <div className="md:col-span-2">
                 <label className="text-[11px] font-medium block mb-1" style={{ color: textSecondary }}>Nama Libur *</label>
                 <input
                   type="text"
-                  placeholder="Contoh: Libur Semester, Idul Fitri"
+                  placeholder="Contoh: Libur Semester, Idul Fitri, Rapat Kerja"
                   value={newName}
                   onChange={e => setNewName(e.target.value)}
                   style={inputStyle}
@@ -880,19 +924,119 @@ export default function AttendanceSettingsPage() {
                   style={inputStyle}
                 />
               </div>
+            </div>
 
-              <div>
-                <label className="text-[11px] font-medium block mb-1" style={{ color: textSecondary }}>Berlaku Untuk Role</label>
-                <select
-                  value={newRoleId}
-                  onChange={e => setNewRoleId(e.target.value)}
-                  style={selectStyle}
-                >
-                  <option value="">🌐 Global (Semua Role)</option>
-                  {roles.map(r => (
-                    <option key={r.role_id} value={r.role_id}>{r.role_name}</option>
-                  ))}
-                </select>
+            {/* Role / Jabatan Selection Section */}
+            <div className="pt-1">
+              <div className="flex items-center justify-between flex-wrap gap-2 mb-2">
+                <div className="flex items-center gap-2">
+                  <label className="text-[11px] font-medium" style={{ color: textSecondary }}>
+                    Berlaku Untuk Jabatan:
+                  </label>
+                  {isNewGlobal ? (
+                    <span className="px-2 py-0.5 rounded text-[11px] font-semibold" style={{ background: '#EDF3EC', color: '#346538', border: '1px solid #B2D8B4' }}>
+                      🌐 Global (Semua Jabatan)
+                    </span>
+                  ) : (
+                    <span className="px-2 py-0.5 rounded text-[11px] font-semibold" style={{
+                      background: newRoleIds.size > 0 ? (isDark ? '#1E293B' : '#EFF6FF') : (isDark ? '#450A0A' : '#FEF2F2'),
+                      color: newRoleIds.size > 0 ? (isDark ? '#93C5FD' : '#1D4ED8') : '#DC2626',
+                      border: `1px solid ${newRoleIds.size > 0 ? (isDark ? '#3B82F6' : '#93C5FD') : '#FECACA'}`
+                    }}>
+                      {newRoleIds.size > 0 ? `🏷️ ${newRoleIds.size} jabatan dipilih` : '⚠️ Belum ada jabatan dipilih'}
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsNewGlobal(true)
+                      setNewRoleIds(new Set())
+                    }}
+                    className="px-2.5 py-1 rounded text-xs font-medium transition-all"
+                    style={{
+                      background: isNewGlobal ? (isDark ? '#F4F4F5' : '#111111') : subtleBg,
+                      color: isNewGlobal ? (isDark ? '#111111' : '#FFFFFF') : textSecondary,
+                      border: `1px solid ${isNewGlobal ? (isDark ? '#F4F4F5' : '#111111') : borderColor}`,
+                    }}
+                  >
+                    🌐 Semua Jabatan (Global)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsNewGlobal(false)
+                      setNewRoleIds(new Set(roles.map(r => r.role_id)))
+                    }}
+                    className="px-2 py-1 rounded text-xs font-medium hover:underline"
+                    style={{ color: isDark ? '#60A5FA' : '#2563EB' }}
+                  >
+                    Centang Semua
+                  </button>
+                  <span style={{ color: borderColor }}>|</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsNewGlobal(false)
+                      setNewRoleIds(new Set())
+                    }}
+                    className="px-2 py-1 rounded text-xs font-medium hover:underline"
+                    style={{ color: textSecondary }}
+                  >
+                    Batal Pilih
+                  </button>
+                </div>
+              </div>
+
+              {/* Grid of Role Checkboxes */}
+              <div
+                className="p-3 rounded-lg border grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 max-h-52 overflow-y-auto"
+                style={{ background: subtleBg, borderColor }}
+              >
+                {roles.map(r => {
+                  const checked = !isNewGlobal && newRoleIds.has(r.role_id)
+                  return (
+                    <label
+                      key={r.role_id}
+                      className="flex items-center gap-2 px-2.5 py-1.5 rounded text-xs cursor-pointer select-none transition-all"
+                      style={{
+                        background: checked
+                          ? (isDark ? '#18181B' : '#FFFFFF')
+                          : 'transparent',
+                        border: `1px solid ${
+                          checked
+                            ? (isDark ? '#52525B' : '#CBD5E1')
+                            : borderColor
+                        }`,
+                        color: checked ? textPrimary : textSecondary,
+                        fontWeight: checked ? '600' : '400',
+                        boxShadow: checked ? '0 1px 2px rgba(0,0,0,0.05)' : 'none',
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => {
+                          if (isNewGlobal) {
+                            setIsNewGlobal(false)
+                            setNewRoleIds(new Set([r.role_id]))
+                          } else {
+                            setNewRoleIds(prev => {
+                              const next = new Set(prev)
+                              if (next.has(r.role_id)) next.delete(r.role_id)
+                              else next.add(r.role_id)
+                              return next
+                            })
+                          }
+                        }}
+                        className="rounded accent-blue-600 cursor-pointer w-3.5 h-3.5"
+                      />
+                      <span className="truncate">{r.role_name}</span>
+                    </label>
+                  )
+                })}
               </div>
             </div>
 
