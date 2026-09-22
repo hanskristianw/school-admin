@@ -3197,8 +3197,8 @@
       "source_location": "L27",
       "_origin": "ast",
       "id": "package_dependencies_docx",
-      "community": 258,
-      "community_name": "docx",
+      "community": 147,
+      "community_name": "\ufffd\ud83c\udfd7\ufe0f **Database Structure**",
       "norm_label": "docx"
     },
     {
@@ -3208,8 +3208,8 @@
       "source_location": "L27",
       "_origin": "ast",
       "id": "docx",
-      "community": 258,
-      "community_name": "docx",
+      "community": 147,
+      "community_name": "\ufffd\ud83c\udfd7\ufe0f **Database Structure**",
       "norm_label": "docx"
     },
     {
@@ -3571,8 +3571,8 @@
       "source_location": "L44",
       "_origin": "ast",
       "id": "package_dependencies_pngjs",
-      "community": 147,
-      "community_name": "\ufffd\ud83c\udfd7\ufe0f **Database Structure**",
+      "community": 359,
+      "community_name": "pngjs",
       "norm_label": "pngjs"
     },
     {
@@ -3582,8 +3582,8 @@
       "source_location": "L44",
       "_origin": "ast",
       "id": "pngjs",
-      "community": 147,
-      "community_name": "\ufffd\ud83c\udfd7\ufe0f **Database Structure**",
+      "community": 359,
+      "community_name": "pngjs",
       "norm_label": "pngjs"
     },
     {
@@ -10674,7 +10674,7 @@
       "label": "iconMap",
       "file_type": "code",
       "source_file": "src/components/sidebar.jsx",
-      "source_location": "L114",
+      "source_location": "L119",
       "_origin": "ast",
       "id": "src_components_sidebar_iconmap",
       "community": 89,
@@ -10685,7 +10685,7 @@
       "label": "Sidebar",
       "file_type": "code",
       "source_file": "src/components/sidebar.jsx",
-      "source_location": "L328",
+      "source_location": "L360",
       "_origin": "ast",
       "id": "src_components_sidebar_sidebar",
       "community": 89,
@@ -20291,8 +20291,8 @@
       "source_location": "L287",
       "_origin": "ast",
       "id": "main_documentation_database_structure",
-      "community": 119,
-      "community_name": "Module 119",
+      "community": 258,
+      "community_name": "docx",
       "norm_label": "\ufffd\ud83c\udfd7\ufe0f **database structure**"
     },
     {
@@ -20302,8 +20302,8 @@
       "source_location": "L289",
       "_origin": "ast",
       "id": "main_documentation_core_tables",
-      "community": 119,
-      "community_name": "Module 119",
+      "community": 258,
+      "community_name": "docx",
       "norm_label": "**core tables:**"
     },
     {
@@ -20313,8 +20313,8 @@
       "source_location": "L524",
       "_origin": "ast",
       "id": "main_documentation_grades_nilai_table",
-      "community": 119,
-      "community_name": "Module 119",
+      "community": 258,
+      "community_name": "docx",
       "norm_label": "grades (nilai) table"
     },
     {
@@ -20324,8 +20324,8 @@
       "source_location": "L539",
       "_origin": "ast",
       "id": "main_documentation_attendance_qr_tables",
-      "community": 119,
-      "community_name": "Module 119",
+      "community": 258,
+      "community_name": "docx",
       "norm_label": "attendance (qr) tables"
     },
     {
@@ -37052,7 +37052,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/components/sidebar.jsx",
-      "source_location": "L114",
+      "source_location": "L119",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_sidebar",
@@ -37063,7 +37063,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/components/sidebar.jsx",
-      "source_location": "L328",
+      "source_location": "L360",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_sidebar",

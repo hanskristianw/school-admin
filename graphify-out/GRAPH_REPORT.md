@@ -1,16 +1,16 @@
 # Graph Report - school-admin  (2026-09-22)
 
 ## Corpus Check
-- 396 files · ~679,050 words
+- 396 files · ~679,476 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 2246 nodes · 2322 edges · 379 communities (265 shown, 114 thin omitted)
+- 2246 nodes · 2322 edges · 378 communities (264 shown, 114 thin omitted)
 - Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 7 edges (avg confidence: 0.63)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `92c1856b`
+- Built from commit: `0bc15801`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -200,7 +200,6 @@
 - 📌 Changelog
 - Sistem Penomoran PO Otomatis
 - 🎯 **System Modules & Features**
-- docx
 - DDL
 - Database Migrations
 - 5.1 Tables
@@ -311,7 +310,7 @@
 ## Import Cycles
 - None detected.
 
-## Communities (379 total, 114 thin omitted)
+## Communities (378 total, 114 thin omitted)
 
 ### Community 0 - "Admission Management"
 Cohesion: 0.08
@@ -666,8 +665,8 @@ Cohesion: 0.22
 Nodes (9): 1.1 Tables, 1.2 ERD / Relationships (User & Unit Domain), 1.3 Tables referencing `users`, 1. User, Role & Unit Management Domain (`/data/user`, `/data/role_management`, `/settings/unit`), `dashboard_type`, `report_settings`, `role`, `unit` (+1 more)
 
 ### Community 119 - "Module 119"
-Cohesion: 0.22
-Nodes (8): **Completed Features:**, **Important Files:**, **Key Business Rules:**, **Key Directories:**, 📁 **Project Structure**, 📝 Recent Changes (Aug 2025), School Admin System - Complete Documentation, ✅ **System Status**
+Cohesion: 0.15
+Nodes (12): Attendance (QR) Tables, **Completed Features:**, **Core Tables:**, �🏗️ **Database Structure**, Grades (Nilai) Table, **Important Files:**, **Key Business Rules:**, **Key Directories:** (+4 more)
 
 ### Community 120 - "Module 120"
 Cohesion: 0.22
@@ -888,10 +887,6 @@ Nodes (3): generate_topic_weeks(), topic_weekly_plan, trigger_generate_topic_wee
 ### Community 257 - "🎯 **System Modules & Features**"
 Cohesion: 0.67
 Nodes (3): absen, attendance_scan_log, attendance_session
-
-### Community 258 - "docx"
-Cohesion: 0.50
-Nodes (4): Attendance (QR) Tables, **Core Tables:**, �🏗️ **Database Structure**, Grades (Nilai) Table
 
 ### Community 259 - "DDL"
 Cohesion: 0.50

@@ -2951,7 +2951,7 @@ export const renderNurseryLearningProgressionTablePages = (doc, {
       let termCellX = ml + colWidths.milestone
       for (let tNum = 1; tNum <= 4; tNum++) {
         // Only display scores up to the selected term; future terms remain unassessed/blank (score = 0)
-        const score = (maxTerm && tNum > maxTerm) ? 0 : (studentScores[`${crit.criteria_id}_${tNum}`] || 0)
+        const score = (maxTerm && tNum > maxTerm) ? 0 : (Number(studentScores[`${crit.criteria_id}_${tNum}`]) || 0)
         drawTermBoxesInCell(termCellX, currentY, 14, rowH, score)
         termCellX += 14
       }
@@ -3123,32 +3123,75 @@ export const generateNurseryLearningProgressionPDF = async ({
       criteria: (a.class_development_criteria || []).sort((x, y) => (x.sort_order || 0) - (y.sort_order || 0))
     }))
 
-    // 2. Fetch all scores for this class
-    const { data: scoresData, error: sErr } = await supabase
-      .from('nursery_student_progress')
-      .select('student_user_id, criteria_id, term, score')
-      .eq('kelas_id', Number(classId))
+    // 2. Fetch all scores for target students in this class (with pagination to bypass 1000-row PostgREST ceiling)
+    const targetStudentIds = (studentsList || []).map(s => Number(s.user_id)).filter(id => !isNaN(id) && id > 0)
+    let allScores = []
+    let from = 0
+    const pageSize = 1000
+    let hasMoreScores = true
 
-    if (sErr) throw sErr
+    while (hasMoreScores) {
+      let q = supabase
+        .from('nursery_student_progress')
+        .select('student_user_id, criteria_id, term, score')
+        .eq('kelas_id', Number(classId))
+        .range(from, from + pageSize - 1)
+
+      if (targetStudentIds.length > 0) {
+        q = q.in('student_user_id', targetStudentIds)
+      }
+
+      const { data: chunk, error: sErr } = await q
+      if (sErr) throw sErr
+
+      if (chunk && chunk.length > 0) {
+        allScores = allScores.concat(chunk)
+        if (chunk.length < pageSize) {
+          hasMoreScores = false
+        } else {
+          from += pageSize
+        }
+      } else {
+        hasMoreScores = false
+      }
+    }
 
     // Map scores by student: studentScoresMap[studentId][`${criteriaId}_${term}`] = score
     const studentScoresMap = {}
-    ;(scoresData || []).forEach(sc => {
-      if (!studentScoresMap[sc.student_user_id]) {
-        studentScoresMap[sc.student_user_id] = {}
+    allScores.forEach(sc => {
+      const sId = sc.student_user_id
+      if (!studentScoresMap[sId]) {
+        studentScoresMap[sId] = {}
       }
-      studentScoresMap[sc.student_user_id][`${sc.criteria_id}_${sc.term}`] = sc.score
+      studentScoresMap[sId][`${sc.criteria_id}_${sc.term}`] = Number(sc.score) || 0
+
+      // Support string key lookups as fallback
+      const sIdStr = String(sId)
+      if (!studentScoresMap[sIdStr]) {
+        studentScoresMap[sIdStr] = {}
+      }
+      studentScoresMap[sIdStr][`${sc.criteria_id}_${sc.term}`] = Number(sc.score) || 0
     })
 
     // 3. Fetch student suggestions for this class
-    const { data: suggestionsData } = await supabase
+    let suggestionQuery = supabase
       .from('nursery_student_suggestion')
       .select('student_user_id, suggestion_text')
       .eq('kelas_id', Number(classId))
 
+    if (targetStudentIds.length > 0) {
+      suggestionQuery = suggestionQuery.in('student_user_id', targetStudentIds)
+    }
+
+    const { data: suggestionsData, error: sgErr } = await suggestionQuery
+    if (sgErr) {
+      console.warn('Could not fetch nursery suggestions:', sgErr)
+    }
+
     const suggestionsMap = {}
     ;(suggestionsData || []).forEach(sg => {
       suggestionsMap[sg.student_user_id] = sg.suggestion_text || ''
+      suggestionsMap[String(sg.student_user_id)] = sg.suggestion_text || ''
     })
 
     // 4. Load logos
@@ -3233,7 +3276,7 @@ export const generateNurseryLearningProgressionPDF = async ({
         studentName: fullName,
         className: className,
         areasWithCriteria,
-        studentScores: studentScoresMap[st.user_id] || {},
+        studentScores: studentScoresMap[st.user_id] || studentScoresMap[String(st.user_id)] || {},
         homeroomTeachers: activeTeachers,
         selectedTerm: term,
         logoBase64
@@ -3245,7 +3288,7 @@ export const generateNurseryLearningProgressionPDF = async ({
         studentName: fullName,
         className: className,
         dateRangeText: dateRangeText,
-        suggestionText: suggestionsMap[st.user_id] || '',
+        suggestionText: suggestionsMap[st.user_id] || suggestionsMap[String(st.user_id)] || '',
         homeroomTeachers: activeTeachers,
         logoBase64,
         ibLogoBase64

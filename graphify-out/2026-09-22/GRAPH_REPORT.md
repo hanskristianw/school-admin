@@ -1,11 +1,11 @@
 # Graph Report - school-admin  (2026-09-22)
 
 ## Corpus Check
-- 396 files · ~678,985 words
+- 396 files · ~679,050 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 2246 nodes · 2322 edges · 378 communities (264 shown, 114 thin omitted)
+- 2246 nodes · 2322 edges · 379 communities (265 shown, 114 thin omitted)
 - Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 7 edges (avg confidence: 0.63)
 - Token cost: 0 input · 0 output
 
@@ -274,6 +274,7 @@
 - Full-Output Enforcement
 - 33. CATEGORY-SPECIFIC BIAS
 - browser-image-compression
+- pngjs
 - route.js
 - route.js
 - route.js
@@ -310,7 +311,7 @@
 ## Import Cycles
 - None detected.
 
-## Communities (378 total, 114 thin omitted)
+## Communities (379 total, 114 thin omitted)
 
 ### Community 0 - "Admission Management"
 Cohesion: 0.08
@@ -665,8 +666,8 @@ Cohesion: 0.22
 Nodes (9): 1.1 Tables, 1.2 ERD / Relationships (User & Unit Domain), 1.3 Tables referencing `users`, 1. User, Role & Unit Management Domain (`/data/user`, `/data/role_management`, `/settings/unit`), `dashboard_type`, `report_settings`, `role`, `unit` (+1 more)
 
 ### Community 119 - "Module 119"
-Cohesion: 0.15
-Nodes (12): Attendance (QR) Tables, **Completed Features:**, **Core Tables:**, �🏗️ **Database Structure**, Grades (Nilai) Table, **Important Files:**, **Key Business Rules:**, **Key Directories:** (+4 more)
+Cohesion: 0.22
+Nodes (8): **Completed Features:**, **Important Files:**, **Key Business Rules:**, **Key Directories:**, 📁 **Project Structure**, 📝 Recent Changes (Aug 2025), School Admin System - Complete Documentation, ✅ **System Status**
 
 ### Community 120 - "Module 120"
 Cohesion: 0.22
@@ -754,7 +755,7 @@ Nodes (5): absen, attendance_scan_log, _backup_absen, _backup_attendance_scan_lo
 
 ### Community 147 - "�🏗️ **Database Structure**"
 Cohesion: 0.18
-Nodes (11): bcryptjs, googleapis, dependencies, bcryptjs, googleapis, pdf-lib, pngjs, puppeteer-core (+3 more)
+Nodes (11): bcryptjs, docx, googleapis, dependencies, bcryptjs, docx, googleapis, pdf-lib (+3 more)
 
 ### Community 149 - "bcryptjs"
 Cohesion: 0.33
@@ -888,6 +889,10 @@ Nodes (3): generate_topic_weeks(), topic_weekly_plan, trigger_generate_topic_wee
 Cohesion: 0.67
 Nodes (3): absen, attendance_scan_log, attendance_session
 
+### Community 258 - "docx"
+Cohesion: 0.50
+Nodes (4): Attendance (QR) Tables, **Core Tables:**, �🏗️ **Database Structure**, Grades (Nilai) Table
+
 ### Community 259 - "DDL"
 Cohesion: 0.50
 Nodes (4): **Backend & Database:**, **Frontend Stack:**, **Key Technical Notes:**, 🔧 **Technical Implementation**
@@ -932,7 +937,7 @@ Nodes (6): extractScheduleMeta(), GET(), POST(), resolveCurrentFormFee(), supaba
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `dependencies` connect `�🏗️ **Database Structure**` to `Admission Management`, `Package Dependencies & Config`, `docx`, `Module 133`, `Module 134`, `Module 140`, `🎓 **IB MYP Assessment Grading System**`, `clsx`, `2026-07-16 — Timetable Refactor + Weekly Plan Dates + Weekly Overview`, `Third-party Libraries`, `Module 145`, `React UI Components`, `Module 148`, `docx`, `Module 153`, `Module 154`, `Module 155`, `bcryptjs`, `@googleapis/chat`, `react-hook-form`, `dotenv`, `zod`, `bcryptjs`, `Appendix B - Canonical Sources (read these before reinventing)`, `Design Audit`, `Analysis & Synthesis Instructions`, `Agent Skill: Principal UI/UX Architect & Motion Choreographer (Awwwards-Tier)`, `CORE DIRECTIVE: AWWWARDS-LEVEL IMAGE ART DIRECTION`, `12. THE COMBINATORIAL VARIATION ENGINE`, `8. ANTI-AI-SLOP RULES`, `@sparticuz/chromium-min`, `11. REDESIGN PROTOCOL`, `3. DEFAULT ARCHITECTURE & CONVENTIONS`, `6. PERFORMANCE & ACCESSIBILITY GUARDRAILS`, `Full-Output Enforcement`, `33. CATEGORY-SPECIFIC BIAS`, `docx`, `browser-image-compression`?**
+- **Why does `dependencies` connect `�🏗️ **Database Structure**` to `Admission Management`, `Package Dependencies & Config`, `Module 133`, `Module 134`, `Module 140`, `🎓 **IB MYP Assessment Grading System**`, `clsx`, `2026-07-16 — Timetable Refactor + Weekly Plan Dates + Weekly Overview`, `Third-party Libraries`, `Module 145`, `React UI Components`, `Module 148`, `docx`, `Module 153`, `Module 154`, `Module 155`, `bcryptjs`, `@googleapis/chat`, `react-hook-form`, `dotenv`, `zod`, `bcryptjs`, `Appendix B - Canonical Sources (read these before reinventing)`, `Design Audit`, `Analysis & Synthesis Instructions`, `Agent Skill: Principal UI/UX Architect & Motion Choreographer (Awwwards-Tier)`, `CORE DIRECTIVE: AWWWARDS-LEVEL IMAGE ART DIRECTION`, `12. THE COMBINATORIAL VARIATION ENGINE`, `8. ANTI-AI-SLOP RULES`, `@sparticuz/chromium-min`, `11. REDESIGN PROTOCOL`, `3. DEFAULT ARCHITECTURE & CONVENTIONS`, `6. PERFORMANCE & ACCESSIBILITY GUARDRAILS`, `Full-Output Enforcement`, `33. CATEGORY-SPECIFIC BIAS`, `pngjs`, `docx`, `browser-image-compression`?**
   _High betweenness centrality (0.006) - this node is a cross-community bridge._
 - **Why does `Database Schema & Relationships` connect `Module 126` to `Module 103`, `Module 107`, `Module 235`, `Module 108`, `Module 237`, `Module 238`, `Module 139`, `Module 114`, `Module 115`, `Module 118`, `Module 151`?**
   _High betweenness centrality (0.003) - this node is a cross-community bridge._
