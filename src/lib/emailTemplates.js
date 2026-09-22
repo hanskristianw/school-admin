@@ -72,7 +72,7 @@ export const emailTemplates = {
     hostingUrl = 'https://ccs.sch.id/registrasi'
   }) => {
     const formattedAmount = `Rp ${Number(feeAmount || 250000).toLocaleString('id-ID')}`
-    const queryTarget = parentEmail || applicationNumber
+    const queryTarget = applicationNumber || parentEmail
     const queryPhone = parentPhone ? `&phone=${encodeURIComponent(parentPhone)}` : ''
     const checkUrl = `${String(hostingUrl || 'https://ccs.sch.id/registrasi').replace(/\/$/, '')}/status.php?cek=${encodeURIComponent(queryTarget)}${queryPhone}#tempat-unggah`
     const subject = `Instruksi Pembayaran Pendaftaran Siswa Baru CCS — ${applicationNumber}`
@@ -157,7 +157,7 @@ export const emailTemplates = {
     hostingUrl = 'https://ccs.sch.id/registrasi'
   }) => {
     const formattedAmount = `Rp ${Number(feeAmount || 250000).toLocaleString('id-ID')}`
-    const queryTarget = parentEmail || applicationNumber
+    const queryTarget = applicationNumber || parentEmail
     const queryPhone = parentPhone ? `&phone=${encodeURIComponent(parentPhone)}` : ''
     const checkUrl = `${String(hostingUrl || 'https://ccs.sch.id/registrasi').replace(/\/$/, '')}/status.php?cek=${encodeURIComponent(queryTarget)}${queryPhone}#tempat-unggah`
     const subject = `Pembayaran Biaya Formulir Terverifikasi (Lunas) — ${applicationNumber}`
@@ -218,6 +218,7 @@ export const emailTemplates = {
   placementTestSchedule: ({
     parentName,
     parentEmail,
+    parentPhone,
     studentName,
     applicationNumber,
     levelName,
@@ -228,7 +229,9 @@ export const emailTemplates = {
     scheduleNotes,
     hostingUrl = 'https://ccs.sch.id/registrasi'
   }) => {
-    const checkUrl = `${String(hostingUrl || 'https://ccs.sch.id/registrasi').replace(/\/$/, '')}/status.php?cek=${encodeURIComponent(parentEmail || applicationNumber)}`
+    const queryTarget = applicationNumber || parentEmail
+    const queryPhone = parentPhone ? `&phone=${encodeURIComponent(parentPhone)}` : ''
+    const checkUrl = `${String(hostingUrl || 'https://ccs.sch.id/registrasi').replace(/\/$/, '')}/status.php?cek=${encodeURIComponent(queryTarget)}${queryPhone}`
     const subject = `Jadwal Tes Penempatan Siswa & Wawancara Orang Tua — ${applicationNumber}`
     const html = wrapHtml(`
       <div class="container">

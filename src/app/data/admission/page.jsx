@@ -1687,11 +1687,25 @@ export default function AdmissionManagement() {
     centerText('BIAYA PENDIDIKAN', y, 14);
     y += 5;
 
-    // Document number & date
+    // Document number & letter date from system
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(9);
-    const today = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
-    centerText(`No. Ref: ${app.application_number} | Tanggal: ${today}`, y, 9);
+    let letterDate = new Date();
+    if (app.reviewed_at) {
+      const parsed = new Date(app.reviewed_at);
+      if (!isNaN(parsed.getTime())) letterDate = parsed;
+    } else if (app.step4_email_sent_at) {
+      const parsed = new Date(app.step4_email_sent_at);
+      if (!isNaN(parsed.getTime())) letterDate = parsed;
+    }
+    const letterDateStr = letterDate.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+
+    // UTJ payment due date: exactly +7 calendar days from letter date
+    const dueDate = new Date(letterDate);
+    dueDate.setDate(dueDate.getDate() + 7);
+    const dueDateStr = dueDate.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+
+    centerText(`No. Ref: ${app.application_number} | Tanggal: ${letterDateStr}`, y, 9);
     y += 10;
 
     // ===== PARTIES =====
@@ -1842,7 +1856,7 @@ export default function AdmissionManagement() {
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(9);
     const clauses = [
-      `Cicilan pertama sebesar ${fmtIDR(calc.items[0]?.amount || 0)} sudah termasuk UTJ (Uang Tanda Jadi) sebesar ${fmtIDR(calc.utjAmount)} dan wajib dibayarkan paling lambat 7 (tujuh) hari setelah surat perjanjian ini diterbitkan.`,
+      `Cicilan pertama sebesar ${fmtIDR(calc.items[0]?.amount || 0)} sudah termasuk UTJ (Uang Tanda Jadi) sebesar ${fmtIDR(calc.utjAmount)} dan wajib dibayarkan paling lambat 7 (tujuh) hari setelah surat perjanjian ini diterbitkan (paling lambat tanggal ${dueDateStr}).`,
       'Cicilan selanjutnya wajib dibayarkan paling lambat tanggal 10 setiap bulannya.',
       'Keterlambatan pembayaran cicilan akan dikenakan denda administrasi sesuai ketentuan sekolah.',
       'UTJ yang telah dibayarkan tidak dapat dikembalikan jika Pihak Kedua membatalkan pendaftaran.',

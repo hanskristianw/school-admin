@@ -41,17 +41,25 @@ $i18n = [
 
         // Search Section
         'status_section_title' => 'Cek Status Pendaftaran Siswa Baru',
-        'status_section_desc' => 'Gunakan alamat email terdaftar dan nomor WhatsApp/HP orang tua untuk mengecek status verifikasi berkas, mengunggah bukti transfer formulir, dan melengkapi data calon siswa.',
-        'lbl_search_email' => 'Alamat Email Terdaftar',
-        'status_input_ph' => 'Masukkan email terdaftar (contoh: orangtua@gmail.com)',
-        'lbl_search_phone' => 'Nomor WhatsApp / HP',
+        'status_section_desc' => 'Gunakan Nomor Registrasi anak Anda (atau email pendaftar) beserta nomor WhatsApp/HP orang tua untuk mengecek status verifikasi berkas, mengunggah bukti transfer formulir, dan melengkapi data calon siswa.',
+        'lbl_search_code' => 'Nomor Registrasi Siswa',
+        'lbl_search_code_hint' => '(Tercantum di email / WhatsApp konfirmasi)',
+        'lbl_search_email' => 'Nomor Registrasi Siswa',
+        'status_input_ph' => 'Contoh: CCS-PMB-2026-0001 (atau email terdaftar)',
+        'lbl_search_phone' => 'Nomor WhatsApp / HP Orang Tua',
+        'lbl_search_phone_hint' => '(Opsional jika memasukkan Nomor Registrasi)',
         'phone_input_ph' => 'Contoh: 081234567890',
-        'btn_check' => 'Cek Status',
+        'btn_check' => 'Cek Status Pendaftaran',
+
+        // Multi-child selection
+        'multiple_found_title' => 'Ditemukan Beberapa Data Pendaftaran Calon Siswa',
+        'multiple_found_desc' => 'Terdapat lebih dari satu calon siswa yang didaftarkan dengan akun/email ini. Silakan pilih data pendaftaran anak yang ingin dibuka:',
+        'btn_open_student' => 'Buka Pendaftaran Ini',
 
         // Panduan 3 Langkah Awal (Saat Belum Cari)
         'guide_title' => 'Tahapan Pengecekan & Pembayaran Formulir PPDB CCS',
-        'guide_step1_title' => '1. Masukkan Email & No. HP',
-        'guide_step1_desc' => 'Gunakan data yang Anda daftarkan pada formulir awal untuk membuka data pendaftaran Anda.',
+        'guide_step1_title' => '1. Masukkan No. Registrasi',
+        'guide_step1_desc' => 'Gunakan Nomor Registrasi unik anak Anda yang diperoleh saat pendaftaran awal.',
         'guide_step2_title' => '2. Transfer & Unggah Struk',
         'guide_step2_desc' => 'Kirim biaya formulir ke rekening resmi Bank Mayapada, lalu unggah foto struk atau berkas transfer.',
         'guide_step3_title' => '3. Lengkapi Data Siswa',
@@ -120,8 +128,13 @@ $i18n = [
         // Upload Bukti
         'upload_title' => 'Unggah Bukti Transfer Pembayaran',
         'upload_title_re' => 'Unggah Ulang Bukti Transfer',
+        'btn_browse_file' => 'Pilih File Struk Transfer',
         'upload_drag_title' => 'Pilih Berkas Struk Transfer (Foto atau PDF)',
+        'upload_choose_hint' => 'atau seret dan lepas (drag & drop) file foto/PDF ke kotak ini',
         'upload_drag_hint' => 'Format file yang diperbolehkan: JPG, PNG, WEBP, atau PDF (Maksimal 5 MB).',
+        'upload_need_file_hint' => '* Silakan pilih berkas struk transfer terlebih dahulu di atas.',
+        'upload_file_ready' => 'File struk siap dikirimkan. Klik tombol kirim untuk menyelesaikan.',
+        'btn_change_file' => 'Ganti File',
         'btn_upload' => 'Kirim Bukti Pembayaran',
         'proof_stored_notice' => 'Bukti tersimpan:',
         'btn_view_file' => 'Lihat Berkas &rarr;',
@@ -216,17 +229,25 @@ $i18n = [
 
         // Search Section
         'status_section_title' => 'Check New Student Admission Status',
-        'status_section_desc' => 'Enter your registered email address and parent WhatsApp/phone number to check document status, upload form payment receipts, and complete student details.',
-        'lbl_search_email' => 'Registered Email Address',
-        'status_input_ph' => 'Enter registered email (e.g. parent@example.com)',
-        'lbl_search_phone' => 'WhatsApp / Phone Number',
+        'status_section_desc' => 'Use your child\'s Registration Number (or registered email) and parent WhatsApp/phone number to check document status, upload form payment receipts, and complete student details.',
+        'lbl_search_code' => 'Student Registration Number',
+        'lbl_search_code_hint' => '(Found in confirmation email / WhatsApp)',
+        'lbl_search_email' => 'Student Registration Number',
+        'status_input_ph' => 'e.g. CCS-PMB-2026-0001 (or registered email)',
+        'lbl_search_phone' => 'Parent WhatsApp / Phone Number',
+        'lbl_search_phone_hint' => '(Optional when using Registration Number)',
         'phone_input_ph' => 'e.g. 081234567890',
-        'btn_check' => 'Check Status',
+        'btn_check' => 'Check Application Status',
+
+        // Multi-child selection
+        'multiple_found_title' => 'Multiple Student Applications Found',
+        'multiple_found_desc' => 'More than one student candidate was registered with this account/email. Please select which application you wish to open:',
+        'btn_open_student' => 'Open This Application',
 
         // Guide 3 Steps
         'guide_title' => 'CCS Admission Verification & Payment Steps',
-        'guide_step1_title' => '1. Enter Email & Phone',
-        'guide_step1_desc' => 'Provide the credentials used in your initial registration form to retrieve your record.',
+        'guide_step1_title' => '1. Enter Registration Code',
+        'guide_step1_desc' => 'Use the unique registration number issued for your child after initial registration.',
         'guide_step2_title' => '2. Transfer & Upload Receipt',
         'guide_step2_desc' => 'Transfer the form fee to the official Bank Mayapada account, then upload your transfer receipt.',
         'guide_step3_title' => '3. Complete Student Form',
@@ -295,8 +316,13 @@ $i18n = [
         // Upload Proof
         'upload_title' => 'Upload Payment Transfer Receipt',
         'upload_title_re' => 'Re-upload Payment Transfer Receipt',
+        'btn_browse_file' => 'Choose Transfer Receipt File',
         'upload_drag_title' => 'Select Transfer Receipt File (Image or PDF)',
+        'upload_choose_hint' => 'or drag & drop your receipt image/PDF here',
         'upload_drag_hint' => 'Accepted formats: JPG, PNG, WEBP, or PDF (Maximum 5 MB).',
+        'upload_need_file_hint' => '* Please select a receipt file above before submitting.',
+        'upload_file_ready' => 'Receipt file ready. Click the button below to submit.',
+        'btn_change_file' => 'Change File',
         'btn_upload' => 'Submit Payment Proof',
         'proof_stored_notice' => 'Receipt stored:',
         'btn_view_file' => 'View Document &rarr;',
@@ -391,17 +417,25 @@ $i18n = [
 
         // Search Section
         'status_section_title' => '查询新生入学报名状态',
-        'status_section_desc' => '使用您注册时填写的电子邮箱和家长手机号码，查询审核状态、上传报名表格付款凭证，以及完善录取资料。',
-        'lbl_search_email' => '已注册的电子邮箱',
-        'status_input_ph' => '请输入注册时填写的电子邮箱 (例如: parent@example.com)',
-        'lbl_search_phone' => 'WhatsApp / 手机号码',
+        'status_section_desc' => '使用学生报名编号（详见确认邮件/WhatsApp）或已注册邮箱及家长手机号，查询审核状态、上传转账凭证并完善学生资料。',
+        'lbl_search_code' => '学生报名编号',
+        'lbl_search_code_hint' => '(可在确认邮件 / WhatsApp 通知中查看)',
+        'lbl_search_email' => '学生报名编号',
+        'status_input_ph' => '例如: CCS-PMB-2026-0001 (或已注册邮箱)',
+        'lbl_search_phone' => '家长 WhatsApp / 手机号码',
+        'lbl_search_phone_hint' => '(若已填写报名编号则选填)',
         'phone_input_ph' => '例如: 081234567890',
-        'btn_check' => '查询状态',
+        'btn_check' => '查询报名状态',
+
+        // Multi-child selection
+        'multiple_found_title' => '查询到多条学生报名记录',
+        'multiple_found_desc' => '该邮箱/账号下登记了多名学生。请选择您想要查看报名的学生：',
+        'btn_open_student' => '查看此学生档案',
 
         // Guide 3 Steps
         'guide_title' => '崇崇基督教学校招生审核与缴费流程',
-        'guide_step1_title' => '1. 输入邮箱与手机号',
-        'guide_step1_desc' => '使用您在初步申请时填写的电子邮箱和 WhatsApp 号码查询您的报名档案。',
+        'guide_step1_title' => '1. 输入报名编号',
+        'guide_step1_desc' => '使用初步报名成功后获取的学生专属报名编号。',
         'guide_step2_title' => '2. 转账并上传转账凭证',
         'guide_step2_desc' => '向官方 Bank Mayapada 账户转账报名表格费，并在此上传转账凭证照片或 PDF。',
         'guide_step3_title' => '3. 完善学生详细档案',
@@ -470,8 +504,13 @@ $i18n = [
         // Upload Proof
         'upload_title' => '上传银行转账付款凭证',
         'upload_title_re' => '重新上传转账凭证',
-        'upload_drag_title' => '选择转账凭证文件 (照片或 PDF)',
+        'btn_browse_file' => '选择转账凭证文件',
+        'upload_drag_title' => '选择或拖拽转账凭证文件',
+        'upload_choose_hint' => '或将凭证图片/PDF文件直接拖入此框',
         'upload_drag_hint' => '支持的文件格式：JPG, PNG, WEBP 或 PDF（最大 5 MB）。',
+        'upload_need_file_hint' => '* 提交前请先在上方框中选择凭证文件。',
+        'upload_file_ready' => '凭证已准备就绪，点击下方按钮提交。',
+        'btn_change_file' => '更换文件',
         'btn_upload' => '提交付款凭证',
         'proof_stored_notice' => '已归档凭证：',
         'btn_view_file' => '查看文件 &rarr;',
@@ -834,18 +873,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action_update_schedul
     }
 }
 
-// ─── 7. PENCARIAN STATUS PENDAFTARAN (EMAIL ATAU KODE REGISTRASI + NO HP) ───
-$searchQuery = trim($_GET['cek'] ?? ($_SESSION['applicant_email'] ?? ''));
+// ─── 7. PENCARIAN STATUS PENDAFTARAN (KODE REGISTRASI ATAU EMAIL + NO HP) ───
+$searchQuery = trim($_GET['cek'] ?? ($_SESSION['applicant_app_no'] ?? ($_SESSION['applicant_email'] ?? '')));
 $searchPhone = trim($_GET['phone'] ?? ($_SESSION['applicant_phone'] ?? ''));
 $currentApplicant = null;
+$multipleApplicants = null;
 $searchError = '';
 
 if (!empty($searchQuery)) {
     $isEmail = filter_var($searchQuery, FILTER_VALIDATE_EMAIL);
     $queryParams = [
-        'action' => 'check_status',
-        'phone' => $searchPhone
+        'action' => 'check_status'
     ];
+    if (!empty($searchPhone)) {
+        $queryParams['phone'] = $searchPhone;
+    }
     if ($isEmail) {
         $queryParams['email'] = strtolower($searchQuery);
     } else {
@@ -854,13 +896,17 @@ if (!empty($searchQuery)) {
 
     $res = callNextJsApi('GET', $queryParams);
 
-    if (!empty($res['success']) && !empty($res['data'])) {
-        $currentApplicant = $res['data'];
-        $_SESSION['applicant_email']  = $currentApplicant['parent_email'] ?? $currentApplicant['father_email'] ?? '';
-        $_SESSION['applicant_phone']  = $currentApplicant['parent_phone'] ?? $currentApplicant['father_phone'] ?? $searchPhone;
-        $_SESSION['applicant_app_no'] = $currentApplicant['application_number'];
-        if (!empty($currentApplicant['payment_proof_file'])) {
-            $_SESSION['applicant_proof_file'] = $currentApplicant['payment_proof_file'];
+    if (!empty($res['success'])) {
+        if (!empty($res['multiple']) && !empty($res['data'])) {
+            $multipleApplicants = $res['data'];
+        } elseif (!empty($res['data'])) {
+            $currentApplicant = $res['data'];
+            $_SESSION['applicant_email']  = $currentApplicant['parent_email'] ?? $currentApplicant['father_email'] ?? '';
+            $_SESSION['applicant_phone']  = $currentApplicant['parent_phone'] ?? $currentApplicant['father_phone'] ?? $searchPhone;
+            $_SESSION['applicant_app_no'] = $currentApplicant['application_number'];
+            if (!empty($currentApplicant['payment_proof_file'])) {
+                $_SESSION['applicant_proof_file'] = $currentApplicant['payment_proof_file'];
+            }
         }
     } else {
         if (isset($_GET['cek'])) {
@@ -1225,14 +1271,15 @@ function formatTanggalIndo($dateStr, $lang = 'id') {
         <p class="text-xs text-gray-500 mt-1"><?= htmlspecialchars($L['status_section_desc']) ?></p>
       </div>
 
-      <!-- Form Pencarian: Email & Nomor WhatsApp -->
+      <!-- Form Pencarian: Nomor Registrasi Siswa / Email & Nomor WhatsApp -->
       <form method="GET" action="status.php" class="space-y-4">
         <input type="hidden" name="lang" value="<?= htmlspecialchars($currLang) ?>" />
         
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label class="school-label" for="searchEmail">
-              <?= htmlspecialchars($L['lbl_search_email']) ?> <span class="text-rose-500">*</span>
+              <?= htmlspecialchars($L['lbl_search_code'] ?? $L['lbl_search_email']) ?> <span class="text-rose-500">*</span>
+              <span class="text-xs font-normal text-gray-400 ml-1"><?= htmlspecialchars($L['lbl_search_code_hint'] ?? '') ?></span>
             </label>
             <input
               type="text"
@@ -1247,7 +1294,8 @@ function formatTanggalIndo($dateStr, $lang = 'id') {
 
           <div>
             <label class="school-label" for="searchPhone">
-              <?= htmlspecialchars($L['lbl_search_phone']) ?> <span class="text-rose-500">*</span>
+              <?= htmlspecialchars($L['lbl_search_phone']) ?>
+              <span class="text-xs font-normal text-gray-400 ml-1"><?= htmlspecialchars($L['lbl_search_phone_hint'] ?? '') ?></span>
             </label>
             <input
               type="tel"
@@ -1255,7 +1303,6 @@ function formatTanggalIndo($dateStr, $lang = 'id') {
               name="phone"
               value="<?= htmlspecialchars($searchPhone) ?>"
               placeholder="<?= htmlspecialchars($L['phone_input_ph']) ?>"
-              required
               class="school-input font-medium"
             />
           </div>
@@ -1268,6 +1315,41 @@ function formatTanggalIndo($dateStr, $lang = 'id') {
         </div>
       </form>
 
+      <!-- Alert Jika Ditemukan Beberapa Calon Siswa (Multi-Anak 1 Akun/Email) -->
+      <?php if (!empty($multipleApplicants)): ?>
+        <div class="p-5 bg-amber-50/70 border border-amber-300 rounded-md space-y-4">
+          <div class="flex items-start gap-3">
+            <div class="w-9 h-9 rounded-full bg-amber-100 text-amber-800 flex items-center justify-center shrink-0 text-base border border-amber-200">
+              <i class="fas fa-users"></i>
+            </div>
+            <div>
+              <h3 class="text-sm font-bold text-gray-900"><?= htmlspecialchars($L['multiple_found_title']) ?></h3>
+              <p class="text-xs text-gray-600 mt-0.5"><?= htmlspecialchars($L['multiple_found_desc']) ?></p>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+            <?php foreach ($multipleApplicants as $child): ?>
+              <div class="bg-white p-4 rounded-md border border-gray-200 shadow-xs flex flex-col justify-between hover:border-ccsOrange transition-all">
+                <div class="space-y-1.5 mb-3">
+                  <div class="flex items-center justify-between">
+                    <span class="font-mono text-xs font-bold text-ccsOrange"><?= htmlspecialchars($child['application_number']) ?></span>
+                    <span class="px-2 py-0.5 rounded text-[11px] font-semibold <?= $child['status'] === 'approved' ? 'bg-emerald-100 text-emerald-800' : 'bg-blue-100 text-blue-800' ?>">
+                      <?= htmlspecialchars($child['status'] === 'approved' ? 'Diterima' : 'Dalam Proses') ?>
+                    </span>
+                  </div>
+                  <h4 class="text-sm font-bold text-gray-900"><?= htmlspecialchars($child['student_name']) ?></h4>
+                  <p class="text-xs text-gray-500"><i class="fas fa-graduation-cap mr-1 text-gray-400"></i> <?= htmlspecialchars($child['level_name'] ?? 'Jenjang') ?></p>
+                </div>
+                <a href="status.php?cek=<?= urlencode($child['application_number']) ?>&phone=<?= urlencode($child['parent_phone'] ?? $searchPhone) ?>&lang=<?= $currLang ?>#tempat-unggah" class="thm-btn w-full py-2 text-xs text-center font-semibold">
+                  <i class="fas fa-folder-open mr-1"></i> <?= htmlspecialchars($L['btn_open_student']) ?> &rarr;
+                </a>
+              </div>
+            <?php endforeach; ?>
+          </div>
+        </div>
+      <?php endif; ?>
+
       <!-- Alert Jika Data Tidak Ditemukan -->
       <?php if (!empty($searchError)): ?>
         <div class="p-4 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-md flex items-center gap-3">
@@ -1277,7 +1359,7 @@ function formatTanggalIndo($dateStr, $lang = 'id') {
       <?php endif; ?>
 
       <!-- PANDUAN 3 LANGKAH (HANYA DITAMPILKAN JIKA BELUM ADA DATA PENDAFTAR DIBUKA) -->
-      <?php if (!$currentApplicant && empty($searchError)): ?>
+      <?php if (!$currentApplicant && empty($multipleApplicants) && empty($searchError)): ?>
         <div class="border-t border-gray-100 pt-6 space-y-4">
           <h3 class="text-xs font-bold text-ccsHeading uppercase tracking-wider">
             <?= htmlspecialchars($L['guide_title']) ?>
@@ -1772,34 +1854,79 @@ function formatTanggalIndo($dateStr, $lang = 'id') {
                 </h3>
               </div>
 
-              <form method="POST" action="status.php?cek=<?= urlencode($searchQuery) ?>&phone=<?= urlencode($searchPhone) ?>&lang=<?= $currLang ?>#tempat-unggah" enctype="multipart/form-data" class="space-y-4">
+              <form method="POST" id="proofUploadForm" action="status.php?cek=<?= urlencode($searchQuery) ?>&phone=<?= urlencode($searchPhone) ?>&lang=<?= $currLang ?>#tempat-unggah" enctype="multipart/form-data" class="space-y-4">
                 <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
                 <input type="hidden" name="action_upload_proof" value="1">
                 <input type="hidden" name="target_app_no" value="<?= htmlspecialchars($currentApplicant['application_number']) ?>">
 
-                <div class="border border-dashed border-gray-300 hover:border-ccsOrange rounded-md p-6 text-center transition bg-slate-50/50">
-                  <input 
-                    type="file" 
-                    name="payment_proof" 
-                    id="paymentProofFile" 
-                    required 
-                    accept=".jpg,.jpeg,.png,.webp,.pdf" 
-                    class="hidden" 
-                    onchange="handleProofFileSelect(this)"
-                  >
-                  <label for="paymentProofFile" class="cursor-pointer block">
-                    <span class="text-sm font-semibold text-ccsHeading block"><?= htmlspecialchars($L['upload_drag_title']) ?></span>
-                    <span class="text-xs text-gray-500 block mt-1"><?= htmlspecialchars($L['upload_drag_hint']) ?></span>
-                    <div id="proofFileNameDisplay" class="text-xs font-mono font-bold text-ccsOrange mt-2 hidden"></div>
-                  </label>
+                <!-- Hidden file input triggered by custom interactive area -->
+                <input 
+                  type="file" 
+                  name="payment_proof" 
+                  id="paymentProofFile" 
+                  required 
+                  accept=".jpg,.jpeg,.png,.webp,.pdf" 
+                  class="hidden" 
+                  onchange="handleProofFileSelect(this)"
+                >
+
+                <!-- Interactive Dropzone / File Picker Area -->
+                <div 
+                  id="proofDropArea"
+                  onclick="document.getElementById('paymentProofFile').click()"
+                  class="border-2 border-dashed border-gray-300 hover:border-ccsOrange rounded-lg p-6 sm:p-7 text-center cursor-pointer transition-all bg-slate-50/70 hover:bg-orange-50/20 group select-none"
+                >
+                  <!-- State 1: Belum Ada File Dipilih -->
+                  <div id="proofEmptyPrompt" class="space-y-3">
+                    <div class="w-12 h-12 rounded-full bg-white border border-gray-200 text-ccsOrange flex items-center justify-center mx-auto text-xl shadow-xs group-hover:scale-105 group-hover:border-orange-300 transition-all">
+                      <i class="fas fa-file-invoice-dollar"></i>
+                    </div>
+                    <div class="space-y-1.5">
+                      <div>
+                        <span class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 group-hover:border-ccsOrange shadow-xs rounded-md text-xs font-bold text-ccsHeading transition">
+                          <i class="fas fa-folder-open text-ccsOrange"></i> <?= htmlspecialchars($L['btn_browse_file'] ?? 'Pilih File Struk Transfer') ?>
+                        </span>
+                      </div>
+                      <p class="text-xs text-gray-500 font-medium pt-1"><?= htmlspecialchars($L['upload_choose_hint'] ?? 'atau seret dan lepas file ke kotak ini') ?></p>
+                      <p class="text-[11px] text-gray-400"><?= htmlspecialchars($L['upload_drag_hint']) ?></p>
+                    </div>
+                  </div>
+
+                  <!-- State 2: File Telah Dipilih -->
+                  <div id="proofSelectedPrompt" class="hidden py-1">
+                    <div class="inline-flex items-center gap-3 px-4 py-3 bg-emerald-50 border border-emerald-300 rounded-md text-left text-xs max-w-full shadow-xs">
+                      <div class="w-9 h-9 rounded bg-emerald-100 text-emerald-700 flex items-center justify-center text-base shrink-0">
+                        <i id="proofFileIcon" class="fas fa-file-image"></i>
+                      </div>
+                      <div class="min-w-0 flex-1 pr-2">
+                        <div id="proofFileName" class="font-bold text-emerald-950 truncate max-w-xs sm:max-w-md">nama_file.jpg</div>
+                        <div id="proofFileSize" class="text-[11px] text-emerald-700 font-medium">1.2 MB</div>
+                      </div>
+                      <span class="text-xs text-ccsOrange font-bold underline hover:text-orange-700 ml-2 whitespace-nowrap">
+                        <?= htmlspecialchars($L['btn_change_file'] ?? 'Ganti File') ?>
+                      </span>
+                    </div>
+                    <p class="text-xs text-emerald-700 font-medium mt-2 flex items-center justify-center gap-1.5">
+                      <i class="fas fa-check-circle text-emerald-600"></i>
+                      <span><?= htmlspecialchars($L['upload_file_ready'] ?? 'File siap dikirimkan. Klik tombol di bawah untuk menyelesaikan.') ?></span>
+                    </p>
+                  </div>
                 </div>
 
-                <button 
-                  type="submit" 
-                  class="thm-btn w-full sm:w-auto"
-                >
-                  <i class="fas fa-upload mr-1"></i> <?= htmlspecialchars($L['btn_upload']) ?>
-                </button>
+                <!-- Tombol Submit & Helper Hint -->
+                <div class="flex flex-col sm:flex-row sm:items-center gap-3 pt-1">
+                  <button 
+                    type="submit" 
+                    id="submitProofBtn"
+                    class="thm-btn w-full sm:w-auto px-7 py-2.5 text-xs font-semibold flex items-center justify-center gap-2 opacity-50 cursor-not-allowed transition-all"
+                    disabled
+                  >
+                    <i class="fas fa-paper-plane"></i> <?= htmlspecialchars($L['btn_upload']) ?>
+                  </button>
+                  <span id="submitProofHint" class="text-xs text-gray-400">
+                    <?= htmlspecialchars($L['upload_need_file_hint'] ?? '* Silakan pilih berkas struk transfer terlebih dahulu di atas.') ?>
+                  </span>
+                </div>
               </form>
 
               <!-- Notifikasi Bukti Telah Diterima -->
@@ -2296,18 +2423,106 @@ function formatTanggalIndo($dateStr, $lang = 'id') {
       });
     }
 
-    // Preview File Bukti Transfer
+    // Preview & State Management File Bukti Transfer
     function handleProofFileSelect(input) {
-      const disp = document.getElementById('proofFileNameDisplay');
+      const emptyPrompt = document.getElementById('proofEmptyPrompt');
+      const selectedPrompt = document.getElementById('proofSelectedPrompt');
+      const nameEl = document.getElementById('proofFileName');
+      const sizeEl = document.getElementById('proofFileSize');
+      const iconEl = document.getElementById('proofFileIcon');
+      const submitBtn = document.getElementById('submitProofBtn');
+      const submitHint = document.getElementById('submitProofHint');
+
       if (input.files && input.files[0]) {
         const file = input.files[0];
         const sizeMb = (file.size / (1024 * 1024)).toFixed(2);
-        if (disp) {
-          disp.textContent = `✓ ${file.name} (${sizeMb} MB)`;
-          disp.classList.remove('hidden');
+        
+        if (nameEl) nameEl.textContent = file.name;
+        if (sizeEl) sizeEl.textContent = `${sizeMb} MB`;
+        
+        if (iconEl) {
+          if (file.type.includes('pdf') || file.name.toLowerCase().endsWith('.pdf')) {
+            iconEl.className = 'fas fa-file-pdf text-rose-600 text-lg';
+          } else {
+            iconEl.className = 'fas fa-file-image text-emerald-600 text-lg';
+          }
+        }
+
+        if (emptyPrompt) emptyPrompt.classList.add('hidden');
+        if (selectedPrompt) selectedPrompt.classList.remove('hidden');
+
+        if (submitBtn) {
+          submitBtn.removeAttribute('disabled');
+          submitBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+          submitBtn.classList.add('shadow-md');
+        }
+        if (submitHint) {
+          const readyMsg = currentLang === 'en' 
+            ? '✓ File ready to upload. Click the button below to submit.'
+            : (currentLang === 'cn' ? '✓ 凭证已准备就绪，点击下方按钮提交。' : '✓ File siap dikirimkan. Klik tombol di bawah untuk menyelesaikan.');
+          submitHint.textContent = readyMsg;
+          submitHint.className = 'text-xs text-emerald-600 font-medium';
+        }
+      } else {
+        if (emptyPrompt) emptyPrompt.classList.remove('hidden');
+        if (selectedPrompt) selectedPrompt.classList.add('hidden');
+        if (submitBtn) {
+          submitBtn.setAttribute('disabled', 'disabled');
+          submitBtn.classList.add('opacity-50', 'cursor-not-allowed');
+          submitBtn.classList.remove('shadow-md');
+        }
+        if (submitHint) {
+          const emptyMsg = currentLang === 'en'
+            ? '* Please select a receipt file above before submitting.'
+            : (currentLang === 'cn' ? '* 提交前请先在上方框中选择凭证文件。' : '* Silakan pilih berkas struk transfer terlebih dahulu di atas.');
+          submitHint.textContent = emptyMsg;
+          submitHint.className = 'text-xs text-gray-400';
         }
       }
     }
+
+    // Drag & Drop and Smart Fallback Initialization
+    document.addEventListener('DOMContentLoaded', function() {
+      const dropArea = document.getElementById('proofDropArea');
+      const fileInput = document.getElementById('paymentProofFile');
+      const submitBtn = document.getElementById('submitProofBtn');
+
+      if (dropArea && fileInput) {
+        ['dragenter', 'dragover'].forEach(eventName => {
+          dropArea.addEventListener(eventName, function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            dropArea.classList.add('border-ccsOrange', 'bg-orange-50/40');
+          }, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+          dropArea.addEventListener(eventName, function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            dropArea.classList.remove('border-ccsOrange', 'bg-orange-50/40');
+          }, false);
+        });
+
+        dropArea.addEventListener('drop', function(e) {
+          const dt = e.dataTransfer;
+          if (dt && dt.files && dt.files.length) {
+            fileInput.files = dt.files;
+            handleProofFileSelect(fileInput);
+          }
+        }, false);
+      }
+
+      // Smart fallback: If user still clicks "Kirim Bukti Pembayaran" before picking file, open file dialog!
+      if (submitBtn && fileInput) {
+        submitBtn.addEventListener('click', function(e) {
+          if (!fileInput.files || !fileInput.files.length) {
+            e.preventDefault();
+            fileInput.click();
+          }
+        });
+      }
+    });
 
     // Toggle Jadwal Tes & Wawancara Sama Hari
     function toggleSameDaySchedule(checked, suffix = '') {

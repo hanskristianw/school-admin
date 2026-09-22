@@ -158,22 +158,51 @@ export async function GET(request) {
         query = query.ilike('parent_phone', `%${phoneSuffix}%`)
       }
 
-      const { data: apps, error } = await query.order('application_id', { ascending: false }).limit(1)
+      // Jika mencari berdasarkan kode registrasi (spesifik 1 anak), limit 1.
+      // Jika mencari berdasarkan email (bisa multi-anak untuk 1 orang tua), ambil hingga 10 data.
+      const fetchLimit = code ? 1 : 10
+      const { data: apps, error } = await query.order('application_id', { ascending: false }).limit(fetchLimit)
 
       if (error || !apps || apps.length === 0) {
         return NextResponse.json(
-          { success: false, message: 'Data pendaftaran tidak ditemukan. Pastikan Nomor Registrasi / Email dan Nomor HP sesuai saat mendaftar.' },
+          { success: false, message: 'Data pendaftaran tidak ditemukan. Pastikan Nomor Registrasi atau Email dan Nomor HP sesuai saat mendaftar.' },
           { status: 404 }
         )
       }
 
-      const app = extractScheduleMeta(apps[0])
+      // Jika pencarian menggunakan kode registrasi atau hanya ditemukan 1 pendaftaran
+      if (code || apps.length === 1) {
+        const app = extractScheduleMeta(apps[0])
+        return NextResponse.json({
+          success: true,
+          data: {
+            ...app,
+            level_name: app.admission_level?.level_name || app.preferred_grade || 'Umum'
+          }
+        })
+      }
+
+      // Jika pencarian menggunakan email dan ditemukan lebih dari 1 calon siswa
+      const formattedList = apps.map(a => {
+        const app = extractScheduleMeta(a)
+        return {
+          application_id: app.application_id,
+          application_number: app.application_number,
+          student_name: app.student_name,
+          student_nickname: app.student_nickname,
+          level_name: app.admission_level?.level_name || app.preferred_grade || 'Umum',
+          status: app.status,
+          form_fee_status: app.form_fee_status,
+          parent_phone: app.parent_phone,
+          created_at: app.created_at
+        }
+      })
+
       return NextResponse.json({
         success: true,
-        data: {
-          ...app,
-          level_name: app.admission_level?.level_name || app.preferred_grade || 'Umum'
-        }
+        multiple: true,
+        data: formattedList,
+        message: `Ditemukan ${apps.length} calon siswa terdaftar dengan email ini. Silakan pilih pendaftaran yang ingin dicek.`
       })
     }
 

@@ -118,7 +118,7 @@ export default function UnifiedAdmissionModal({
   if (!application) return null;
 
   const appNo = application.application_number || 'REG-XXXX';
-  const targetEmailOrNo = application.parent_email || application.application_number;
+  const targetEmailOrNo = application.application_number || application.parent_email;
   const phoneParam = application.parent_phone ? `&phone=${encodeURIComponent(application.parent_phone)}` : '';
   const portalUrl = `https://ccs.sch.id/registrasi/status.php?cek=${encodeURIComponent(targetEmailOrNo)}${phoneParam}`;
 

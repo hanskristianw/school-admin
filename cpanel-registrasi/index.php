@@ -727,7 +727,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action_register_simpl
         </div>
 
         <div class="space-y-3 pt-2">
-          <a href="status.php?cek=<?= urlencode($successReg['parent_email'] ?? '') ?>&phone=<?= urlencode($successReg['parent_phone'] ?? '') ?>&lang=<?= $currLang ?>#tempat-unggah" class="thm-btn w-full sm:w-auto">
+          <a href="status.php?cek=<?= urlencode($successReg['application_number'] ?? '') ?>&phone=<?= urlencode($successReg['parent_phone'] ?? '') ?>&lang=<?= $currLang ?>#tempat-unggah" class="thm-btn w-full sm:w-auto">
             <i class="fas fa-eye mr-1.5"></i> <?= htmlspecialchars($L['btn_check_this']) ?>
           </a>
           <div>
