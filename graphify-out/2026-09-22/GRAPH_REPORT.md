@@ -1,7 +1,7 @@
 # Graph Report - school-admin  (2026-09-22)
 
 ## Corpus Check
-- 396 files · ~677,828 words
+- 396 files · ~678,458 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
@@ -754,7 +754,7 @@ Nodes (5): absen, attendance_scan_log, _backup_absen, _backup_attendance_scan_lo
 
 ### Community 147 - "�🏗️ **Database Structure**"
 Cohesion: 0.18
-Nodes (11): bcryptjs, docx, googleapis, dependencies, bcryptjs, docx, googleapis, pdf-lib (+3 more)
+Nodes (11): bcryptjs, class-variance-authority, googleapis, dependencies, bcryptjs, class-variance-authority, googleapis, pdf-lib (+3 more)
 
 ### Community 149 - "bcryptjs"
 Cohesion: 0.33

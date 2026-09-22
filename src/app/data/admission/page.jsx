@@ -1862,9 +1862,13 @@ export default function AdmissionManagement() {
       'UTJ yang telah dibayarkan tidak dapat dikembalikan jika Pihak Kedua membatalkan pendaftaran.',
       'Perjanjian ini berlaku sejak diterbitkan oleh pihak sekolah.'
     ];
+    const numIndent = 5.5;
+    const textWidth = contentW - 2 - numIndent;
     clauses.forEach((clause, idx) => {
-      const lines = doc.splitTextToSize(`${idx + 1}. ${clause}`, contentW - 4);
-      doc.text(lines, marginL + 2, y);
+      const numStr = `${idx + 1}.`;
+      const lines = doc.splitTextToSize(clause, textWidth);
+      doc.text(numStr, marginL + 2, y);
+      doc.text(lines, marginL + 2 + numIndent, y);
       y += lines.length * 4 + 2;
     });
     y += 6;

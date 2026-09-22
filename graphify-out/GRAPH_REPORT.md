@@ -1,7 +1,7 @@
 # Graph Report - school-admin  (2026-09-22)
 
 ## Corpus Check
-- 396 files · ~678,458 words
+- 396 files · ~678,491 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
@@ -10,7 +10,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `00b9617b`
+- Built from commit: `5f112b3f`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -754,7 +754,7 @@ Nodes (5): absen, attendance_scan_log, _backup_absen, _backup_attendance_scan_lo
 
 ### Community 147 - "�🏗️ **Database Structure**"
 Cohesion: 0.18
-Nodes (11): bcryptjs, class-variance-authority, googleapis, dependencies, bcryptjs, class-variance-authority, googleapis, pdf-lib (+3 more)
+Nodes (11): bcryptjs, docx, googleapis, dependencies, bcryptjs, docx, googleapis, pdf-lib (+3 more)
 
 ### Community 149 - "bcryptjs"
 Cohesion: 0.33
