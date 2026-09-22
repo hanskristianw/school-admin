@@ -1331,7 +1331,7 @@ export default function IncidentHandlingApprovalPage() {
                               }}
                             >
                               <FontAwesomeIcon icon={faEye} className="mr-1.5 text-[10px]" />
-                              Review
+                              Preview
                             </button>
                             {canDelete && (
                               <button
