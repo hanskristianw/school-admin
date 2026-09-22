@@ -50,6 +50,123 @@ export const sanitizePdfText = (str) => {
 }
 
 /**
+ * Checks if a string contains characters outside standard Latin-1 (e.g. Chinese CJK, Pinyin with tone marks, etc.)
+ */
+export const containsNonLatin = (str) => {
+  if (!str || typeof str !== 'string') return false
+  return /[^\x00-\xFF]/.test(str)
+}
+
+/**
+ * Wraps text into lines handling both CJK characters (which can break anywhere)
+ * and Western words (which break on spaces).
+ */
+export const wrapMixedText = (text, maxWidthPx, measureFn) => {
+  const paragraphs = text.split('\n')
+  const lines = []
+
+  for (const para of paragraphs) {
+    if (!para.trim()) {
+      lines.push('')
+      continue
+    }
+
+    // Tokenize: match CJK characters / fullwidth punctuation individually, sequences of non-CJK, or whitespace
+    const tokens = para.match(/[\u4e00-\u9fff\u3400-\u4dbf\u3000-\u303f\uff00-\uffef]|[^\s\u4e00-\u9fff\u3400-\u4dbf\u3000-\u303f\uff00-\uffef]+|\s+/g) || [para]
+
+    let currentLine = ''
+
+    for (let i = 0; i < tokens.length; i++) {
+      const token = tokens[i]
+
+      // If starting a new line and token is whitespace, skip it
+      if (!currentLine && /^\s+$/.test(token)) {
+        continue
+      }
+
+      const testLine = currentLine + token
+      const testWidth = measureFn(testLine)
+
+      if (testWidth <= maxWidthPx) {
+        currentLine = testLine
+      } else {
+        if (currentLine) {
+          lines.push(currentLine.trimEnd())
+          currentLine = /^\s+$/.test(token) ? '' : token
+        } else {
+          lines.push(token)
+          currentLine = ''
+        }
+      }
+    }
+
+    if (currentLine) {
+      lines.push(currentLine.trimEnd())
+    }
+  }
+
+  return lines
+}
+
+/**
+ * Renders mixed Latin and CJK / Unicode text onto a high-DPI canvas and draws it onto the jsPDF doc.
+ * Preserves Chinese characters and pinyin tones while keeping the rest of the document's font intact.
+ */
+export const renderUnicodeTextToPdf = (doc, text, xMm, yMm, widthMm, options = {}) => {
+  if (typeof document === 'undefined') return 0
+
+  const fontSizePt = options.fontSizePt || 10
+  const lineHeightMm = options.lineHeightMm || 5.2
+  const textColor = options.textColor || '#1F2937'
+  const fontFamily = options.fontFamily || 'Helvetica, Arial, "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", "SimHei", sans-serif'
+
+  // Conversion: 1mm = 3.779528 CSS pixels (at 96 DPI)
+  const pxPerMm = 3.779528
+  const cssWidth = widthMm * pxPerMm
+  const fontSizePx = fontSizePt * (96 / 72)
+  const lineHeightPx = lineHeightMm * pxPerMm
+
+  // Measuring canvas
+  const measureCanvas = document.createElement('canvas')
+  const measureCtx = measureCanvas.getContext('2d')
+  if (!measureCtx) return 0
+
+  const fontString = `normal ${fontSizePx}px ${fontFamily}`
+  measureCtx.font = fontString
+
+  const lines = wrapMixedText(text, cssWidth, (s) => measureCtx.measureText(s).width)
+  if (lines.length === 0) return 0
+
+  // DPR scale factor for crisp vector-like print quality (3x = ~288-300 DPI)
+  const dpr = 3
+  const totalHeightPx = lines.length * lineHeightPx + 4
+
+  const canvas = document.createElement('canvas')
+  canvas.width = Math.ceil(cssWidth * dpr)
+  canvas.height = Math.ceil(totalHeightPx * dpr)
+
+  const renderCtx = canvas.getContext('2d')
+  if (!renderCtx) return 0
+
+  renderCtx.scale(dpr, dpr)
+  renderCtx.font = fontString
+  renderCtx.fillStyle = textColor
+  renderCtx.textBaseline = 'top'
+
+  let textY = 0
+  lines.forEach((line) => {
+    renderCtx.fillText(line, 0, textY)
+    textY += lineHeightPx
+  })
+
+  const imgData = canvas.toDataURL('image/png')
+  const renderedHeightMm = totalHeightPx / pxPerMm
+
+  doc.addImage(imgData, 'PNG', xMm, yMm, widthMm, renderedHeightMm)
+  return renderedHeightMm
+}
+
+/**
  * Draws the IB Primary Years Programme Logo vector badge on jsPDF
  */
 export const drawIbPypLogo = (doc, x, y, width = 42, height = 14) => {
@@ -3056,17 +3173,27 @@ export const renderNurseryLearningProgressionSuggestionPage = (doc, {
   doc.text('Suggestion(s) to move forward', ml, y)
 
   y += 8
-  const trimmed = sanitizePdfText(suggestionText || '').trim()
-  if (trimmed) {
-    doc.setFont('helvetica', 'normal')
-    doc.setFontSize(10)
-    doc.setTextColor(31, 41, 55) // #1F2937
-    const lines = doc.splitTextToSize(trimmed, cw)
-    const lineHeight = 5.2
-    lines.forEach((line) => {
-      doc.text(line, ml, y)
-      y += lineHeight
-    })
+  const rawSuggestion = (suggestionText || '').trim()
+  if (rawSuggestion) {
+    if (containsNonLatin(rawSuggestion) && typeof document !== 'undefined') {
+      const addedH = renderUnicodeTextToPdf(doc, rawSuggestion, ml, y - 2.5, cw, {
+        fontSizePt: 10,
+        lineHeightMm: 5.2,
+        textColor: '#1F2937'
+      })
+      y += addedH
+    } else {
+      const trimmed = sanitizePdfText(rawSuggestion)
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(10)
+      doc.setTextColor(31, 41, 55) // #1F2937
+      const lines = doc.splitTextToSize(trimmed, cw)
+      const lineHeight = 5.2
+      lines.forEach((line) => {
+        doc.text(line, ml, y)
+        y += lineHeight
+      })
+    }
   } else {
     doc.setFont('helvetica', 'italic')
     doc.setFontSize(10)
