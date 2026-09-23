@@ -1,0 +1,115 @@
+Year,Topic/unit (as identified in the IB subject guide),Contents,Allocated time
+Year 1,"Topic 1: System Fundamentals (hal. 11, 18–22)","1.1.1 - 1.1.3 Planning and change management: context of new system, organizational issues, need for change management, and compatibility issues (legacy systems, mergers)","SL: 2 Classes (90 Min)
+HL: 2 Classes (90 Min)"
+,,"1.1.4 - 1.1.5 System implementation & installation: SaaS remote hosting vs client hardware, and alternative installation processes (parallel, pilot, direct changeover, phased conversion)","SL: 2 Classes (90 Min)
+HL: 2 Classes (90 Min)"
+,,"1.1.6 - 1.1.7 Data migration & system testing: migration problems (incompatible formats, validation rules, character sets) and testing strategies (user acceptance, debugging, beta, automated testing)","SL: 1 Classes (45 Min)
+HL: 1 Classes (45 Min)"
+,,"1.1.8 - 1.1.10 User focus: importance and methods of user documentation (help files, online support, manuals) and user training methods (self-instruction, formal classes, remote training)","SL: 3 Classes (135 Min)
+HL: 3 Classes (135 Min)"
+,,"1.1.11 - 1.1.13 System backup: causes and consequences of data loss, and prevention methods (failover systems, redundancy, removable media, offsite/online storage)","SL: 3 Classes (135 Min)
+HL: 3 Classes (135 Min)"
+,,"1.1.14 Software deployment: strategies for managing releases and updates (patches, automatic updates)","SL: 2 Classes (90 Min)
+HL: 2 Classes (90 Min)"
+,,"1.2.1 - 1.2.3 Components of a computer system: hardware, software, peripherals, network, human resources, roles of computers (server, router, firewall), and networked world ethics","SL: 3 Classes (135 Min)
+HL: 3 Classes (135 Min)"
+,,"1.2.4 - 1.2.6 Stakeholder requirements: identifying stakeholders, methods of obtaining requirements (surveys, interviews, observations), and information gathering techniques","SL: 2 Classes (90 Min)
+HL: 2 Classes (90 Min)"
+,,"1.2.7 - 1.2.9 System modeling & design cycle: representations (flow charts, DFDs, structure charts), prototyping purpose, and iterative design cycle","SL: 3 Classes (135 Min)
+HL: 3 Classes (135 Min)"
+,,1.2.10 - 1.2.11 End-user involvement & social impact: consequences of failing to involve end-users and social/ethical issues of introducing new IT systems,"SL: 2 Classes (90 Min)
+HL: 2 Classes (90 Min)"
+,,"1.2.12 - 1.2.16 Human interaction with the system: usability definitions (ergonomics/accessibility), usability problems in devices/systems, accessibility improvement methods, and human-machine implications","SL: 4 Classes (180 Min)
+HL: 4 Classes (180 Min)"
+,"Topic 2: Computer organization (hal. 11, 22–25)","2.1.1 - 2.1.4 Computer architecture: CPU architecture (ALU, CU, MAR, MDR registers), primary memory (RAM vs ROM), cache memory, and machine instruction cycle (data/address bus)","SL: 2 Classes (90 Min)
+HL: 2 Classes (90 Min)"
+,,2.1.5 Secondary memory: need for persistent storage (non-volatile storage),"SL: 1 Classes (45 Min)
+HL: 1 Classes (45 Min)"
+,,"2.1.6 - 2.1.8 Operating systems & applications: functions of an operating system (memory management), application software range, and common GUI/OS features","SL: 1 Classes (45 Min)
+HL: 1 Classes (45 Min)"
+,,"2.1.9 - 2.1.10 Binary representation: bits, bytes, binary, decimal, hexadecimal, and data representations (strings, integers, characters, colors, Unicode)","SL: 2 Classes (90 Min)
+HL: 2 Classes (90 Min)"
+,,"2.1.11 - 2.1.13 Logic gates: Boolean operators (AND, OR, NOT, NAND, NOR, XOR), truth tables, and logic diagrams","SL: 2 Classes (90 Min)
+HL: 2 Classes (90 Min)"
+,"Topic 4: Computational thinking, problem-solving and programming (hal. 11, 27–34)","4.1.1 - 4.1.3 Thinking procedurally: procedure identification, order of activities, and role of sub-procedures","SL: 3 Classes (135 Min)
+HL: 3 Classes (135 Min)"
+,,"4.1.4 - 4.1.8 Thinking logically: decision-making, Boolean conditions (AND, OR, NOT), IF...THEN...ELSE, and deducing logical rules","SL: 3 Classes (135 Min)
+HL: 3 Classes (135 Min)"
+,,"4.1.9 - 4.1.13 Thinking ahead: inputs/outputs, pre-planning (Gantt, caching), pre/post-conditions, and exceptions","SL: 3 Classes (135 Min)
+HL: 3 Classes (135 Min)"
+,,"4.1.14 - 4.1.16 Thinking concurrently: identifying concurrent parts, concurrent processing, and evaluating concurrency","SL: 2 Classes (90 Min)
+HL: 2 Classes (90 Min)"
+,,"4.1.17 - 4.1.20 Thinking abstractly: abstraction examples, necessity of abstraction, successive decomposition, and real-world vs abstraction","SL: 2 Classes (90 Min)
+HL: 2 Classes (90 Min)"
+,,"4.2.1 - 4.2.3 Standard algorithms & collections: linear array algorithms (sequential search, binary search, bubble sort, selection sort), collection operations, and algorithm discussion","SL: 8 Classes (360 Min)
+HL: 8 Classes (360 Min)"
+,,"4.2.4 - 4.2.6 Algorithm representations: flowchart analysis, pseudocode analysis (variables, nested loops, conditionals), and constructing pseudocode","SL: 11 Classes (495 Min)
+HL: 11 Classes (495 Min)"
+,,"4.2.7 - 4.2.9 Algorithm efficiency & tracing: suggesting algorithms, deducing efficiency (loop complexity), and determining step execution/iteration counts","SL: 10 Classes (450 Min)
+HL: 10 Classes (450 Min)"
+,,"4.3.1 - 4.3.5 Programming languages nature: fundamental & compound operations, language features, higher level languages, and translation (compilers, interpreters, virtual machines)","SL: 4 Classes (180 Min)
+HL: 4 Classes (180 Min)"
+,,"4.3.6 - 4.3.9 Language constructs & control structures: variables, constants, operators, loops (for, while, do-while), and branching","SL: 6 Classes (270 Min)
+HL: 6 Classes (270 Min)"
+,,"4.3.10 - 4.3.13 Sub-programmes & data structures: collection characteristics & access methods, sub-programmes/methods modularity, and 1D arrays","SL: 8 Classes (360 Min)
+HL: 8 Classes (360 Min)"
+,"Group 4 Project (hal. 11, 86–90)","Group 4 Project: Interdisciplinary collaborative science project (planning 2h, action 6h, evaluation 2h)","SL: 13 Classes (585 Min)
+HL: 13 Classes (585 Min)"
+,"Internal Assessment (IA) Stage 1 (hal. 11, 74–77)","IA Criterion A - Planning (hal. 74–77, 81): client identification, problem scenario analysis, rationale for proposed solution, and bulleted success criteria formulation","SL: 5 Classes (225 Min)
+HL: 5 Classes (225 Min)"
+,,"IA Criterion B - Solution overview & Record of tasks (hal. 74–77, 82): chronology of tasks, detailed design overview (flowcharts, UML diagrams, GUI layouts), and test plan design","SL: 7 Classes (315 Min)
+HL: 7 Classes (315 Min)"
+,"Topic 5: Abstract data structures [HL Extension] (hal. 11, 35–37)","5.1.1 - 5.1.3 Thinking recursively: recursive thinking situations (fractals, Towers of Hanoi), recursion in solutions, and tracing recursive algorithms","SL: ---
+HL: 5 Classes (225 Min) [HL Extension]"
+,,5.1.4 - 5.1.5 Two-dimensional arrays: characteristics and algorithms on two-dimensional arrays,"SL: ---
+HL: 2 Classes (90 Min) [HL Extension]"
+,,"5.1.6 - 5.1.7, 5.1.10 Stacks & static arrays: stack characteristics (LIFO), applications, push/pop/isEmpty, and array implementation of static stacks","SL: ---
+HL: 6 Classes (270 Min) [HL Extension]"
+,,"5.1.8 - 5.1.10 Queues & circular queues: queue characteristics (FIFO), applications, enqueue/dequeue/isEmpty, circular queues, and array implementation","SL: ---
+HL: 6 Classes (270 Min) [HL Extension]"
+,,"5.1.11 - 5.1.13 Linked lists: dynamic data structures, nodes and pointers, logical operation, and sketching single/double/circular linked lists (insert, delete, search)","SL: ---
+HL: 5 Classes (225 Min) [HL Extension]"
+,,"5.1.14 - 5.1.17 Binary trees: tree logical operation, root, parent, left/right child, subtree, leaf, tree traversals (preorder, inorder, postorder), and sketching binary trees","SL: ---
+HL: 4 Classes (180 Min) [HL Extension]"
+,,"5.1.18 - 5.1.20 Applications: static vs dynamic data structures comparison, and suitability for specified problems","SL: ---
+HL: 3 Classes (135 Min) [HL Extension]"
+,"Topic 6: Resource management [HL Extension] (hal. 11, 38–39)","6.1.1 - 6.1.4 System resources: primary memory, secondary storage, processor speed, bandwidth, resource limitations, and problems in multi-access/multiprogramming","SL: ---
+HL: 5 Classes (225 Min) [HL Extension]"
+,,"6.1.5 - 6.1.9 Operating system role: memory management, peripheral management, OS resource techniques (scheduling, multitasking, virtual memory, paging, interrupt, polling), dedicated OS, and hardware virtualization","SL: ---
+HL: 6 Classes (270 Min) [HL Extension]"
+,"Topic 7: Control [HL Extension] (hal. 11, 39–40)","7.1.1 - 7.1.3 Centralized control systems: control systems range (automatic doors, heating, elevators, robots), microprocessors, sensors, and input devices","SL: ---
+HL: 6 Classes (270 Min) [HL Extension]"
+,,"7.1.4 - 7.1.6 Transducers, feedback & ethics: sensors, processors, output transducers, role of feedback, and social/ethical impacts of embedded systems","SL: ---
+HL: 6 Classes (270 Min) [HL Extension]"
+,,"7.1.7 - 7.1.8 Distributed systems & autonomous agents: centrally controlled vs distributed systems, and role of autonomous agents","SL: ---
+HL: 6 Classes (270 Min) [HL Extension]"
+Year 2,"Topic 3: Networks (hal. 11, 25–27)","3.1.1 - 3.1.5 Network fundamentals: LAN, VLAN, WAN, SAN, WLAN, VPN, OSI 7-layer model awareness, and VPN evaluation","SL: 4 Classes (180 Min)
+HL: 4 Classes (180 Min)"
+,,"3.1.6 - 3.1.11 Data transmission: protocols, data packets, transmission speed factors, data compression, transmission media (metal, fiber, wireless), and packet switching","SL: 4 Classes (180 Min)
+HL: 4 Classes (180 Min)"
+,,"3.1.12 - 3.1.16 Wireless networking & security: advantages/disadvantages of wireless, components, WiFi, WiMAX, network security methods (encryption, userID, MAC), and security evaluation","SL: 4 Classes (180 Min)
+HL: 4 Classes (180 Min)"
+,"Option D: Object-oriented programming (hal. 11, 57–64)","D.1.1 - D.1.10 Objects as a programming concept: objects, instantiation, UML diagrams, decomposition (3–5 objects), relationships (dependency, aggregation, inheritance), data types, and parameter passing","SL: 8 Classes (360 Min)
+HL: 8 Classes (360 Min)"
+,,"D.2.1 - D.2.10 Features of OOP: encapsulation, inheritance, polymorphism, libraries, disadvantages of OOP, programming teams, and modularity","SL: 7 Classes (315 Min)
+HL: 7 Classes (315 Min)"
+,,"D.3.1 - D.3.10 Program development in Java: classes, methods, access modifiers, primitives vs String, selection & repetition control structures, static arrays, internationalization, and programmer ethics","SL: 25 Classes (1125 Min)
+HL: 25 Classes (1125 Min)"
+,"Option D: OOP (HL Extension D.4) (hal. 11, 61–64)","D.4.1 - D.4.6 Recursion & object references: recursion application, recursive algorithms, tracing recursion, object references, and reference mechanisms in Java","SL: ---
+HL: 7 Classes (315 Min) [HL Extension]"
+,,"D.4.7 - D.4.10 Abstract Data Type (ADT) lists: static implementation of lists (add, insert, delete, isEmpty, isFull) and list algorithms using object references","SL: ---
+HL: 6 Classes (270 Min) [HL Extension]"
+,,"D.4.11 - D.4.15 JETS library collections & ADTs: ArrayList and LinkedList in JETS, tracing collection algorithms, ADT stack, queue, binary tree in OOP, and code naming conventions","SL: ---
+HL: 7 Classes (315 Min) [HL Extension]"
+,"Case Study [HL Extension] (hal. 11, 71–73)","Case Study Phase 1 - Scenario analysis & technical terminology (hal. 71–73): background investigation of the organization, systems context, user roles, and domain-specific vocabulary","SL: ---
+HL: 10 Classes (450 Min) [HL Extension]"
+,,"Case Study Phase 2 - In-depth technical research & global context (hal. 71–73): investigating hardware/software architectures, comparison with real-world technologies, and evaluating social/ethical implications","SL: ---
+HL: 15 Classes (675 Min) [HL Extension]"
+,,"Case Study Phase 3 - Strategic solutions & Paper 3 exam preparation (hal. 71–73): formulating and justifying strategic technical recommendations, structured questions analysis, and extended synthesis responses (Question 4)","SL: ---
+HL: 15 Classes (675 Min) [HL Extension]"
+,"Internal Assessment (IA) Stage 2 (hal. 11, 74–85)","IA Criterion C - Development & Technical Implementation (hal. 74–85, 82–83): coding the software product, implementing complex algorithmic techniques & data structures, modularity, code documentation, and authenticity checks","SL: 16 Classes (720 Min)
+HL: 16 Classes (720 Min)"
+,,"IA Criterion D - Functionality, Testing & Video Demonstration (hal. 74–85, 83): comprehensive execution testing against test plan, recording 2–7 minute unedited video demonstrating product functionality, and documenting product extensibility","SL: 6 Classes (270 Min)
+HL: 6 Classes (270 Min)"
+,,"IA Criterion E - Evaluation & Client Feedback (hal. 74–85, 83): testing product with real client, collecting client feedback, evaluating against Criterion A success criteria, and justifying future development recommendations","SL: 6 Classes (270 Min)
+HL: 6 Classes (270 Min)"
