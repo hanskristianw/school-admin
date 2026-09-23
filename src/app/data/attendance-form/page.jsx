@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation'
 import { useTheme } from '@/lib/theme'
 import { supabase } from '@/lib/supabase'
 import { useI18n } from '@/lib/i18n'
-import Cropper from 'react-easy-crop'
 import imageCompression from 'browser-image-compression'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import {
@@ -87,94 +86,9 @@ function stripEmoji(str) {
 
 // ─── Image helpers ───────────────────────────────────────────────────────────
 
-function createImage(url) {
-  return new Promise((resolve, reject) => {
-    const img = new Image()
-    img.addEventListener('load', () => resolve(img))
-    img.addEventListener('error', reject)
-    img.setAttribute('crossOrigin', 'anonymous')
-    img.src = url
-  })
-}
-
-async function getCroppedBlob(imageSrc, pixelCrop) {
-  const img    = await createImage(imageSrc)
-  const canvas = document.createElement('canvas')
-  canvas.width  = pixelCrop.width
-  canvas.height = pixelCrop.height
-  const ctx = canvas.getContext('2d')
-  ctx.drawImage(img, pixelCrop.x, pixelCrop.y, pixelCrop.width, pixelCrop.height, 0, 0, pixelCrop.width, pixelCrop.height)
-  return new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.96))
-}
-
 async function compressImage(file) {
   const options = { maxSizeMB: 0.8, maxWidthOrHeight: 1920, useWebWorker: true, fileType: 'image/jpeg', initialQuality: 0.92, alwaysKeepResolution: false }
   try { return await imageCompression(file, options) } catch { return file }
-}
-
-// ─── Crop Modal ───────────────────────────────────────────────────────────────
-
-function ImageCropModal({ src, onDone, onCancel }) {
-  const { theme, isDark: themeIsDark } = useTheme()
-  const isDark = themeIsDark || theme.type === 'dark' || theme.name === 'dark' || theme.cardBg?.includes('#1') || theme.cardBg?.includes('#2')
-  const { t } = useI18n()
-  const [crop, setCrop]               = useState({ x: 0, y: 0 })
-  const [zoom, setZoom]               = useState(1)
-  const [croppedArea, setCroppedArea] = useState(null)
-  const [applying, setApplying]       = useState(false)
-
-  const cardBg        = isDark ? '#18181B' : '#FFFFFF'
-  const subtleBg      = isDark ? '#27272A' : '#F7F6F3'
-  const borderColor   = isDark ? '#27272A' : '#EAEAEA'
-  const textPrimary   = isDark ? '#F4F4F5' : '#111111'
-  const textSecondary = isDark ? '#A1A1AA' : '#787774'
-
-  const handleCropComplete = useCallback((_, croppedAreaPixels) => { setCroppedArea(croppedAreaPixels) }, [])
-
-  const handleApply = async () => {
-    if (!croppedArea) return
-    setApplying(true)
-    try { const blob = await getCroppedBlob(src, croppedArea); onDone(blob) }
-    finally { setApplying(false) }
-  }
-
-  return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 99999, background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(4px)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-      <div style={{ width: '100%', maxWidth: 480, background: cardBg, borderRadius: '12px', overflow: 'hidden', border: `1px solid ${borderColor}`, display: 'flex', flexDirection: 'column', boxShadow: isDark ? '0 20px 50px rgba(0,0,0,0.6)' : '0 20px 40px rgba(0,0,0,0.1)' }}>
-        {/* Title */}
-        <div style={{ padding: '16px 20px 12px', borderBottom: `1px solid ${borderColor}`, display: 'flex', alignItems: 'flex-start', justifyContent: 'between' }}>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontWeight: 600, fontSize: 14, color: textPrimary, letterSpacing: '-0.01em' }}>{t('attendanceForm.cropModal.title')}</div>
-            <div style={{ fontSize: 12, color: textSecondary, marginTop: 2 }}>{t('attendanceForm.cropModal.subtitle')}</div>
-          </div>
-          <button onClick={onCancel} style={{ color: textSecondary, background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}>
-            <FontAwesomeIcon icon={faTimes} className="text-sm" />
-          </button>
-        </div>
-        {/* Crop area */}
-        <div style={{ position: 'relative', width: '100%', height: 300, background: '#09090B' }}>
-          <Cropper image={src} crop={crop} zoom={zoom} aspect={undefined} onCropChange={setCrop} onZoomChange={setZoom} onCropComplete={handleCropComplete} style={{ containerStyle: { borderRadius: 0 } }} />
-        </div>
-        {/* Zoom slider */}
-        <div style={{ padding: '12px 20px', borderTop: `1px solid ${borderColor}`, flexShrink: 0 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-            <span style={{ fontSize: 11, color: textSecondary }}>{t('attendanceForm.cropModal.zoom')}</span>
-            <span style={{ fontSize: 11, color: textPrimary, fontFamily: 'monospace' }}>{zoom.toFixed(1)}×</span>
-          </div>
-          <input type="range" min={1} max={3} step={0.05} value={zoom} onChange={e => setZoom(Number(e.target.value))} style={{ width: '100%', accentColor: isDark ? '#F4F4F5' : '#111111' }} />
-        </div>
-        {/* Buttons */}
-        <div style={{ display: 'flex', gap: 8, padding: '0 20px 20px' }}>
-          <button onClick={onCancel} style={{ flex: 1, padding: '9px 0', borderRadius: '6px', border: `1px solid ${borderColor}`, background: subtleBg, color: textPrimary, fontSize: 12, fontWeight: 500, cursor: 'pointer' }}>
-            {t('attendanceForm.cropModal.btnCancel')}
-          </button>
-          <button onClick={handleApply} disabled={applying} style={{ flex: 2, padding: '9px 0', borderRadius: '6px', border: 'none', background: isDark ? '#F4F4F5' : '#111111', color: isDark ? '#111111' : '#FFFFFF', fontSize: 12, fontWeight: 600, cursor: applying ? 'default' : 'pointer', opacity: applying ? 0.6 : 1 }}>
-            {applying ? t('attendanceForm.cropModal.btnApplying') : t('attendanceForm.cropModal.btnApply')}
-          </button>
-        </div>
-      </div>
-    </div>
-  )
 }
 
 // ─── Excuse Modal (Submit + Edit) ────────────────────────────────────────────
@@ -197,7 +111,6 @@ function ExcuseModal({ record, excuse, userId, leaveTypes, onClose, onSuccess })
   const [msg, setMsg]                 = useState('')
   const [uploadFile, setUploadFile]   = useState(null)
   const [processedFile, setProcessedFile] = useState(null)
-  const [cropSrc, setCropSrc]         = useState(null)
   const [compressing, setCompressing] = useState(false)
   const [uploading, setUploading]     = useState(false)
   const [quotaInfo, setQuotaInfo]     = useState(null)
@@ -256,26 +169,29 @@ function ExcuseModal({ record, excuse, userId, leaveTypes, onClose, onSuccess })
   const ic = ISSUE_CONFIG[issueType] || ISSUE_CONFIG.absent
   const isImage = (f) => f && f.type.startsWith('image/')
 
-  const handleFileSelect = (file) => {
+  const handleFileSelect = async (file) => {
     if (!file) return
     setUploadFile(file)
     setProcessedFile(null)
-    if (isImage(file)) { const url = URL.createObjectURL(file); setCropSrc(url) }
-    else { setProcessedFile(file) }
+    if (isImage(file)) {
+      setCompressing(true)
+      try {
+        const compressed = await compressImage(file)
+        const named = new File([compressed], (file.name?.replace(/\.[^.]+$/, '') || 'attachment') + '.jpg', { type: 'image/jpeg' })
+        setProcessedFile(named)
+      } catch (err) {
+        console.warn('Compression failed, using original file:', err)
+        setProcessedFile(file)
+      } finally {
+        setCompressing(false)
+      }
+    } else {
+      setProcessedFile(file)
+    }
   }
 
-  const handleCropDone = async (blob) => {
-    setCropSrc(null); setCompressing(true)
-    try {
-      const compressed = await compressImage(blob)
-      const named = new File([compressed], (uploadFile?.name?.replace(/\.[^.]+$/, '') || 'attachment') + '.jpg', { type: 'image/jpeg' })
-      setProcessedFile(named)
-    } finally { setCompressing(false) }
-  }
-
-  const handleCropCancel = () => { setCropSrc(null); setUploadFile(null); setProcessedFile(null) }
-  const clearFile = () => { setUploadFile(null); setProcessedFile(null); setCropSrc(null) }
-  const fileToUpload = processedFile || (uploadFile && !isImage(uploadFile) ? uploadFile : null)
+  const clearFile = () => { setUploadFile(null); setProcessedFile(null) }
+  const fileToUpload = processedFile || uploadFile || null
 
   const uploadAttachment = async () => {
     if (!fileToUpload) return excuse?.attachment_url || null
@@ -295,7 +211,6 @@ function ExcuseModal({ record, excuse, userId, leaveTypes, onClose, onSuccess })
     if (!category) { setMsg(t('attendanceForm.modal.errNoCategory')); return }
     if (category === 'other' && !otherReason.trim()) { setMsg(t('attendanceForm.modal.errNoOther')); return }
     if (requireUpload && !fileToUpload && !excuse?.attachment_url) { setMsg(t('attendanceForm.modal.errNoFile')); return }
-    if (cropSrc) { setMsg(t('attendanceForm.modal.errCropFirst')); return }
     setSubmitting(true); setMsg('')
     try {
       const attachmentUrl = fileToUpload ? await uploadAttachment() : (excuse?.attachment_url || null)
@@ -316,7 +231,6 @@ function ExcuseModal({ record, excuse, userId, leaveTypes, onClose, onSuccess })
   const inputStyle = { width: '100%', background: cardBg, border: `1px solid ${borderColor}`, color: textPrimary, borderRadius: '6px', padding: '9px 12px', fontSize: '13px', outline: 'none' }
 
   return (
-    <>
     <div onClick={handleBackdrop} style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(3px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', overflowY: 'auto' }}>
       <div style={{ background: cardBg, borderRadius: '12px', width: '100%', maxWidth: '480px', border: `1px solid ${borderColor}`, display: 'flex', flexDirection: 'column', maxHeight: 'calc(100vh - 32px)', boxShadow: isDark ? '0 20px 60px rgba(0,0,0,0.6)' : '0 20px 40px rgba(0,0,0,0.08)' }}>
         {/* Header */}
@@ -442,7 +356,7 @@ function ExcuseModal({ record, excuse, userId, leaveTypes, onClose, onSuccess })
                   <FontAwesomeIcon icon={faCheckCircle} className="text-xs" />
                   <span className="font-medium">{fileToUpload.name}</span>
                   <span style={{ color: textSecondary, marginLeft: 4 }} className="font-mono">({(fileToUpload.size / 1024).toFixed(0)} KB)</span>
-                  {isImage(uploadFile) && <span style={{ color: isDark ? '#86EFAC' : '#2A6335', marginLeft: 2 }}>{t('attendanceForm.modal.croppedBadge')}</span>}
+                  {isImage(uploadFile) && <span style={{ color: isDark ? '#86EFAC' : '#2A6335', marginLeft: 2 }}>(Full Size)</span>}
                 </div>
               )}
               <div className="flex items-center gap-2">
@@ -503,10 +417,6 @@ function ExcuseModal({ record, excuse, userId, leaveTypes, onClose, onSuccess })
         </div>
       </div>
     </div>
-
-    {/* Crop modal */}
-    {cropSrc && <ImageCropModal src={cropSrc} onDone={handleCropDone} onCancel={handleCropCancel} />}
-    </>
   )
 }
 
@@ -587,7 +497,6 @@ function TemporaryExitModal({ userId, onClose, onSuccess }) {
   const [msg, setMsg]                 = useState('')
   const [uploadFile, setUploadFile]   = useState(null)
   const [processedFile, setProcessedFile] = useState(null)
-  const [cropSrc, setCropSrc]         = useState(null)
   const [compressing, setCompressing] = useState(false)
   const [uploading, setUploading]     = useState(false)
 
@@ -599,24 +508,28 @@ function TemporaryExitModal({ userId, onClose, onSuccess }) {
     { value: 'other',               label: 'Other' },
   ]
 
-  const handleFileSelect = (file) => {
+  const handleFileSelect = async (file) => {
     if (!file) return
     setUploadFile(file)
     setProcessedFile(null)
-    if (file.type.startsWith('image/')) { const url = URL.createObjectURL(file); setCropSrc(url) }
-    else { setProcessedFile(file) }
+    if (file.type.startsWith('image/')) {
+      setCompressing(true)
+      try {
+        const compressed = await compressImage(file)
+        const named = new File([compressed], (file.name?.replace(/\.[^.]+$/, '') || 'attachment') + '.jpg', { type: 'image/jpeg' })
+        setProcessedFile(named)
+      } catch (err) {
+        console.warn('Compression failed, using original file:', err)
+        setProcessedFile(file)
+      } finally {
+        setCompressing(false)
+      }
+    } else {
+      setProcessedFile(file)
+    }
   }
 
-  const handleCropDone = async (blob) => {
-    setCropSrc(null); setCompressing(true)
-    try {
-      const compressed = await compressImage(blob)
-      const named = new File([compressed], (uploadFile?.name?.replace(/\.[^.]+$/, '') || 'attachment') + '.jpg', { type: 'image/jpeg' })
-      setProcessedFile(named)
-    } finally { setCompressing(false) }
-  }
-
-  const fileToUpload = processedFile || (uploadFile && !uploadFile.type.startsWith('image/') ? uploadFile : null)
+  const fileToUpload = processedFile || uploadFile || null
 
   const uploadAttachment = async () => {
     if (!fileToUpload) return null
@@ -635,7 +548,6 @@ function TemporaryExitModal({ userId, onClose, onSuccess }) {
   const handleSubmit = async () => {
     if (!category) { setMsg('Please select a reason category'); return }
     if (category === 'other' && !otherReason.trim()) { setMsg('Please specify your reason'); return }
-    if (cropSrc) { setMsg('Please finish cropping your image first'); return }
     setSubmitting(true); setMsg('')
     try {
       const attachmentUrl = fileToUpload ? await uploadAttachment() : null
@@ -662,7 +574,6 @@ function TemporaryExitModal({ userId, onClose, onSuccess }) {
   const inputStyle = { width: '100%', background: cardBg, border: `1px solid ${borderColor}`, color: textPrimary, borderRadius: '6px', padding: '9px 12px', fontSize: '13px', outline: 'none' }
 
   return (
-    <>
     <div onClick={e => { if (e.target === e.currentTarget) onClose() }} style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(3px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', overflowY: 'auto' }}>
       <div style={{ background: cardBg, borderRadius: '12px', width: '100%', maxWidth: '480px', border: `1px solid ${borderColor}`, display: 'flex', flexDirection: 'column', maxHeight: 'calc(100vh - 32px)', boxShadow: isDark ? '0 20px 60px rgba(0,0,0,0.6)' : '0 20px 40px rgba(0,0,0,0.08)' }}>
         {/* Header */}
@@ -747,10 +658,18 @@ function TemporaryExitModal({ userId, onClose, onSuccess }) {
             <label className="text-xs font-medium block mb-1.5" style={{ color: textSecondary }}>
               Attachment / Official Document (Optional)
             </label>
+            {compressing && (
+              <div className="flex items-center gap-2 mb-2 px-3 py-2 rounded-md text-xs" style={{ background: isDark ? 'rgba(59, 130, 246, 0.1)' : '#E1F3FE', border: `1px solid ${isDark ? 'rgba(59, 130, 246, 0.3)' : '#BFDBFE'}`, color: isDark ? '#93C5FD' : '#185ADB' }}>
+                <FontAwesomeIcon icon={faSpinner} spin className="text-xs" />
+                <span>Optimizing image (full size)...</span>
+              </div>
+            )}
             {fileToUpload && !compressing && (
               <div className="flex items-center gap-2 mb-2 px-3 py-2 rounded-md text-xs" style={{ background: isDark ? 'rgba(34, 197, 94, 0.1)' : '#EDF3EC', border: `1px solid ${isDark ? 'rgba(34, 197, 94, 0.3)' : '#D1E7DD'}`, color: isDark ? '#86EFAC' : '#2A6335' }}>
                 <FontAwesomeIcon icon={faCheckCircle} className="text-xs" />
                 <span className="font-medium">{fileToUpload.name}</span>
+                <span style={{ color: textSecondary, marginLeft: 4 }} className="font-mono">({(fileToUpload.size / 1024).toFixed(0)} KB)</span>
+                {uploadFile && uploadFile.type?.startsWith('image/') && <span style={{ color: isDark ? '#86EFAC' : '#2A6335', marginLeft: 2 }}>(Full Size)</span>}
               </div>
             )}
             <div className="flex items-center gap-2">
@@ -785,13 +704,11 @@ function TemporaryExitModal({ userId, onClose, onSuccess }) {
             Cancel
           </button>
           <button onClick={handleSubmit} disabled={submitting || compressing} style={{ flex: 1, padding: '9px 0', borderRadius: '6px', border: 'none', background: isDark ? '#F4F4F5' : '#111111', color: isDark ? '#111111' : '#FFFFFF', fontSize: '12px', fontWeight: 600, cursor: (submitting || compressing) ? 'default' : 'pointer', opacity: (submitting || compressing) ? 0.6 : 1 }}>
-            {submitting ? 'Submitting...' : 'Submit Request'}
+            {compressing ? 'Optimizing...' : submitting ? (uploading ? 'Uploading...' : 'Submitting...') : 'Submit Request'}
           </button>
         </div>
       </div>
     </div>
-    {cropSrc && <ImageCropModal src={cropSrc} onDone={handleCropDone} onCancel={() => setCropSrc(null)} />}
-    </>
   )
 }
 

@@ -1,11 +1,11 @@
 # Graph Report - school-admin  (2026-09-23)
 
 ## Corpus Check
-- 396 files · ~678,914 words
+- 396 files · ~678,828 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 2243 nodes · 2319 edges · 374 communities (262 shown, 112 thin omitted)
+- 2243 nodes · 2319 edges · 373 communities (262 shown, 111 thin omitted)
 - Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 7 edges (avg confidence: 0.63)
 - Token cost: 0 input · 0 output
 
@@ -249,7 +249,6 @@
 - zod
 - bcryptjs
 - Appendix B - Canonical Sources (read these before reinventing)
-- SKILL.md
 - Analysis & Synthesis Instructions
 - SKILL: Industrial Brutalism & Tactical Telemetry UI
 - Design System: Taste Standard
@@ -306,7 +305,7 @@
 ## Import Cycles
 - None detected.
 
-## Communities (374 total, 112 thin omitted)
+## Communities (373 total, 111 thin omitted)
 
 ### Community 0 - "Admission Management"
 Cohesion: 0.07
@@ -549,8 +548,8 @@ Cohesion: 0.11
 Nodes (17): aliases, components, hooks, lib, ui, utils, iconLibrary, rsc (+9 more)
 
 ### Community 80 - "Module 80"
-Cohesion: 0.14
-Nodes (14): 10. SECTION RHYTHM RULE, 12. DENSITY & SPACING DISCIPLINE, 14. IMAGE / MEDIA DIRECTION, 16. MULTI-IMAGE CONSISTENCY RULE, 17. CLARITY CHECK, 19. RESPONSE BEHAVIOR, 1. ACTIVE BASELINE CONFIGURATION, 21. FINAL GOAL (+6 more)
+Cohesion: 0.12
+Nodes (16): 10. SECTION RHYTHM RULE, 12. DENSITY & SPACING DISCIPLINE, 14. IMAGE / MEDIA DIRECTION, 16. MULTI-IMAGE CONSISTENCY RULE, 17. CLARITY CHECK, 19. RESPONSE BEHAVIOR, 1. ACTIVE BASELINE CONFIGURATION, 21. FINAL GOAL (+8 more)
 
 ### Community 81 - "Module 81"
 Cohesion: 0.12
@@ -915,7 +914,7 @@ Nodes (6): extractScheduleMeta(), GET(), POST(), resolveCurrentFormFee(), supaba
 ## Knowledge Gaps
 - **1151 isolated node(s):** `extends`, `next/core-web-vitals`, `$schema`, `style`, `rsc` (+1146 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **112 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **111 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_

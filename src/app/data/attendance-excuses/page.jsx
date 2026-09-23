@@ -4,7 +4,6 @@ import { useEffect, useState, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTheme } from '@/lib/theme'
 import { supabase } from '@/lib/supabase'
-import Cropper from 'react-easy-crop'
 import imageCompression from 'browser-image-compression'
 
 // ─── Constants ──────────────────────────────────────────────────────────────
@@ -76,32 +75,6 @@ function monthEnd(ym) {
 
 // ─── Image helpers ───────────────────────────────────────────────────────────
 
-/** Create an HTMLImageElement from an object URL */
-function createImage(url) {
-  return new Promise((resolve, reject) => {
-    const img = new Image()
-    img.addEventListener('load', () => resolve(img))
-    img.addEventListener('error', reject)
-    img.setAttribute('crossOrigin', 'anonymous')
-    img.src = url
-  })
-}
-
-/** Given a file and crop pixel data, return a cropped Blob (JPEG) */
-async function getCroppedBlob(imageSrc, pixelCrop) {
-  const img    = await createImage(imageSrc)
-  const canvas = document.createElement('canvas')
-  canvas.width  = pixelCrop.width
-  canvas.height = pixelCrop.height
-  const ctx = canvas.getContext('2d')
-  ctx.drawImage(
-    img,
-    pixelCrop.x, pixelCrop.y, pixelCrop.width, pixelCrop.height,
-    0, 0, pixelCrop.width, pixelCrop.height
-  )
-  return new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.96))
-}
-
 /**
  * Compress an image File/Blob using browser-image-compression.
  * Target: max 800 KB, max 1920 px on the longest side.
@@ -125,91 +98,6 @@ async function compressImage(file) {
   }
 }
 
-// ─── Crop Modal ───────────────────────────────────────────────────────────────
-
-function ImageCropModal({ src, onDone, onCancel }) {
-  const { theme } = useTheme()
-  const [crop, setCrop]               = useState({ x: 0, y: 0 })
-  const [zoom, setZoom]               = useState(1)
-  const [croppedArea, setCroppedArea] = useState(null)
-  const [applying, setApplying]       = useState(false)
-
-  const handleCropComplete = useCallback((_, croppedAreaPixels) => {
-    setCroppedArea(croppedAreaPixels)
-  }, [])
-
-  const handleApply = async () => {
-    if (!croppedArea) return
-    setApplying(true)
-    try {
-      const blob = await getCroppedBlob(src, croppedArea)
-      onDone(blob)
-    } finally {
-      setApplying(false)
-    }
-  }
-
-  return (
-    <div style={{
-      position: 'fixed', inset: 0, zIndex: 99999,
-      background: 'rgba(0,0,0,0.85)',
-      display: 'flex', flexDirection: 'column',
-      alignItems: 'center', justifyContent: 'center',
-      padding: '16px',
-    }}>
-      <div style={{
-        width: '100%', maxWidth: 480,
-        background: theme.cardBg,
-        borderRadius: 16,
-        overflow: 'hidden',
-        boxShadow: '0 24px 80px rgba(0,0,0,0.5)',
-        border: `1px solid ${theme.border}`,
-        display: 'flex', flexDirection: 'column',
-      }}>
-        {/* Title */}
-        <div style={{ padding: '16px 20px 12px', borderBottom: `1px solid ${theme.border}`, flexShrink: 0 }}>
-          <div style={{ fontWeight: 700, fontSize: 14, color: theme.textPrimary }}>✂️ Crop Gambar</div>
-          <div style={{ fontSize: 12, color: theme.textSecondary, marginTop: 2 }}>Drag untuk memilih area, scroll untuk zoom</div>
-        </div>
-
-        {/* Crop area */}
-        <div style={{ position: 'relative', width: '100%', height: 300, background: '#000' }}>
-          <Cropper
-            image={src}
-            crop={crop}
-            zoom={zoom}
-            aspect={undefined}   /* free-form crop */
-            onCropChange={setCrop}
-            onZoomChange={setZoom}
-            onCropComplete={handleCropComplete}
-            style={{ containerStyle: { borderRadius: 0 } }}
-          />
-        </div>
-
-        {/* Zoom slider */}
-        <div style={{ padding: '12px 20px', borderTop: `1px solid ${theme.border}`, flexShrink: 0 }}>
-          <div style={{ fontSize: 11, color: theme.textSecondary, marginBottom: 6 }}>Zoom: {zoom.toFixed(1)}×</div>
-          <input type="range" min={1} max={3} step={0.05}
-            value={zoom} onChange={e => setZoom(Number(e.target.value))}
-            style={{ width: '100%', accentColor: '#2563eb' }} />
-        </div>
-
-        {/* Buttons */}
-        <div style={{ display: 'flex', gap: 8, padding: '0 20px 20px' }}>
-          <button onClick={onCancel}
-            style={{ flex: 1, padding: '9px 0', borderRadius: 9, border: `1px solid ${theme.border}`, background: theme.subtleBg, color: theme.textSecondary, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
-            Batal
-          </button>
-          <button onClick={handleApply} disabled={applying}
-            style={{ flex: 2, padding: '9px 0', borderRadius: 9, border: 'none', background: applying ? '#9ca3af' : '#2563eb', color: '#fff', fontSize: 13, fontWeight: 600, cursor: applying ? 'default' : 'pointer' }}>
-            {applying ? 'Memproses...' : '✅ Gunakan Area Ini'}
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
 // ─── Excuse Modal (Submit + Edit) ────────────────────────────────────────────
 
 function ExcuseModal({ record, excuse, userId, leaveTypes, onClose, onSuccess }) {
@@ -220,9 +108,8 @@ function ExcuseModal({ record, excuse, userId, leaveTypes, onClose, onSuccess })
   const [otherReason, setOtherReason] = useState(excuse?.other_reason || '')
   const [submitting, setSubmitting]   = useState(false)
   const [msg, setMsg]                 = useState('')
-  const [uploadFile, setUploadFile]   = useState(null)      // raw File from input
-  const [processedFile, setProcessedFile] = useState(null) // after crop+compress
-  const [cropSrc, setCropSrc]         = useState(null)      // object URL for crop modal
+  const [uploadFile, setUploadFile]   = useState(null)
+  const [processedFile, setProcessedFile] = useState(null)
   const [compressing, setCompressing] = useState(false)
   const [uploading, setUploading]     = useState(false)
   const [quotaInfo, setQuotaInfo]     = useState(null)
@@ -272,49 +159,35 @@ function ExcuseModal({ record, excuse, userId, leaveTypes, onClose, onSuccess })
   const isImage = (f) => f && f.type.startsWith('image/')
 
   // Called when user selects a file from input
-  const handleFileSelect = (file) => {
+  const handleFileSelect = async (file) => {
     if (!file) return
     setUploadFile(file)
     setProcessedFile(null)
     if (isImage(file)) {
-      // Show crop modal for images
-      const url = URL.createObjectURL(file)
-      setCropSrc(url)
+      setCompressing(true)
+      try {
+        const compressed = await compressImage(file)
+        const named = new File([compressed], (file.name?.replace(/\.[^.]+$/, '') || 'attachment') + '.jpg', { type: 'image/jpeg' })
+        setProcessedFile(named)
+      } catch (err) {
+        console.warn('Compression failed, using original file:', err)
+        setProcessedFile(file)
+      } finally {
+        setCompressing(false)
+      }
     } else {
-      // PDF — use directly, no crop/compress
       setProcessedFile(file)
     }
-  }
-
-  // Called when user confirms crop
-  const handleCropDone = async (blob) => {
-    setCropSrc(null)
-    setCompressing(true)
-    try {
-      const compressed = await compressImage(blob)
-      // Rename to match original but as .jpg
-      const named = new File([compressed], (uploadFile?.name?.replace(/\.[^.]+$/, '') || 'attachment') + '.jpg', { type: 'image/jpeg' })
-      setProcessedFile(named)
-    } finally {
-      setCompressing(false)
-    }
-  }
-
-  const handleCropCancel = () => {
-    setCropSrc(null)
-    setUploadFile(null)
-    setProcessedFile(null)
   }
 
   // Clear file selection
   const clearFile = () => {
     setUploadFile(null)
     setProcessedFile(null)
-    setCropSrc(null)
   }
 
   // The file that will actually be uploaded (processed > raw)
-  const fileToUpload = processedFile || (uploadFile && !isImage(uploadFile) ? uploadFile : null)
+  const fileToUpload = processedFile || uploadFile || null
 
   // Upload to dedicated excuse-attachments endpoint
   const uploadAttachment = async () => {
@@ -337,7 +210,6 @@ function ExcuseModal({ record, excuse, userId, leaveTypes, onClose, onSuccess })
     if (!category) { setMsg('❌ Pilih kategori alasan'); return }
     if (category === 'other' && !otherReason.trim()) { setMsg('❌ Isi keterangan untuk Other'); return }
     if (requireUpload && !fileToUpload && !excuse?.attachment_url) { setMsg('❌ Upload file wajib untuk kategori ini'); return }
-    if (cropSrc) { setMsg('❌ Selesaikan proses crop terlebih dahulu'); return }
     setSubmitting(true); setMsg('')
     try {
       const attachmentUrl = fileToUpload ? await uploadAttachment() : (excuse?.attachment_url || null)
@@ -390,7 +262,6 @@ function ExcuseModal({ record, excuse, userId, leaveTypes, onClose, onSuccess })
   }
 
   return (
-    <>
     <div
       onClick={handleBackdrop}
       style={{
@@ -544,7 +415,7 @@ function ExcuseModal({ record, excuse, userId, leaveTypes, onClose, onSuccess })
                 style={{ background: '#f0fdf4', border: '1px solid #86efac', color: '#166534' }}>
                 ✅ {fileToUpload.name}
                 <span style={{ color: '#6b7280', marginLeft: 4 }}>({(fileToUpload.size / 1024).toFixed(0)} KB)</span>
-                {isImage(uploadFile) && <span style={{ color: '#15803d', marginLeft: 2 }}>· sudah di-crop &amp; compress</span>}
+                {isImage(uploadFile) && <span style={{ color: '#15803d', marginLeft: 2 }}>(Full Size)</span>}
               </div>
             )}
             <div className="flex items-center gap-2">
@@ -568,7 +439,7 @@ function ExcuseModal({ record, excuse, userId, leaveTypes, onClose, onSuccess })
               )}
             </div>
             <p className="text-xs mt-1.5" style={{ color: theme.textSecondary }}>
-              Gambar akan di-crop dan dikompres otomatis • PDF diupload langsung
+              Gambar dikompres otomatis (full size) • PDF diupload langsung
             </p>
           </div>
         )}
@@ -616,16 +487,6 @@ function ExcuseModal({ record, excuse, userId, leaveTypes, onClose, onSuccess })
         </div>
       </div>
     </div>
-
-    {/* Crop modal — rendered outside the excuse modal but inside the same return */}
-    {cropSrc && (
-      <ImageCropModal
-        src={cropSrc}
-        onDone={handleCropDone}
-        onCancel={handleCropCancel}
-      />
-    )}
-    </>
   )
 }
 
