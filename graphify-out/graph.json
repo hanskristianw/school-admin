@@ -3307,8 +3307,8 @@
       "source_location": "L30",
       "_origin": "ast",
       "id": "package_dependencies_exceljs",
-      "community": 147,
-      "community_name": "\ufffd\ud83c\udfd7\ufe0f **Database Structure**",
+      "community": 386,
+      "community_name": "exceljs",
       "norm_label": "exceljs"
     },
     {
@@ -3318,8 +3318,8 @@
       "source_location": "L30",
       "_origin": "ast",
       "id": "exceljs",
-      "community": 147,
-      "community_name": "\ufffd\ud83c\udfd7\ufe0f **Database Structure**",
+      "community": 386,
+      "community_name": "exceljs",
       "norm_label": "exceljs"
     },
     {
@@ -3571,8 +3571,8 @@
       "source_location": "L42",
       "_origin": "ast",
       "id": "package_dependencies_pdf_lib",
-      "community": 386,
-      "community_name": "exceljs",
+      "community": 147,
+      "community_name": "\ufffd\ud83c\udfd7\ufe0f **Database Structure**",
       "norm_label": "pdf-lib"
     },
     {
@@ -3582,8 +3582,8 @@
       "source_location": "L42",
       "_origin": "ast",
       "id": "pdf_lib",
-      "community": 386,
-      "community_name": "exceljs",
+      "community": 147,
+      "community_name": "\ufffd\ud83c\udfd7\ufe0f **Database Structure**",
       "norm_label": "pdf-lib"
     },
     {
@@ -7074,21 +7074,10 @@
       "norm_label": "page.jsx"
     },
     {
-      "label": "TEAM_ICONS",
-      "file_type": "code",
-      "source_file": "src/app/data/athletic-day/live/page.jsx",
-      "source_location": "L25",
-      "_origin": "ast",
-      "id": "src_app_data_athletic_day_live_page_team_icons",
-      "community": 390,
-      "community_name": "page.jsx",
-      "norm_label": "team_icons"
-    },
-    {
       "label": "normalizeTeamColor()",
       "file_type": "code",
       "source_file": "src/app/data/athletic-day/live/page.jsx",
-      "source_location": "L39",
+      "source_location": "L15",
       "_origin": "ast",
       "id": "src_app_data_athletic_day_live_page_normalizeteamcolor",
       "community": 390,
@@ -7099,7 +7088,7 @@
       "label": "isLightColor()",
       "file_type": "code",
       "source_file": "src/app/data/athletic-day/live/page.jsx",
-      "source_location": "L58",
+      "source_location": "L34",
       "_origin": "ast",
       "id": "src_app_data_athletic_day_live_page_islightcolor",
       "community": 390,
@@ -7110,7 +7099,7 @@
       "label": "AthleticDayLivePage()",
       "file_type": "code",
       "source_file": "src/app/data/athletic-day/live/page.jsx",
-      "source_location": "L72",
+      "source_location": "L48",
       "_origin": "ast",
       "id": "src_app_data_athletic_day_live_page_athleticdaylivepage",
       "community": 390,
@@ -19356,8 +19345,8 @@
       "source_location": "L1093",
       "_origin": "ast",
       "id": "database_schema_7_menu_role_permissions_domain_data_menu_management",
-      "community": 16,
-      "community_name": "Third-party Libraries",
+      "community": 237,
+      "community_name": "Module 237",
       "norm_label": "7. menu & role permissions domain (`/data/menu_management`)"
     },
     {
@@ -19367,8 +19356,8 @@
       "source_location": "L1097",
       "_origin": "ast",
       "id": "database_schema_7_1_tables",
-      "community": 16,
-      "community_name": "Third-party Libraries",
+      "community": 237,
+      "community_name": "Module 237",
       "norm_label": "7.1 tables"
     },
     {
@@ -19378,8 +19367,8 @@
       "source_location": "L1099",
       "_origin": "ast",
       "id": "database_schema_menus",
-      "community": 16,
-      "community_name": "Third-party Libraries",
+      "community": 237,
+      "community_name": "Module 237",
       "norm_label": "`menus`"
     },
     {
@@ -19389,8 +19378,8 @@
       "source_location": "L1112",
       "_origin": "ast",
       "id": "database_schema_menu_permissions",
-      "community": 16,
-      "community_name": "Third-party Libraries",
+      "community": 237,
+      "community_name": "Module 237",
       "norm_label": "`menu_permissions`"
     },
     {
@@ -19400,8 +19389,8 @@
       "source_location": "L1124",
       "_origin": "ast",
       "id": "database_schema_7_2_erd_relationships_menu_domain",
-      "community": 16,
-      "community_name": "Third-party Libraries",
+      "community": 237,
+      "community_name": "Module 237",
       "norm_label": "7.2 erd / relationships (menu domain)"
     },
     {
@@ -19554,8 +19543,8 @@
       "source_location": "L1367",
       "_origin": "ast",
       "id": "database_schema_10_duty_greeter_devotion_schedule_domain_data_door_greeter",
-      "community": 237,
-      "community_name": "Module 237",
+      "community": 16,
+      "community_name": "Third-party Libraries",
       "norm_label": "10. duty, greeter & devotion schedule domain (`/data/door_greeter`)"
     },
     {
@@ -19565,8 +19554,8 @@
       "source_location": "L1371",
       "_origin": "ast",
       "id": "database_schema_10_1_tables",
-      "community": 237,
-      "community_name": "Module 237",
+      "community": 16,
+      "community_name": "Third-party Libraries",
       "norm_label": "10.1 tables"
     },
     {
@@ -19576,8 +19565,8 @@
       "source_location": "L1373",
       "_origin": "ast",
       "id": "database_schema_duty_schedules",
-      "community": 237,
-      "community_name": "Module 237",
+      "community": 16,
+      "community_name": "Third-party Libraries",
       "norm_label": "`duty_schedules`"
     },
     {
@@ -19587,8 +19576,8 @@
       "source_location": "L1402",
       "_origin": "ast",
       "id": "database_schema_duty_settings",
-      "community": 237,
-      "community_name": "Module 237",
+      "community": 16,
+      "community_name": "Third-party Libraries",
       "norm_label": "`duty_settings`"
     },
     {
@@ -19598,8 +19587,8 @@
       "source_location": "L1416",
       "_origin": "ast",
       "id": "database_schema_10_2_erd_relationships_duty_devotion_schedule_domain",
-      "community": 237,
-      "community_name": "Module 237",
+      "community": 16,
+      "community_name": "Third-party Libraries",
       "norm_label": "10.2 erd / relationships (duty & devotion schedule domain)"
     },
     {
@@ -32859,7 +32848,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/app/data/athletic-day/live/page.jsx",
-      "source_location": "L72",
+      "source_location": "L48",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_athletic_day_live_page",
@@ -32870,7 +32859,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/app/data/athletic-day/live/page.jsx",
-      "source_location": "L58",
+      "source_location": "L34",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_athletic_day_live_page",
@@ -32881,7 +32870,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/app/data/athletic-day/live/page.jsx",
-      "source_location": "L39",
+      "source_location": "L15",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_athletic_day_live_page",
@@ -32889,22 +32878,11 @@
       "confidence_score": 1.0
     },
     {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "src/app/data/athletic-day/live/page.jsx",
-      "source_location": "L25",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "src_app_data_athletic_day_live_page",
-      "target": "src_app_data_athletic_day_live_page_team_icons",
-      "confidence_score": 1.0
-    },
-    {
       "relation": "calls",
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/app/data/athletic-day/live/page.jsx",
-      "source_location": "L292",
+      "source_location": "L267",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_athletic_day_live_page_athleticdaylivepage",
@@ -32916,7 +32894,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/app/data/athletic-day/live/page.jsx",
-      "source_location": "L293",
+      "source_location": "L268",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_athletic_day_live_page_athleticdaylivepage",
@@ -52483,5 +52461,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "a0d35d5c4aca5eedd272f112a920e191228bca35"
+  "built_at_commit": "a6b4f5425ba3903a1149e0719092badd38b1ff68"
 }
