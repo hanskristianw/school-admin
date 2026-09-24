@@ -2516,5 +2516,65 @@ erDiagram
    - In the current implementation, an `'approved'` application in `student_applications` does not automatically spawn a row in `users` and `detail_siswa`.
    - Staf Tata Usaha manually copies accepted candidate records into `/data/user` (assigning `role.is_student = true`) and enrolls them into `/data/class` (`detail_siswa`).
 
+---
+
+## 16. Athletic Day & Sports Event Domain (`/data/athletic-day`, `/data/athletic-day/live`)
+
+This domain manages school-wide athletic sports events (e.g. PYP Athletic Day, MYP Athletic Day, DP Athletic Day) tied to specific academic years (`year_id`). It supports master team definitions without student rosters, fast point logging for matches, and a broadcast-grade real-time live scoreboard.
+
+### 16.1 Tables
+
+#### `athletic_events`
+Stores individual sports event categories within an academic year.
+
+| Column Name | Type | Description / Constraint |
+| --- | --- | --- |
+| `id` | `SERIAL` | Primary Key |
+| `year_id` | `INTEGER` | Foreign Key to `year(year_id)` ON DELETE CASCADE |
+| `name` | `VARCHAR(150)` | Event Name (e.g. "PYP Athletic Day", "MYP Athletic Day") |
+| `code` | `VARCHAR(50)` | Short code (e.g. "PYP", "MYP", "DP") |
+| `banner_color` | `VARCHAR(50)` | Theme hex color (e.g. `#2563eb`) |
+| `description` | `TEXT` | Event description / details |
+| `is_active` | `BOOLEAN` | Default `true` |
+| `created_at` | `TIMESTAMPTZ` | Record creation timestamp |
+| `updated_at` | `TIMESTAMPTZ` | Record last update timestamp |
+
+#### `athletic_teams`
+Stores master teams per event and academic year (no individual student names required).
+
+| Column Name | Type | Description / Constraint |
+| --- | --- | --- |
+| `id` | `SERIAL` | Primary Key |
+| `event_id` | `INTEGER` | Foreign Key to `athletic_events(id)` ON DELETE CASCADE |
+| `year_id` | `INTEGER` | Foreign Key to `year(year_id)` ON DELETE CASCADE |
+| `name` | `VARCHAR(100)` | Team name (e.g. "Red Dragon", "Garuda") |
+| `color` | `VARCHAR(50)` | Primary hex color (e.g. `#ef4444`) |
+| `secondary_color` | `VARCHAR(50)`| Secondary accent color |
+| `icon` | `VARCHAR(50)` | Emblem icon key (e.g. `dragon`, `shield`, `bolt`, `fire`) |
+| `motto` | `VARCHAR(255)` | Team slogan or battle cry |
+| `sort_order` | `INTEGER` | Display order index |
+| `created_at` | `TIMESTAMPTZ` | Creation timestamp |
+| `updated_at` | `TIMESTAMPTZ` | Update timestamp |
+
+#### `athletic_scores`
+Audit log of points scored by teams across matches and competitions.
+
+| Column Name | Type | Description / Constraint |
+| --- | --- | --- |
+| `id` | `SERIAL` | Primary Key |
+| `team_id` | `INTEGER` | Foreign Key to `athletic_teams(id)` ON DELETE CASCADE |
+| `event_id` | `INTEGER` | Foreign Key to `athletic_events(id)` ON DELETE CASCADE |
+| `activity_name` | `VARCHAR(150)` | Competition name (e.g. "100m Sprint", "Tug of War") |
+| `points` | `INTEGER` | Points awarded (supports positive & penalty negative values) |
+| `notes` | `TEXT` | Optional round/match notes |
+| `recorded_by` | `VARCHAR(100)` | Operator / scorekeeper name |
+| `created_at` | `TIMESTAMPTZ` | Timestamp when score was recorded |
+
+### 16.2 Zero-Friction Fallback Architecture
+The API `/api/athletic-day` implements automatic dual-mode persistence:
+1. **Dedicated Database Tables**: Used when `athletic_events`, `athletic_teams`, and `athletic_scores` are present in Supabase (`migrations/create-athletic-day-tables.sql`).
+2. **Settings Store Fallback**: If dedicated tables are not yet created (error `42P01`), data is stored atomically as structured JSON in the existing `settings` table (`key: 'athletic_day_data'`). This ensures 100% out-of-the-box operation.
+
+
 
 

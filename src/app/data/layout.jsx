@@ -1,13 +1,14 @@
 'use client'
 
 import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, usePathname } from "next/navigation"
 import Sidebar from "@/components/sidebar"
 import AccessGuard from "@/components/AccessGuard"
 import { useTheme } from "@/lib/theme"
 
 export default function DataLayout({ children }) {
   const router = useRouter()
+  const pathname = usePathname()
   const { theme } = useTheme()
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
 
@@ -17,6 +18,17 @@ export default function DataLayout({ children }) {
       router.replace("/login")
     }
   }, [router])
+
+  // Full-width edge-to-edge layout for Live Scoreboard
+  if (pathname?.startsWith('/data/athletic-day/live')) {
+    return (
+      <AccessGuard>
+        <div className="w-full h-full min-h-screen bg-[#F8FAFC] overflow-y-auto">
+          {children}
+        </div>
+      </AccessGuard>
+    )
+  }
 
   return (
     <div style={{ background: theme.pageBg }} className="h-[calc(100vh-3rem)]">{/* 3rem = 48px header */}

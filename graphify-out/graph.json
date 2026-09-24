@@ -3175,7 +3175,7 @@
       "source_location": "L24",
       "_origin": "ast",
       "id": "package_dependencies_browser_image_compression",
-      "community": 376,
+      "community": 391,
       "community_name": "browser-image-compression",
       "norm_label": "browser-image-compression"
     },
@@ -3186,7 +3186,7 @@
       "source_location": "L24",
       "_origin": "ast",
       "id": "browser_image_compression",
-      "community": 376,
+      "community": 391,
       "community_name": "browser-image-compression",
       "norm_label": "browser-image-compression"
     },
@@ -3197,8 +3197,8 @@
       "source_location": "L25",
       "_origin": "ast",
       "id": "package_dependencies_class_variance_authority",
-      "community": 16,
-      "community_name": "Third-party Libraries",
+      "community": 376,
+      "community_name": "browser-image-compression",
       "norm_label": "class-variance-authority"
     },
     {
@@ -3208,8 +3208,8 @@
       "source_location": "L25",
       "_origin": "ast",
       "id": "class_variance_authority",
-      "community": 16,
-      "community_name": "Third-party Libraries",
+      "community": 376,
+      "community_name": "browser-image-compression",
       "norm_label": "class-variance-authority"
     },
     {
@@ -3307,8 +3307,8 @@
       "source_location": "L30",
       "_origin": "ast",
       "id": "package_dependencies_exceljs",
-      "community": 386,
-      "community_name": "exceljs",
+      "community": 147,
+      "community_name": "\ufffd\ud83c\udfd7\ufe0f **Database Structure**",
       "norm_label": "exceljs"
     },
     {
@@ -3318,8 +3318,8 @@
       "source_location": "L30",
       "_origin": "ast",
       "id": "exceljs",
-      "community": 386,
-      "community_name": "exceljs",
+      "community": 147,
+      "community_name": "\ufffd\ud83c\udfd7\ufe0f **Database Structure**",
       "norm_label": "exceljs"
     },
     {
@@ -3571,8 +3571,8 @@
       "source_location": "L42",
       "_origin": "ast",
       "id": "package_dependencies_pdf_lib",
-      "community": 147,
-      "community_name": "\ufffd\ud83c\udfd7\ufe0f **Database Structure**",
+      "community": 386,
+      "community_name": "exceljs",
       "norm_label": "pdf-lib"
     },
     {
@@ -3582,8 +3582,8 @@
       "source_location": "L42",
       "_origin": "ast",
       "id": "pdf_lib",
-      "community": 147,
-      "community_name": "\ufffd\ud83c\udfd7\ufe0f **Database Structure**",
+      "community": 386,
+      "community_name": "exceljs",
       "norm_label": "pdf-lib"
     },
     {
@@ -4475,6 +4475,94 @@
       "id": "src_app_api_assessment_pdf_route_post",
       "community": 41,
       "community_name": "Module 41",
+      "norm_label": "post()"
+    },
+    {
+      "label": "route.js",
+      "file_type": "code",
+      "source_file": "src/app/api/athletic-day/route.js",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "src_app_api_athletic_day_route",
+      "community": 238,
+      "community_name": "Module 238",
+      "norm_label": "route.js"
+    },
+    {
+      "label": "supabaseAdmin",
+      "file_type": "code",
+      "source_file": "src/app/api/athletic-day/route.js",
+      "source_location": "L4",
+      "_origin": "ast",
+      "id": "src_app_api_athletic_day_route_supabaseadmin",
+      "community": 238,
+      "community_name": "Module 238",
+      "norm_label": "supabaseadmin"
+    },
+    {
+      "label": "checkTablesExist()",
+      "file_type": "code",
+      "source_file": "src/app/api/athletic-day/route.js",
+      "source_location": "L12",
+      "_origin": "ast",
+      "id": "src_app_api_athletic_day_route_checktablesexist",
+      "community": 238,
+      "community_name": "Module 238",
+      "norm_label": "checktablesexist()"
+    },
+    {
+      "label": "readFromSettings()",
+      "file_type": "code",
+      "source_file": "src/app/api/athletic-day/route.js",
+      "source_location": "L25",
+      "_origin": "ast",
+      "id": "src_app_api_athletic_day_route_readfromsettings",
+      "community": 238,
+      "community_name": "Module 238",
+      "norm_label": "readfromsettings()"
+    },
+    {
+      "label": "writeToSettings()",
+      "file_type": "code",
+      "source_file": "src/app/api/athletic-day/route.js",
+      "source_location": "L44",
+      "_origin": "ast",
+      "id": "src_app_api_athletic_day_route_writetosettings",
+      "community": 238,
+      "community_name": "Module 238",
+      "norm_label": "writetosettings()"
+    },
+    {
+      "label": "calculateLeaderboard()",
+      "file_type": "code",
+      "source_file": "src/app/api/athletic-day/route.js",
+      "source_location": "L59",
+      "_origin": "ast",
+      "id": "src_app_api_athletic_day_route_calculateleaderboard",
+      "community": 238,
+      "community_name": "Module 238",
+      "norm_label": "calculateleaderboard()"
+    },
+    {
+      "label": "GET()",
+      "file_type": "code",
+      "source_file": "src/app/api/athletic-day/route.js",
+      "source_location": "L98",
+      "_origin": "ast",
+      "id": "src_app_api_athletic_day_route_get",
+      "community": 238,
+      "community_name": "Module 238",
+      "norm_label": "get()"
+    },
+    {
+      "label": "POST()",
+      "file_type": "code",
+      "source_file": "src/app/api/athletic-day/route.js",
+      "source_location": "L242",
+      "_origin": "ast",
+      "id": "src_app_api_athletic_day_route_post",
+      "community": 238,
+      "community_name": "Module 238",
       "norm_label": "post()"
     },
     {
@@ -6761,8 +6849,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_app_data_admission_unifiedadmissionmodal",
-      "community": 0,
-      "community_name": "Admission Management",
+      "community": 258,
+      "community_name": "page.jsx",
       "norm_label": "unifiedadmissionmodal.jsx"
     },
     {
@@ -6772,8 +6860,8 @@
       "source_location": "L40",
       "_origin": "ast",
       "id": "src_app_data_admission_unifiedadmissionmodal_unifiedadmissionmodal",
-      "community": 0,
-      "community_name": "Admission Management",
+      "community": 258,
+      "community_name": "page.jsx",
       "norm_label": "unifiedadmissionmodal()"
     },
     {
@@ -6827,8 +6915,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_app_data_admission_page",
-      "community": 0,
-      "community_name": "Admission Management",
+      "community": 258,
+      "community_name": "page.jsx",
       "norm_label": "page.jsx"
     },
     {
@@ -6838,8 +6926,8 @@
       "source_location": "L64",
       "_origin": "ast",
       "id": "src_app_data_admission_page_statusconfig",
-      "community": 0,
-      "community_name": "Admission Management",
+      "community": 258,
+      "community_name": "page.jsx",
       "norm_label": "statusconfig"
     },
     {
@@ -6849,8 +6937,8 @@
       "source_location": "L95",
       "_origin": "ast",
       "id": "src_app_data_admission_page_getemailtypelabel",
-      "community": 0,
-      "community_name": "Admission Management",
+      "community": 258,
+      "community_name": "page.jsx",
       "norm_label": "getemailtypelabel()"
     },
     {
@@ -6860,8 +6948,8 @@
       "source_location": "L108",
       "_origin": "ast",
       "id": "src_app_data_admission_page_getemailstatuslabel",
-      "community": 0,
-      "community_name": "Admission Management",
+      "community": 258,
+      "community_name": "page.jsx",
       "norm_label": "getemailstatuslabel()"
     },
     {
@@ -6871,8 +6959,8 @@
       "source_location": "L119",
       "_origin": "ast",
       "id": "src_app_data_admission_page_admissionmanagement",
-      "community": 0,
-      "community_name": "Admission Management",
+      "community": 258,
+      "community_name": "page.jsx",
       "norm_label": "admissionmanagement()"
     },
     {
@@ -6973,6 +7061,138 @@
       "community": 183,
       "community_name": "Module 183",
       "norm_label": "assessmentgradingpage()"
+    },
+    {
+      "label": "page.jsx",
+      "file_type": "code",
+      "source_file": "src/app/data/athletic-day/live/page.jsx",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "src_app_data_athletic_day_live_page",
+      "community": 390,
+      "community_name": "page.jsx",
+      "norm_label": "page.jsx"
+    },
+    {
+      "label": "TEAM_ICONS",
+      "file_type": "code",
+      "source_file": "src/app/data/athletic-day/live/page.jsx",
+      "source_location": "L25",
+      "_origin": "ast",
+      "id": "src_app_data_athletic_day_live_page_team_icons",
+      "community": 390,
+      "community_name": "page.jsx",
+      "norm_label": "team_icons"
+    },
+    {
+      "label": "normalizeTeamColor()",
+      "file_type": "code",
+      "source_file": "src/app/data/athletic-day/live/page.jsx",
+      "source_location": "L39",
+      "_origin": "ast",
+      "id": "src_app_data_athletic_day_live_page_normalizeteamcolor",
+      "community": 390,
+      "community_name": "page.jsx",
+      "norm_label": "normalizeteamcolor()"
+    },
+    {
+      "label": "isLightColor()",
+      "file_type": "code",
+      "source_file": "src/app/data/athletic-day/live/page.jsx",
+      "source_location": "L58",
+      "_origin": "ast",
+      "id": "src_app_data_athletic_day_live_page_islightcolor",
+      "community": 390,
+      "community_name": "page.jsx",
+      "norm_label": "islightcolor()"
+    },
+    {
+      "label": "AthleticDayLivePage()",
+      "file_type": "code",
+      "source_file": "src/app/data/athletic-day/live/page.jsx",
+      "source_location": "L72",
+      "_origin": "ast",
+      "id": "src_app_data_athletic_day_live_page_athleticdaylivepage",
+      "community": 390,
+      "community_name": "page.jsx",
+      "norm_label": "athleticdaylivepage()"
+    },
+    {
+      "label": "page.jsx",
+      "file_type": "code",
+      "source_file": "src/app/data/athletic-day/page.jsx",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "src_app_data_athletic_day_page",
+      "community": 388,
+      "community_name": "page.jsx",
+      "norm_label": "page.jsx"
+    },
+    {
+      "label": "TEAM_ICONS",
+      "file_type": "code",
+      "source_file": "src/app/data/athletic-day/page.jsx",
+      "source_location": "L34",
+      "_origin": "ast",
+      "id": "src_app_data_athletic_day_page_team_icons",
+      "community": 388,
+      "community_name": "page.jsx",
+      "norm_label": "team_icons"
+    },
+    {
+      "label": "PRESET_COLORS",
+      "file_type": "code",
+      "source_file": "src/app/data/athletic-day/page.jsx",
+      "source_location": "L49",
+      "_origin": "ast",
+      "id": "src_app_data_athletic_day_page_preset_colors",
+      "community": 388,
+      "community_name": "page.jsx",
+      "norm_label": "preset_colors"
+    },
+    {
+      "label": "normalizeTeamColor()",
+      "file_type": "code",
+      "source_file": "src/app/data/athletic-day/page.jsx",
+      "source_location": "L61",
+      "_origin": "ast",
+      "id": "src_app_data_athletic_day_page_normalizeteamcolor",
+      "community": 388,
+      "community_name": "page.jsx",
+      "norm_label": "normalizeteamcolor()"
+    },
+    {
+      "label": "isLightColor()",
+      "file_type": "code",
+      "source_file": "src/app/data/athletic-day/page.jsx",
+      "source_location": "L80",
+      "_origin": "ast",
+      "id": "src_app_data_athletic_day_page_islightcolor",
+      "community": 388,
+      "community_name": "page.jsx",
+      "norm_label": "islightcolor()"
+    },
+    {
+      "label": "ALLOWED_POINTS",
+      "file_type": "code",
+      "source_file": "src/app/data/athletic-day/page.jsx",
+      "source_location": "L94",
+      "_origin": "ast",
+      "id": "src_app_data_athletic_day_page_allowed_points",
+      "community": 388,
+      "community_name": "page.jsx",
+      "norm_label": "allowed_points"
+    },
+    {
+      "label": "AthleticDayManagementPage()",
+      "file_type": "code",
+      "source_file": "src/app/data/athletic-day/page.jsx",
+      "source_location": "L96",
+      "_origin": "ast",
+      "id": "src_app_data_athletic_day_page_athleticdaymanagementpage",
+      "community": 388,
+      "community_name": "page.jsx",
+      "norm_label": "athleticdaymanagementpage()"
     },
     {
       "label": "page.jsx",
@@ -10993,7 +11213,7 @@
       "label": "ThemedNavbar()",
       "file_type": "code",
       "source_file": "src/components/ThemedNavbar.jsx",
-      "source_location": "L6",
+      "source_location": "L7",
       "_origin": "ast",
       "id": "src_components_themednavbar_themednavbar",
       "community": 222,
@@ -11059,7 +11279,7 @@
       "label": "Sidebar",
       "file_type": "code",
       "source_file": "src/components/sidebar.jsx",
-      "source_location": "L361",
+      "source_location": "L364",
       "_origin": "ast",
       "id": "src_components_sidebar_sidebar",
       "community": 89,
@@ -19081,8 +19301,8 @@
       "source_location": "L1024",
       "_origin": "ast",
       "id": "database_schema_6_assessment_grading_domain_data_topic_new_reports",
-      "community": 237,
-      "community_name": "Module 237",
+      "community": 235,
+      "community_name": "Module 235",
       "norm_label": "6. assessment & grading domain (`/data/topic-new` / reports)"
     },
     {
@@ -19092,8 +19312,8 @@
       "source_location": "L1028",
       "_origin": "ast",
       "id": "database_schema_6_1_tables",
-      "community": 237,
-      "community_name": "Module 237",
+      "community": 235,
+      "community_name": "Module 235",
       "norm_label": "6.1 tables"
     },
     {
@@ -19103,8 +19323,8 @@
       "source_location": "L1030",
       "_origin": "ast",
       "id": "database_schema_assessment_grades",
-      "community": 237,
-      "community_name": "Module 237",
+      "community": 235,
+      "community_name": "Module 235",
       "norm_label": "`assessment_grades`"
     },
     {
@@ -19114,8 +19334,8 @@
       "source_location": "L1052",
       "_origin": "ast",
       "id": "database_schema_assessment_grade_strands",
-      "community": 237,
-      "community_name": "Module 237",
+      "community": 235,
+      "community_name": "Module 235",
       "norm_label": "`assessment_grade_strands`"
     },
     {
@@ -19125,8 +19345,8 @@
       "source_location": "L1063",
       "_origin": "ast",
       "id": "database_schema_6_2_erd_relationships_assessment_grading",
-      "community": 237,
-      "community_name": "Module 237",
+      "community": 235,
+      "community_name": "Module 235",
       "norm_label": "6.2 erd / relationships (assessment & grading)"
     },
     {
@@ -19136,8 +19356,8 @@
       "source_location": "L1093",
       "_origin": "ast",
       "id": "database_schema_7_menu_role_permissions_domain_data_menu_management",
-      "community": 238,
-      "community_name": "Module 238",
+      "community": 16,
+      "community_name": "Third-party Libraries",
       "norm_label": "7. menu & role permissions domain (`/data/menu_management`)"
     },
     {
@@ -19147,8 +19367,8 @@
       "source_location": "L1097",
       "_origin": "ast",
       "id": "database_schema_7_1_tables",
-      "community": 238,
-      "community_name": "Module 238",
+      "community": 16,
+      "community_name": "Third-party Libraries",
       "norm_label": "7.1 tables"
     },
     {
@@ -19158,8 +19378,8 @@
       "source_location": "L1099",
       "_origin": "ast",
       "id": "database_schema_menus",
-      "community": 238,
-      "community_name": "Module 238",
+      "community": 16,
+      "community_name": "Third-party Libraries",
       "norm_label": "`menus`"
     },
     {
@@ -19169,8 +19389,8 @@
       "source_location": "L1112",
       "_origin": "ast",
       "id": "database_schema_menu_permissions",
-      "community": 238,
-      "community_name": "Module 238",
+      "community": 16,
+      "community_name": "Third-party Libraries",
       "norm_label": "`menu_permissions`"
     },
     {
@@ -19180,8 +19400,8 @@
       "source_location": "L1124",
       "_origin": "ast",
       "id": "database_schema_7_2_erd_relationships_menu_domain",
-      "community": 238,
-      "community_name": "Module 238",
+      "community": 16,
+      "community_name": "Third-party Libraries",
       "norm_label": "7.2 erd / relationships (menu domain)"
     },
     {
@@ -19334,8 +19554,8 @@
       "source_location": "L1367",
       "_origin": "ast",
       "id": "database_schema_10_duty_greeter_devotion_schedule_domain_data_door_greeter",
-      "community": 235,
-      "community_name": "Module 235",
+      "community": 237,
+      "community_name": "Module 237",
       "norm_label": "10. duty, greeter & devotion schedule domain (`/data/door_greeter`)"
     },
     {
@@ -19345,8 +19565,8 @@
       "source_location": "L1371",
       "_origin": "ast",
       "id": "database_schema_10_1_tables",
-      "community": 235,
-      "community_name": "Module 235",
+      "community": 237,
+      "community_name": "Module 237",
       "norm_label": "10.1 tables"
     },
     {
@@ -19356,8 +19576,8 @@
       "source_location": "L1373",
       "_origin": "ast",
       "id": "database_schema_duty_schedules",
-      "community": 235,
-      "community_name": "Module 235",
+      "community": 237,
+      "community_name": "Module 237",
       "norm_label": "`duty_schedules`"
     },
     {
@@ -19367,8 +19587,8 @@
       "source_location": "L1402",
       "_origin": "ast",
       "id": "database_schema_duty_settings",
-      "community": 235,
-      "community_name": "Module 235",
+      "community": 237,
+      "community_name": "Module 237",
       "norm_label": "`duty_settings`"
     },
     {
@@ -19378,8 +19598,8 @@
       "source_location": "L1416",
       "_origin": "ast",
       "id": "database_schema_10_2_erd_relationships_duty_devotion_schedule_domain",
-      "community": 235,
-      "community_name": "Module 235",
+      "community": 237,
+      "community_name": "Module 237",
       "norm_label": "10.2 erd / relationships (duty & devotion schedule domain)"
     },
     {
@@ -19832,6 +20052,72 @@
       "community": 103,
       "community_name": "Module 103",
       "norm_label": "15.3 admissions lifecycle & operational integration"
+    },
+    {
+      "label": "16. Athletic Day & Sports Event Domain (`/data/athletic-day`, `/data/athletic-day/live`)",
+      "file_type": "document",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L2521",
+      "_origin": "ast",
+      "id": "database_schema_16_athletic_day_sports_event_domain_data_athletic_day_data_athletic_day_live",
+      "community": 387,
+      "community_name": "16.1 Tables",
+      "norm_label": "16. athletic day & sports event domain (`/data/athletic-day`, `/data/athletic-day/live`)"
+    },
+    {
+      "label": "16.1 Tables",
+      "file_type": "document",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L2525",
+      "_origin": "ast",
+      "id": "database_schema_16_1_tables",
+      "community": 387,
+      "community_name": "16.1 Tables",
+      "norm_label": "16.1 tables"
+    },
+    {
+      "label": "`athletic_events`",
+      "file_type": "document",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L2527",
+      "_origin": "ast",
+      "id": "database_schema_athletic_events",
+      "community": 387,
+      "community_name": "16.1 Tables",
+      "norm_label": "`athletic_events`"
+    },
+    {
+      "label": "`athletic_teams`",
+      "file_type": "document",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L2542",
+      "_origin": "ast",
+      "id": "database_schema_athletic_teams",
+      "community": 387,
+      "community_name": "16.1 Tables",
+      "norm_label": "`athletic_teams`"
+    },
+    {
+      "label": "`athletic_scores`",
+      "file_type": "document",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L2559",
+      "_origin": "ast",
+      "id": "database_schema_athletic_scores",
+      "community": 387,
+      "community_name": "16.1 Tables",
+      "norm_label": "`athletic_scores`"
+    },
+    {
+      "label": "16.2 Zero-Friction Fallback Architecture",
+      "file_type": "document",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L2573",
+      "_origin": "ast",
+      "id": "database_schema_16_2_zero_friction_fallback_architecture",
+      "community": 387,
+      "community_name": "16.1 Tables",
+      "norm_label": "16.2 zero-friction fallback architecture"
     },
     {
       "label": "DELETE_VOID_IMPLEMENTATION.md",
@@ -29983,6 +30269,155 @@
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
+      "source_file": "src/app/api/athletic-day/route.js",
+      "source_location": "L59",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_api_athletic_day_route",
+      "target": "src_app_api_athletic_day_route_calculateleaderboard",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/athletic-day/route.js",
+      "source_location": "L12",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_api_athletic_day_route",
+      "target": "src_app_api_athletic_day_route_checktablesexist",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/athletic-day/route.js",
+      "source_location": "L98",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_api_athletic_day_route",
+      "target": "src_app_api_athletic_day_route_get",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/athletic-day/route.js",
+      "source_location": "L242",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_api_athletic_day_route",
+      "target": "src_app_api_athletic_day_route_post",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/athletic-day/route.js",
+      "source_location": "L25",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_api_athletic_day_route",
+      "target": "src_app_api_athletic_day_route_readfromsettings",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/athletic-day/route.js",
+      "source_location": "L4",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_api_athletic_day_route",
+      "target": "src_app_api_athletic_day_route_supabaseadmin",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/athletic-day/route.js",
+      "source_location": "L44",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_api_athletic_day_route",
+      "target": "src_app_api_athletic_day_route_writetosettings",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/athletic-day/route.js",
+      "source_location": "L122",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_api_athletic_day_route_get",
+      "target": "src_app_api_athletic_day_route_checktablesexist",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/athletic-day/route.js",
+      "source_location": "L247",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_api_athletic_day_route_post",
+      "target": "src_app_api_athletic_day_route_checktablesexist",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/athletic-day/route.js",
+      "source_location": "L188",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_api_athletic_day_route_get",
+      "target": "src_app_api_athletic_day_route_readfromsettings",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/athletic-day/route.js",
+      "source_location": "L284",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_api_athletic_day_route_post",
+      "target": "src_app_api_athletic_day_route_readfromsettings",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/athletic-day/route.js",
+      "source_location": "L296",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_api_athletic_day_route_post",
+      "target": "src_app_api_athletic_day_route_writetosettings",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/athletic-day/route.js",
+      "source_location": "L173",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_api_athletic_day_route_get",
+      "target": "src_app_api_athletic_day_route_calculateleaderboard",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
       "source_file": "src/app/api/attendance/excuses/[id]/route.js",
       "source_location": "L233",
       "weight": 1.0,
@@ -32418,6 +32853,164 @@
       "_origin": "ast",
       "source": "src_app_data_assessment_grading_id_page",
       "target": "src_app_data_assessment_grading_id_page_assessmentgradingpage",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/athletic-day/live/page.jsx",
+      "source_location": "L72",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_athletic_day_live_page",
+      "target": "src_app_data_athletic_day_live_page_athleticdaylivepage",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/athletic-day/live/page.jsx",
+      "source_location": "L58",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_athletic_day_live_page",
+      "target": "src_app_data_athletic_day_live_page_islightcolor",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/athletic-day/live/page.jsx",
+      "source_location": "L39",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_athletic_day_live_page",
+      "target": "src_app_data_athletic_day_live_page_normalizeteamcolor",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/athletic-day/live/page.jsx",
+      "source_location": "L25",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_athletic_day_live_page",
+      "target": "src_app_data_athletic_day_live_page_team_icons",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/athletic-day/live/page.jsx",
+      "source_location": "L292",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_athletic_day_live_page_athleticdaylivepage",
+      "target": "src_app_data_athletic_day_live_page_normalizeteamcolor",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/athletic-day/live/page.jsx",
+      "source_location": "L293",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_athletic_day_live_page_athleticdaylivepage",
+      "target": "src_app_data_athletic_day_live_page_islightcolor",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/athletic-day/page.jsx",
+      "source_location": "L94",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_athletic_day_page",
+      "target": "src_app_data_athletic_day_page_allowed_points",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/athletic-day/page.jsx",
+      "source_location": "L96",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_athletic_day_page",
+      "target": "src_app_data_athletic_day_page_athleticdaymanagementpage",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/athletic-day/page.jsx",
+      "source_location": "L80",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_athletic_day_page",
+      "target": "src_app_data_athletic_day_page_islightcolor",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/athletic-day/page.jsx",
+      "source_location": "L61",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_athletic_day_page",
+      "target": "src_app_data_athletic_day_page_normalizeteamcolor",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/athletic-day/page.jsx",
+      "source_location": "L49",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_athletic_day_page",
+      "target": "src_app_data_athletic_day_page_preset_colors",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/athletic-day/page.jsx",
+      "source_location": "L34",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_athletic_day_page",
+      "target": "src_app_data_athletic_day_page_team_icons",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/athletic-day/page.jsx",
+      "source_location": "L614",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_athletic_day_page_athleticdaymanagementpage",
+      "target": "src_app_data_athletic_day_page_normalizeteamcolor",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/athletic-day/page.jsx",
+      "source_location": "L615",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_athletic_day_page_athleticdaymanagementpage",
+      "target": "src_app_data_athletic_day_page_islightcolor",
       "confidence_score": 1.0
     },
     {
@@ -38076,7 +38669,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/components/ThemedNavbar.jsx",
-      "source_location": "L6",
+      "source_location": "L7",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_themednavbar",
@@ -38109,7 +38702,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/components/sidebar.jsx",
-      "source_location": "L361",
+      "source_location": "L364",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_sidebar",
@@ -45318,6 +45911,17 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L2521",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "database_schema_database_schema_relationships",
+      "target": "database_schema_16_athletic_day_sports_event_domain_data_athletic_day_data_athletic_day_live",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "DATABASE_SCHEMA.md",
       "source_location": "L3",
       "weight": 1.0,
       "_origin": "ast",
@@ -46665,6 +47269,61 @@
       "_origin": "ast",
       "source": "database_schema_15_1_tables",
       "target": "database_schema_udp_installment_plan",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L2525",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "database_schema_16_athletic_day_sports_event_domain_data_athletic_day_data_athletic_day_live",
+      "target": "database_schema_16_1_tables",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L2573",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "database_schema_16_athletic_day_sports_event_domain_data_athletic_day_data_athletic_day_live",
+      "target": "database_schema_16_2_zero_friction_fallback_architecture",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L2527",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "database_schema_16_1_tables",
+      "target": "database_schema_athletic_events",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L2559",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "database_schema_16_1_tables",
+      "target": "database_schema_athletic_scores",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L2542",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "database_schema_16_1_tables",
+      "target": "database_schema_athletic_teams",
       "confidence_score": 1.0
     },
     {
@@ -51824,5 +52483,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "b30f9c8059cc7c6f3fd0b8cc8e82045fdaacb9d2"
+  "built_at_commit": "a0d35d5c4aca5eedd272f112a920e191228bca35"
 }

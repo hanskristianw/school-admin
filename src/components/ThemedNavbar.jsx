@@ -2,10 +2,16 @@
 
 import { useTheme } from '@/lib/theme'
 import { useI18n } from '@/lib/i18n'
+import { usePathname } from 'next/navigation'
 
 export default function ThemedNavbar() {
   const { theme, isDark, toggle } = useTheme()
   const { lang, setLang } = useI18n()
+  const pathname = usePathname()
+
+  if (pathname?.startsWith('/data/athletic-day/live')) {
+    return null
+  }
 
   return (
     <div
