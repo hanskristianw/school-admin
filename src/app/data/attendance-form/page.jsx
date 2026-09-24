@@ -25,7 +25,8 @@ import {
   faTimes,
   faSpinner,
   faCalendarCheck,
-  faExclamationCircle
+  faExclamationCircle,
+  faArrowLeft
 } from '@fortawesome/free-solid-svg-icons'
 
 // ─── Constants ──────────────────────────────────────────────────────────────
@@ -487,6 +488,7 @@ function TemporaryExitModal({ userId, onClose, onSuccess }) {
   const textPrimary   = isDark ? '#F4F4F5' : '#111111'
   const textSecondary = isDark ? '#A1A1AA' : '#787774'
 
+  const [step, setStep] = useState('confirm') // 'confirm' | 'not_returning' | 'form'
   const todayStr = new Date().toISOString().slice(0, 10)
   const [targetDate, setTargetDate]   = useState(todayStr)
   const [exitTime, setExitTime]       = useState('09:00')
@@ -576,137 +578,378 @@ function TemporaryExitModal({ userId, onClose, onSuccess }) {
   return (
     <div onClick={e => { if (e.target === e.currentTarget) onClose() }} style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(3px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', overflowY: 'auto' }}>
       <div style={{ background: cardBg, borderRadius: '12px', width: '100%', maxWidth: '480px', border: `1px solid ${borderColor}`, display: 'flex', flexDirection: 'column', maxHeight: 'calc(100vh - 32px)', boxShadow: isDark ? '0 20px 60px rgba(0,0,0,0.6)' : '0 20px 40px rgba(0,0,0,0.08)' }}>
-        {/* Header */}
-        <div style={{ padding: '18px 24px 14px', borderBottom: `1px solid ${borderColor}`, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexShrink: 0 }}>
-          <div>
-            <h2 style={{ fontSize: '15px', fontWeight: 600, color: textPrimary, letterSpacing: '-0.01em', margin: 0 }} className="flex items-center gap-2">
-              <FontAwesomeIcon icon={faDoorOpen} className="text-stone-500 text-sm" />
-              <span>Temporary Exit Permission Form</span>
-            </h2>
-            <p style={{ fontSize: '12px', color: textSecondary, marginTop: '2px', margin: '2px 0 0 0' }}>
-              This submission will be forwarded to your Unit Principal & Approver for review.
-            </p>
-          </div>
-          <button onClick={onClose} style={{ color: textSecondary, background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}>
-            <FontAwesomeIcon icon={faTimes} className="text-sm" />
-          </button>
-        </div>
 
-        {/* Body */}
-        <div style={{ overflowY: 'auto', padding: '16px 24px', flex: 1 }} className="space-y-4">
-          {/* Tanggal */}
-          <div>
-            <label className="text-xs font-medium block mb-1.5" style={{ color: textSecondary }}>
-              Permission Date <span style={{ color: '#ef4444' }}>*</span>
-            </label>
-            <input type="date" value={targetDate} onChange={e => setTargetDate(e.target.value)} style={{ ...inputStyle, fontFamily: 'monospace' }} />
-          </div>
-
-          {/* Jam Keluar & Jam Kembali */}
-          <div className="grid grid-cols-2 gap-3 p-3 rounded-lg border" style={{ background: subtleBg, borderColor }}>
-            <div>
-              <label className="text-xs font-medium block mb-1 flex items-center gap-1.5" style={{ color: textSecondary }}>
-                <FontAwesomeIcon icon={faClock} className="text-[11px]" />
-                <span>Exit Time</span>
-              </label>
-              <input type="time" value={exitTime} onChange={e => setExitTime(e.target.value)} style={{ ...inputStyle, fontFamily: 'monospace' }} />
-            </div>
-            <div>
-              <label className="text-xs font-medium block mb-1 flex items-center gap-1.5" style={{ color: textSecondary }}>
-                <FontAwesomeIcon icon={faClock} className="text-[11px]" />
-                <span>Return Time</span>
-              </label>
-              <input type="time" value={returnTime} onChange={e => setReturnTime(e.target.value)} style={{ ...inputStyle, fontFamily: 'monospace' }} />
-            </div>
-          </div>
-
-          {/* Kategori Alasan */}
-          <div>
-            <label className="text-xs font-medium block mb-1.5" style={{ color: textSecondary }}>
-              Reason Category <span style={{ color: '#ef4444' }}>*</span>
-            </label>
-            <div className="space-y-1.5">
-              {categories.map(c => {
-                const isSelected = category === c.value
-                return (
-                  <label key={c.value} className="flex items-center gap-2.5 px-3 py-2 rounded-md cursor-pointer transition-all"
-                    style={{
-                      background: isSelected ? (isDark ? '#27272A' : '#F7F6F3') : 'transparent',
-                      border: `1px solid ${isSelected ? (isDark ? '#52525B' : '#111111') : borderColor}`
-                    }}>
-                    <input type="radio" name="temp_exit_category" value={c.value} checked={isSelected}
-                      onChange={() => setCategory(c.value)} style={{ accentColor: isDark ? '#F4F4F5' : '#111111' }} />
-                    <span className="text-xs font-medium" style={{ color: textPrimary }}>{c.label}</span>
-                  </label>
-                )
-              })}
-            </div>
-          </div>
-
-          {/* Keterangan Detail */}
-          <div>
-            <label className="text-xs font-medium block mb-1.5" style={{ color: textSecondary }}>
-              Additional Details / Description {category === 'other' && <span style={{ color: '#ef4444' }}>*</span>}
-            </label>
-            <textarea rows={2} value={otherReason} onChange={e => setOtherReason(e.target.value)}
-              placeholder="e.g. Official meeting at Education Department / Medical appointment"
-              style={{ ...inputStyle, resize: 'vertical' }} />
-          </div>
-
-          {/* Lampiran */}
-          <div>
-            <label className="text-xs font-medium block mb-1.5" style={{ color: textSecondary }}>
-              Attachment / Official Document (Optional)
-            </label>
-            {compressing && (
-              <div className="flex items-center gap-2 mb-2 px-3 py-2 rounded-md text-xs" style={{ background: isDark ? 'rgba(59, 130, 246, 0.1)' : '#E1F3FE', border: `1px solid ${isDark ? 'rgba(59, 130, 246, 0.3)' : '#BFDBFE'}`, color: isDark ? '#93C5FD' : '#185ADB' }}>
-                <FontAwesomeIcon icon={faSpinner} spin className="text-xs" />
-                <span>Optimizing image (full size)...</span>
+        {/* ─── STEP 1: CONFIRMATION QUESTION ─── */}
+        {step === 'confirm' && (
+          <>
+            {/* Header */}
+            <div style={{ padding: '18px 24px 14px', borderBottom: `1px solid ${borderColor}`, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexShrink: 0 }}>
+              <div>
+                <h2 style={{ fontSize: '15px', fontWeight: 600, color: textPrimary, letterSpacing: '-0.01em', margin: 0 }} className="flex items-center gap-2">
+                  <FontAwesomeIcon icon={faDoorOpen} className="text-stone-500 text-sm" />
+                  <span>Temporary Exit Request</span>
+                </h2>
+                <p style={{ fontSize: '12px', color: textSecondary, marginTop: '2px', margin: '2px 0 0 0' }}>
+                  Pre-submission Verification
+                </p>
               </div>
-            )}
-            {fileToUpload && !compressing && (
-              <div className="flex items-center gap-2 mb-2 px-3 py-2 rounded-md text-xs" style={{ background: isDark ? 'rgba(34, 197, 94, 0.1)' : '#EDF3EC', border: `1px solid ${isDark ? 'rgba(34, 197, 94, 0.3)' : '#D1E7DD'}`, color: isDark ? '#86EFAC' : '#2A6335' }}>
-                <FontAwesomeIcon icon={faCheckCircle} className="text-xs" />
-                <span className="font-medium">{fileToUpload.name}</span>
-                <span style={{ color: textSecondary, marginLeft: 4 }} className="font-mono">({(fileToUpload.size / 1024).toFixed(0)} KB)</span>
-                {uploadFile && uploadFile.type?.startsWith('image/') && <span style={{ color: isDark ? '#86EFAC' : '#2A6335', marginLeft: 2 }}>(Full Size)</span>}
-              </div>
-            )}
-            <div className="flex items-center gap-2">
-              <label className="flex-1 cursor-pointer">
-                <div className="flex items-center gap-2 px-3 py-2 rounded-md" style={{ border: `1px dashed ${borderColor}`, background: subtleBg }}>
-                  <FontAwesomeIcon icon={faPaperclip} style={{ color: textSecondary }} />
-                  <span className="text-xs" style={{ color: textSecondary }}>
-                    {uploadFile ? uploadFile.name : 'Click to select an image or PDF document'}
-                  </span>
+              <button onClick={onClose} style={{ color: textSecondary, background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}>
+                <FontAwesomeIcon icon={faTimes} className="text-sm" />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div style={{ overflowY: 'auto', padding: '24px', flex: 1 }} className="space-y-4">
+              <div className="text-center py-2">
+                <div
+                  className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3 border shadow-xs"
+                  style={{
+                    background: isDark ? 'rgba(59, 130, 246, 0.15)' : '#E1F3FE',
+                    borderColor: isDark ? 'rgba(59, 130, 246, 0.3)' : '#BAE6FD',
+                    color: isDark ? '#60A5FA' : '#0284C7'
+                  }}
+                >
+                  <FontAwesomeIcon icon={faDoorOpen} className="text-lg" />
                 </div>
-                <input type="file" accept=".pdf,.jpg,.jpeg,.png" onChange={e => handleFileSelect(e.target.files[0] || null)} className="hidden" />
-              </label>
-              {uploadFile && (
-                <button onClick={() => { setUploadFile(null); setProcessedFile(null) }} className="text-xs px-2.5 py-2 rounded-md cursor-pointer border" style={{ background: isDark ? 'rgba(239, 68, 68, 0.15)' : '#FDEBEC', borderColor: isDark ? 'rgba(239, 68, 68, 0.3)' : '#FECACA', color: isDark ? '#FCA5A5' : '#9B1C1C' }}>
-                  <FontAwesomeIcon icon={faTimes} />
+                <h3 className="text-base font-semibold" style={{ color: textPrimary, letterSpacing: '-0.01em' }}>
+                  Will you return to school on the requested date?
+                </h3>
+                <p className="text-xs mt-1 max-w-sm mx-auto" style={{ color: textSecondary }}>
+                  Please confirm whether you will return to school before your shift ends on that day.
+                </p>
+              </div>
+
+              <div className="space-y-2.5 pt-2">
+                {/* Option 1: Yes */}
+                <button
+                  type="button"
+                  onClick={() => setStep('form')}
+                  className="w-full text-left p-3.5 rounded-lg border transition-all cursor-pointer flex items-start gap-3 hover:scale-[1.01]"
+                  style={{
+                    background: subtleBg,
+                    borderColor: borderColor,
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.borderColor = isDark ? '#3B82F6' : '#2563EB'}
+                  onMouseLeave={e => e.currentTarget.style.borderColor = borderColor}
+                >
+                  <div
+                    className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-0.5 border"
+                    style={{
+                      background: isDark ? 'rgba(34, 197, 94, 0.15)' : '#EDF3EC',
+                      borderColor: isDark ? 'rgba(34, 197, 94, 0.3)' : '#D1E7DD',
+                      color: isDark ? '#86EFAC' : '#16A34A'
+                    }}
+                  >
+                    <FontAwesomeIcon icon={faCheckCircle} className="text-xs" />
+                  </div>
+                  <div className="flex-1">
+                    <div className="text-xs font-semibold" style={{ color: textPrimary }}>
+                      Yes, I will return to school
+                    </div>
+                    <div className="text-[11px] mt-0.5" style={{ color: textSecondary }}>
+                      I am leaving temporarily and will return to finish my shift on that day.
+                    </div>
+                  </div>
                 </button>
+
+                {/* Option 2: No */}
+                <button
+                  type="button"
+                  onClick={() => setStep('not_returning')}
+                  className="w-full text-left p-3.5 rounded-lg border transition-all cursor-pointer flex items-start gap-3 hover:scale-[1.01]"
+                  style={{
+                    background: subtleBg,
+                    borderColor: borderColor,
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.borderColor = isDark ? '#EF4444' : '#DC2626'}
+                  onMouseLeave={e => e.currentTarget.style.borderColor = borderColor}
+                >
+                  <div
+                    className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-0.5 border"
+                    style={{
+                      background: isDark ? 'rgba(239, 68, 68, 0.15)' : '#FEF2F2',
+                      borderColor: isDark ? 'rgba(239, 68, 68, 0.3)' : '#FECACA',
+                      color: isDark ? '#FCA5A5' : '#DC2626'
+                    }}
+                  >
+                    <FontAwesomeIcon icon={faTimesCircle} className="text-xs" />
+                  </div>
+                  <div className="flex-1">
+                    <div className="text-xs font-semibold" style={{ color: textPrimary }}>
+                      No, I will not return
+                    </div>
+                    <div className="text-[11px] mt-0.5" style={{ color: textSecondary }}>
+                      I will not return, leaving early for the day, or will be absent.
+                    </div>
+                  </div>
+                </button>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div style={{ padding: '14px 24px 18px', borderTop: `1px solid ${borderColor}`, flexShrink: 0 }}>
+              <button
+                type="button"
+                onClick={onClose}
+                style={{ width: '100%', padding: '9px 0', borderRadius: '6px', border: `1px solid ${borderColor}`, background: subtleBg, color: textSecondary, fontSize: '12px', fontWeight: 500, cursor: 'pointer' }}
+              >
+                Cancel
+              </button>
+            </div>
+          </>
+        )}
+
+        {/* ─── STEP 2: NOT RETURNING NOTICE ─── */}
+        {step === 'not_returning' && (
+          <>
+            {/* Header */}
+            <div style={{ padding: '18px 24px 14px', borderBottom: `1px solid ${borderColor}`, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexShrink: 0 }}>
+              <div>
+                <h2 style={{ fontSize: '15px', fontWeight: 600, color: textPrimary, letterSpacing: '-0.01em', margin: 0 }} className="flex items-center gap-2">
+                  <FontAwesomeIcon icon={faDoorOpen} className="text-stone-500 text-sm" />
+                  <span>Temporary Exit Request</span>
+                </h2>
+                <p style={{ fontSize: '12px', color: textSecondary, marginTop: '2px', margin: '2px 0 0 0' }}>
+                  Submission Guidelines
+                </p>
+              </div>
+              <button onClick={onClose} style={{ color: textSecondary, background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}>
+                <FontAwesomeIcon icon={faTimes} className="text-sm" />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div style={{ overflowY: 'auto', padding: '20px 24px', flex: 1 }} className="space-y-4">
+              <div
+                className="p-4 rounded-xl border flex items-start gap-3.5"
+                style={{
+                  background: isDark ? 'rgba(245, 158, 11, 0.12)' : '#FEF3C7',
+                  borderColor: isDark ? 'rgba(245, 158, 11, 0.35)' : '#FCD34D',
+                  color: isDark ? '#FCD34D' : '#92400E'
+                }}
+              >
+                <div
+                  className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 mt-0.5"
+                  style={{
+                    background: isDark ? 'rgba(245, 158, 11, 0.2)' : '#FDE68A',
+                    color: isDark ? '#FCD34D' : '#B45309'
+                  }}
+                >
+                  <FontAwesomeIcon icon={faExclamationTriangle} className="text-sm" />
+                </div>
+                <div className="space-y-2 text-xs leading-relaxed">
+                  <div className="font-bold text-sm tracking-tight" style={{ color: isDark ? '#FCD34D' : '#92400E' }}>
+                    This Form is Strictly for Temporary Exits (With Return)
+                  </div>
+                  <p style={{ color: isDark ? '#FDE68A' : '#78350F' }}>
+                    The <strong>Temporary Exit</strong> form is exclusively for staff who need to leave the school temporarily during working hours and <strong>will return to school</strong> before their shift ends.
+                  </p>
+                  <div
+                    className="p-3 rounded-lg border text-[11.5px] space-y-1.5"
+                    style={{
+                      background: isDark ? 'rgba(0,0,0,0.25)' : 'rgba(255,255,255,0.7)',
+                      borderColor: isDark ? 'rgba(245, 158, 11, 0.3)' : '#FDE68A'
+                    }}
+                  >
+                    <div className="font-semibold text-xs" style={{ color: textPrimary }}>What you should do instead:</div>
+                    <div className="flex items-start gap-1.5" style={{ color: textPrimary }}>
+                      <span className="font-bold text-amber-600 dark:text-amber-400">•</span>
+                      <span><strong>Leaving Early (Early Departure):</strong> Simply clock out on the attendance machine when leaving the school. You do not need to submit a Temporary Exit form.</span>
+                    </div>
+                    <div className="flex items-start gap-1.5" style={{ color: textPrimary }}>
+                      <span className="font-bold text-amber-600 dark:text-amber-400">•</span>
+                      <span><strong>Full-Day Absence:</strong> Please submit a standard Leave Request or Absence Excuse through the regular process, not a Temporary Exit form.</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div style={{ display: 'flex', gap: '8px', padding: '14px 24px 18px', borderTop: `1px solid ${borderColor}`, flexShrink: 0 }}>
+              <button
+                type="button"
+                onClick={() => setStep('confirm')}
+                style={{ flex: 1, padding: '9px 0', borderRadius: '6px', border: `1px solid ${borderColor}`, background: subtleBg, color: textPrimary, fontSize: '12px', fontWeight: 500, cursor: 'pointer' }}
+              >
+                ← Back
+              </button>
+              <button
+                type="button"
+                onClick={onClose}
+                style={{ flex: 1, padding: '9px 0', borderRadius: '6px', border: 'none', background: isDark ? '#F4F4F5' : '#111111', color: isDark ? '#111111' : '#FFFFFF', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}
+              >
+                Understood
+              </button>
+            </div>
+          </>
+        )}
+
+        {/* ─── STEP 3: TEMPORARY EXIT FORM ─── */}
+        {step === 'form' && (
+          <>
+            {/* Header */}
+            <div style={{ padding: '18px 24px 14px', borderBottom: `1px solid ${borderColor}`, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexShrink: 0 }}>
+              <div className="flex items-start gap-3">
+                <button
+                  type="button"
+                  onClick={() => setStep('confirm')}
+                  className="text-xs flex items-center justify-center w-7 h-7 rounded border cursor-pointer transition-all mt-0.5"
+                  style={{ borderColor, background: subtleBg, color: textSecondary }}
+                  title="Back to verification"
+                >
+                  <FontAwesomeIcon icon={faArrowLeft} className="text-xs" />
+                </button>
+                <div>
+                  <h2 style={{ fontSize: '15px', fontWeight: 600, color: textPrimary, letterSpacing: '-0.01em', margin: 0 }} className="flex items-center gap-2">
+                    <FontAwesomeIcon icon={faDoorOpen} className="text-stone-500 text-sm" />
+                    <span>Temporary Exit Permission Form</span>
+                  </h2>
+                  <p style={{ fontSize: '12px', color: textSecondary, marginTop: '2px', margin: '2px 0 0 0' }}>
+                    This submission will be forwarded to your Unit Principal & Approver for review.
+                  </p>
+                </div>
+              </div>
+              <button onClick={onClose} style={{ color: textSecondary, background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}>
+                <FontAwesomeIcon icon={faTimes} className="text-sm" />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div style={{ overflowY: 'auto', padding: '16px 24px', flex: 1 }} className="space-y-4">
+              {/* Important Notice Banner */}
+              <div
+                className="p-3 rounded-lg border text-xs flex items-start gap-2.5"
+                style={{
+                  background: isDark ? 'rgba(245, 158, 11, 0.12)' : '#FEF3C7',
+                  borderColor: isDark ? 'rgba(245, 158, 11, 0.35)' : '#FCD34D',
+                  color: isDark ? '#FCD34D' : '#92400E'
+                }}
+              >
+                <FontAwesomeIcon icon={faExclamationTriangle} className="text-sm mt-0.5 shrink-0" />
+                <div className="leading-relaxed">
+                  <span className="font-semibold block mb-0.5 text-xs">
+                    Important: Not for Leave Early or Full-Day Absence
+                  </span>
+                  This form is strictly for <strong>temporary exits</strong> during work hours where you will <strong>return to school</strong>. If you are absent or leaving early for the day without returning, please do <strong>NOT</strong> use this form.
+                </div>
+              </div>
+
+              {/* Tanggal */}
+              <div>
+                <label className="text-xs font-medium block mb-1.5" style={{ color: textSecondary }}>
+                  Permission Date <span style={{ color: '#ef4444' }}>*</span>
+                </label>
+                <input type="date" value={targetDate} onChange={e => setTargetDate(e.target.value)} style={{ ...inputStyle, fontFamily: 'monospace' }} />
+              </div>
+
+              {/* Jam Keluar & Jam Kembali */}
+              <div className="grid grid-cols-2 gap-3 p-3 rounded-lg border" style={{ background: subtleBg, borderColor }}>
+                <div>
+                  <label className="text-xs font-medium block mb-1 flex items-center gap-1.5" style={{ color: textSecondary }}>
+                    <FontAwesomeIcon icon={faClock} className="text-[11px]" />
+                    <span>Exit Time</span>
+                  </label>
+                  <input type="time" value={exitTime} onChange={e => setExitTime(e.target.value)} style={{ ...inputStyle, fontFamily: 'monospace' }} />
+                </div>
+                <div>
+                  <label className="text-xs font-medium block mb-1 flex items-center gap-1.5" style={{ color: textSecondary }}>
+                    <FontAwesomeIcon icon={faClock} className="text-[11px]" />
+                    <span>Return Time</span>
+                  </label>
+                  <input type="time" value={returnTime} onChange={e => setReturnTime(e.target.value)} style={{ ...inputStyle, fontFamily: 'monospace' }} />
+                </div>
+              </div>
+
+              {/* Kategori Alasan */}
+              <div>
+                <label className="text-xs font-medium block mb-1.5" style={{ color: textSecondary }}>
+                  Reason Category <span style={{ color: '#ef4444' }}>*</span>
+                </label>
+                <div className="space-y-1.5">
+                  {categories.map(c => {
+                    const isSelected = category === c.value
+                    return (
+                      <label key={c.value} className="flex items-center gap-2.5 px-3 py-2 rounded-md cursor-pointer transition-all"
+                        style={{
+                          background: isSelected ? (isDark ? '#27272A' : '#F7F6F3') : 'transparent',
+                          border: `1px solid ${isSelected ? (isDark ? '#52525B' : '#111111') : borderColor}`
+                        }}>
+                        <input type="radio" name="temp_exit_category" value={c.value} checked={isSelected}
+                          onChange={() => setCategory(c.value)} style={{ accentColor: isDark ? '#F4F4F5' : '#111111' }} />
+                        <span className="text-xs font-medium" style={{ color: textPrimary }}>{c.label}</span>
+                      </label>
+                    )
+                  })}
+                </div>
+              </div>
+
+              {/* Keterangan Detail */}
+              <div>
+                <label className="text-xs font-medium block mb-1.5" style={{ color: textSecondary }}>
+                  Additional Details / Description {category === 'other' && <span style={{ color: '#ef4444' }}>*</span>}
+                </label>
+                <textarea rows={2} value={otherReason} onChange={e => setOtherReason(e.target.value)}
+                  placeholder="e.g. Official meeting at Education Department / Medical appointment"
+                  style={{ ...inputStyle, resize: 'vertical' }} />
+              </div>
+
+              {/* Lampiran */}
+              <div>
+                <label className="text-xs font-medium block mb-1.5" style={{ color: textSecondary }}>
+                  Attachment / Official Document (Optional)
+                </label>
+                {compressing && (
+                  <div className="flex items-center gap-2 mb-2 px-3 py-2 rounded-md text-xs" style={{ background: isDark ? 'rgba(59, 130, 246, 0.1)' : '#E1F3FE', border: `1px solid ${isDark ? 'rgba(59, 130, 246, 0.3)' : '#BFDBFE'}`, color: isDark ? '#93C5FD' : '#185ADB' }}>
+                    <FontAwesomeIcon icon={faSpinner} spin className="text-xs" />
+                    <span>Optimizing image (full size)...</span>
+                  </div>
+                )}
+                {fileToUpload && !compressing && (
+                  <div className="flex items-center gap-2 mb-2 px-3 py-2 rounded-md text-xs" style={{ background: isDark ? 'rgba(34, 197, 94, 0.1)' : '#EDF3EC', border: `1px solid ${isDark ? 'rgba(34, 197, 94, 0.3)' : '#D1E7DD'}`, color: isDark ? '#86EFAC' : '#2A6335' }}>
+                    <FontAwesomeIcon icon={faCheckCircle} className="text-xs" />
+                    <span className="font-medium">{fileToUpload.name}</span>
+                    <span style={{ color: textSecondary, marginLeft: 4 }} className="font-mono">({(fileToUpload.size / 1024).toFixed(0)} KB)</span>
+                    {uploadFile && uploadFile.type?.startsWith('image/') && <span style={{ color: isDark ? '#86EFAC' : '#2A6335', marginLeft: 2 }}>(Full Size)</span>}
+                  </div>
+                )}
+                <div className="flex items-center gap-2">
+                  <label className="flex-1 cursor-pointer">
+                    <div className="flex items-center gap-2 px-3 py-2 rounded-md" style={{ border: `1px dashed ${borderColor}`, background: subtleBg }}>
+                      <FontAwesomeIcon icon={faPaperclip} style={{ color: textSecondary }} />
+                      <span className="text-xs" style={{ color: textSecondary }}>
+                        {uploadFile ? uploadFile.name : 'Click to select an image or PDF document'}
+                      </span>
+                    </div>
+                    <input type="file" accept=".pdf,.jpg,.jpeg,.png" onChange={e => handleFileSelect(e.target.files[0] || null)} className="hidden" />
+                  </label>
+                  {uploadFile && (
+                    <button onClick={() => { setUploadFile(null); setProcessedFile(null) }} className="text-xs px-2.5 py-2 rounded-md cursor-pointer border" style={{ background: isDark ? 'rgba(239, 68, 68, 0.15)' : '#FDEBEC', borderColor: isDark ? 'rgba(239, 68, 68, 0.3)' : '#FECACA', color: isDark ? '#FCA5A5' : '#9B1C1C' }}>
+                      <FontAwesomeIcon icon={faTimes} />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {msg && (
+                <div className="p-2.5 rounded-md text-xs flex items-center gap-2" style={{ background: isDark ? 'rgba(239, 68, 68, 0.15)' : '#FDEBEC', border: `1px solid ${isDark ? 'rgba(239, 68, 68, 0.3)' : '#FECACA'}`, color: isDark ? '#FCA5A5' : '#9B1C1C' }}>
+                  <FontAwesomeIcon icon={faExclamationTriangle} className="text-xs" />
+                  <span>{msg}</span>
+                </div>
               )}
             </div>
-          </div>
 
-          {msg && (
-            <div className="p-2.5 rounded-md text-xs flex items-center gap-2" style={{ background: isDark ? 'rgba(239, 68, 68, 0.15)' : '#FDEBEC', border: `1px solid ${isDark ? 'rgba(239, 68, 68, 0.3)' : '#FECACA'}`, color: isDark ? '#FCA5A5' : '#9B1C1C' }}>
-              <FontAwesomeIcon icon={faExclamationTriangle} className="text-xs" />
-              <span>{msg}</span>
+            {/* Footer */}
+            <div style={{ display: 'flex', gap: '8px', padding: '14px 24px 18px', borderTop: `1px solid ${borderColor}`, flexShrink: 0 }}>
+              <button onClick={onClose} style={{ flex: 1, padding: '9px 0', borderRadius: '6px', border: `1px solid ${borderColor}`, background: subtleBg, color: textPrimary, fontSize: '12px', fontWeight: 500, cursor: 'pointer' }}>
+                Cancel
+              </button>
+              <button onClick={handleSubmit} disabled={submitting || compressing} style={{ flex: 1, padding: '9px 0', borderRadius: '6px', border: 'none', background: isDark ? '#F4F4F5' : '#111111', color: isDark ? '#111111' : '#FFFFFF', fontSize: '12px', fontWeight: 600, cursor: (submitting || compressing) ? 'default' : 'pointer', opacity: (submitting || compressing) ? 0.6 : 1 }}>
+                {compressing ? 'Optimizing...' : submitting ? (uploading ? 'Uploading...' : 'Submitting...') : 'Submit Request'}
+              </button>
             </div>
-          )}
-        </div>
-
-        {/* Footer */}
-        <div style={{ display: 'flex', gap: '8px', padding: '14px 24px 18px', borderTop: `1px solid ${borderColor}`, flexShrink: 0 }}>
-          <button onClick={onClose} style={{ flex: 1, padding: '9px 0', borderRadius: '6px', border: `1px solid ${borderColor}`, background: subtleBg, color: textPrimary, fontSize: '12px', fontWeight: 500, cursor: 'pointer' }}>
-            Cancel
-          </button>
-          <button onClick={handleSubmit} disabled={submitting || compressing} style={{ flex: 1, padding: '9px 0', borderRadius: '6px', border: 'none', background: isDark ? '#F4F4F5' : '#111111', color: isDark ? '#111111' : '#FFFFFF', fontSize: '12px', fontWeight: 600, cursor: (submitting || compressing) ? 'default' : 'pointer', opacity: (submitting || compressing) ? 0.6 : 1 }}>
-            {compressing ? 'Optimizing...' : submitting ? (uploading ? 'Uploading...' : 'Submitting...') : 'Submit Request'}
-          </button>
-        </div>
+          </>
+        )}
       </div>
     </div>
   )

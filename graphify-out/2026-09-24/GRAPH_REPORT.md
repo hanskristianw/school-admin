@@ -1,11 +1,11 @@
 # Graph Report - school-admin  (2026-09-24)
 
 ## Corpus Check
-- 411 files · ~694,135 words
+- 411 files · ~694,175 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 2294 nodes · 2382 edges · 388 communities (273 shown, 115 thin omitted)
+- 2294 nodes · 2382 edges · 389 communities (273 shown, 116 thin omitted)
 - Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 7 edges (avg confidence: 0.63)
 - Token cost: 0 input · 0 output
 
@@ -200,6 +200,7 @@
 - 📌 Changelog
 - Sistem Penomoran PO Otomatis
 - 🎯 **System Modules & Features**
+- SKILL.md
 - DDL
 - Database Migrations
 - 5.1 Tables
@@ -315,7 +316,7 @@
 ## Import Cycles
 - None detected.
 
-## Communities (388 total, 115 thin omitted)
+## Communities (389 total, 116 thin omitted)
 
 ### Community 0 - "Admission Management"
 Cohesion: 0.06
@@ -558,8 +559,8 @@ Cohesion: 0.11
 Nodes (17): aliases, components, hooks, lib, ui, utils, iconLibrary, rsc (+9 more)
 
 ### Community 80 - "Module 80"
-Cohesion: 0.12
-Nodes (16): 10. SECTION RHYTHM RULE, 12. DENSITY & SPACING DISCIPLINE, 14. IMAGE / MEDIA DIRECTION, 16. MULTI-IMAGE CONSISTENCY RULE, 17. CLARITY CHECK, 19. RESPONSE BEHAVIOR, 1. ACTIVE BASELINE CONFIGURATION, 21. FINAL GOAL (+8 more)
+Cohesion: 0.14
+Nodes (14): 10. SECTION RHYTHM RULE, 12. DENSITY & SPACING DISCIPLINE, 14. IMAGE / MEDIA DIRECTION, 16. MULTI-IMAGE CONSISTENCY RULE, 17. CLARITY CHECK, 19. RESPONSE BEHAVIOR, 1. ACTIVE BASELINE CONFIGURATION, 21. FINAL GOAL (+6 more)
 
 ### Community 81 - "Module 81"
 Cohesion: 0.12
@@ -948,7 +949,7 @@ Nodes (6): extractScheduleMeta(), GET(), POST(), resolveCurrentFormFee(), supaba
 ## Knowledge Gaps
 - **1159 isolated node(s):** `extends`, `next/core-web-vitals`, `$schema`, `style`, `rsc` (+1154 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **115 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **116 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
@@ -957,7 +958,7 @@ _Questions this graph is uniquely positioned to answer:_
   _High betweenness centrality (0.009) - this node is a cross-community bridge._
 - **Why does `jspdf` connect `Admission Management` to `�🏗️ **Database Structure**`, `Module 236`?**
   _High betweenness centrality (0.006) - this node is a cross-community bridge._
-- **Why does `CORE DIRECTIVE: AWWWARDS-LEVEL IMAGE ART DIRECTION` connect `Module 80` to `Module 98`, `Module 135`, `Module 136`, `Module 144`, `Module 116`, `Module 117`, `Module 247`, `Module 248`, `Module 123`?**
+- **Why does `CORE DIRECTIVE: AWWWARDS-LEVEL IMAGE ART DIRECTION` connect `Module 80` to `SKILL.md`, `Module 98`, `Module 135`, `Module 136`, `Module 144`, `Module 116`, `Module 117`, `Module 247`, `Module 248`, `Module 123`?**
   _High betweenness centrality (0.002) - this node is a cross-community bridge._
 - **What connects `extends`, `next/core-web-vitals`, `$schema` to the rest of the system?**
   _1159 weakly-connected nodes found - possible documentation gaps or missing edges._

@@ -118,8 +118,9 @@ import {
 // Complete icon mapping dictionary with all naming variations
 const iconMap = {
   'fas fa-futbol': faFutbol,
-  'faFutbol': faFutbol,
-  'futbol': faFutbol,
+  'fas fa-brain': faBrain,
+  'faBrain': faBrain,
+  'brain': faBrain,
   // Operational & Maintenance
   'fas fa-screwdriver-wrench': faScrewdriverWrench,
   'faScrewdriverWrench': faScrewdriverWrench,

@@ -158,7 +158,7 @@ export async function POST(request) {
 
     return NextResponse.json({
       success: true,
-      message: 'Hasil psikotes berhasil disimpan ke Supabase!',
+      message: 'Hasil psikotes berhasil disimpan!',
       result_id: resultId
     })
   } catch (err) {

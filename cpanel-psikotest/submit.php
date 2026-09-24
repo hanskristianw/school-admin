@@ -162,8 +162,8 @@ $response = callNextJsApi('POST', [], $payload);
           <span class="info-val"><?= htmlspecialchars($tanggal) ?></span>
         </div>
         <div class="info-row">
-          <span class="info-label">Status Database</span>
-          <span class="info-val text-success">Tersinkronisasi (Supabase)</span>
+          <span class="info-label">Status</span>
+          <span class="info-val text-success">Tersimpan</span>
         </div>
       </div>
 
