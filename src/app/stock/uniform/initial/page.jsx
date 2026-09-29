@@ -542,9 +542,29 @@ export default function InitialStockPage() {
         const totalSoldQty = paidSoldQty + freeSoldQty
 
         const totalSaleRevenue = paidItems.reduce((sum, si) => sum + Number(si.subtotal || 0), 0)
-        const avgSellPrice = paidSoldQty > 0
-          ? Math.round(totalSaleRevenue / paidSoldQty)
-          : (variants.length > 0 ? Number(variants[0]?.price || 0) : 0)
+
+        // Group paid items by unit selling price
+        const priceMap = {}
+        paidItems.forEach(si => {
+          const p = Number(si.unit_price || 0)
+          priceMap[p] = (priceMap[p] || 0) + si.qty
+        })
+        const priceEntries = Object.entries(priceMap).sort((a, b) => Number(a[0]) - Number(b[0]))
+
+        let hargaJualDisplay = ''
+        let hargaJualLineCount = 1
+        if (priceEntries.length === 0) {
+          hargaJualDisplay = variants.length > 0 && Number(variants[0]?.price || 0) > 0 ? Number(variants[0].price) : '-'
+        } else if (priceEntries.length === 1) {
+          hargaJualDisplay = Number(priceEntries[0][0])
+        } else {
+          // Multi-price breakdown in 1 cell (e.g. 39 pcs @ Rp 155.000 \n 4 pcs @ Rp 160.000)
+          hargaJualDisplay = priceEntries
+            .map(([price, qty]) => `${qty} pcs @ Rp ${Number(price).toLocaleString('id-ID')}`)
+            .join('\n')
+          hargaJualLineCount = priceEntries.length
+        }
+
         const totalSaleCost = salesForUniform.reduce((sum, si) => sum + (si.qty * Number(si.unit_hpp || weightedAvgHpp || 0)), 0)
         const profit = totalSaleRevenue - totalSaleCost
 
@@ -580,7 +600,8 @@ export default function InitialStockPage() {
           paidSoldQty,
           freeSoldQty,
           totalSoldQty,
-          avgSellPrice,
+          hargaJualDisplay,
+          hargaJualLineCount,
           totalSaleRevenue,
           profit,
           stockAkhirInv: rawStockAkhirInv,
@@ -641,7 +662,7 @@ export default function InitialStockPage() {
       ws.getColumn(C.jmlTerjualPaid).width = 18
       ws.getColumn(C.jmlTerjualFree).width = 18
       ws.getColumn(C.jmlTerjualTotal).width = 16
-      ws.getColumn(C.hargaJual).width = 20
+      ws.getColumn(C.hargaJual).width = 24
       ws.getColumn(C.totalPenjualan).width = 22
       ws.getColumn(C.keuntungan).width = 26
 
@@ -696,7 +717,7 @@ export default function InitialStockPage() {
       subHeaders[C.jmlTerjualPaid - 1] = 'Terjual (Berbayar)'
       subHeaders[C.jmlTerjualFree - 1] = 'Terjual (Free/Paket)'
       subHeaders[C.jmlTerjualTotal - 1] = 'Total Terjual'
-      subHeaders[C.hargaJual - 1] = 'Harga Jual (Berbayar)'
+      subHeaders[C.hargaJual - 1] = 'Harga Jual'
       subHeaders[C.totalPenjualan - 1] = 'Total Penjualan'
       subHeaders[C.keuntungan - 1] = 'Keuntungan Penjualan Seragam'
       subHeaders[C.akhirJenis - 1] = 'Jenis Seragam'
@@ -752,7 +773,7 @@ export default function InitialStockPage() {
         vals[C.jmlTerjualPaid - 1] = fmtNum(row.paidSoldQty)
         vals[C.jmlTerjualFree - 1] = fmtNum(row.freeSoldQty)
         vals[C.jmlTerjualTotal - 1] = fmtNum(row.totalSoldQty)
-        vals[C.hargaJual - 1] = fmtNum(row.avgSellPrice)
+        vals[C.hargaJual - 1] = fmtNum(row.hargaJualDisplay)
         vals[C.totalPenjualan - 1] = fmtNum(row.totalSaleRevenue)
         vals[C.keuntungan - 1] = fmtNum(row.profit)
         vals[C.akhirJenis - 1] = row.uniform_name
@@ -778,10 +799,17 @@ export default function InitialStockPage() {
         totals.totalStokAkhir += row.totalStockAkhir || 0
 
         const dataRow = ws.addRow(vals)
+        if (row.hargaJualLineCount > 1) {
+          dataRow.height = Math.max(34, row.hargaJualLineCount * 18)
+        }
         dataRow.eachCell({ includeEmpty: true }, (cell, colNum) => {
           if (colNum <= totalCols) {
             cell.border = thinBorder
-            cell.alignment = { vertical: 'middle' }
+            cell.alignment = {
+              vertical: 'middle',
+              wrapText: colNum === C.hargaJual || colNum === C.jenisSeragam || colNum === C.akhirJenis,
+              horizontal: (colNum === C.hargaJual && typeof cell.value === 'string' && cell.value.includes('\n')) ? 'center' : undefined
+            }
             if (typeof cell.value === 'number' && [C.hpp, C.nilai, C.hargaBeli, C.totalPembelian, C.hargaJual, C.totalPenjualan, C.keuntungan].includes(colNum)) {
               cell.numFmt = '#,##0'
             }
@@ -804,7 +832,7 @@ export default function InitialStockPage() {
       totalVals[C.jmlTerjualPaid - 1] = fmtNum(totals.jmlTerjualPaid)
       totalVals[C.jmlTerjualFree - 1] = fmtNum(totals.jmlTerjualFree)
       totalVals[C.jmlTerjualTotal - 1] = fmtNum(totals.jmlTerjualTotal)
-      totalVals[C.hargaJual - 1] = totals.jmlTerjualPaid > 0 ? fmtNum(Math.round(totals.totalPenjualan / totals.jmlTerjualPaid)) : ''
+      totalVals[C.hargaJual - 1] = '-'
       totalVals[C.totalPenjualan - 1] = fmtNum(totals.totalPenjualan)
       totalVals[C.keuntungan - 1] = fmtNum(totals.keuntungan)
       totalVals[C.akhirJenis - 1] = 'TOTAL'
@@ -818,7 +846,10 @@ export default function InitialStockPage() {
           cell.font = { bold: true }
           cell.fill = totalFill
           cell.border = thinBorder
-          cell.alignment = { vertical: 'middle' }
+          cell.alignment = {
+            vertical: 'middle',
+            horizontal: colNum === C.hargaJual ? 'center' : undefined
+          }
           if (typeof cell.value === 'number' && [C.nilai, C.hargaBeli, C.totalPembelian, C.hargaJual, C.totalPenjualan, C.keuntungan].includes(colNum)) {
             cell.numFmt = '#,##0'
           }
