@@ -27,6 +27,7 @@ The main table storing user accounts (staff, teachers, admin, students, etc).
 | `expected_check_in` | `TIME` | Expected arrival time |
 | `expected_check_out`| `TIME` | Expected departure time |
 | `join_date` | `DATE` | Date joined |
+| `resign_date` | `DATE` | Effective resignation date. Days after this date are excluded from attendance tracking and reports. |
 | `signature_url` | `TEXT` | Public URL to user/teacher signature image (Storage: `report-assets/user-signatures/{user_id}/signature.png`) |
 | `user_theme` | `VARCHAR` | User UI theme preference |
 | `user_password_hash`| `VARCHAR` | Bcrypt password hash |

@@ -477,5 +477,6 @@
   "475": "update_language_keywords.sql",
   "476": "verify-attendance-schema.sql",
   "477": "SUPPLIER SERAGAM STOCK.md",
-  "478": "Users.md"
+  "478": "Users.md",
+  "479": "add-resign-date-to-users.sql"
 }

@@ -185,27 +185,48 @@ export async function GET(request) {
 
     // ── 3. Users — include those with PIN (user_pin NOT NULL)
     //   Remove expected_check_in filter: use DEFAULT if null
-    let userQuery = supabaseAdmin
-      .from('users')
-      .select(`
-        user_id, user_nama_depan, user_nama_belakang,
-        user_unit_id, user_role_id, user_pin,
-        user_manual_picture, user_profile_picture,
-        expected_check_in, expected_check_out, join_date,
-        role:user_role_id (role_name, work_days, is_vendor, is_part_time_staff, is_flexible_hours, is_on_call_staff)
-      `)
-      .eq('is_active', true)
-      .not('user_pin', 'is', null)
-      // Hanya tampilkan user yang sudah bergabung sebelum atau pada akhir period laporan
-      // (join_date NULL = tidak ada batasan)
-      .or(`join_date.is.null,join_date.lte.${end}`)
+    //   Support join_date and optional resign_date (with graceful fallback if column not yet added)
+    const baseUserFields = `
+      user_id, user_nama_depan, user_nama_belakang,
+      user_unit_id, user_role_id, user_pin,
+      user_manual_picture, user_profile_picture,
+      expected_check_in, expected_check_out, join_date,
+      role:user_role_id (role_name, work_days, is_vendor, is_part_time_staff, is_flexible_hours, is_on_call_staff)
+    `
 
-    if (unitId)     userQuery = userQuery.eq('user_unit_id', parseInt(unitId, 10))
-    if (roleId)     userQuery = userQuery.eq('user_role_id', parseInt(roleId, 10))
-    if (singleUser) userQuery = userQuery.eq('user_id',      parseInt(singleUser, 10))
+    let users = []
+    try {
+      let q = supabaseAdmin
+        .from('users')
+        .select(`${baseUserFields}, resign_date`)
+        .not('user_pin', 'is', null)
+        .or(`is_active.eq.true,resign_date.gte.${start}`)
+        .or(`join_date.is.null,join_date.lte.${end}`)
+        .or(`resign_date.is.null,resign_date.gte.${start}`)
 
-    const { data: users, error: usersErr } = await userQuery
-    if (usersErr) throw usersErr
+      if (unitId)     q = q.eq('user_unit_id', parseInt(unitId, 10))
+      if (roleId)     q = q.eq('user_role_id', parseInt(roleId, 10))
+      if (singleUser) q = q.eq('user_id',      parseInt(singleUser, 10))
+
+      const { data, error } = await q
+      if (error) throw error
+      users = data || []
+    } catch (_) {
+      let q = supabaseAdmin
+        .from('users')
+        .select(baseUserFields)
+        .eq('is_active', true)
+        .not('user_pin', 'is', null)
+        .or(`join_date.is.null,join_date.lte.${end}`)
+
+      if (unitId)     q = q.eq('user_unit_id', parseInt(unitId, 10))
+      if (roleId)     q = q.eq('user_role_id', parseInt(roleId, 10))
+      if (singleUser) q = q.eq('user_id',      parseInt(singleUser, 10))
+
+      const { data, error } = await q
+      if (error) throw error
+      users = data || []
+    }
 
     if (!users?.length) {
       return NextResponse.json({
@@ -337,6 +358,8 @@ export async function GET(request) {
         position:   positionMap[user.user_id]?.position_title || '',
         expected_check_in:  expectedIn.slice(0, 5),
         expected_check_out: expectedOut.slice(0, 5),
+        join_date:          user.join_date || null,
+        resign_date:        user.resign_date || null,
         late_count:                0,
         late_minutes_total:        0,
         leave_early_count:         0,
@@ -370,6 +393,9 @@ export async function GET(request) {
 
         // ── Filter join_date: skip hari sebelum tanggal masuk karyawan ─────
         if (user.join_date && dateStr < user.join_date) continue
+
+        // ── Filter resign_date: skip hari setelah tanggal keluar karyawan ─────
+        if (user.resign_date && dateStr > user.resign_date) continue
 
         if (!isWorkDay) {
           // Include non-workdays in daily[] for Excel & UI (holiday/dayoff rows)

@@ -725,8 +725,8 @@
     "semantic_hash": ""
   },
   "src/app/api/attendance/notify/route.js": {
-    "mtime": 1789743357.646382,
-    "ast_hash": "8bbffe290645dde8c7c2cd6d3ef21db7",
+    "mtime": 1790673554.8422475,
+    "ast_hash": "d165a93dec4e45406f6111d1ac973038",
     "semantic_hash": ""
   },
   "src/app/api/attendance/notify/test-email/route.js": {
@@ -735,8 +735,8 @@
     "semantic_hash": ""
   },
   "src/app/api/attendance/report/route.js": {
-    "mtime": 1789743357.647383,
-    "ast_hash": "c119201861551aae5d98fc6b4f1515e7",
+    "mtime": 1790673524.4749334,
+    "ast_hash": "bd09f7c7d8cbc834e01030c392e5db56",
     "semantic_hash": ""
   },
   "src/app/api/attendance/role-approvers/route.js": {
@@ -1100,8 +1100,8 @@
     "semantic_hash": "bce3c75e8857dcb89848e4614700e6e8"
   },
   "src/app/data/user/page.jsx": {
-    "mtime": 1789743357.6915033,
-    "ast_hash": "7b2628a91d7e4887f7002fc14bc61270",
+    "mtime": 1790673807.9514182,
+    "ast_hash": "ddc939dc90792a8a50ab92478178be06",
     "semantic_hash": ""
   },
   "src/app/data/year/page.jsx": {
@@ -1645,8 +1645,8 @@
     "semantic_hash": ""
   },
   "DATABASE_SCHEMA.md": {
-    "mtime": 1790648948.8808215,
-    "ast_hash": "a6eb84187838322c4064e5f43a71dff7",
+    "mtime": 1790673828.2113423,
+    "ast_hash": "028a21190b4dae562ea83b9b06021b20",
     "semantic_hash": ""
   },
   "banner-220.png": {
@@ -2307,6 +2307,11 @@
   "src/app/data/athletic-day/page.jsx": {
     "mtime": 1790251341.6976392,
     "ast_hash": "2d817a85fb21977e66527d54e127c5e9",
+    "semantic_hash": ""
+  },
+  "migrations/add-resign-date-to-users.sql": {
+    "mtime": 1790673393.1008222,
+    "ast_hash": "e3a75ac9e39b7cd46e66236d7cfe053e",
     "semantic_hash": ""
   }
 }

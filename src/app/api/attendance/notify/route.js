@@ -243,23 +243,48 @@ async function handleNotify(request) {
       .filter(Boolean)
 
     // ─── 5. Fetch active users with attendance config ───────────────────────────────
-    const { data: users, error: usersErr } = await supabaseAdmin
-      .from('users')
-      .select(`
-        user_id,
-        user_nama_depan,
-        user_nama_belakang,
-        user_email,
-        user_role_id,
-        user_pin,
-        expected_check_in,
-        expected_check_out,
-        role:user_role_id (role_name, work_days, is_vendor, is_part_time_staff, is_flexible_hours, is_on_call_staff)
-      `)
-      .eq('is_active', true)
-      .not('user_pin', 'is', null)
-
-    if (usersErr) throw usersErr
+    let users = []
+    try {
+      const { data, error: usersErr } = await supabaseAdmin
+        .from('users')
+        .select(`
+          user_id,
+          user_nama_depan,
+          user_nama_belakang,
+          user_email,
+          user_role_id,
+          user_pin,
+          expected_check_in,
+          expected_check_out,
+          join_date,
+          resign_date,
+          role:user_role_id (role_name, work_days, is_vendor, is_part_time_staff, is_flexible_hours, is_on_call_staff)
+        `)
+        .eq('is_active', true)
+        .not('user_pin', 'is', null)
+        .or(`resign_date.is.null,resign_date.gte.${targetDate}`)
+      if (usersErr) throw usersErr
+      users = data || []
+    } catch (_) {
+      const { data, error: usersErr } = await supabaseAdmin
+        .from('users')
+        .select(`
+          user_id,
+          user_nama_depan,
+          user_nama_belakang,
+          user_email,
+          user_role_id,
+          user_pin,
+          expected_check_in,
+          expected_check_out,
+          join_date,
+          role:user_role_id (role_name, work_days, is_vendor, is_part_time_staff, is_flexible_hours, is_on_call_staff)
+        `)
+        .eq('is_active', true)
+        .not('user_pin', 'is', null)
+      if (usersErr) throw usersErr
+      users = data || []
+    }
 
     // ─── 6. Fetch attendances for target date ───────────────────────────────────
     const userIds = (users || []).map(u => u.user_id)
@@ -351,6 +376,16 @@ async function handleNotify(request) {
 
       if (!isWorkDay) {
         console.log(`[AttendanceNotif] ${userName}: not a work day. Skip.`)
+        continue
+      }
+
+      // ── Filter join_date / resign_date ──
+      if (user.join_date && targetDate < user.join_date) {
+        console.log(`[AttendanceNotif] ${userName}: before join date (${user.join_date}). Skip.`)
+        continue
+      }
+      if (user.resign_date && targetDate > user.resign_date) {
+        console.log(`[AttendanceNotif] ${userName}: after resign date (${user.resign_date}). Skip.`)
         continue
       }
 

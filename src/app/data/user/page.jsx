@@ -95,7 +95,8 @@ export default function UserManagement() {
     user_pin: '',
     expected_check_in: '',
     expected_check_out: '',
-    join_date: ''
+    join_date: '',
+    resign_date: ''
   });
   const [formErrors, setFormErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
@@ -344,11 +345,20 @@ export default function UserManagement() {
     try {
       setLoading(true);
       setError('');
-      const { data: usersData, error: usersError } = await supabase
+      let usersData = null;
+      const { data: uData1, error: uErr1 } = await supabase
         .from('users')
-        .select('user_id, user_nama_depan, user_nama_belakang, user_email, user_profile_picture, user_manual_picture, user_role_id, user_unit_id, is_active, signature_url, user_tanggal_lahir, user_pin, expected_check_in, expected_check_out, join_date');
+        .select('user_id, user_nama_depan, user_nama_belakang, user_email, user_profile_picture, user_manual_picture, user_role_id, user_unit_id, is_active, signature_url, user_tanggal_lahir, user_pin, expected_check_in, expected_check_out, join_date, resign_date');
 
-      if (usersError) throw new Error(usersError.message);
+      if (!uErr1) {
+        usersData = uData1;
+      } else {
+        const { data: uData2, error: uErr2 } = await supabase
+          .from('users')
+          .select('user_id, user_nama_depan, user_nama_belakang, user_email, user_profile_picture, user_manual_picture, user_role_id, user_unit_id, is_active, signature_url, user_tanggal_lahir, user_pin, expected_check_in, expected_check_out, join_date');
+        if (uErr2) throw new Error(uErr2.message);
+        usersData = uData2;
+      }
 
       const { data: rolesData, error: rolesError } = await supabase
         .from('role')
@@ -378,6 +388,7 @@ export default function UserManagement() {
           expected_check_in: user.expected_check_in || null,
           expected_check_out: user.expected_check_out || null,
           join_date: user.join_date || null,
+          resign_date: user.resign_date || null,
           role_name: role?.role_name || '',
           is_admin: role?.is_admin || false,
           unit_name: unit?.unit_name || '',
@@ -724,6 +735,7 @@ export default function UserManagement() {
       if (!baseData.expected_check_in) baseData.expected_check_in = null;
       if (!baseData.expected_check_out) baseData.expected_check_out = null;
       if (!baseData.join_date) baseData.join_date = null;
+      if (!baseData.resign_date) baseData.resign_date = null;
       if (!baseData.user_pin) baseData.user_pin = null;
 
       if (editingUser) {
@@ -784,7 +796,8 @@ export default function UserManagement() {
       user_pin: user.user_pin || '',
       expected_check_in: user.expected_check_in ? user.expected_check_in.slice(0, 5) : '',
       expected_check_out: user.expected_check_out ? user.expected_check_out.slice(0, 5) : '',
-      join_date: user.join_date || ''
+      join_date: user.join_date || '',
+      resign_date: user.resign_date || ''
     });
     setImageFile(null);
     setSignatureBlob(null);
@@ -864,7 +877,8 @@ export default function UserManagement() {
       user_pin: '',
       expected_check_in: '',
       expected_check_out: '',
-      join_date: ''
+      join_date: '',
+      resign_date: ''
     });
     setImageFile(null);
     setTempImageSrc(null);
@@ -1637,17 +1651,31 @@ export default function UserManagement() {
                 </div>
               </div>
 
-              <div className="p-3 rounded border space-y-2" style={{ background: theme.subtleBg, borderColor: theme.border }}>
-                <p className="font-semibold" style={{ color: theme.textPrimary }}>Join Date</p>
-                <Input
-                  type="date"
-                  name="join_date"
-                  value={formData.join_date || ''}
-                  onChange={handleInputChange}
-                  disabled={submitting}
-                  style={inputStyle}
-                  className="font-mono text-xs"
-                />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="p-3 rounded border space-y-2" style={{ background: theme.subtleBg, borderColor: theme.border }}>
+                  <p className="font-semibold" style={{ color: theme.textPrimary }}>Join Date</p>
+                  <Input
+                    type="date"
+                    name="join_date"
+                    value={formData.join_date || ''}
+                    onChange={handleInputChange}
+                    disabled={submitting}
+                    style={inputStyle}
+                    className="font-mono text-xs"
+                  />
+                </div>
+                <div className="p-3 rounded border space-y-2" style={{ background: theme.subtleBg, borderColor: theme.border }}>
+                  <p className="font-semibold" style={{ color: theme.textPrimary }}>Resign Date</p>
+                  <Input
+                    type="date"
+                    name="resign_date"
+                    value={formData.resign_date || ''}
+                    onChange={handleInputChange}
+                    disabled={submitting}
+                    style={inputStyle}
+                    className="font-mono text-xs"
+                  />
+                </div>
               </div>
             </div>
           )}

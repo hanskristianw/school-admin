@@ -1,16 +1,16 @@
 # Graph Report - school-admin  (2026-09-29)
 
 ## Corpus Check
-- 415 files · ~702,387 words
+- 416 files · ~703,008 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 2506 nodes · 2528 edges · 479 communities (303 shown, 176 thin omitted)
+- 2508 nodes · 2529 edges · 480 communities (303 shown, 177 thin omitted)
 - Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 7 edges (avg confidence: 0.63)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `d319373e`
+- Built from commit: `021cce70`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -362,6 +362,7 @@
 - update-fpb-procurement-status.sql
 - update-leave-quotas-use-year-id.sql
 - update-payment-method-options.sql
+- add-resign-date-to-users.sql
 
 ## God Nodes (most connected - your core abstractions)
 1. `CORE DIRECTIVE: IMAGE-FIRST WEBSITE DESIGN TO CODE` - 39 edges
@@ -390,7 +391,7 @@
 ## Import Cycles
 - None detected.
 
-## Communities (479 total, 176 thin omitted)
+## Communities (480 total, 177 thin omitted)
 
 ### Community 0 - "Admission Management"
 Cohesion: 0.07
@@ -689,8 +690,8 @@ Cohesion: 0.15
 Nodes (13): 15.1 Tables, 15.2 ERD / Relationships (Admissions Domain), 15.3 Admissions Lifecycle & Operational Integration, 15. Student Admission & Enrollment Domain (`/login`, `/admission`, `/admission/status`, `/data/admission`, `/data/admission-level`, `/data/school-fee`), `admission_form_fee`, `admission_level`, `application_discount`, `application_installment` (+5 more)
 
 ### Community 104 - "Module 104"
-Cohesion: 0.13
-Nodes (15): 5.1 Tables, 5.2 ERD / Relationships (Attendance Domain), 5. Attendance & Leave Management Domain (`/data/attendance-settings`, `/data/attendance-leave`, `/data/attendance-form`), `attendance_excuses`, `attendance_notification_log`, `attendance_notify_run_log`, `attendances`, `kelas_attendance` (+7 more)
+Cohesion: 0.15
+Nodes (13): 5.1 Tables, `attendance_excuses`, `attendance_notification_log`, `attendance_notify_run_log`, `attendances`, `kelas_attendance`, `leave_quotas`, `leave_types` (+5 more)
 
 ### Community 105 - "Module 105"
 Cohesion: 0.18
@@ -905,8 +906,8 @@ Cohesion: 0.73
 Nodes (4): formatIndonesianDate(), generatePsikotestPDF(), loadImgBase64(), PsikotestManagementPage()
 
 ### Community 237 - "Module 237"
-Cohesion: 0.18
-Nodes (10): 10.1 Tables, 10.2 ERD / Relationships (Duty & Devotion Schedule Domain), 10. Duty, Greeter & Devotion Schedule Domain (`/data/door_greeter`), 11.2 ERD / Relationships (Uniform & Stock Domain), 11.3 Initial Stock & Inventory Ledger Workflows (`/stock/uniform/initial`), 11.4 POS Uniform Sales Workflows (`/sales/uniform`), 11. Uniform & Stock Management Domain (`/sales/uniform`, `/stock/uniform/add`, `/stock/uniform/initial`, `/stock/uniform/po-settings`, `/data/uniform`, `/data/uniform-size`), Database Schema & Relationships (+2 more)
+Cohesion: 0.15
+Nodes (12): 10.1 Tables, 10.2 ERD / Relationships (Duty & Devotion Schedule Domain), 10. Duty, Greeter & Devotion Schedule Domain (`/data/door_greeter`), 11.2 ERD / Relationships (Uniform & Stock Domain), 11.3 Initial Stock & Inventory Ledger Workflows (`/stock/uniform/initial`), 11.4 POS Uniform Sales Workflows (`/sales/uniform`), 11. Uniform & Stock Management Domain (`/sales/uniform`, `/stock/uniform/add`, `/stock/uniform/initial`, `/stock/uniform/po-settings`, `/data/uniform`, `/data/uniform-size`), 5.2 ERD / Relationships (Attendance Domain) (+4 more)
 
 ### Community 238 - "Module 238"
 Cohesion: 0.46
@@ -1077,9 +1078,9 @@ Cohesion: 0.83
 Nodes (3): AthleticDayLivePage(), isLightColor(), normalizeTeamColor()
 
 ## Knowledge Gaps
-- **1250 isolated node(s):** `extends`, `next/core-web-vitals`, `$schema`, `style`, `rsc` (+1245 more)
+- **1251 isolated node(s):** `extends`, `next/core-web-vitals`, `$schema`, `style`, `rsc` (+1246 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **176 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **177 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
@@ -1087,11 +1088,11 @@ _Questions this graph is uniquely positioned to answer:_
 - **Why does `dependencies` connect `�🏗️ **Database Structure**` to `Admission Management`, `Package Dependencies & Config`, `exceljs`, `Module 134`, `browser-image-compression`, `Module 140`, `🎓 **IB MYP Assessment Grading System**`, `clsx`, `2026-07-16 — Timetable Refactor + Weekly Plan Dates + Weekly Overview`, `React UI Components`, `Module 145`, `docx`, `Module 153`, `Module 154`, `Module 155`, `@googleapis/chat`, `dotenv`, `bcryptjs`, `Appendix B - Canonical Sources (read these before reinventing)`, `Analysis & Synthesis Instructions`, `SKILL: Industrial Brutalism & Tactical Telemetry UI`, `Design System: Taste Standard`, `2. THE COMBINATORIAL VARIATION ENGINE`, `12. THE COMBINATORIAL VARIATION ENGINE`, `@sparticuz/chromium-min`, `11. REDESIGN PROTOCOL`, `3. DEFAULT ARCHITECTURE & CONVENTIONS`, `33. CATEGORY-SPECIFIC BIAS`, `pngjs`, `Module 239`, `Module 240`, `docx`, `browser-image-compression`, `dotenv`, `driver.js`, `@fortawesome/free-solid-svg-icons`, `@radix-ui/react-slot`, `react-easy-crop`?**
   _High betweenness centrality (0.005) - this node is a cross-community bridge._
 - **Why does `jspdf` connect `Admission Management` to `page.jsx`, `�🏗️ **Database Structure**`, `Module 236`?**
-  _High betweenness centrality (0.005) - this node is a cross-community bridge._
+  _High betweenness centrality (0.004) - this node is a cross-community bridge._
 - **Why does `tasteskill: Anti-Slop Frontend Skill` connect `Module 109` to `Module 128`, `Module 129`, `Module 229`, `Module 102`, `Module 230`, `Module 106`, `**3. Assessment System**`, `Module 245`, `Module 119`, `Module 56`, `Module 124`, `Module 158`?**
   _High betweenness centrality (0.002) - this node is a cross-community bridge._
 - **What connects `extends`, `next/core-web-vitals`, `$schema` to the rest of the system?**
-  _1250 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _1251 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `Admission Management` be split into smaller, more focused modules?**
   _Cohesion score 0.06604938271604938 - nodes in this community are weakly interconnected._
 - **Should `Package Dependencies & Config` be split into smaller, more focused modules?**
