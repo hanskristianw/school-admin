@@ -534,9 +534,17 @@ export default function InitialStockPage() {
 
         // -- HASIL PENJUALAN --
         const salesForUniform = saleItems.filter(si => si.uniform_id === uId)
-        const totalSoldQty = salesForUniform.reduce((sum, si) => sum + si.qty, 0)
-        const totalSaleRevenue = salesForUniform.reduce((sum, si) => sum + Number(si.subtotal || 0), 0)
-        const avgSellPrice = totalSoldQty > 0 ? Math.round(totalSaleRevenue / totalSoldQty) : (variants.length > 0 ? Number(variants[0]?.price || 0) : 0)
+        const paidItems = salesForUniform.filter(si => Number(si.unit_price || 0) > 0)
+        const freeItems = salesForUniform.filter(si => Number(si.unit_price || 0) === 0)
+
+        const paidSoldQty = paidItems.reduce((sum, si) => sum + si.qty, 0)
+        const freeSoldQty = freeItems.reduce((sum, si) => sum + si.qty, 0)
+        const totalSoldQty = paidSoldQty + freeSoldQty
+
+        const totalSaleRevenue = paidItems.reduce((sum, si) => sum + Number(si.subtotal || 0), 0)
+        const avgSellPrice = paidSoldQty > 0
+          ? Math.round(totalSaleRevenue / paidSoldQty)
+          : (variants.length > 0 ? Number(variants[0]?.price || 0) : 0)
         const totalSaleCost = salesForUniform.reduce((sum, si) => sum + (si.qty * Number(si.unit_hpp || weightedAvgHpp || 0)), 0)
         const profit = totalSaleRevenue - totalSaleCost
 
@@ -569,6 +577,8 @@ export default function InitialStockPage() {
           totalPurchaseQty,
           totalPurchaseCost,
           avgPurchasePrice,
+          paidSoldQty,
+          freeSoldQty,
           totalSoldQty,
           avgSellPrice,
           totalSaleRevenue,
@@ -611,14 +621,16 @@ export default function InitialStockPage() {
         poStart: 6 + supplierCount,
         hargaBeli: 6 + supplierCount + poCount,
         totalPembelian: 7 + supplierCount + poCount,
-        jmlTerjual: 8 + supplierCount + poCount,
-        hargaJual: 9 + supplierCount + poCount,
-        totalPenjualan: 10 + supplierCount + poCount,
-        keuntungan: 11 + supplierCount + poCount,
-        akhirJenis: 12 + supplierCount + poCount,
-        akhirInv: 13 + supplierCount + poCount,
-        suppAkhirStart: 14 + supplierCount + poCount,
-        totalStokAkhir: 14 + (supplierCount * 2) + poCount,
+        jmlTerjualPaid: 8 + supplierCount + poCount,
+        jmlTerjualFree: 9 + supplierCount + poCount,
+        jmlTerjualTotal: 10 + supplierCount + poCount,
+        hargaJual: 11 + supplierCount + poCount,
+        totalPenjualan: 12 + supplierCount + poCount,
+        keuntungan: 13 + supplierCount + poCount,
+        akhirJenis: 14 + supplierCount + poCount,
+        akhirInv: 15 + supplierCount + poCount,
+        suppAkhirStart: 16 + supplierCount + poCount,
+        totalStokAkhir: 16 + (supplierCount * 2) + poCount,
       }
       const totalCols = C.totalStokAkhir
 
@@ -626,7 +638,11 @@ export default function InitialStockPage() {
       ws.getColumn(C.jenisSeragam).width = 26
       ws.getColumn(C.akhirJenis).width = 26
       ws.getColumn(C.totalPembelian).width = 22
-      ws.getColumn(C.jmlTerjual).width = 22
+      ws.getColumn(C.jmlTerjualPaid).width = 18
+      ws.getColumn(C.jmlTerjualFree).width = 18
+      ws.getColumn(C.jmlTerjualTotal).width = 16
+      ws.getColumn(C.hargaJual).width = 20
+      ws.getColumn(C.totalPenjualan).width = 22
       ws.getColumn(C.keuntungan).width = 26
 
       const startFormatted = new Date(start_date + 'T00:00:00').toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
@@ -646,7 +662,7 @@ export default function InitialStockPage() {
       const groupHeaders = [
         { col: C.jenisSeragam, end: C.totalStokAwal, label: 'STOCK AWAL' },
         { col: C.poStart, end: C.totalPembelian, label: 'REALISASI PEMBELIAN SERAGAM' },
-        { col: C.jmlTerjual, end: C.keuntungan, label: 'HASIL PENJUALAN SERAGAM' },
+        { col: C.jmlTerjualPaid, end: C.keuntungan, label: 'HASIL PENJUALAN SERAGAM' },
         { col: C.akhirJenis, end: totalCols, label: 'STOCK AKHIR' },
       ]
       groupHeaders.forEach(g => {
@@ -677,8 +693,10 @@ export default function InitialStockPage() {
       }
       subHeaders[C.hargaBeli - 1] = 'Harga'
       subHeaders[C.totalPembelian - 1] = 'Total Pembelian Seragam'
-      subHeaders[C.jmlTerjual - 1] = 'Jumlah Seragam Terjual'
-      subHeaders[C.hargaJual - 1] = 'Harga Jual Seragam'
+      subHeaders[C.jmlTerjualPaid - 1] = 'Terjual (Berbayar)'
+      subHeaders[C.jmlTerjualFree - 1] = 'Terjual (Free/Paket)'
+      subHeaders[C.jmlTerjualTotal - 1] = 'Total Terjual'
+      subHeaders[C.hargaJual - 1] = 'Harga Jual (Berbayar)'
       subHeaders[C.totalPenjualan - 1] = 'Total Penjualan'
       subHeaders[C.keuntungan - 1] = 'Keuntungan Penjualan Seragam'
       subHeaders[C.akhirJenis - 1] = 'Jenis Seragam'
@@ -699,7 +717,8 @@ export default function InitialStockPage() {
       const totals = {
         inv: 0, suppAwal: {}, hppNilai: 0, totalStokAwal: 0,
         poQty: {}, totalPoQty: 0, totalPembelian: 0,
-        jmlTerjual: 0, totalPenjualan: 0, keuntungan: 0,
+        jmlTerjualPaid: 0, jmlTerjualFree: 0, jmlTerjualTotal: 0,
+        totalPenjualan: 0, keuntungan: 0,
         akhirInv: 0, suppAkhir: {}, totalStokAkhir: 0
       }
       supplierList.forEach(s => { totals.suppAwal[s.supplier_id] = 0; totals.suppAkhir[s.supplier_id] = 0 })
@@ -730,7 +749,9 @@ export default function InitialStockPage() {
         }
         vals[C.hargaBeli - 1] = fmtNum(row.avgPurchasePrice)
         vals[C.totalPembelian - 1] = fmtNum(row.totalPurchaseCost)
-        vals[C.jmlTerjual - 1] = fmtNum(row.totalSoldQty)
+        vals[C.jmlTerjualPaid - 1] = fmtNum(row.paidSoldQty)
+        vals[C.jmlTerjualFree - 1] = fmtNum(row.freeSoldQty)
+        vals[C.jmlTerjualTotal - 1] = fmtNum(row.totalSoldQty)
         vals[C.hargaJual - 1] = fmtNum(row.avgSellPrice)
         vals[C.totalPenjualan - 1] = fmtNum(row.totalSaleRevenue)
         vals[C.keuntungan - 1] = fmtNum(row.profit)
@@ -748,7 +769,9 @@ export default function InitialStockPage() {
         totals.totalStokAwal += row.totalStockAwal || 0
         totals.totalPoQty += row.totalPurchaseQty || 0
         totals.totalPembelian += row.totalPurchaseCost || 0
-        totals.jmlTerjual += row.totalSoldQty || 0
+        totals.jmlTerjualPaid += row.paidSoldQty || 0
+        totals.jmlTerjualFree += row.freeSoldQty || 0
+        totals.jmlTerjualTotal += row.totalSoldQty || 0
         totals.totalPenjualan += row.totalSaleRevenue || 0
         totals.keuntungan += row.profit || 0
         totals.akhirInv += row.stockAkhirInv || 0
@@ -778,8 +801,10 @@ export default function InitialStockPage() {
       }
       totalVals[C.hargaBeli - 1] = totals.totalPoQty > 0 ? fmtNum(Math.round(totals.totalPembelian / totals.totalPoQty)) : ''
       totalVals[C.totalPembelian - 1] = fmtNum(totals.totalPembelian)
-      totalVals[C.jmlTerjual - 1] = fmtNum(totals.jmlTerjual)
-      totalVals[C.hargaJual - 1] = totals.jmlTerjual > 0 ? fmtNum(Math.round(totals.totalPenjualan / totals.jmlTerjual)) : ''
+      totalVals[C.jmlTerjualPaid - 1] = fmtNum(totals.jmlTerjualPaid)
+      totalVals[C.jmlTerjualFree - 1] = fmtNum(totals.jmlTerjualFree)
+      totalVals[C.jmlTerjualTotal - 1] = fmtNum(totals.jmlTerjualTotal)
+      totalVals[C.hargaJual - 1] = totals.jmlTerjualPaid > 0 ? fmtNum(Math.round(totals.totalPenjualan / totals.jmlTerjualPaid)) : ''
       totalVals[C.totalPenjualan - 1] = fmtNum(totals.totalPenjualan)
       totalVals[C.keuntungan - 1] = fmtNum(totals.keuntungan)
       totalVals[C.akhirJenis - 1] = 'TOTAL'
