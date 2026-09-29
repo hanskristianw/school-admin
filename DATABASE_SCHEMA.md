@@ -898,16 +898,18 @@ Master data for leave/excuse types (sick, annual leave, etc.), defining rules fo
 | `is_paid` | `BOOLEAN` | Paid vs unpaid leave |
 
 #### `leave_quotas`
-Tracks the annual leave balance for users for specific leave types.
+Tracks the leave balance for users for specific leave types. If `user_id` is NULL, it functions as a Global Template applying to all employees for that academic year.
 
 | Column Name | Type | Description / Constraint |
 | --- | --- | --- |
 | `id` | `SERIAL` | Primary Key |
-| `user_id` | `INTEGER` | FK to `users(user_id)` ON DELETE CASCADE |
+| `user_id` | `INTEGER` | Nullable. FK to `users(user_id)` ON DELETE CASCADE. NULL = Global (applies to all employees) |
 | `leave_type_code`| `VARCHAR(50)`| FK to `leave_types(code)` |
-| `year` | `INTEGER` | The year this quota applies to |
+| `year_id` | `INTEGER` | FK to `year(year_id)` ON DELETE CASCADE |
 | `total_days` | `INTEGER` | Total allocation for the year |
 | `used_days` | `INTEGER` | Days already consumed |
+| `created_at` | `TIMESTAMPTZ`| Record creation timestamp |
+| `updated_at` | `TIMESTAMPTZ`| Record update timestamp |
 
 #### `kelas_attendance`
 Stores daily student attendance recorded by teachers/homeroom mentors per class per date.
