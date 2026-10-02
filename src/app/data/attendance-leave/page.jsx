@@ -282,7 +282,7 @@ function LeaveTypeCard({ item, index, yearId, users, onEdit, onToggleActive, tog
 
   // Mode: global | individual | unlimited
   const mode = globalQuota ? 'global' : individualQuotas.length > 0 ? 'individual' : 'unlimited'
-  const canAddMore = !globalQuota && !addingQ
+  const canAddMore = !addingQ
 
   const filteredIndividuals = individualQuotas.filter(q => {
     if (!searchMember.trim()) return true
@@ -504,8 +504,8 @@ function LeaveTypeCard({ item, index, yearId, users, onEdit, onToggleActive, tog
               Jatah Cuti
             </span>
 
-            {/* Mode Badge */}
-            {mode === 'global' && (
+            {/* Mode Badges */}
+            {globalQuota && (
               <span
                 style={{
                   fontSize: '10px',
@@ -524,7 +524,7 @@ function LeaveTypeCard({ item, index, yearId, users, onEdit, onToggleActive, tog
                 <span>Global ({globalQuota.total_days} Hari)</span>
               </span>
             )}
-            {mode === 'individual' && (
+            {individualQuotas.length > 0 && (
               <span
                 style={{
                   fontSize: '10px',
@@ -543,7 +543,7 @@ function LeaveTypeCard({ item, index, yearId, users, onEdit, onToggleActive, tog
                 <span>Per Orang ({individualQuotas.length} Karyawan)</span>
               </span>
             )}
-            {mode === 'unlimited' && (
+            {!globalQuota && individualQuotas.length === 0 && (
               <span style={{ fontSize: '11px', color: textSecondary, fontStyle: 'italic' }}>
                 (Tidak terbatas / tanpa kuota)
               </span>
@@ -552,7 +552,7 @@ function LeaveTypeCard({ item, index, yearId, users, onEdit, onToggleActive, tog
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             {/* Search filter for long employee lists */}
-            {mode === 'individual' && individualQuotas.length > 4 && (
+            {individualQuotas.length > 4 && (
               <input
                 type="text"
                 placeholder="Cari staf..."
@@ -590,15 +590,8 @@ function LeaveTypeCard({ item, index, yearId, users, onEdit, onToggleActive, tog
                 }}
               >
                 <FontAwesomeIcon icon={faPlus} style={{ fontSize: '9px' }} />
-                <span>Tambah Jatah</span>
+                <span>{globalQuota ? 'Tambah Khusus' : 'Tambah Jatah'}</span>
               </button>
-            )}
-
-            {mode === 'global' && (
-              <span style={{ fontSize: '11px', color: '#7C3AED', fontStyle: 'italic', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                <FontAwesomeIcon icon={faLock} style={{ fontSize: '9px' }} />
-                <span>Hapus global untuk mode perorangan</span>
-              </span>
             )}
           </div>
         </div>
@@ -819,7 +812,7 @@ function LeaveTypeCard({ item, index, yearId, users, onEdit, onToggleActive, tog
                 users={users}
                 theme={theme}
                 editingQuota={null}
-                disableGlobal={individualQuotas.length > 0}
+                disableGlobal={individualQuotas.length > 0 || !!globalQuota}
                 isDark={isDark}
                 borderColor={borderColor}
                 textPrimary={textPrimary}

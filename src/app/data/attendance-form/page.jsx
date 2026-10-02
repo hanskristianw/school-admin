@@ -492,7 +492,7 @@ function TemporaryExitModal({ userId, onClose, onSuccess }) {
   const todayStr = new Date().toISOString().slice(0, 10)
   const [targetDate, setTargetDate]   = useState(todayStr)
   const [exitTime, setExitTime]       = useState('09:00')
-  const [returnTime, setReturnTime]   = useState('13:00')
+  const [returnTime, setReturnTime]   = useState('12:00')
   const [category, setCategory]       = useState('')
   const [otherReason, setOtherReason] = useState('')
   const [submitting, setSubmitting]   = useState(false)
@@ -501,6 +501,48 @@ function TemporaryExitModal({ userId, onClose, onSuccess }) {
   const [processedFile, setProcessedFile] = useState(null)
   const [compressing, setCompressing] = useState(false)
   const [uploading, setUploading]     = useState(false)
+
+  const calculateDurationMinutes = (start, end) => {
+    if (!start || !end) return 0
+    const [sh, sm] = start.split(':').map(Number)
+    const [eh, em] = end.split(':').map(Number)
+    if (isNaN(sh) || isNaN(sm) || isNaN(eh) || isNaN(em)) return 0
+    return (eh * 60 + em) - (sh * 60 + sm)
+  }
+
+  const getMaxReturnTime = (start) => {
+    if (!start) return '23:59'
+    const [h, m] = start.split(':').map(Number)
+    if (isNaN(h) || isNaN(m)) return '23:59'
+    const maxTotalMinutes = Math.min(h * 60 + m + 180, 23 * 60 + 59)
+    const maxH = Math.floor(maxTotalMinutes / 60)
+    const maxM = maxTotalMinutes % 60
+    return `${String(maxH).padStart(2, '0')}:${String(maxM).padStart(2, '0')}`
+  }
+
+  const durationMinutes = calculateDurationMinutes(exitTime, returnTime)
+  const isDurationExceeded = durationMinutes > 180
+  const isDurationInvalid = durationMinutes <= 0
+
+  const handleExitTimeChange = (newExit) => {
+    setExitTime(newExit)
+    const maxRet = getMaxReturnTime(newExit)
+    const diff = calculateDurationMinutes(newExit, returnTime)
+    if (diff > 180 || diff <= 0) {
+      setReturnTime(maxRet)
+    }
+  }
+
+  const handleReturnTimeChange = (newReturn) => {
+    const diff = calculateDurationMinutes(exitTime, newReturn)
+    if (diff > 180) {
+      setReturnTime(getMaxReturnTime(exitTime))
+      setMsg('Temporary exit duration cannot exceed 3 hours. Return time has been adjusted to the 3-hour limit.')
+    } else {
+      setReturnTime(newReturn)
+      setMsg('')
+    }
+  }
 
   const categories = [
     { value: 'school_duty',         label: 'Official School Duty / Assignment' },
@@ -550,6 +592,8 @@ function TemporaryExitModal({ userId, onClose, onSuccess }) {
   const handleSubmit = async () => {
     if (!category) { setMsg('Please select a reason category'); return }
     if (category === 'other' && !otherReason.trim()) { setMsg('Please specify your reason'); return }
+    if (isDurationInvalid) { setMsg('Return time must be after exit time'); return }
+    if (isDurationExceeded) { setMsg('Temporary exit duration cannot exceed 3 hours (maximum 180 minutes)'); return }
     setSubmitting(true); setMsg('')
     try {
       const attachmentUrl = fileToUpload ? await uploadAttachment() : null
@@ -843,21 +887,76 @@ function TemporaryExitModal({ userId, onClose, onSuccess }) {
                 <input type="date" value={targetDate} onChange={e => setTargetDate(e.target.value)} style={{ ...inputStyle, fontFamily: 'monospace' }} />
               </div>
 
-              {/* Jam Keluar & Jam Kembali */}
-              <div className="grid grid-cols-2 gap-3 p-3 rounded-lg border" style={{ background: subtleBg, borderColor }}>
-                <div>
-                  <label className="text-xs font-medium block mb-1 flex items-center gap-1.5" style={{ color: textSecondary }}>
-                    <FontAwesomeIcon icon={faClock} className="text-[11px]" />
-                    <span>Exit Time</span>
-                  </label>
-                  <input type="time" value={exitTime} onChange={e => setExitTime(e.target.value)} style={{ ...inputStyle, fontFamily: 'monospace' }} />
+              {/* Jam Keluar & Jam Kembali (Maksimal 3 Jam) */}
+              <div className="p-3 rounded-lg border space-y-2.5" style={{ background: subtleBg, borderColor }}>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs font-medium block mb-1 flex items-center gap-1.5" style={{ color: textSecondary }}>
+                      <FontAwesomeIcon icon={faClock} className="text-[11px]" />
+                      <span>Exit Time</span>
+                    </label>
+                    <input
+                      type="time"
+                      value={exitTime}
+                      onChange={e => handleExitTimeChange(e.target.value)}
+                      style={{ ...inputStyle, fontFamily: 'monospace' }}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium block mb-1 flex items-center justify-between" style={{ color: textSecondary }}>
+                      <span className="flex items-center gap-1.5">
+                        <FontAwesomeIcon icon={faClock} className="text-[11px]" />
+                        <span>Return Time</span>
+                      </span>
+                      <span className="text-[10px] text-amber-600 dark:text-amber-400 font-medium">Max +3 Hours</span>
+                    </label>
+                    <input
+                      type="time"
+                      value={returnTime}
+                      min={exitTime}
+                      max={getMaxReturnTime(exitTime)}
+                      onChange={e => handleReturnTimeChange(e.target.value)}
+                      style={{
+                        ...inputStyle,
+                        fontFamily: 'monospace',
+                        borderColor: isDurationExceeded ? '#ef4444' : borderColor
+                      }}
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label className="text-xs font-medium block mb-1 flex items-center gap-1.5" style={{ color: textSecondary }}>
-                    <FontAwesomeIcon icon={faClock} className="text-[11px]" />
-                    <span>Return Time</span>
-                  </label>
-                  <input type="time" value={returnTime} onChange={e => setReturnTime(e.target.value)} style={{ ...inputStyle, fontFamily: 'monospace' }} />
+
+                {/* Live Duration Indicator */}
+                <div
+                  className="px-2.5 py-1.5 rounded text-xs flex items-center justify-between border"
+                  style={{
+                    background: isDurationExceeded
+                      ? (isDark ? 'rgba(239, 68, 68, 0.15)' : '#FDEBEC')
+                      : isDurationInvalid
+                      ? (isDark ? 'rgba(234, 179, 8, 0.15)' : '#FEF9C3')
+                      : (isDark ? 'rgba(34, 197, 94, 0.1)' : '#EDF3EC'),
+                    borderColor: isDurationExceeded
+                      ? (isDark ? 'rgba(239, 68, 68, 0.3)' : '#FECACA')
+                      : isDurationInvalid
+                      ? (isDark ? 'rgba(234, 179, 8, 0.3)' : '#FEF08A')
+                      : (isDark ? 'rgba(34, 197, 94, 0.3)' : '#D1E7DD'),
+                    color: isDurationExceeded
+                      ? (isDark ? '#FCA5A5' : '#991B1B')
+                      : isDurationInvalid
+                      ? (isDark ? '#FDE047' : '#854D0E')
+                      : (isDark ? '#86EFAC' : '#166534')
+                  }}
+                >
+                  <span className="flex items-center gap-1.5 font-medium">
+                    <FontAwesomeIcon icon={isDurationExceeded || isDurationInvalid ? faExclamationTriangle : faClock} className="text-[11px]" />
+                    <span>
+                      {isDurationInvalid
+                        ? 'Return time must be after exit time'
+                        : `Exit duration: ${Math.floor(durationMinutes / 60)} hr${Math.floor(durationMinutes / 60) !== 1 ? 's' : ''}${durationMinutes % 60 > 0 ? ` ${durationMinutes % 60} mins` : ''}`}
+                    </span>
+                  </span>
+                  <span className="text-[11px] font-semibold">
+                    {isDurationExceeded ? 'Exceeded limit!' : 'Max 3 Hours'}
+                  </span>
                 </div>
               </div>
 
@@ -944,7 +1043,22 @@ function TemporaryExitModal({ userId, onClose, onSuccess }) {
               <button onClick={onClose} style={{ flex: 1, padding: '9px 0', borderRadius: '6px', border: `1px solid ${borderColor}`, background: subtleBg, color: textPrimary, fontSize: '12px', fontWeight: 500, cursor: 'pointer' }}>
                 Cancel
               </button>
-              <button onClick={handleSubmit} disabled={submitting || compressing} style={{ flex: 1, padding: '9px 0', borderRadius: '6px', border: 'none', background: isDark ? '#F4F4F5' : '#111111', color: isDark ? '#111111' : '#FFFFFF', fontSize: '12px', fontWeight: 600, cursor: (submitting || compressing) ? 'default' : 'pointer', opacity: (submitting || compressing) ? 0.6 : 1 }}>
+              <button
+                onClick={handleSubmit}
+                disabled={submitting || compressing || isDurationExceeded || isDurationInvalid}
+                style={{
+                  flex: 1,
+                  padding: '9px 0',
+                  borderRadius: '6px',
+                  border: 'none',
+                  background: isDark ? '#F4F4F5' : '#111111',
+                  color: isDark ? '#111111' : '#FFFFFF',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  cursor: (submitting || compressing || isDurationExceeded || isDurationInvalid) ? 'not-allowed' : 'pointer',
+                  opacity: (submitting || compressing || isDurationExceeded || isDurationInvalid) ? 0.5 : 1
+                }}
+              >
                 {compressing ? 'Optimizing...' : submitting ? (uploading ? 'Uploading...' : 'Submitting...') : 'Submit Request'}
               </button>
             </div>

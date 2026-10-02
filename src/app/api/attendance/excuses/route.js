@@ -127,6 +127,21 @@ export async function POST(request) {
       return NextResponse.json({ success: false, message: 'Keterangan lain wajib diisi jika memilih Other' }, { status: 400 })
     }
 
+    if (excuse_type === 'temporary_exit') {
+      if (!exit_time || !return_time) {
+        return NextResponse.json({ success: false, message: 'Exit time and return time are required for temporary exit requests.' }, { status: 400 })
+      }
+      const [exH, exM] = exit_time.split(':').map(Number)
+      const [reH, reM] = return_time.split(':').map(Number)
+      const diffMinutes = (reH * 60 + reM) - (exH * 60 + exM)
+      if (diffMinutes <= 0) {
+        return NextResponse.json({ success: false, message: 'Return time must be after exit time.' }, { status: 400 })
+      }
+      if (diffMinutes > 180) {
+        return NextResponse.json({ success: false, message: 'Temporary exit duration is limited to a maximum of 3 hours (180 minutes).' }, { status: 400 })
+      }
+    }
+
     // Get user's unit & role to determine approvers
     const { data: userData, error: uErr } = await supabaseAdmin
       .from('users')

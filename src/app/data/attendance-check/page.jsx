@@ -32,7 +32,7 @@ const CATEGORY_LABEL = {
   traffic_jam:           'Traffic Jam / Transport Issue',
   sick:                  'Sick / Unwell',
   family_personal:       'Family / Personal Matter',
-  sick_no_letter:        'Sick without letter (unpaid)',
+  sick_no_letter:        '(Sick) Unpaid Leave',
   sick_with_letter:      'Sick with doctor letter',
   marriage_employee:     "Employee's Marriage Leave",
   marriage_child:        "Child's Marriage Leave",

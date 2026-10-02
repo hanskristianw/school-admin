@@ -12,7 +12,7 @@ const CATEGORY_LABEL = {
   sick:                  'Sick / Unwell',
   family_personal:       'Family / Personal Matter',
   // Absent — Sakit
-  sick_no_letter:        'Sick without letter (unpaid)',
+  sick_no_letter:        '(Sick) Unpaid Leave',
   sick_with_letter:      'Sick with letter & diagnosis from doctor',
   // Absent — Cuti keluarga
   marriage_employee:     "Employee's marriage leave (max 3 days)",

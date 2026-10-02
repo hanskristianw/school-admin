@@ -1,7 +1,7 @@
 # Graph Report - school-admin  (2026-10-02)
 
 ## Corpus Check
-- 416 files · ~703,493 words
+- 416 files · ~702,973 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
@@ -843,7 +843,7 @@ Nodes (6): **Assessment Calendar (View + RPC)**, **Assessment with Relations:**,
 
 ### Community 147 - "�🏗️ **Database Structure**"
 Cohesion: 0.18
-Nodes (11): bcryptjs, dependencies, bcryptjs, @fortawesome/free-solid-svg-icons, @google-cloud/vertexai, react-dom, zod, @fortawesome/free-solid-svg-icons (+3 more)
+Nodes (11): bcryptjs, dependencies, bcryptjs, @google-cloud/vertexai, @radix-ui/react-select, react-dom, zod, @google-cloud/vertexai (+3 more)
 
 ### Community 148 - "Module 148"
 Cohesion: 0.33
