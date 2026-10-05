@@ -5448,7 +5448,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
   }
 
   // Generate Assessment PDF from wizard
-  const handleGenerateAssessmentPDF = async () => {
+  const handleGenerateAssessmentPDF = async (teacherName = null) => {
     await generateAssessmentPDFFromWizard({
       selectedTopic,
       wizardAssessment,
@@ -5456,13 +5456,14 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
       subjectMap,
       kelasNameMap,
       currentUserId,
+      teacherName: typeof teacherName === 'string' ? teacherName : null,
       onSuccess: () => { setSaveNotification(true); setTimeout(() => setSaveNotification(false), 2000) },
       onError: (err) => alert(`Failed to generate Assessment PDF: ${err.message}`)
     })
   }
 
   // Export Assessment to Word from wizard
-  const handleExportAssessmentWord = async () => {
+  const handleExportAssessmentWord = async (teacherName = null) => {
     await exportAssessmentWordFromWizard({
       selectedTopic,
       wizardAssessment,
@@ -5470,6 +5471,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
       subjectMap,
       kelasNameMap,
       currentUserId,
+      teacherName: typeof teacherName === 'string' ? teacherName : null,
       onSuccess: () => { setSaveNotification(true); setTimeout(() => setSaveNotification(false), 2000) },
       onError: (err) => alert(`Failed to export Assessment to Word: ${err.message}`)
     })

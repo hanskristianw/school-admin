@@ -411,7 +411,7 @@ export default function UnitPlannerDocumentEditor({
           {activeDoc === 'assessment' && onExportAssessmentPDF && (
             <button
               type="button"
-              onClick={onExportAssessmentPDF}
+              onClick={() => onExportAssessmentPDF(teacherName)}
               className="px-3 py-1.5 text-xs font-semibold rounded bg-purple-700 hover:bg-purple-600 text-white transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs"
               title="Export Official Assessment Task Sheet (Portrait PDF)"
             >

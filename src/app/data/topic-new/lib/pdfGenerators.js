@@ -1372,6 +1372,89 @@ const fetchTeacherName = async (userId) => {
 };
 
 /**
+ * Resolve teacher name for a topic according to Unit Planner rules:
+ * Priority 1: detail_kelas.teacher_user_id (Real Teacher teaching this specific class & subject)
+ * Priority 2: subject.subject_user_id (Subject Coordinator / Default Teacher)
+ * Priority 3 (Fallback): currentUserId (if no teacher assigned in detail_kelas or subject)
+ */
+export const resolveTeacherNameForTopic = async (topic, currentUserId = null) => {
+  if (!topic) {
+    if (currentUserId) return await fetchTeacherName(currentUserId);
+    return 'N/A';
+  }
+
+  let subjectId = topic.topic_subject_id;
+  let kelasId = topic.topic_kelas_id;
+
+  if ((!subjectId || !kelasId) && topic.topic_id) {
+    try {
+      const { data: tData } = await supabase
+        .from('topic')
+        .select('topic_subject_id, topic_kelas_id')
+        .eq('topic_id', topic.topic_id)
+        .maybeSingle();
+      if (tData) {
+        subjectId = subjectId || tData.topic_subject_id;
+        kelasId = kelasId || tData.topic_kelas_id;
+      }
+    } catch (err) {
+      console.warn('Could not fetch topic subject/kelas for teacher lookup:', err);
+    }
+  }
+
+  try {
+    let resolved = '';
+
+    // Priority 1: detail_kelas (Specific teacher for this class & subject)
+    if (subjectId && kelasId) {
+      const { data: dkData } = await supabase
+        .from('detail_kelas')
+        .select('teacher_user_id, users:teacher_user_id(user_nama_depan, user_nama_belakang)')
+        .eq('detail_kelas_subject_id', subjectId)
+        .eq('detail_kelas_kelas_id', kelasId)
+        .maybeSingle();
+
+      if (dkData?.users) {
+        resolved = `${dkData.users.user_nama_depan || ''} ${dkData.users.user_nama_belakang || ''}`.trim();
+      } else if (dkData?.teacher_user_id) {
+        resolved = await fetchTeacherName(dkData.teacher_user_id);
+      }
+    }
+
+    // Priority 2: subject.subject_user_id (Subject Coordinator / Default Teacher)
+    if (!resolved || resolved === 'N/A') {
+      if (subjectId) {
+        const { data: subjData } = await supabase
+          .from('subject')
+          .select('subject_user_id, users:subject_user_id(user_nama_depan, user_nama_belakang)')
+          .eq('subject_id', subjectId)
+          .maybeSingle();
+
+        if (subjData?.users) {
+          resolved = `${subjData.users.user_nama_depan || ''} ${subjData.users.user_nama_belakang || ''}`.trim();
+        } else if (subjData?.subject_user_id) {
+          resolved = await fetchTeacherName(subjData.subject_user_id);
+        }
+      }
+    }
+
+    if (resolved && resolved !== 'N/A') {
+      return resolved;
+    }
+
+    // Priority 3 (Fallback): currentUserId
+    if (currentUserId) {
+      const fallbackName = await fetchTeacherName(currentUserId);
+      if (fallbackName && fallbackName !== 'N/A') return fallbackName;
+    }
+  } catch (err) {
+    console.error('Error resolving teacher name for topic:', err);
+  }
+
+  return 'N/A';
+};
+
+/**
  * Fetch strands+rubrics for selected criteria and year level.
  */
 const fetchStrandsAndRubrics = async (selectedCriteriaIds, yearLevel) => {
@@ -1402,7 +1485,7 @@ const fetchStrandsAndRubrics = async (selectedCriteriaIds, yearLevel) => {
  * Generate Assessment PDF from the wizard modal.
  * @param {Object} deps - { selectedTopic, wizardAssessment, wizardCriteria, subjectMap, kelasNameMap, currentUserId, onSuccess, onError }
  */
-export const generateAssessmentPDFFromWizard = async ({ selectedTopic, wizardAssessment, wizardCriteria, subjectMap, kelasNameMap, currentUserId, onSuccess, onError }) => {
+export const generateAssessmentPDFFromWizard = async ({ selectedTopic, wizardAssessment, wizardCriteria, subjectMap, kelasNameMap, currentUserId, teacherName: providedTeacherName, onSuccess, onError }) => {
   try {
     const topicData = selectedTopic;
     if (!topicData || !wizardAssessment.assessment_nama) {
@@ -1412,7 +1495,9 @@ export const generateAssessmentPDFFromWizard = async ({ selectedTopic, wizardAss
 
     const subjectName = subjectMap.get(topicData.topic_subject_id) || 'N/A';
     const kelasName = kelasNameMap.get(topicData.topic_kelas_id) || 'N/A';
-    const teacherName = await fetchTeacherName(currentUserId);
+    const teacherName = (providedTeacherName && providedTeacherName !== '–' && providedTeacherName !== 'N/A')
+      ? providedTeacherName
+      : await resolveTeacherNameForTopic(topicData, currentUserId);
 
     const selectedCriteriaNames = wizardCriteria
       .filter(c => wizardAssessment.selected_criteria.includes(c.criterion_id))
@@ -1520,7 +1605,7 @@ export const generateAssessmentPDFFromWizard = async ({ selectedTopic, wizardAss
  * Export Assessment to Word from the wizard modal.
  * @param {Object} deps - { selectedTopic, wizardAssessment, wizardCriteria, subjectMap, kelasNameMap, currentUserId, onSuccess, onError }
  */
-export const exportAssessmentWordFromWizard = async ({ selectedTopic, wizardAssessment, wizardCriteria, subjectMap, kelasNameMap, currentUserId, onSuccess, onError }) => {
+export const exportAssessmentWordFromWizard = async ({ selectedTopic, wizardAssessment, wizardCriteria, subjectMap, kelasNameMap, currentUserId, teacherName: providedTeacherName, onSuccess, onError }) => {
   try {
     const topicData = selectedTopic;
     if (!topicData || !wizardAssessment.assessment_nama) {
@@ -1530,7 +1615,9 @@ export const exportAssessmentWordFromWizard = async ({ selectedTopic, wizardAsse
 
     const subjectName = subjectMap.get(topicData.topic_subject_id) || 'N/A';
     const kelasName = kelasNameMap.get(topicData.topic_kelas_id) || 'N/A';
-    const teacherName = await fetchTeacherName(currentUserId);
+    const teacherName = (providedTeacherName && providedTeacherName !== '–' && providedTeacherName !== 'N/A')
+      ? providedTeacherName
+      : await resolveTeacherNameForTopic(topicData, currentUserId);
 
     const selectedCriteriaNames = wizardCriteria
       .filter(c => wizardAssessment.selected_criteria.includes(c.criterion_id))
@@ -1589,7 +1676,7 @@ export const exportAssessmentWordFromWizard = async ({ selectedTopic, wizardAsse
  * @param {Object} topic - The topic object
  * @param {Object} deps - { subjectMap, kelasNameMap, currentUserId, onSuccess, onError }
  */
-export const generateAssessmentPDFFromCard = async (topic, { subjectMap, kelasNameMap, currentUserId, onSuccess, onError }) => {
+export const generateAssessmentPDFFromCard = async (topic, { subjectMap, kelasNameMap, currentUserId, teacherName: providedTeacherName, onSuccess, onError }) => {
   try {
     // Fetch assessment data
     const { data: assessmentData, error: assessmentErr } = await supabase
@@ -1615,7 +1702,9 @@ export const generateAssessmentPDFFromCard = async (topic, { subjectMap, kelasNa
 
     const subjectName = subjectMap.get(topic.topic_subject_id) || 'N/A';
     const kelasName = kelasNameMap.get(topic.topic_kelas_id) || 'N/A';
-    const teacherName = await fetchTeacherName(currentUserId);
+    const teacherName = (providedTeacherName && providedTeacherName !== '–' && providedTeacherName !== 'N/A')
+      ? providedTeacherName
+      : await resolveTeacherNameForTopic(topic, currentUserId);
 
     // Get criteria
     const { data: criteriaData } = await supabase
@@ -1733,7 +1822,7 @@ export const generateAssessmentPDFFromCard = async (topic, { subjectMap, kelasNa
  * @param {Object} topic - The topic object
  * @param {Object} deps - { subjectMap, kelasNameMap, currentUserId, onSuccess, onError }
  */
-export const exportAssessmentWordFromCard = async (topic, { subjectMap, kelasNameMap, currentUserId, onSuccess, onError }) => {
+export const exportAssessmentWordFromCard = async (topic, { subjectMap, kelasNameMap, currentUserId, teacherName: providedTeacherName, onSuccess, onError }) => {
   try {
     const { data: assessmentData, error: assessmentErr } = await supabase
       .from('assessment')
@@ -1758,7 +1847,9 @@ export const exportAssessmentWordFromCard = async (topic, { subjectMap, kelasNam
 
     const subjectName = subjectMap.get(topic.topic_subject_id) || 'N/A';
     const kelasName = kelasNameMap.get(topic.topic_kelas_id) || 'N/A';
-    const teacherName = await fetchTeacherName(currentUserId);
+    const teacherName = (providedTeacherName && providedTeacherName !== '–' && providedTeacherName !== 'N/A')
+      ? providedTeacherName
+      : await resolveTeacherNameForTopic(topic, currentUserId);
 
     const { data: criteriaData } = await supabase
       .from('criteria')

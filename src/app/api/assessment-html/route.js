@@ -60,10 +60,10 @@ function buildHtml(payload, { logoDataUrl = '' } = {}) {
   
   const assessmentTitle = escapeHtml(meta.assessmentTitle ?? '');
   const instructions = (meta.instructions ?? '').toString();
-  const subjectName = escapeHtml(meta.subjectName ?? 'N/A');
-  const teacherName = escapeHtml(meta.teacherName ?? 'N/A');
-  const kelasName = escapeHtml(meta.kelasName ?? 'N/A');
-  const unitName = escapeHtml(meta.unitName ?? 'N/A');
+  const subjectName = meta.subjectName ?? 'N/A';
+  const teacherName = meta.teacherName ?? 'N/A';
+  const kelasName = meta.kelasName ?? 'N/A';
+  const unitName = meta.unitName ?? 'N/A';
 
   // Task Overview Table (labels sesuai format asli PDF)
   const taskOverviewRows = [
