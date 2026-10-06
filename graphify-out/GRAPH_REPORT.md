@@ -1,16 +1,16 @@
 # Graph Report - school-admin  (2026-10-06)
 
 ## Corpus Check
-- 416 files · ~704,264 words
+- 415 files · ~713,583 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 2322 nodes · 2417 edges · 392 communities (276 shown, 116 thin omitted)
+- 2320 nodes · 2416 edges · 394 communities (277 shown, 117 thin omitted)
 - Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 7 edges (avg confidence: 0.63)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `bf161961`
+- Built from commit: `8c65ca9a`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -171,6 +171,8 @@
 - Module 167
 - Module 170
 - Module 171
+- Module 194
+- Module 201
 - Module 227
 - Module 229
 - Module 230
@@ -280,15 +282,17 @@
 - route.js
 - route.js
 - route.js
-- docx
+- jsonwebtoken
 - browser-image-compression
 - dotenv
 - driver.js
 - @fortawesome/free-solid-svg-icons
 - @radix-ui/react-slot
 - react-easy-crop
-- exceljs
+- next-auth
+- @radix-ui/react-label
 - page.jsx
+- react-dom
 - page.jsx
 - browser-image-compression
 
@@ -309,21 +313,21 @@
   src/Documentation PMB/SKILL.md → MAIN_DOCUMENTATION.md
 - `AdmissionManagement()` --references--> `jspdf`  [EXTRACTED]
   src/app/data/admission/page.jsx → package.json
+- `FeeSimulationPage()` --references--> `jspdf`  [EXTRACTED]
+  src/app/data/admission/simulation/page.jsx → package.json
 - `generatePsikotestPDF()` --references--> `jspdf`  [EXTRACTED]
   src/app/data/psikotest/lib/psikotestPdfGenerator.js → package.json
 - `drawPrincipalSignature()` --references--> `jspdf`  [EXTRACTED]
   src/app/data/pyp/lib/pypPdfGenerator.js → package.json
-- `TopicPage()` --references--> `jspdf`  [EXTRACTED]
-  src/app/data/topic/page.jsx → package.json
 
 ## Import Cycles
 - None detected.
 
-## Communities (392 total, 116 thin omitted)
+## Communities (394 total, 117 thin omitted)
 
 ### Community 0 - "Admission Management"
 Cohesion: 0.07
-Nodes (69): jspdf, jszip, jspdf, jszip, FeeSimulationPage(), formatCurrency(), formatDateID(), monthNames (+61 more)
+Nodes (65): jspdf, jszip, jspdf, jszip, containsNonLatin(), drawIbPypLogo(), drawMiniSubjectDocIcon(), drawPrincipalSignature() (+57 more)
 
 ### Community 1 - "Package Dependencies & Config"
 Cohesion: 0.09
@@ -574,8 +578,8 @@ Cohesion: 0.12
 Nodes (16): 1. Skill Meta, 2.1 Swiss Industrial Print, 2.2 Tactical Telemetry & CRT Terminal, 2. Visual Archetypes, 3.1 Macro-Typography (Structural Headers), 3.2 Micro-Typography (Data & Telemetry), 3.3 Textural Contrast (Artistic Disruption), 3. Typographic Architecture (+8 more)
 
 ### Community 82 - "Module 82"
-Cohesion: 0.12
-Nodes (17): **10. Data Mapping Note**, **11. Attendance (QR Sessions & Scans)**, **12. Student Consultation (BK)**, **13. Room Booking Module**, **14. Uniform Sales Module (NEW)**, **1. Authentication & User Management**, **2. Academic Data Management**, **3. Assessment System** (+9 more)
+Cohesion: 0.14
+Nodes (14): **10. Data Mapping Note**, **11. Attendance (QR Sessions & Scans)**, **12. Student Consultation (BK)**, **13. Room Booking Module**, **14. Uniform Sales Module (NEW)**, **1. Authentication & User Management**, **2. Academic Data Management**, **4. User Profile System** (+6 more)
 
 ### Community 94 - "Module 94"
 Cohesion: 0.13
@@ -607,11 +611,11 @@ Nodes (13): public.uniform, public.uniform_purchase, public.uniform_purchase_ite
 
 ### Community 101 - "Module 101"
 Cohesion: 0.15
-Nodes (12): 11.2 ERD / Relationships (Uniform & Stock Domain), 11.3 Initial Stock & Inventory Ledger Workflows (`/stock/uniform/initial`), 11.4 POS Uniform Sales Workflows (`/sales/uniform`), 11. Uniform & Stock Management Domain (`/sales/uniform`, `/stock/uniform/add`, `/stock/uniform/initial`, `/stock/uniform/po-settings`, `/data/uniform`, `/data/uniform-size`), 5.2 ERD / Relationships (Attendance Domain), 5. Attendance & Leave Management Domain (`/data/attendance-settings`, `/data/attendance-leave`, `/data/attendance-form`), 7.1 Tables, 7.2 ERD / Relationships (Menu Domain) (+4 more)
+Nodes (12): 10.1 Tables, 10.2 ERD / Relationships (Duty & Devotion Schedule Domain), 10. Duty, Greeter & Devotion Schedule Domain (`/data/door_greeter`), 11.2 ERD / Relationships (Uniform & Stock Domain), 11.3 Initial Stock & Inventory Ledger Workflows (`/stock/uniform/initial`), 11.4 POS Uniform Sales Workflows (`/sales/uniform`), 11. Uniform & Stock Management Domain (`/sales/uniform`, `/stock/uniform/add`, `/stock/uniform/initial`, `/stock/uniform/po-settings`, `/data/uniform`, `/data/uniform-size`), 5.2 ERD / Relationships (Attendance Domain) (+4 more)
 
 ### Community 102 - "Module 102"
-Cohesion: 0.14
-Nodes (14): 2025-08-13, 2025-08-17, 2025-08-17 (Subsequent Updates), 2025-08-20, 2025-08-21, 2025-08-22, 2025-08-23, 2025-08-30 (+6 more)
+Cohesion: 0.09
+Nodes (22): 2025-08-13, 2025-08-17, 2025-08-17 (Subsequent Updates), 2025-08-20, 2025-08-21, 2025-08-22, 2025-08-23, 2025-08-30 (+14 more)
 
 ### Community 103 - "Module 103"
 Cohesion: 0.15
@@ -622,8 +626,8 @@ Cohesion: 0.15
 Nodes (13): 5.1 Tables, `attendance_excuses`, `attendance_notification_log`, `attendance_notify_run_log`, `attendances`, `kelas_attendance`, `leave_quotas`, `leave_types` (+5 more)
 
 ### Community 105 - "Module 105"
-Cohesion: 0.15
-Nodes (13): **1. MYP Year Level Selection**, **2. Criterion Grades (A, B, C, D)**, **3. Strand Grades**, **4. Final Grade (1-7)**, **Assessment Cards** (`/data/topic-new`), **Database Migrations**, **Grading Modal**, **Grading Workflow** (+5 more)
+Cohesion: 0.25
+Nodes (8): **Assessment Cards** (`/data/topic-new`), **Database Migrations**, **Grading Modal**, **Grading Workflow**, 🎓 **IB MYP Assessment Grading System**, **Overview**, **Removed Features**, **UI Features**
 
 ### Community 106 - "Module 106"
 Cohesion: 0.17
@@ -678,8 +682,8 @@ Cohesion: 0.22
 Nodes (9): 1.1 Tables, 1.2 ERD / Relationships (User & Unit Domain), 1.3 Tables referencing `users`, 1. User, Role & Unit Management Domain (`/data/user`, `/data/role_management`, `/settings/unit`), `dashboard_type`, `report_settings`, `role`, `unit` (+1 more)
 
 ### Community 119 - "Module 119"
-Cohesion: 0.15
-Nodes (12): Attendance (QR) Tables, **Completed Features:**, **Core Tables:**, �🏗️ **Database Structure**, Grades (Nilai) Table, **Important Files:**, **Key Business Rules:**, **Key Directories:** (+4 more)
+Cohesion: 0.18
+Nodes (10): **Additional Files:**, **Completed Features:**, **Database Migration Files (Execute in Order):**, **Development:**, **Key Business Rules:**, **Key Environment:**, 📝 Recent Changes (Aug 2025), School Admin System - Complete Documentation (+2 more)
 
 ### Community 120 - "Module 120"
 Cohesion: 0.22
@@ -733,6 +737,10 @@ Nodes (6): Banned Output Patterns, Baseline, Execution Process, Full-Output Enfo
 Cohesion: 0.29
 Nodes (7): 33. CATEGORY-SPECIFIC BIAS, Commerce, Fintech, Health / Fitness, Productivity, Social, Wellness / Lifestyle
 
+### Community 133 - "Module 133"
+Cohesion: 0.18
+Nodes (11): bcryptjs, @hookform/resolvers, dependencies, bcryptjs, @hookform/resolvers, pdf-lib, @radix-ui/react-select, react-hook-form (+3 more)
+
 ### Community 135 - "Module 135"
 Cohesion: 0.29
 Nodes (7): 13. COLOR & MATERIAL RULES, Background Confidence Rule, Background-image harmony, Gradient Discipline, Materiality, Palette Discipline, Strong guidance
@@ -750,8 +758,12 @@ Cohesion: 0.29
 Nodes (5): public.admission_level, public.fee_discount, public.school_fee_definition, public.student_applications, public.udp_definition
 
 ### Community 139 - "Module 139"
-Cohesion: 0.25
-Nodes (8): 2026-07-16 — Timetable Refactor + Weekly Plan Dates + Weekly Overview, Full Data Flow: Timetable → Weekly Overview, Timetable Exceptions (`timetable_exception`) — New Table, Timetable Refactor (`/data/timetable`), `topic_weekly_plan` — Complete Schema Reference, Weekly Overview (`/data/weekly-overview`) — New Page, `weekly_overview_draft` Table — New, Weekly Plan Dates — `topic_weekly_plan.week_date`
+Cohesion: 0.40
+Nodes (5): **1. MYP Year Level Selection**, **2. Criterion Grades (A, B, C, D)**, **3. Strand Grades**, **4. Final Grade (1-7)**, **Key Components**
+
+### Community 140 - "Module 140"
+Cohesion: 0.60
+Nodes (4): FeeSimulationPage(), formatCurrency(), formatDateID(), monthNames
 
 ### Community 143 - "Module 143"
 Cohesion: 0.33
@@ -761,13 +773,21 @@ Nodes (6): 29. ANTI-AI-SLOP RULES, Content slop, Density slop, Layout slop, Typo
 Cohesion: 0.33
 Nodes (6): 5. IMAGE COUNT & PAGE SLICING, Continuity Rule, Counting rule, Format, Section size variety, THIS IS THE PRIMARY OUTPUT RULE
 
+### Community 145 - "Module 145"
+Cohesion: 0.73
+Nodes (4): formatIndonesianDate(), generatePsikotestPDF(), loadImgBase64(), PsikotestManagementPage()
+
 ### Community 146 - "Module 146"
 Cohesion: 0.33
 Nodes (5): absen, attendance_scan_log, _backup_absen, _backup_attendance_scan_log, _backup_attendance_session
 
 ### Community 147 - "�🏗️ **Database Structure**"
-Cohesion: 0.18
-Nodes (11): bcryptjs, @hookform/resolvers, dependencies, bcryptjs, @hookform/resolvers, pdf-lib, @radix-ui/react-select, react-hook-form (+3 more)
+Cohesion: 0.50
+Nodes (4): Attendance (QR) Tables, **Core Tables:**, �🏗️ **Database Structure**, Grades (Nilai) Table
+
+### Community 148 - "Module 148"
+Cohesion: 0.40
+Nodes (5): 7.1 Tables, 7.2 ERD / Relationships (Menu Domain), 7. Menu & Role Permissions Domain (`/data/menu_management`), `menu_permissions`, `menus`
 
 ### Community 149 - "bcryptjs"
 Cohesion: 0.33
@@ -792,6 +812,10 @@ Nodes (6): Access flow (guards), **Admin (`is_admin = true`):**, 🔐 **Role-Bas
 ### Community 158 - "Module 158"
 Cohesion: 0.33
 Nodes (6): **Assessment Calendar (View + RPC)**, **Assessment with Relations:**, 📊 **Database Queries Reference**, **Get Teachers Only:**, **Subject with Teacher & Unit:**, **Topics (Units) Queries:**
+
+### Community 194 - "Module 194"
+Cohesion: 0.67
+Nodes (3): **3. Assessment System**, **Admin Workflow**:, **Teacher Workflow**:
 
 ### Community 229 - "Module 229"
 Cohesion: 0.40
@@ -822,8 +846,8 @@ Cohesion: 0.33
 Nodes (6): 16.1 Tables, 16.2 Zero-Friction Fallback Architecture, 16. Athletic Day & Sports Event Domain (`/data/athletic-day`, `/data/athletic-day/live`), `athletic_events`, `athletic_scores`, `athletic_teams`
 
 ### Community 236 - "Module 236"
-Cohesion: 0.73
-Nodes (4): formatIndonesianDate(), generatePsikotestPDF(), loadImgBase64(), PsikotestManagementPage()
+Cohesion: 0.67
+Nodes (3): **Important Files:**, **Key Directories:**, 📁 **Project Structure**
 
 ### Community 237 - "Module 237"
 Cohesion: 0.33
@@ -941,14 +965,6 @@ Nodes (3): POST(), supabaseAdmin, verifyAuth()
 Cohesion: 0.50
 Nodes (3): POST(), supabaseAdmin, verifyAuth()
 
-### Community 313 - "SKILL.md"
-Cohesion: 0.40
-Nodes (5): 10.1 Tables, 10.2 ERD / Relationships (Duty & Devotion Schedule Domain), 10. Duty, Greeter & Devotion Schedule Domain (`/data/door_greeter`), `duty_schedules`, `duty_settings`
-
-### Community 316 - "**3. Assessment System**"
-Cohesion: 0.40
-Nodes (5): **Additional Files:**, **Database Migration Files (Execute in Order):**, **Development:**, **Key Environment:**, 🚀 **Setup & Deployment**
-
 ### Community 368 - "route.js"
 Cohesion: 0.57
 Nodes (6): extractScheduleMeta(), GET(), POST(), resolveCurrentFormFee(), supabaseAdmin, verifyAuth()
@@ -962,23 +978,23 @@ Cohesion: 0.83
 Nodes (3): AthleticDayLivePage(), isLightColor(), normalizeTeamColor()
 
 ## Knowledge Gaps
-- **1168 isolated node(s):** `extends`, `next/core-web-vitals`, `$schema`, `style`, `rsc` (+1163 more)
+- **1169 isolated node(s):** `extends`, `next/core-web-vitals`, `$schema`, `style`, `rsc` (+1164 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **116 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **117 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `dependencies` connect `�🏗️ **Database Structure**` to `Admission Management`, `Package Dependencies & Config`, `exceljs`, `Module 133`, `Module 134`, `browser-image-compression`, `Module 140`, `🎓 **IB MYP Assessment Grading System**`, `clsx`, `2026-07-16 — Timetable Refactor + Weekly Plan Dates + Weekly Overview`, `React UI Components`, `Module 145`, `Module 148`, `docx`, `Module 153`, `Module 154`, `Module 155`, `@googleapis/chat`, `dotenv`, `zod`, `bcryptjs`, `Appendix B - Canonical Sources (read these before reinventing)`, `Analysis & Synthesis Instructions`, `12. THE COMBINATORIAL VARIATION ENGINE`, `📁 **Project Structure**`, `@sparticuz/chromium-min`, `11. REDESIGN PROTOCOL`, `3. DEFAULT ARCHITECTURE & CONVENTIONS`, `33. CATEGORY-SPECIFIC BIAS`, `pngjs`, `Module 239`, `Module 240`, `docx`, `browser-image-compression`, `dotenv`, `@fortawesome/free-solid-svg-icons`, `@radix-ui/react-slot`, `react-easy-crop`?**
+- **Why does `dependencies` connect `Module 133` to `Admission Management`, `Package Dependencies & Config`, `next-auth`, `@radix-ui/react-label`, `react-dom`, `Module 134`, `browser-image-compression`, `React UI Components`, `🎓 **IB MYP Assessment Grading System**`, `2026-07-16 — Timetable Refactor + Weekly Plan Dates + Weekly Overview`, `clsx`, `docx`, `Module 153`, `Module 154`, `Module 155`, `@googleapis/chat`, `dotenv`, `zod`, `bcryptjs`, `Appendix B - Canonical Sources (read these before reinventing)`, `SKILL.md`, `Analysis & Synthesis Instructions`, `**3. Assessment System**`, `12. THE COMBINATORIAL VARIATION ENGINE`, `📁 **Project Structure**`, `@sparticuz/chromium-min`, `11. REDESIGN PROTOCOL`, `3. DEFAULT ARCHITECTURE & CONVENTIONS`, `33. CATEGORY-SPECIFIC BIAS`, `pngjs`, `Module 239`, `Module 240`, `jsonwebtoken`, `browser-image-compression`, `dotenv`, `@fortawesome/free-solid-svg-icons`, `@radix-ui/react-slot`, `react-easy-crop`?**
   _High betweenness centrality (0.011) - this node is a cross-community bridge._
-- **Why does `jspdf` connect `Admission Management` to `page.jsx`, `�🏗️ **Database Structure**`, `Module 236`?**
+- **Why does `jspdf` connect `Admission Management` to `Module 145`, `page.jsx`, `Module 140`, `Module 133`?**
   _High betweenness centrality (0.009) - this node is a cross-community bridge._
-- **Why does `Database Schema & Relationships` connect `Module 101` to `bcryptjs`, `Module 103`, `Module 235`, `Module 107`, `Module 108`, `Module 237`, `Module 114`, `Module 115`, `Module 118`, `Module 151`, `SKILL.md`?**
+- **Why does `Database Schema & Relationships` connect `Module 101` to `bcryptjs`, `Module 103`, `Module 107`, `Module 235`, `Module 108`, `Module 237`, `Module 114`, `Module 115`, `Module 148`, `Module 118`, `Module 151`?**
   _High betweenness centrality (0.002) - this node is a cross-community bridge._
 - **What connects `extends`, `next/core-web-vitals`, `$schema` to the rest of the system?**
-  _1168 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _1169 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `Admission Management` be split into smaller, more focused modules?**
-  _Cohesion score 0.06504065040650407 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.07142857142857142 - nodes in this community are weakly interconnected._
 - **Should `Package Dependencies & Config` be split into smaller, more focused modules?**
   _Cohesion score 0.09090909090909091 - nodes in this community are weakly interconnected._
 - **Should `RLS & Migration Scripts` be split into smaller, more focused modules?**

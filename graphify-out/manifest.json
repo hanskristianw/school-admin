@@ -990,9 +990,9 @@
     "semantic_hash": ""
   },
   "src/app/data/health_report/page.jsx": {
-    "mtime": 1784179362.435104,
-    "ast_hash": "3c699d9af349ac08e5c226dd5df090ea",
-    "semantic_hash": "3c699d9af349ac08e5c226dd5df090ea"
+    "mtime": 1791278809.3744802,
+    "ast_hash": "2a450d70b45ca672bb28ef5343b3f0e1",
+    "semantic_hash": ""
   },
   "src/app/data/layout.jsx": {
     "mtime": 1790225991.8488314,
@@ -1010,8 +1010,8 @@
     "semantic_hash": ""
   },
   "src/app/data/role_management/page.jsx": {
-    "mtime": 1786506362.962235,
-    "ast_hash": "59e12e274dcb0b13e3065a5ad637b434",
+    "mtime": 1791268664.6711009,
+    "ast_hash": "46991f17821abe854e66d36c6e42dc0e",
     "semantic_hash": ""
   },
   "src/app/data/room/page.jsx": {
@@ -1024,15 +1024,10 @@
     "ast_hash": "c26e50ed06a25b9ccfdac7282eb164fd",
     "semantic_hash": ""
   },
-  "src/app/data/settings/daily_qr/page.jsx": {
-    "mtime": 1784179362.435104,
-    "ast_hash": "f3ce3a3064ca2b9a8ce57c71fd44a9aa",
-    "semantic_hash": "f3ce3a3064ca2b9a8ce57c71fd44a9aa"
-  },
   "src/app/data/subject-group/page.jsx": {
-    "mtime": 1784179362.4406536,
-    "ast_hash": "2f3924545fbcd718ff0fb5ec64aed495",
-    "semantic_hash": "2f3924545fbcd718ff0fb5ec64aed495"
+    "mtime": 1791272221.7466252,
+    "ast_hash": "a2e746bb979a17e088a75e8ac4d7d20d",
+    "semantic_hash": ""
   },
   "src/app/data/subject/page.jsx": {
     "mtime": 1788487421.2535367,
@@ -1085,9 +1080,9 @@
     "semantic_hash": "f550fab3a4d361b330569f0fac792559"
   },
   "src/app/data/uniform-size/page.jsx": {
-    "mtime": 1784179362.446668,
-    "ast_hash": "43eae7bc25f711b37e2bf0f8c72198b9",
-    "semantic_hash": "43eae7bc25f711b37e2bf0f8c72198b9"
+    "mtime": 1791268924.11016,
+    "ast_hash": "dc18dd9f67c7adf7457860e78e48c10f",
+    "semantic_hash": ""
   },
   "src/app/data/uniform-supplier/page.jsx": {
     "mtime": 1784179362.4486725,
@@ -1105,9 +1100,9 @@
     "semantic_hash": ""
   },
   "src/app/data/year/page.jsx": {
-    "mtime": 1784179362.4486725,
-    "ast_hash": "98fc970fd8cc149cd659963dc739101a",
-    "semantic_hash": "98fc970fd8cc149cd659963dc739101a"
+    "mtime": 1791269675.769879,
+    "ast_hash": "d1542b0fbfcb37c9258ed90a276738e6",
+    "semantic_hash": ""
   },
   "src/app/debug-profile/page.jsx": {
     "mtime": 1784179362.450841,
@@ -1175,8 +1170,8 @@
     "semantic_hash": "f785482e89b25b6102eee6caca3911d4"
   },
   "src/app/settings/fpb/page.jsx": {
-    "mtime": 1791256777.8323402,
-    "ast_hash": "416fcc1de9650c2dba546bf8e0613355",
+    "mtime": 1791267799.5740864,
+    "ast_hash": "669c22833c196057b03b513bb488aa26",
     "semantic_hash": ""
   },
   "src/app/settings/layout.jsx": {

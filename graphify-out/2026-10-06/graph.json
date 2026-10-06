@@ -2922,8 +2922,8 @@
       "source_location": "L11",
       "_origin": "ast",
       "id": "package_dependencies",
-      "community": 147,
-      "community_name": "\ufffd\ud83c\udfd7\ufe0f **Database Structure**",
+      "community": 133,
+      "community_name": "Module 133",
       "norm_label": "dependencies"
     },
     {
@@ -2933,8 +2933,8 @@
       "source_location": "L12",
       "_origin": "ast",
       "id": "package_dependencies_fortawesome_fontawesome_svg_core",
-      "community": 375,
-      "community_name": "docx",
+      "community": 391,
+      "community_name": "browser-image-compression",
       "norm_label": "@fortawesome/fontawesome-svg-core"
     },
     {
@@ -2944,8 +2944,8 @@
       "source_location": "L12",
       "_origin": "ast",
       "id": "fortawesome_fontawesome_svg_core",
-      "community": 375,
-      "community_name": "docx",
+      "community": 391,
+      "community_name": "browser-image-compression",
       "norm_label": "@fortawesome/fontawesome-svg-core"
     },
     {
@@ -2999,8 +2999,8 @@
       "source_location": "L15",
       "_origin": "ast",
       "id": "package_dependencies_google_cloud_vertexai",
-      "community": 133,
-      "community_name": "Module 133",
+      "community": 330,
+      "community_name": "\ud83d\udcc1 **Project Structure**",
       "norm_label": "@google-cloud/vertexai"
     },
     {
@@ -3010,8 +3010,8 @@
       "source_location": "L15",
       "_origin": "ast",
       "id": "google_cloud_vertexai",
-      "community": 133,
-      "community_name": "Module 133",
+      "community": 330,
+      "community_name": "\ud83d\udcc1 **Project Structure**",
       "norm_label": "@google-cloud/vertexai"
     },
     {
@@ -3043,8 +3043,8 @@
       "source_location": "L17",
       "_origin": "ast",
       "id": "package_dependencies_hookform_resolvers",
-      "community": 147,
-      "community_name": "\ufffd\ud83c\udfd7\ufe0f **Database Structure**",
+      "community": 133,
+      "community_name": "Module 133",
       "norm_label": "@hookform/resolvers"
     },
     {
@@ -3054,8 +3054,8 @@
       "source_location": "L17",
       "_origin": "ast",
       "id": "hookform_resolvers",
-      "community": 147,
-      "community_name": "\ufffd\ud83c\udfd7\ufe0f **Database Structure**",
+      "community": 133,
+      "community_name": "Module 133",
       "norm_label": "@hookform/resolvers"
     },
     {
@@ -3065,8 +3065,8 @@
       "source_location": "L18",
       "_origin": "ast",
       "id": "package_dependencies_radix_ui_react_label",
-      "community": 145,
-      "community_name": "Module 145",
+      "community": 387,
+      "community_name": "@radix-ui/react-label",
       "norm_label": "@radix-ui/react-label"
     },
     {
@@ -3076,8 +3076,8 @@
       "source_location": "L18",
       "_origin": "ast",
       "id": "radix_ui_react_label",
-      "community": 145,
-      "community_name": "Module 145",
+      "community": 387,
+      "community_name": "@radix-ui/react-label",
       "norm_label": "@radix-ui/react-label"
     },
     {
@@ -3087,8 +3087,8 @@
       "source_location": "L19",
       "_origin": "ast",
       "id": "package_dependencies_radix_ui_react_select",
-      "community": 147,
-      "community_name": "\ufffd\ud83c\udfd7\ufe0f **Database Structure**",
+      "community": 133,
+      "community_name": "Module 133",
       "norm_label": "@radix-ui/react-select"
     },
     {
@@ -3098,8 +3098,8 @@
       "source_location": "L19",
       "_origin": "ast",
       "id": "radix_ui_react_select",
-      "community": 147,
-      "community_name": "\ufffd\ud83c\udfd7\ufe0f **Database Structure**",
+      "community": 133,
+      "community_name": "Module 133",
       "norm_label": "@radix-ui/react-select"
     },
     {
@@ -3175,8 +3175,8 @@
       "source_location": "L23",
       "_origin": "ast",
       "id": "package_dependencies_bcryptjs",
-      "community": 147,
-      "community_name": "\ufffd\ud83c\udfd7\ufe0f **Database Structure**",
+      "community": 133,
+      "community_name": "Module 133",
       "norm_label": "bcryptjs"
     },
     {
@@ -3186,8 +3186,8 @@
       "source_location": "L23",
       "_origin": "ast",
       "id": "bcryptjs",
-      "community": 147,
-      "community_name": "\ufffd\ud83c\udfd7\ufe0f **Database Structure**",
+      "community": 133,
+      "community_name": "Module 133",
       "norm_label": "bcryptjs"
     },
     {
@@ -3197,8 +3197,8 @@
       "source_location": "L24",
       "_origin": "ast",
       "id": "package_dependencies_browser_image_compression",
-      "community": 391,
-      "community_name": "browser-image-compression",
+      "community": 133,
+      "community_name": "Module 133",
       "norm_label": "browser-image-compression"
     },
     {
@@ -3208,8 +3208,8 @@
       "source_location": "L24",
       "_origin": "ast",
       "id": "browser_image_compression",
-      "community": 391,
-      "community_name": "browser-image-compression",
+      "community": 133,
+      "community_name": "Module 133",
       "norm_label": "browser-image-compression"
     },
     {
@@ -3219,8 +3219,8 @@
       "source_location": "L25",
       "_origin": "ast",
       "id": "package_dependencies_class_variance_authority",
-      "community": 376,
-      "community_name": "browser-image-compression",
+      "community": 142,
+      "community_name": "2026-07-16 \u2014 Timetable Refactor + Weekly Plan Dates + Weekly Overview",
       "norm_label": "class-variance-authority"
     },
     {
@@ -3230,8 +3230,8 @@
       "source_location": "L25",
       "_origin": "ast",
       "id": "class_variance_authority",
-      "community": 376,
-      "community_name": "browser-image-compression",
+      "community": 142,
+      "community_name": "2026-07-16 \u2014 Timetable Refactor + Weekly Plan Dates + Weekly Overview",
       "norm_label": "class-variance-authority"
     },
     {
@@ -3241,8 +3241,8 @@
       "source_location": "L26",
       "_origin": "ast",
       "id": "package_dependencies_clsx",
-      "community": 329,
-      "community_name": "12. THE COMBINATORIAL VARIATION ENGINE",
+      "community": 376,
+      "community_name": "browser-image-compression",
       "norm_label": "clsx"
     },
     {
@@ -3252,8 +3252,8 @@
       "source_location": "L26",
       "_origin": "ast",
       "id": "clsx",
-      "community": 329,
-      "community_name": "12. THE COMBINATORIAL VARIATION ENGINE",
+      "community": 376,
+      "community_name": "browser-image-compression",
       "norm_label": "clsx"
     },
     {
@@ -3307,8 +3307,8 @@
       "source_location": "L29",
       "_origin": "ast",
       "id": "package_dependencies_driver_js",
-      "community": 147,
-      "community_name": "\ufffd\ud83c\udfd7\ufe0f **Database Structure**",
+      "community": 313,
+      "community_name": "SKILL.md",
       "norm_label": "driver.js"
     },
     {
@@ -3318,8 +3318,8 @@
       "source_location": "L29",
       "_origin": "ast",
       "id": "driver_js",
-      "community": 147,
-      "community_name": "\ufffd\ud83c\udfd7\ufe0f **Database Structure**",
+      "community": 313,
+      "community_name": "SKILL.md",
       "norm_label": "driver.js"
     },
     {
@@ -3329,8 +3329,8 @@
       "source_location": "L30",
       "_origin": "ast",
       "id": "package_dependencies_exceljs",
-      "community": 386,
-      "community_name": "exceljs",
+      "community": 316,
+      "community_name": "**3. Assessment System**",
       "norm_label": "exceljs"
     },
     {
@@ -3340,8 +3340,8 @@
       "source_location": "L30",
       "_origin": "ast",
       "id": "exceljs",
-      "community": 386,
-      "community_name": "exceljs",
+      "community": 316,
+      "community_name": "**3. Assessment System**",
       "norm_label": "exceljs"
     },
     {
@@ -3439,8 +3439,8 @@
       "source_location": "L35",
       "_origin": "ast",
       "id": "package_dependencies_jsonwebtoken",
-      "community": 142,
-      "community_name": "2026-07-16 \u2014 Timetable Refactor + Weekly Plan Dates + Weekly Overview",
+      "community": 375,
+      "community_name": "jsonwebtoken",
       "norm_label": "jsonwebtoken"
     },
     {
@@ -3450,8 +3450,8 @@
       "source_location": "L35",
       "_origin": "ast",
       "id": "jsonwebtoken",
-      "community": 142,
-      "community_name": "2026-07-16 \u2014 Timetable Refactor + Weekly Plan Dates + Weekly Overview",
+      "community": 375,
+      "community_name": "jsonwebtoken",
       "norm_label": "jsonwebtoken"
     },
     {
@@ -3571,8 +3571,8 @@
       "source_location": "L41",
       "_origin": "ast",
       "id": "package_dependencies_next_auth",
-      "community": 140,
-      "community_name": "Module 140",
+      "community": 386,
+      "community_name": "next-auth",
       "norm_label": "next-auth"
     },
     {
@@ -3582,8 +3582,8 @@
       "source_location": "L41",
       "_origin": "ast",
       "id": "next_auth",
-      "community": 140,
-      "community_name": "Module 140",
+      "community": 386,
+      "community_name": "next-auth",
       "norm_label": "next-auth"
     },
     {
@@ -3593,8 +3593,8 @@
       "source_location": "L42",
       "_origin": "ast",
       "id": "package_dependencies_pdf_lib",
-      "community": 387,
-      "community_name": "16.1 Tables",
+      "community": 329,
+      "community_name": "12. THE COMBINATORIAL VARIATION ENGINE",
       "norm_label": "pdf-lib"
     },
     {
@@ -3604,8 +3604,8 @@
       "source_location": "L42",
       "_origin": "ast",
       "id": "pdf_lib",
-      "community": 387,
-      "community_name": "16.1 Tables",
+      "community": 329,
+      "community_name": "12. THE COMBINATORIAL VARIATION ENGINE",
       "norm_label": "pdf-lib"
     },
     {
@@ -3725,8 +3725,8 @@
       "source_location": "L48",
       "_origin": "ast",
       "id": "package_dependencies_react_dom",
-      "community": 148,
-      "community_name": "Module 148",
+      "community": 389,
+      "community_name": "react-dom",
       "norm_label": "react-dom"
     },
     {
@@ -3736,8 +3736,8 @@
       "source_location": "L48",
       "_origin": "ast",
       "id": "react_dom",
-      "community": 148,
-      "community_name": "Module 148",
+      "community": 389,
+      "community_name": "react-dom",
       "norm_label": "react-dom"
     },
     {
@@ -3769,8 +3769,8 @@
       "source_location": "L50",
       "_origin": "ast",
       "id": "package_dependencies_react_hook_form",
-      "community": 147,
-      "community_name": "\ufffd\ud83c\udfd7\ufe0f **Database Structure**",
+      "community": 133,
+      "community_name": "Module 133",
       "norm_label": "react-hook-form"
     },
     {
@@ -3780,8 +3780,8 @@
       "source_location": "L50",
       "_origin": "ast",
       "id": "react_hook_form",
-      "community": 147,
-      "community_name": "\ufffd\ud83c\udfd7\ufe0f **Database Structure**",
+      "community": 133,
+      "community_name": "Module 133",
       "norm_label": "react-hook-form"
     },
     {
@@ -6992,8 +6992,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_app_data_admission_simulation_page",
-      "community": 0,
-      "community_name": "Admission Management",
+      "community": 140,
+      "community_name": "Module 140",
       "norm_label": "page.jsx"
     },
     {
@@ -7003,8 +7003,8 @@
       "source_location": "L20",
       "_origin": "ast",
       "id": "src_app_data_admission_simulation_page_formatcurrency",
-      "community": 0,
-      "community_name": "Admission Management",
+      "community": 140,
+      "community_name": "Module 140",
       "norm_label": "formatcurrency()"
     },
     {
@@ -7014,8 +7014,8 @@
       "source_location": "L24",
       "_origin": "ast",
       "id": "src_app_data_admission_simulation_page_monthnames",
-      "community": 0,
-      "community_name": "Admission Management",
+      "community": 140,
+      "community_name": "Module 140",
       "norm_label": "monthnames"
     },
     {
@@ -7025,8 +7025,8 @@
       "source_location": "L27",
       "_origin": "ast",
       "id": "src_app_data_admission_simulation_page_formatdateid",
-      "community": 0,
-      "community_name": "Admission Management",
+      "community": 140,
+      "community_name": "Module 140",
       "norm_label": "formatdateid()"
     },
     {
@@ -7036,8 +7036,8 @@
       "source_location": "L34",
       "_origin": "ast",
       "id": "src_app_data_admission_simulation_page_feesimulationpage",
-      "community": 0,
-      "community_name": "Admission Management",
+      "community": 140,
+      "community_name": "Module 140",
       "norm_label": "feesimulationpage()"
     },
     {
@@ -8540,7 +8540,7 @@
       "label": "MONTHS",
       "file_type": "code",
       "source_file": "src/app/data/health_report/page.jsx",
-      "source_location": "L12",
+      "source_location": "L28",
       "_origin": "ast",
       "id": "src_app_data_health_report_page_months",
       "community": 49,
@@ -8548,32 +8548,21 @@
       "norm_label": "months"
     },
     {
-      "label": "SectionHeader()",
+      "label": "MinimalInlineTable()",
       "file_type": "code",
       "source_file": "src/app/data/health_report/page.jsx",
-      "source_location": "L14",
+      "source_location": "L31",
       "_origin": "ast",
-      "id": "src_app_data_health_report_page_sectionheader",
+      "id": "src_app_data_health_report_page_minimalinlinetable",
       "community": 49,
       "community_name": "Module 49",
-      "norm_label": "sectionheader()"
-    },
-    {
-      "label": "InlineTable()",
-      "file_type": "code",
-      "source_file": "src/app/data/health_report/page.jsx",
-      "source_location": "L22",
-      "_origin": "ast",
-      "id": "src_app_data_health_report_page_inlinetable",
-      "community": 49,
-      "community_name": "Module 49",
-      "norm_label": "inlinetable()"
+      "norm_label": "minimalinlinetable()"
     },
     {
       "label": "HealthReportPage()",
       "file_type": "code",
       "source_file": "src/app/data/health_report/page.jsx",
-      "source_location": "L135",
+      "source_location": "L386",
       "_origin": "ast",
       "id": "src_app_data_health_report_page_healthreportpage",
       "community": 49,
@@ -8708,8 +8697,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_app_data_psikotest_lib_psikotestpdfgenerator",
-      "community": 236,
-      "community_name": "Module 236",
+      "community": 145,
+      "community_name": "Module 145",
       "norm_label": "psikotestpdfgenerator.js"
     },
     {
@@ -8719,8 +8708,8 @@
       "source_location": "L7",
       "_origin": "ast",
       "id": "src_app_data_psikotest_lib_psikotestpdfgenerator_loadimgbase64",
-      "community": 236,
-      "community_name": "Module 236",
+      "community": 145,
+      "community_name": "Module 145",
       "norm_label": "loadimgbase64()"
     },
     {
@@ -8730,8 +8719,8 @@
       "source_location": "L28",
       "_origin": "ast",
       "id": "src_app_data_psikotest_lib_psikotestpdfgenerator_formatindonesiandate",
-      "community": 236,
-      "community_name": "Module 236",
+      "community": 145,
+      "community_name": "Module 145",
       "norm_label": "formatindonesiandate()"
     },
     {
@@ -8741,8 +8730,8 @@
       "source_location": "L42",
       "_origin": "ast",
       "id": "src_app_data_psikotest_lib_psikotestpdfgenerator_generatepsikotestpdf",
-      "community": 236,
-      "community_name": "Module 236",
+      "community": 145,
+      "community_name": "Module 145",
       "norm_label": "generatepsikotestpdf()"
     },
     {
@@ -8752,8 +8741,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_app_data_psikotest_page",
-      "community": 236,
-      "community_name": "Module 236",
+      "community": 145,
+      "community_name": "Module 145",
       "norm_label": "page.jsx"
     },
     {
@@ -8763,8 +8752,8 @@
       "source_location": "L30",
       "_origin": "ast",
       "id": "src_app_data_psikotest_page_psikotestmanagementpage",
-      "community": 236,
-      "community_name": "Module 236",
+      "community": 145,
+      "community_name": "Module 145",
       "norm_label": "psikotestmanagementpage()"
     },
     {
@@ -9255,7 +9244,7 @@
       "label": "RoleManagementPage()",
       "file_type": "code",
       "source_file": "src/app/data/role_management/page.jsx",
-      "source_location": "L12",
+      "source_location": "L16",
       "_origin": "ast",
       "id": "src_app_data_role_management_page_rolemanagementpage",
       "community": 192,
@@ -9364,28 +9353,6 @@
     {
       "label": "page.jsx",
       "file_type": "code",
-      "source_file": "src/app/data/settings/daily_qr/page.jsx",
-      "source_location": "L1",
-      "_origin": "ast",
-      "id": "src_app_data_settings_daily_qr_page",
-      "community": 194,
-      "community_name": "Module 194",
-      "norm_label": "page.jsx"
-    },
-    {
-      "label": "DailyQrSettings()",
-      "file_type": "code",
-      "source_file": "src/app/data/settings/daily_qr/page.jsx",
-      "source_location": "L12",
-      "_origin": "ast",
-      "id": "src_app_data_settings_daily_qr_page_dailyqrsettings",
-      "community": 194,
-      "community_name": "Module 194",
-      "norm_label": "dailyqrsettings()"
-    },
-    {
-      "label": "page.jsx",
-      "file_type": "code",
       "source_file": "src/app/data/subject-group/page.jsx",
       "source_location": "L1",
       "_origin": "ast",
@@ -9398,7 +9365,7 @@
       "label": "CRITERIA",
       "file_type": "code",
       "source_file": "src/app/data/subject-group/page.jsx",
-      "source_location": "L12",
+      "source_location": "L24",
       "_origin": "ast",
       "id": "src_app_data_subject_group_page_criteria",
       "community": 36,
@@ -9409,7 +9376,7 @@
       "label": "BANDS",
       "file_type": "code",
       "source_file": "src/app/data/subject-group/page.jsx",
-      "source_location": "L13",
+      "source_location": "L25",
       "_origin": "ast",
       "id": "src_app_data_subject_group_page_bands",
       "community": 36,
@@ -9420,7 +9387,7 @@
       "label": "MYP_YEARS",
       "file_type": "code",
       "source_file": "src/app/data/subject-group/page.jsx",
-      "source_location": "L19",
+      "source_location": "L31",
       "_origin": "ast",
       "id": "src_app_data_subject_group_page_myp_years",
       "community": 36,
@@ -9431,7 +9398,7 @@
       "label": "SEMESTERS",
       "file_type": "code",
       "source_file": "src/app/data/subject-group/page.jsx",
-      "source_location": "L21",
+      "source_location": "L33",
       "_origin": "ast",
       "id": "src_app_data_subject_group_page_semesters",
       "community": 36,
@@ -9442,7 +9409,7 @@
       "label": "SubjectGroupPage()",
       "file_type": "code",
       "source_file": "src/app/data/subject-group/page.jsx",
-      "source_location": "L27",
+      "source_location": "L39",
       "_origin": "ast",
       "id": "src_app_data_subject_group_page_subjectgrouppage",
       "community": 36,
@@ -10047,7 +10014,7 @@
       "label": "UniformSizePage()",
       "file_type": "code",
       "source_file": "src/app/data/uniform-size/page.jsx",
-      "source_location": "L11",
+      "source_location": "L14",
       "_origin": "ast",
       "id": "src_app_data_uniform_size_page_uniformsizepage",
       "community": 198,
@@ -10253,15 +10220,26 @@
       "norm_label": "page.jsx"
     },
     {
-      "label": "YearManagement()",
+      "label": "YEAR_RELATION_TABLES",
       "file_type": "code",
       "source_file": "src/app/data/year/page.jsx",
-      "source_location": "L23",
+      "source_location": "L26",
       "_origin": "ast",
-      "id": "src_app_data_year_page_yearmanagement",
+      "id": "src_app_data_year_page_year_relation_tables",
       "community": 201,
       "community_name": "Module 201",
-      "norm_label": "yearmanagement()"
+      "norm_label": "year_relation_tables"
+    },
+    {
+      "label": "YearManagementPage()",
+      "file_type": "code",
+      "source_file": "src/app/data/year/page.jsx",
+      "source_location": "L48",
+      "_origin": "ast",
+      "id": "src_app_data_year_page_yearmanagementpage",
+      "community": 201,
+      "community_name": "Module 201",
+      "norm_label": "yearmanagementpage()"
     },
     {
       "label": "page.jsx",
@@ -13581,8 +13559,8 @@
       "source_location": "L43",
       "_origin": "ast",
       "id": "agents_skills_design_taste_frontend_skill_1_the_three_dials_core_configuration",
-      "community": 110,
-      "community_name": "Module 110",
+      "community": 241,
+      "community_name": "Module 241",
       "norm_label": "1. the three dials (core configuration)"
     },
     {
@@ -13592,8 +13570,8 @@
       "source_location": "L53",
       "_origin": "ast",
       "id": "agents_skills_design_taste_frontend_skill_1_a_dial_inference_design_read_dial_values",
-      "community": 110,
-      "community_name": "Module 110",
+      "community": 241,
+      "community_name": "Module 241",
       "norm_label": "1.a dial inference (design read \u2192 dial values)"
     },
     {
@@ -13603,8 +13581,8 @@
       "source_location": "L64",
       "_origin": "ast",
       "id": "agents_skills_design_taste_frontend_skill_1_b_use_case_presets",
-      "community": 110,
-      "community_name": "Module 110",
+      "community": 241,
+      "community_name": "Module 241",
       "norm_label": "1.b use-case presets"
     },
     {
@@ -13614,8 +13592,8 @@
       "source_location": "L77",
       "_origin": "ast",
       "id": "agents_skills_design_taste_frontend_skill_1_c_how_the_dials_drive_output",
-      "community": 110,
-      "community_name": "Module 110",
+      "community": 241,
+      "community_name": "Module 241",
       "norm_label": "1.c how the dials drive output"
     },
     {
@@ -13999,8 +13977,8 @@
       "source_location": "L552",
       "_origin": "ast",
       "id": "agents_skills_design_taste_frontend_skill_7_dial_definitions_technical_reference",
-      "community": 241,
-      "community_name": "Module 241",
+      "community": 110,
+      "community_name": "Module 110",
       "norm_label": "7. dial definitions (technical reference)"
     },
     {
@@ -14010,8 +13988,8 @@
       "source_location": "L554",
       "_origin": "ast",
       "id": "agents_skills_design_taste_frontend_skill_design_variance_level_1_10",
-      "community": 241,
-      "community_name": "Module 241",
+      "community": 110,
+      "community_name": "Module 110",
       "norm_label": "design_variance (level 1-10)"
     },
     {
@@ -14021,8 +13999,8 @@
       "source_location": "L560",
       "_origin": "ast",
       "id": "agents_skills_design_taste_frontend_skill_motion_intensity_level_1_10",
-      "community": 241,
-      "community_name": "Module 241",
+      "community": 110,
+      "community_name": "Module 110",
       "norm_label": "motion_intensity (level 1-10)"
     },
     {
@@ -14032,8 +14010,8 @@
       "source_location": "L565",
       "_origin": "ast",
       "id": "agents_skills_design_taste_frontend_skill_visual_density_level_1_10",
-      "community": 241,
-      "community_name": "Module 241",
+      "community": 110,
+      "community_name": "Module 110",
       "norm_label": "visual_density (level 1-10)"
     },
     {
@@ -16452,8 +16430,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "agents_skills_imagegen_frontend_web_skill",
-      "community": 330,
-      "community_name": "\ud83d\udcc1 **Project Structure**",
+      "community": 80,
+      "community_name": "Module 80",
       "norm_label": "skill.md"
     },
     {
@@ -16463,8 +16441,8 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "agents_skills_imagegen_frontend_web_skill_hard_output_rule_read_first",
-      "community": 330,
-      "community_name": "\ud83d\udcc1 **Project Structure**",
+      "community": 80,
+      "community_name": "Module 80",
       "norm_label": "hard output rule \u2014 read first"
     },
     {
@@ -16474,8 +16452,8 @@
       "source_location": "L25",
       "_origin": "ast",
       "id": "agents_skills_imagegen_frontend_web_skill_hero_composition_bias_read_first",
-      "community": 330,
-      "community_name": "\ud83d\udcc1 **Project Structure**",
+      "community": 80,
+      "community_name": "Module 80",
       "norm_label": "hero composition bias \u2014 read first"
     },
     {
@@ -19378,8 +19356,8 @@
       "source_location": "L1096",
       "_origin": "ast",
       "id": "c_users_kutut_school_admin_database_schema_7_menu_role_permissions_domain_data_menu_management",
-      "community": 313,
-      "community_name": "SKILL.md",
+      "community": 148,
+      "community_name": "Module 148",
       "norm_label": "7. menu & role permissions domain (`/data/menu_management`)"
     },
     {
@@ -19389,8 +19367,8 @@
       "source_location": "L1100",
       "_origin": "ast",
       "id": "c_users_kutut_school_admin_database_schema_7_1_tables",
-      "community": 313,
-      "community_name": "SKILL.md",
+      "community": 148,
+      "community_name": "Module 148",
       "norm_label": "7.1 tables"
     },
     {
@@ -19400,8 +19378,8 @@
       "source_location": "L1102",
       "_origin": "ast",
       "id": "c_users_kutut_school_admin_database_schema_menus",
-      "community": 313,
-      "community_name": "SKILL.md",
+      "community": 148,
+      "community_name": "Module 148",
       "norm_label": "`menus`"
     },
     {
@@ -19411,8 +19389,8 @@
       "source_location": "L1115",
       "_origin": "ast",
       "id": "c_users_kutut_school_admin_database_schema_menu_permissions",
-      "community": 313,
-      "community_name": "SKILL.md",
+      "community": 148,
+      "community_name": "Module 148",
       "norm_label": "`menu_permissions`"
     },
     {
@@ -19422,8 +19400,8 @@
       "source_location": "L1127",
       "_origin": "ast",
       "id": "c_users_kutut_school_admin_database_schema_7_2_erd_relationships_menu_domain",
-      "community": 313,
-      "community_name": "SKILL.md",
+      "community": 148,
+      "community_name": "Module 148",
       "norm_label": "7.2 erd / relationships (menu domain)"
     },
     {
@@ -20819,8 +20797,8 @@
       "source_location": "L5",
       "_origin": "ast",
       "id": "main_documentation_2026_07_16_timetable_refactor_weekly_plan_dates_weekly_overview",
-      "community": 139,
-      "community_name": "Module 139",
+      "community": 102,
+      "community_name": "Module 102",
       "norm_label": "2026-07-16 \u2014 timetable refactor + weekly plan dates + weekly overview"
     },
     {
@@ -20830,8 +20808,8 @@
       "source_location": "L7",
       "_origin": "ast",
       "id": "main_documentation_timetable_refactor_data_timetable",
-      "community": 139,
-      "community_name": "Module 139",
+      "community": 102,
+      "community_name": "Module 102",
       "norm_label": "timetable refactor (`/data/timetable`)"
     },
     {
@@ -20841,8 +20819,8 @@
       "source_location": "L17",
       "_origin": "ast",
       "id": "main_documentation_timetable_exceptions_timetable_exception_new_table",
-      "community": 139,
-      "community_name": "Module 139",
+      "community": 102,
+      "community_name": "Module 102",
       "norm_label": "timetable exceptions (`timetable_exception`) \u2014 new table"
     },
     {
@@ -20852,8 +20830,8 @@
       "source_location": "L46",
       "_origin": "ast",
       "id": "main_documentation_weekly_plan_dates_topic_weekly_plan_week_date",
-      "community": 139,
-      "community_name": "Module 139",
+      "community": 102,
+      "community_name": "Module 102",
       "norm_label": "weekly plan dates \u2014 `topic_weekly_plan.week_date`"
     },
     {
@@ -20863,8 +20841,8 @@
       "source_location": "L54",
       "_origin": "ast",
       "id": "main_documentation_weekly_overview_data_weekly_overview_new_page",
-      "community": 139,
-      "community_name": "Module 139",
+      "community": 102,
+      "community_name": "Module 102",
       "norm_label": "weekly overview (`/data/weekly-overview`) \u2014 new page"
     },
     {
@@ -20874,8 +20852,8 @@
       "source_location": "L73",
       "_origin": "ast",
       "id": "main_documentation_weekly_overview_draft_table_new",
-      "community": 139,
-      "community_name": "Module 139",
+      "community": 102,
+      "community_name": "Module 102",
       "norm_label": "`weekly_overview_draft` table \u2014 new"
     },
     {
@@ -20885,8 +20863,8 @@
       "source_location": "L87",
       "_origin": "ast",
       "id": "main_documentation_topic_weekly_plan_complete_schema_reference",
-      "community": 139,
-      "community_name": "Module 139",
+      "community": 102,
+      "community_name": "Module 102",
       "norm_label": "`topic_weekly_plan` \u2014 complete schema reference"
     },
     {
@@ -20896,8 +20874,8 @@
       "source_location": "L103",
       "_origin": "ast",
       "id": "main_documentation_full_data_flow_timetable_weekly_overview",
-      "community": 139,
-      "community_name": "Module 139",
+      "community": 102,
+      "community_name": "Module 102",
       "norm_label": "full data flow: timetable \u2192 weekly overview"
     },
     {
@@ -21050,8 +21028,8 @@
       "source_location": "L287",
       "_origin": "ast",
       "id": "main_documentation_database_structure",
-      "community": 119,
-      "community_name": "Module 119",
+      "community": 147,
+      "community_name": "\ufffd\ud83c\udfd7\ufe0f **Database Structure**",
       "norm_label": "\ufffd\ud83c\udfd7\ufe0f **database structure**"
     },
     {
@@ -21061,8 +21039,8 @@
       "source_location": "L289",
       "_origin": "ast",
       "id": "main_documentation_core_tables",
-      "community": 119,
-      "community_name": "Module 119",
+      "community": 147,
+      "community_name": "\ufffd\ud83c\udfd7\ufe0f **Database Structure**",
       "norm_label": "**core tables:**"
     },
     {
@@ -21072,8 +21050,8 @@
       "source_location": "L524",
       "_origin": "ast",
       "id": "main_documentation_grades_nilai_table",
-      "community": 119,
-      "community_name": "Module 119",
+      "community": 147,
+      "community_name": "\ufffd\ud83c\udfd7\ufe0f **Database Structure**",
       "norm_label": "grades (nilai) table"
     },
     {
@@ -21083,8 +21061,8 @@
       "source_location": "L539",
       "_origin": "ast",
       "id": "main_documentation_attendance_qr_tables",
-      "community": 119,
-      "community_name": "Module 119",
+      "community": 147,
+      "community_name": "\ufffd\ud83c\udfd7\ufe0f **Database Structure**",
       "norm_label": "attendance (qr) tables"
     },
     {
@@ -21127,8 +21105,8 @@
       "source_location": "L618",
       "_origin": "ast",
       "id": "main_documentation_3_assessment_system",
-      "community": 82,
-      "community_name": "Module 82",
+      "community": 194,
+      "community_name": "Module 194",
       "norm_label": "**3. assessment system**"
     },
     {
@@ -21138,8 +21116,8 @@
       "source_location": "L619",
       "_origin": "ast",
       "id": "main_documentation_teacher_workflow",
-      "community": 82,
-      "community_name": "Module 82",
+      "community": 194,
+      "community_name": "Module 194",
       "norm_label": "**teacher workflow**:"
     },
     {
@@ -21149,8 +21127,8 @@
       "source_location": "L628",
       "_origin": "ast",
       "id": "main_documentation_admin_workflow",
-      "community": 82,
-      "community_name": "Module 82",
+      "community": 194,
+      "community_name": "Module 194",
       "norm_label": "**admin workflow**:"
     },
     {
@@ -21325,8 +21303,8 @@
       "source_location": "L881",
       "_origin": "ast",
       "id": "main_documentation_setup_deployment",
-      "community": 316,
-      "community_name": "**3. Assessment System**",
+      "community": 119,
+      "community_name": "Module 119",
       "norm_label": "\ud83d\ude80 **setup & deployment**"
     },
     {
@@ -21336,8 +21314,8 @@
       "source_location": "L883",
       "_origin": "ast",
       "id": "main_documentation_database_migration_files_execute_in_order",
-      "community": 316,
-      "community_name": "**3. Assessment System**",
+      "community": 119,
+      "community_name": "Module 119",
       "norm_label": "**database migration files (execute in order):**"
     },
     {
@@ -21347,8 +21325,8 @@
       "source_location": "L911",
       "_origin": "ast",
       "id": "main_documentation_development",
-      "community": 316,
-      "community_name": "**3. Assessment System**",
+      "community": 119,
+      "community_name": "Module 119",
       "norm_label": "**development:**"
     },
     {
@@ -21358,8 +21336,8 @@
       "source_location": "L918",
       "_origin": "ast",
       "id": "main_documentation_key_environment",
-      "community": 316,
-      "community_name": "**3. Assessment System**",
+      "community": 119,
+      "community_name": "Module 119",
       "norm_label": "**key environment:**"
     },
     {
@@ -21369,8 +21347,8 @@
       "source_location": "L928",
       "_origin": "ast",
       "id": "main_documentation_additional_files",
-      "community": 316,
-      "community_name": "**3. Assessment System**",
+      "community": 119,
+      "community_name": "Module 119",
       "norm_label": "**additional files:**"
     },
     {
@@ -21633,8 +21611,8 @@
       "source_location": "L1119",
       "_origin": "ast",
       "id": "main_documentation_key_components",
-      "community": 105,
-      "community_name": "Module 105",
+      "community": 139,
+      "community_name": "Module 139",
       "norm_label": "**key components**"
     },
     {
@@ -21644,8 +21622,8 @@
       "source_location": "L1121",
       "_origin": "ast",
       "id": "main_documentation_1_myp_year_level_selection",
-      "community": 105,
-      "community_name": "Module 105",
+      "community": 139,
+      "community_name": "Module 139",
       "norm_label": "**1. myp year level selection**"
     },
     {
@@ -21655,8 +21633,8 @@
       "source_location": "L1128",
       "_origin": "ast",
       "id": "main_documentation_2_criterion_grades_a_b_c_d",
-      "community": 105,
-      "community_name": "Module 105",
+      "community": 139,
+      "community_name": "Module 139",
       "norm_label": "**2. criterion grades (a, b, c, d)**"
     },
     {
@@ -21666,8 +21644,8 @@
       "source_location": "L1138",
       "_origin": "ast",
       "id": "main_documentation_3_strand_grades",
-      "community": 105,
-      "community_name": "Module 105",
+      "community": 139,
+      "community_name": "Module 139",
       "norm_label": "**3. strand grades**"
     },
     {
@@ -21677,8 +21655,8 @@
       "source_location": "L1147",
       "_origin": "ast",
       "id": "main_documentation_4_final_grade_1_7",
-      "community": 105,
-      "community_name": "Module 105",
+      "community": 139,
+      "community_name": "Module 139",
       "norm_label": "**4. final grade (1-7)**"
     },
     {
@@ -21754,8 +21732,8 @@
       "source_location": "L1221",
       "_origin": "ast",
       "id": "main_documentation_project_structure",
-      "community": 119,
-      "community_name": "Module 119",
+      "community": 236,
+      "community_name": "Module 236",
       "norm_label": "\ud83d\udcc1 **project structure**"
     },
     {
@@ -21765,8 +21743,8 @@
       "source_location": "L1223",
       "_origin": "ast",
       "id": "main_documentation_key_directories",
-      "community": 119,
-      "community_name": "Module 119",
+      "community": 236,
+      "community_name": "Module 236",
       "norm_label": "**key directories:**"
     },
     {
@@ -21776,8 +21754,8 @@
       "source_location": "L1229",
       "_origin": "ast",
       "id": "main_documentation_important_files",
-      "community": 119,
-      "community_name": "Module 119",
+      "community": 236,
+      "community_name": "Module 236",
       "norm_label": "**important files:**"
     },
     {
@@ -34800,7 +34778,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/app/data/health_report/page.jsx",
-      "source_location": "L135",
+      "source_location": "L386",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_health_report_page",
@@ -34811,33 +34789,22 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/app/data/health_report/page.jsx",
-      "source_location": "L22",
+      "source_location": "L31",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_health_report_page",
-      "target": "src_app_data_health_report_page_inlinetable",
+      "target": "src_app_data_health_report_page_minimalinlinetable",
       "confidence_score": 1.0
     },
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/app/data/health_report/page.jsx",
-      "source_location": "L12",
+      "source_location": "L28",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_health_report_page",
       "target": "src_app_data_health_report_page_months",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "src/app/data/health_report/page.jsx",
-      "source_location": "L14",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "src_app_data_health_report_page",
-      "target": "src_app_data_health_report_page_sectionheader",
       "confidence_score": 1.0
     },
     {
@@ -36066,7 +36033,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/app/data/role_management/page.jsx",
-      "source_location": "L12",
+      "source_location": "L16",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_role_management_page",
@@ -36237,19 +36204,8 @@
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
-      "source_file": "src/app/data/settings/daily_qr/page.jsx",
-      "source_location": "L12",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "src_app_data_settings_daily_qr_page",
-      "target": "src_app_data_settings_daily_qr_page_dailyqrsettings",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
       "source_file": "src/app/data/subject-group/page.jsx",
-      "source_location": "L13",
+      "source_location": "L25",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_subject_group_page",
@@ -36260,7 +36216,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/app/data/subject-group/page.jsx",
-      "source_location": "L12",
+      "source_location": "L24",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_subject_group_page",
@@ -36271,7 +36227,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/app/data/subject-group/page.jsx",
-      "source_location": "L19",
+      "source_location": "L31",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_subject_group_page",
@@ -36282,7 +36238,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/app/data/subject-group/page.jsx",
-      "source_location": "L21",
+      "source_location": "L33",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_subject_group_page",
@@ -36293,7 +36249,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/app/data/subject-group/page.jsx",
-      "source_location": "L27",
+      "source_location": "L39",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_subject_group_page",
@@ -36306,7 +36262,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/app/data/subject-group/page.jsx",
-      "source_location": "L76",
+      "source_location": "L212",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_subject_group_page_subjectgrouppage",
@@ -36318,7 +36274,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/app/data/subject-group/page.jsx",
-      "source_location": "L76",
+      "source_location": "L213",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_subject_group_page_subjectgrouppage",
@@ -37583,7 +37539,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/app/data/uniform-size/page.jsx",
-      "source_location": "L11",
+      "source_location": "L14",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_uniform_size_page",
@@ -37809,11 +37765,22 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/app/data/year/page.jsx",
-      "source_location": "L23",
+      "source_location": "L26",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_year_page",
-      "target": "src_app_data_year_page_yearmanagement",
+      "target": "src_app_data_year_page_year_relation_tables",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/year/page.jsx",
+      "source_location": "L48",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_year_page",
+      "target": "src_app_data_year_page_yearmanagementpage",
       "confidence_score": 1.0
     },
     {
@@ -38143,7 +38110,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/app/settings/fpb/page.jsx",
-      "source_location": "L471",
+      "source_location": "L994",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_settings_fpb_page_fpbsettingspage",
@@ -52528,5 +52495,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "5cff9b09c663be1cfa7b0df35d6c0a1ece3ad340"
+  "built_at_commit": "8c65ca9a7f1894fa842ec78dbe459dbee263df57"
 }

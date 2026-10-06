@@ -1,65 +1,142 @@
 'use client'
 
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useTheme } from '@/lib/theme'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import {
   faFileInvoiceDollar, faSave, faSpinner, faCheck,
   faUsers, faUserTie, faShield, faWallet, faSearch,
-  faPen, faWrench, faTimes, faRotateLeft, faTrash,
+  faPen, faWrench, faTimes, faTrash, faExclamationTriangle,
+  faCheckCircle, faInfoCircle, faChevronRight, faChevronLeft,
+  faInbox, faArrowRight, faSliders, faFilter
 } from '@fortawesome/free-solid-svg-icons'
 
 const userName = (u) => u ? `${u.user_nama_depan || ''} ${u.user_nama_belakang || ''}`.trim() : '—'
 
 export default function FpbSettingsPage() {
-  const { theme } = useTheme()
+  const { theme, isDark } = useTheme()
 
-  const [roles, setRoles]         = useState([])
-  const [users, setUsers]         = useState([])
-  const [selRole, setSelRole]     = useState(null)
+  // ─── Minimalist UI Design Tokens (aligned with /data/pyp) ───────
+  const pageBg = isDark ? '#09090B' : '#FBFBFA'
+  const cardBg = isDark ? '#18181B' : '#FFFFFF'
+  const cardBgAlt = isDark ? '#27272A' : '#F4F4F5'
+  const borderColor = isDark ? '#27272A' : '#EAEAEA'
+  const textPrimary = isDark ? '#F4F4F5' : '#111111'
+  const textSecondary = isDark ? '#A1A1AA' : '#787774'
+
+  // Muted pastels
+  const pastelGreen = {
+    bg: isDark ? 'rgba(52, 211, 153, 0.12)' : '#EDF3EC',
+    text: isDark ? '#34d399' : '#346538',
+    border: isDark ? 'rgba(52, 211, 153, 0.25)' : '#C3E6CB'
+  }
+  const pastelBlue = {
+    bg: isDark ? 'rgba(96, 165, 250, 0.12)' : '#E1F3FE',
+    text: isDark ? '#60a5fa' : '#1F6C9F',
+    border: isDark ? 'rgba(96, 165, 250, 0.25)' : '#BAE6FD'
+  }
+  const pastelYellow = {
+    bg: isDark ? 'rgba(251, 191, 36, 0.12)' : '#FBF3DB',
+    text: isDark ? '#fbbf24' : '#956400',
+    border: isDark ? 'rgba(251, 191, 36, 0.25)' : '#FCE9A6'
+  }
+  const pastelRed = {
+    bg: isDark ? 'rgba(248, 113, 113, 0.12)' : '#FDEBEC',
+    text: isDark ? '#f87171' : '#9F2F2D',
+    border: isDark ? 'rgba(248, 113, 113, 0.25)' : '#F8B4B4'
+  }
+  const pastelPurple = {
+    bg: isDark ? 'rgba(167, 139, 250, 0.12)' : '#F3E8FF',
+    text: isDark ? '#c084fc' : '#6B21A8',
+    border: isDark ? 'rgba(167, 139, 250, 0.25)' : '#E9D5FF'
+  }
+
+  const inputStyle = {
+    background: isDark ? '#27272A' : '#FFFFFF',
+    border: `1px solid ${borderColor}`,
+    color: textPrimary,
+    borderRadius: '6px',
+    fontSize: '13px',
+    padding: '8px 12px',
+    outline: 'none',
+    width: '100%',
+    boxSizing: 'border-box'
+  }
+
+  const selectStyle = {
+    background: isDark ? '#27272A' : '#FFFFFF',
+    border: `1px solid ${borderColor}`,
+    color: textPrimary,
+    borderRadius: '6px',
+    fontSize: '13px',
+    padding: '8px 12px',
+    outline: 'none',
+    width: '100%',
+    boxSizing: 'border-box',
+    cursor: 'pointer'
+  }
+
+  // ─── Active Tab ──────────────────────────────────────────────────
+  // 'approvers' | 'policies' | 'repair'
+  const [activeTab, setActiveTab] = useState('approvers')
+
+  // ─── Toast Notification ──────────────────────────────────────────
+  const [toast, setToast] = useState(null)
+  const showToast = (message, type = 'success') => {
+    setToast({ message, type })
+    setTimeout(() => setToast(null), 4000)
+  }
+
+  // ─── Core Data States ────────────────────────────────────────────
+  const [roles, setRoles]                 = useState([])
+  const [users, setUsers]                 = useState([])
+  const [selRole, setSelRole]             = useState(null)
+  const [roleSearch, setRoleSearch]       = useState('')
   const [roleApprovers, setRoleApprovers] = useState({})
   const [budgetRoleIds, setBudgetRoleIds] = useState(new Set())
   const [savingBudget, setSavingBudget]   = useState(false)
   const [savedBudget, setSavedBudget]     = useState(false)
+  const [budgetSearch, setBudgetSearch]   = useState('')
 
   const [highLimitRoleIds, setHighLimitRoleIds] = useState(new Set())
   const [savingHighLimit, setSavingHighLimit]   = useState(false)
   const [savedHighLimit, setSavedHighLimit]     = useState(false)
+  const [limitSearch, setLimitSearch]           = useState('')
 
   const [screenerId, setScreenerId]         = useState('')
   const [screenerRowId, setScreenerRowId]   = useState(null)
   const [savingScreener, setSavingScreener] = useState(false)
   const [savedScreener, setSavedScreener]   = useState(false)
 
-  const [loading, setLoading] = useState(true)
-  const [saving, setSaving]   = useState(false)
-  const [saved, setSaved]     = useState(false)
-  const [error, setError]     = useState('')
+  const [loading, setLoading]                 = useState(true)
+  const [saving, setSaving]                   = useState(false)
+  const [saved, setSaved]                     = useState(false)
+  const [error, setError]                     = useState('')
   const [pendingFpbCount, setPendingFpbCount] = useState(null)
   const [applyingPending, setApplyingPending] = useState(false)
   const [appliedPending, setAppliedPending]   = useState(false)
 
-  // ─── FPB Repair Tool ───────────────────────────────────────────
-  const [repairSearch, setRepairSearch] = useState('')
-  const [repairList, setRepairList]     = useState([])   // all non-draft FPBs for list
-  const [repairFpb, setRepairFpb]       = useState(null) // selected FPB full data
-  const [repairApprovals, setRepairApprovals] = useState([])
-  const [repairLoading, setRepairLoading]     = useState(false)
-  const [repairSaving, setRepairSaving]       = useState(false)
-  const [repairSaved, setRepairSaved]         = useState(false)
-  const [repairError, setRepairError]         = useState('')
-  const [repairFpbStatus, setRepairFpbStatus] = useState('')
-  const [repairCurrentStep, setRepairCurrentStep] = useState(1)
-  const [repairApproverEdits, setRepairApproverEdits] = useState({}) // { approval_id: { approver_user_id, status } }
+  // ─── FPB Repair Tool States ──────────────────────────────────────
+  const [repairSearch, setRepairSearch]             = useState('')
+  const [repairStatusFilter, setRepairStatusFilter] = useState('all')
+  const [repairList, setRepairList]                 = useState([])
+  const [repairFpb, setRepairFpb]                   = useState(null)
+  const [repairApprovals, setRepairApprovals]       = useState([])
+  const [repairLoading, setRepairLoading]           = useState(false)
+  const [repairSaving, setRepairSaving]             = useState(false)
+  const [repairSaved, setRepairSaved]               = useState(false)
+  const [repairError, setRepairError]               = useState('')
+  const [repairFpbStatus, setRepairFpbStatus]       = useState('')
+  const [repairCurrentStep, setRepairCurrentStep]   = useState(1)
+  const [repairApproverEdits, setRepairApproverEdits] = useState({})
 
+  // ─── Load Repair FPB List ────────────────────────────────────────
   const loadRepairList = useCallback(async () => {
     setRepairLoading(true)
     const { data } = await supabase
       .from('fpb')
-      .select('fpb_id, fpb_number, status, submitted_by, users!fpb_submitted_by_fkey(user_nama_depan, user_nama_belakang)')
+      .select('fpb_id, fpb_number, status, current_step, submitted_by, users!fpb_submitted_by_fkey(user_nama_depan, user_nama_belakang)')
       .neq('status', 'draft')
       .order('created_at', { ascending: false })
     setRepairList(data || [])
@@ -68,6 +145,7 @@ export default function FpbSettingsPage() {
 
   useEffect(() => { loadRepairList() }, [loadRepairList])
 
+  // ─── Load Selected FPB in Repair Tool ────────────────────────────
   const loadRepairFpb = async (fpbId) => {
     setRepairLoading(true)
     setRepairError('')
@@ -76,7 +154,8 @@ export default function FpbSettingsPage() {
       const { data: f } = await supabase
         .from('fpb')
         .select('fpb_id, fpb_number, status, current_step, submitted_by, users!fpb_submitted_by_fkey(user_nama_depan, user_nama_belakang)')
-        .eq('fpb_id', fpbId).single()
+        .eq('fpb_id', fpbId)
+        .single()
       setRepairFpb(f)
       setRepairFpbStatus(f.status)
       setRepairCurrentStep(f.current_step ?? 1)
@@ -85,10 +164,10 @@ export default function FpbSettingsPage() {
         .from('fpb_approvals')
         .select('*, users!fpb_approvals_approver_user_id_fkey(user_nama_depan, user_nama_belakang), role!fpb_approvals_approver_role_id_fkey(role_name)')
         .eq('fpb_id', fpbId)
-        .order('step_order').order('approver_order')
+        .order('step_order')
+        .order('approver_order')
       setRepairApprovals(aps || [])
 
-      // init edits from current values
       const edits = {}
       for (const ap of aps || []) {
         edits[ap.approval_id] = {
@@ -98,16 +177,19 @@ export default function FpbSettingsPage() {
         }
       }
       setRepairApproverEdits(edits)
-    } catch (e) { setRepairError(e.message) }
-    finally { setRepairLoading(false) }
+    } catch (e) {
+      setRepairError(e.message)
+    } finally {
+      setRepairLoading(false)
+    }
   }
 
+  // ─── Save Repair FPB ─────────────────────────────────────────────
   const handleRepairSave = async () => {
     if (!repairFpb) return
     setRepairSaving(true)
     setRepairError('')
     try {
-      // Save each approval row
       for (const ap of repairApprovals) {
         const edit = repairApproverEdits[ap.approval_id]
         if (!edit) continue
@@ -115,27 +197,32 @@ export default function FpbSettingsPage() {
           approver_user_id: edit.approver_user_id ? parseInt(edit.approver_user_id) : null,
           status: edit.status,
           step_order: edit.step_order,
-          // Clear action_at if resetting to pending
           ...(edit.status === 'pending' && ap.status !== 'pending' ? { action_at: null, comment: null } : {}),
         }
         await supabase.from('fpb_approvals').update(update).eq('approval_id', ap.approval_id)
       }
-      // Save FPB status and/or current_step
+
       const fpbUpdate = {}
       if (repairFpbStatus !== repairFpb.status) fpbUpdate.status = repairFpbStatus
       if (repairCurrentStep !== repairFpb.current_step) fpbUpdate.current_step = repairCurrentStep
       if (Object.keys(fpbUpdate).length > 0) {
         await supabase.from('fpb').update(fpbUpdate).eq('fpb_id', repairFpb.fpb_id)
       }
+
       setRepairSaved(true)
-      setTimeout(() => setRepairSaved(false), 4000)
-      // Reload
+      showToast('Perubahan FPB berhasil disimpan!', 'success')
+      setTimeout(() => setRepairSaved(false), 3000)
       await loadRepairFpb(repairFpb.fpb_id)
       await loadRepairList()
-    } catch (e) { setRepairError(e.message) }
-    finally { setRepairSaving(false) }
+    } catch (e) {
+      setRepairError(e.message)
+      showToast(`Gagal menyimpan: ${e.message}`, 'error')
+    } finally {
+      setRepairSaving(false)
+    }
   }
 
+  // ─── Delete Approval Step from Repair Tool ───────────────────────
   const handleDeleteRepairStep = async (approvalId) => {
     if (!repairFpb) return
     const apToDelete = repairApprovals.find(a => a.approval_id === approvalId)
@@ -152,7 +239,6 @@ export default function FpbSettingsPage() {
         .eq('approval_id', approvalId)
       if (delErr) throw delErr
 
-      // Remaining steps
       const remainingAps = repairApprovals.filter(a => a.approval_id !== approvalId)
       const remainingRegular = remainingAps.filter(a => a.approver_order !== 0)
       const allApproved = remainingRegular.length > 0 && remainingRegular.every(a => a.status === 'approved')
@@ -171,25 +257,31 @@ export default function FpbSettingsPage() {
       }
 
       setRepairSaved(true)
-      setTimeout(() => setRepairSaved(false), 4000)
+      showToast('Baris step approval berhasil dihapus!', 'success')
+      setTimeout(() => setRepairSaved(false), 3000)
       await loadRepairFpb(repairFpb.fpb_id)
       await loadRepairList()
     } catch (e) {
       setRepairError(e.message)
+      showToast(`Gagal menghapus step: ${e.message}`, 'error')
     } finally {
       setRepairSaving(false)
     }
   }
 
-  const filteredRepairList = repairList.filter(f => {
-    const q = repairSearch.toLowerCase()
-    if (!q) return true
-    return (f.fpb_number || '').toLowerCase().includes(q) ||
-      (`${f.users?.user_nama_depan || ''} ${f.users?.user_nama_belakang || ''}`).toLowerCase().includes(q)
-  })
+  // ─── Filtered Repair FPB List ────────────────────────────────────
+  const filteredRepairList = useMemo(() => {
+    return repairList.filter(f => {
+      if (repairStatusFilter !== 'all' && f.status !== repairStatusFilter) return false
+      const q = repairSearch.toLowerCase().trim()
+      if (!q) return true
+      const num = (f.fpb_number || '').toLowerCase()
+      const name = `${f.users?.user_nama_depan || ''} ${f.users?.user_nama_belakang || ''}`.toLowerCase()
+      return num.includes(q) || name.includes(q)
+    })
+  }, [repairList, repairSearch, repairStatusFilter])
 
-  // ─── end FPB Repair Tool ────────────────────────────────────────
-
+  // ─── Initial Data Fetch ──────────────────────────────────────────
   useEffect(() => {
     Promise.all([
       supabase.from('role').select('role_id, role_name').order('role_name'),
@@ -224,6 +316,7 @@ export default function FpbSettingsPage() {
     })
   }, [])
 
+  // ─── Approver Config Handlers ────────────────────────────────────
   const updateApprover = (field, val) => {
     if (!selRole) return
     setRoleApprovers(prev => ({
@@ -236,9 +329,9 @@ export default function FpbSettingsPage() {
     if (!selRole) return
     setError('')
     const ra = roleApprovers[selRole.role_id] || {}
-    if (!ra.approver1_id) { setError('Minimal 1 approver wajib diisi'); return }
+    if (!ra.approver1_id) { setError('Minimal 1 approver wajib diisi.'); return }
     const ids = [ra.approver1_id, ra.approver2_id, ra.approver3_id].filter(Boolean)
-    if (new Set(ids).size !== ids.length) { setError('Approver tidak boleh sama'); return }
+    if (new Set(ids).size !== ids.length) { setError('Approver tidak boleh orang yang sama.'); return }
     setSaving(true)
     try {
       const payload = {
@@ -260,22 +353,26 @@ export default function FpbSettingsPage() {
         }
       })
       setRoleApprovers(map)
-      setSaved(true); setTimeout(() => setSaved(false), 3000)
+      setSaved(true)
+      showToast(`Konfigurasi approver untuk ${selRole.role_name} tersimpan.`, 'success')
+      setTimeout(() => setSaved(false), 3000)
 
-      // Check how many pending FPBs have approver rows for this role that are still pending
-      const newIds = [ra.approver1_id, ra.approver2_id, ra.approver3_id].filter(Boolean).map(Number)
       const { count } = await supabase
         .from('fpb_approvals')
         .select('approval_id', { count: 'exact', head: true })
         .eq('approver_role_id', selRole.role_id)
         .eq('status', 'pending')
-        .eq('approver_order', 1) // only check first approver slot to count unique FPBs
+        .eq('approver_order', 1)
       setPendingFpbCount(count || 0)
-    } catch (e) { setError(e.message) }
-    finally { setSaving(false) }
+    } catch (e) {
+      setError(e.message)
+      showToast(e.message, 'error')
+    } finally {
+      setSaving(false)
+    }
   }
 
-  // Re-sync approver_user_id on all pending fpb_approvals for this role
+  // ─── Apply Pending Handler ───────────────────────────────────────
   const handleApplyPending = async () => {
     if (!selRole) return
     setApplyingPending(true)
@@ -288,7 +385,6 @@ export default function FpbSettingsPage() {
         { order: 3, uid: ra.approver3_id ? parseInt(ra.approver3_id) : null },
       ].filter(s => s.uid)
 
-      // 1. Update active slots
       for (const slot of slots) {
         await supabase
           .from('fpb_approvals')
@@ -298,7 +394,6 @@ export default function FpbSettingsPage() {
           .eq('status', 'pending')
       }
 
-      // 2. Clean up orphaned pending steps if approver slots count was reduced
       const maxOrder = slots.reduce((max, s) => Math.max(max, s.order), 0)
       if (maxOrder > 0) {
         const { data: orphanedRows } = await supabase
@@ -317,7 +412,6 @@ export default function FpbSettingsPage() {
             .delete()
             .in('approval_id', orphanedIds)
 
-          // Check affected FPBs: if all remaining regular steps are approved, finalize to 'approved'
           for (const fpbId of affectedFpbIds) {
             const { data: remainingAps } = await supabase
               .from('fpb_approvals')
@@ -340,11 +434,17 @@ export default function FpbSettingsPage() {
 
       setAppliedPending(true)
       setPendingFpbCount(0)
+      showToast('Konfigurasi berhasil diterapkan ke seluruh FPB pending.', 'success')
       setTimeout(() => setAppliedPending(false), 4000)
-    } catch (e) { setError(e.message) }
-    finally { setApplyingPending(false) }
+    } catch (e) {
+      setError(e.message)
+      showToast(`Gagal: ${e.message}`, 'error')
+    } finally {
+      setApplyingPending(false)
+    }
   }
 
+  // ─── Screener Save Handler ───────────────────────────────────────
   const handleSaveScreener = async () => {
     setError('')
     setSavingScreener(true)
@@ -363,13 +463,24 @@ export default function FpbSettingsPage() {
         if (screenerRowId) await supabase.from('fpb_screener').delete().eq('id', screenerRowId)
         setScreenerRowId(null)
       }
-      setSavedScreener(true); setTimeout(() => setSavedScreener(false), 3000)
-    } catch (e) { setError(e.message) }
-    finally { setSavingScreener(false) }
+      setSavedScreener(true)
+      showToast('Role Screener berhasil diperbarui.', 'success')
+      setTimeout(() => setSavedScreener(false), 3000)
+    } catch (e) {
+      setError(e.message)
+      showToast(`Gagal menyimpan screener: ${e.message}`, 'error')
+    } finally {
+      setSavingScreener(false)
+    }
   }
 
+  // ─── Budget Roles Handlers ───────────────────────────────────────
   const toggleBudgetRole = (roleId) => {
-    setBudgetRoleIds(prev => { const next = new Set(prev); next.has(roleId) ? next.delete(roleId) : next.add(roleId); return next })
+    setBudgetRoleIds(prev => {
+      const next = new Set(prev)
+      next.has(roleId) ? next.delete(roleId) : next.add(roleId)
+      return next
+    })
   }
 
   const saveBudgetRoles = async () => {
@@ -380,13 +491,24 @@ export default function FpbSettingsPage() {
         const { error: insErr } = await supabase.from('fpb_budget_roles').insert([...budgetRoleIds].map(rid => ({ role_id: rid })))
         if (insErr) throw insErr
       }
-      setSavedBudget(true); setTimeout(() => setSavedBudget(false), 3000)
-    } catch (e) { setError(e.message) }
-    finally { setSavingBudget(false) }
+      setSavedBudget(true)
+      showToast('Hak akses edit budget berhasil disimpan.', 'success')
+      setTimeout(() => setSavedBudget(false), 3000)
+    } catch (e) {
+      setError(e.message)
+      showToast(`Gagal: ${e.message}`, 'error')
+    } finally {
+      setSavingBudget(false)
+    }
   }
 
+  // ─── High Limit Roles Handlers ───────────────────────────────────
   const toggleHighLimitRole = (roleId) => {
-    setHighLimitRoleIds(prev => { const next = new Set(prev); next.has(roleId) ? next.delete(roleId) : next.add(roleId); return next })
+    setHighLimitRoleIds(prev => {
+      const next = new Set(prev)
+      next.has(roleId) ? next.delete(roleId) : next.add(roleId)
+      return next
+    })
   }
 
   const saveHighLimitRoles = async () => {
@@ -400,324 +522,1023 @@ export default function FpbSettingsPage() {
       }
       const { error: err } = await supabase.from('settings').upsert(payload, { onConflict: 'key' })
       if (err) throw err
-      setSavedHighLimit(true); setTimeout(() => setSavedHighLimit(false), 3000)
-    } catch (e) { setError(e.message) }
-    finally { setSavingHighLimit(false) }
+      setSavedHighLimit(true)
+      showToast('Pengaturan limit nominal berhasil disimpan.', 'success')
+      setTimeout(() => setSavedHighLimit(false), 3000)
+    } catch (e) {
+      setError(e.message)
+      showToast(`Gagal: ${e.message}`, 'error')
+    } finally {
+      setSavingHighLimit(false)
+    }
   }
 
-  const inputStyle = {
-    padding: '8px 11px', borderRadius: 8, fontSize: 13, border: `1px solid ${theme.border}`,
-    background: theme.inputBg || theme.cardBg, color: theme.textPrimary, outline: 'none',
-    width: '100%', boxSizing: 'border-box',
-  }
+  // ─── Filtered Role Lists ─────────────────────────────────────────
+  const filteredRoles = useMemo(() => {
+    if (!roleSearch.trim()) return roles
+    const q = roleSearch.toLowerCase()
+    return roles.filter(r => r.role_name.toLowerCase().includes(q))
+  }, [roles, roleSearch])
 
-  if (loading) return (
-    <div style={{ padding: 40, textAlign: 'center', color: theme.textSecondary }}>
-      <FontAwesomeIcon icon={faSpinner} spin style={{ fontSize: 24 }} />
-      <p style={{ marginTop: 10 }}>Memuat...</p>
-    </div>
-  )
+  const filteredBudgetRoles = useMemo(() => {
+    if (!budgetSearch.trim()) return roles
+    const q = budgetSearch.toLowerCase()
+    return roles.filter(r => r.role_name.toLowerCase().includes(q))
+  }, [roles, budgetSearch])
 
+  const filteredLimitRoles = useMemo(() => {
+    if (!limitSearch.trim()) return roles
+    const q = limitSearch.toLowerCase()
+    return roles.filter(r => r.role_name.toLowerCase().includes(q))
+  }, [roles, limitSearch])
+
+  // ─── Computed Variables ──────────────────────────────────────────
   const curRa = selRole ? (roleApprovers[selRole.role_id] || {}) : {}
   const isConfigured = !!curRa.approver1_id
   const screenerRole = roles.find(r => String(r.role_id) === screenerId)
   const approverIds  = selRole ? [curRa.approver1_id, curRa.approver2_id, curRa.approver3_id].filter(Boolean) : []
+  const configuredRolesCount = roles.filter(r => roleApprovers[r.role_id]?.approver1_id).length
+
+  // ─── Loading View ────────────────────────────────────────────────
+  if (loading) {
+    return (
+      <div style={{ background: pageBg, minHeight: '100vh', padding: '48px 32px', color: textPrimary, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '12px', fontFamily: "'Geist Sans', 'SF Pro Display', system-ui, -apple-system, sans-serif" }}>
+        <FontAwesomeIcon icon={faSpinner} spin style={{ fontSize: '24px', color: textSecondary }} />
+        <p style={{ margin: 0, fontSize: '13px', color: textSecondary }}>Memuat konfigurasi FPB...</p>
+      </div>
+    )
+  }
 
   return (
-    <div className="p-4">
-      <div style={{ marginBottom: 24 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
-          <FontAwesomeIcon icon={faFileInvoiceDollar} style={{ color: '#6366f1', fontSize: 22 }} />
-          <h1 style={{ fontSize: 22, fontWeight: 800, color: theme.textPrimary, margin: 0 }}>Pengaturan Approval FPB</h1>
+    <div style={{ background: pageBg, minHeight: '100vh', padding: '24px 32px', color: textPrimary, fontFamily: "'Geist Sans', 'SF Pro Display', system-ui, -apple-system, sans-serif" }}>
+      
+      {/* ── TOAST NOTIFICATION ──────────────────────────────────────── */}
+      {toast && (
+        <div 
+          className="fixed top-5 right-5 z-50 px-4 py-2.5 rounded text-xs font-mono flex items-center gap-2 border animate-in fade-in slide-in-from-top-2"
+          style={{
+            background: toast.type === 'error' ? pastelRed.bg : pastelGreen.bg,
+            borderColor: toast.type === 'error' ? pastelRed.border : pastelGreen.border,
+            color: toast.type === 'error' ? pastelRed.text : pastelGreen.text,
+            boxShadow: '0 4px 12px rgba(0,0,0,0.06)'
+          }}
+        >
+          <FontAwesomeIcon icon={toast.type === 'error' ? faExclamationTriangle : faCheckCircle} />
+          <span>{toast.message}</span>
         </div>
-        <p style={{ fontSize: 13, color: theme.textSecondary }}>Konfigurasi screener dan approver untuk setiap jabatan pengaju</p>
-      </div>
+      )}
 
-      {/* Screener Card */}
-      <Card style={{ background: theme.cardBg, borderColor: theme.border, marginBottom: 24 }}>
-        <CardHeader className="pb-3">
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{ width: 36, height: 36, borderRadius: 99, background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#d97706' }}>
-              <FontAwesomeIcon icon={faSearch} />
+      {/* ── HEADER & BREADCRUMBS (MATCHING /DATA/PYP LAYOUT) ─────────── */}
+      <div className="pb-5 border-b flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6" style={{ borderColor }}>
+        <div>
+          <div className="flex items-center gap-2 text-[10px] font-mono tracking-wider uppercase mb-1.5" style={{ color: textSecondary }}>
+            <span>[SETTINGS]</span>
+            <span>/</span>
+            <span>[OPERATIONAL &amp; FINANCE]</span>
+            <span>/</span>
+            <span className="font-semibold" style={{ color: isDark ? '#60A5FA' : '#0284C7' }}>[FPB APPROVALS]</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded flex items-center justify-center border" style={{ background: pastelBlue.bg, borderColor: pastelBlue.border, color: pastelBlue.text }}>
+              <FontAwesomeIcon icon={faFileInvoiceDollar} className="text-base" />
             </div>
             <div>
-              <CardTitle style={{ color: theme.textPrimary, fontSize: 16 }}>Screener FPB (Global)</CardTitle>
-              <p style={{ fontSize: 12, color: theme.textSecondary, marginTop: 2 }}>
-                Screener melakukan verifikasi awal sebelum FPB masuk ke approver.
-                <strong style={{ color: '#d97706' }}> Berlaku untuk semua pengaju.</strong>
-              </p>
+              <h1 className="text-xl font-bold tracking-tight" style={{ color: textPrimary, letterSpacing: '-0.02em', margin: 0 }}>
+                Pengaturan Approval &amp; Kebijakan FPB
+              </h1>
             </div>
           </div>
-        </CardHeader>
-        <CardContent>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 16px', borderRadius: 12, border: `1px solid ${screenerId ? 'rgba(245,158,11,0.4)' : theme.border}`, background: screenerId ? 'rgba(245,158,11,0.04)' : theme.subtleBg + '33', marginBottom: 16 }}>
-            <div style={{ width: 36, height: 36, borderRadius: 99, background: screenerId ? '#d97706' : theme.subtleBg, border: `2px solid ${screenerId ? '#d97706' : theme.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: screenerId ? '#fff' : theme.textSecondary, fontWeight: 800, fontSize: 18, flexShrink: 0 }}>
-              🔍
-            </div>
-            <div style={{ flex: 1 }}>
-              <label style={{ fontSize: 11, fontWeight: 700, color: theme.textSecondary, display: 'block', marginBottom: 5 }}>
-                Role Screener <span style={{ fontWeight: 400 }}>(opsional — jika kosong, FPB langsung ke Approver 1)</span>
-              </label>
-              <select value={screenerId} onChange={e => setScreenerId(e.target.value)} style={inputStyle}>
-                <option value="">— Tidak ada (skip screening) —</option>
-                {roles.map(r => (<option key={r.role_id} value={String(r.role_id)}>{r.role_name}</option>))}
-              </select>
-            </div>
-            {screenerRole && (
-              <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                <div style={{ fontWeight: 700, fontSize: 12, color: theme.textPrimary }}>{screenerRole.role_name}</div>
-                <div style={{ fontSize: 10, color: '#d97706', fontWeight: 600, marginTop: 2 }}>✓ Dipilih</div>
-              </div>
-            )}
-          </div>
-          {screenerRole && (
-            <div style={{ padding: '12px 16px', borderRadius: 10, background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.2)', marginBottom: 16 }}>
-              <p style={{ fontSize: 11, fontWeight: 700, color: '#d97706', marginBottom: 8, textTransform: 'uppercase' }}>Preview Alur dengan Screener</p>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', fontSize: 12 }}>
-                <span style={{ padding: '3px 10px', borderRadius: 99, background: 'rgba(5,150,105,0.1)', border: '1px solid rgba(5,150,105,0.3)', color: '#059669', fontWeight: 600 }}>Pengaju</span>
-                <span style={{ color: theme.textSecondary }}>→</span>
-                <span style={{ padding: '3px 10px', borderRadius: 99, background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.4)', color: '#d97706', fontWeight: 600 }}>🔍 {screenerRole.role_name}</span>
-                <span style={{ color: theme.textSecondary }}>→</span>
-                <span style={{ padding: '3px 10px', borderRadius: 99, background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.3)', color: '#6366f1', fontWeight: 600 }}>Approver 1, 2, ...</span>
-                <span style={{ color: theme.textSecondary }}>→</span>
-                <span style={{ padding: '3px 10px', borderRadius: 99, background: 'rgba(5,150,105,0.1)', border: '1px solid rgba(5,150,105,0.3)', color: '#059669', fontWeight: 600 }}>Approved</span>
-              </div>
-            </div>
-          )}
-          {error && <div style={{ padding: '10px 14px', borderRadius: 8, background: '#fef2f2', border: '1px solid #fca5a5', color: '#dc2626', fontSize: 13, marginBottom: 12 }}>⚠ {error}</div>}
-          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-            <Button onClick={handleSaveScreener} disabled={savingScreener}
-              style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 24px', background: savedScreener ? '#059669' : savingScreener ? theme.subtleBg : 'linear-gradient(135deg,#d97706,#f59e0b)', color: savingScreener ? theme.textSecondary : '#fff', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 13, cursor: savingScreener ? 'not-allowed' : 'pointer', transition: 'all 0.2s' }}>
-              {savingScreener ? <><FontAwesomeIcon icon={faSpinner} spin />Menyimpan...</> : savedScreener ? <><FontAwesomeIcon icon={faCheck} />Tersimpan!</> : <><FontAwesomeIcon icon={faSave} />Simpan Screener</>}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      <div style={{ display: 'grid', gridTemplateColumns: '260px 1fr', gap: 20, alignItems: 'start' }}>
-        {/* Left: Role List */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <p style={{ fontSize: 11, fontWeight: 700, color: theme.textSecondary, textTransform: 'uppercase', letterSpacing: 1, margin: '0 0 4px' }}>Jabatan / Role</p>
-          {roles.map(r => {
-            const ra = roleApprovers[r.role_id]
-            const configured = !!ra?.approver1_id
-            const isSelected = selRole?.role_id === r.role_id
-            return (
-              <button key={r.role_id} onClick={() => { setSelRole(r); setError(''); setSaved(false) }}
-                style={{ textAlign: 'left', padding: '12px 14px', borderRadius: 10, cursor: 'pointer', border: `2px solid ${isSelected ? '#6366f1' : theme.border}`, background: isSelected ? 'rgba(99,102,241,0.07)' : theme.cardBg, transition: 'all 0.15s' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <FontAwesomeIcon icon={faUserTie} style={{ color: isSelected ? '#6366f1' : theme.textSecondary, fontSize: 13, flexShrink: 0 }} />
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontWeight: 700, fontSize: 13, color: theme.textPrimary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.role_name}</div>
-                    <div style={{ fontSize: 11, marginTop: 2, color: configured ? '#059669' : '#d97706', fontWeight: 600 }}>{configured ? '✓ Terkonfigurasi' : '⚠ Belum diatur'}</div>
-                  </div>
-                </div>
-              </button>
-            )
-          })}
         </div>
+      </div>
 
-        {/* Right: Approver Config */}
-        {selRole ? (
-          <Card style={{ background: theme.cardBg, borderColor: theme.border }}>
-            <CardHeader className="pb-3">
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <div style={{ width: 36, height: 36, borderRadius: 99, background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6366f1' }}>
-                  <FontAwesomeIcon icon={faShield} />
+      {/* ── TABS NAVIGATION (MATCHING /DATA/PYP STYLE) ────────────────── */}
+      <div style={{ display: 'flex', borderBottom: `1px solid ${borderColor}`, marginBottom: '24px', gap: '24px', flexWrap: 'wrap' }}>
+        
+        {/* TAB 1: Alur Approver & Screener */}
+        <button
+          onClick={() => setActiveTab('approvers')}
+          style={{
+            padding: '12px 0',
+            fontSize: '14px',
+            fontWeight: activeTab === 'approvers' ? 600 : 400,
+            border: 'none',
+            background: 'none',
+            cursor: 'pointer',
+            color: activeTab === 'approvers' ? textPrimary : textSecondary,
+            borderBottom: activeTab === 'approvers' ? `2px solid ${textPrimary}` : '2px solid transparent',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            transition: 'all 0.15s ease'
+          }}
+        >
+          <FontAwesomeIcon icon={faShield} style={{ fontSize: '13px' }} />
+          <span>Alur Approver &amp; Screener</span>
+          <span style={{ fontSize: '11px', fontWeight: 600, padding: '1px 6px', borderRadius: '4px', background: isDark ? '#27272A' : '#F4F4F5', color: textSecondary }}>
+            {configuredRolesCount}/{roles.length}
+          </span>
+        </button>
+
+        {/* TAB 2: Kebijakan & Hak Akses */}
+        <button
+          onClick={() => setActiveTab('policies')}
+          style={{
+            padding: '12px 0',
+            fontSize: '14px',
+            fontWeight: activeTab === 'policies' ? 600 : 400,
+            border: 'none',
+            background: 'none',
+            cursor: 'pointer',
+            color: activeTab === 'policies' ? textPrimary : textSecondary,
+            borderBottom: activeTab === 'policies' ? `2px solid ${textPrimary}` : '2px solid transparent',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            transition: 'all 0.15s ease'
+          }}
+        >
+          <FontAwesomeIcon icon={faWallet} style={{ fontSize: '13px' }} />
+          <span>Kebijakan &amp; Hak Akses</span>
+          <span style={{ fontSize: '11px', fontWeight: 600, padding: '1px 6px', borderRadius: '4px', background: isDark ? '#27272A' : '#F4F4F5', color: textSecondary }}>
+            {budgetRoleIds.size} budget · {highLimitRoleIds.size} limit
+          </span>
+        </button>
+
+        {/* TAB 3: Perbaikan FPB (Repair Tool) */}
+        <button
+          onClick={() => setActiveTab('repair')}
+          style={{
+            padding: '12px 0',
+            fontSize: '14px',
+            fontWeight: activeTab === 'repair' ? 600 : 400,
+            border: 'none',
+            background: 'none',
+            cursor: 'pointer',
+            color: activeTab === 'repair' ? textPrimary : textSecondary,
+            borderBottom: activeTab === 'repair' ? `2px solid ${textPrimary}` : '2px solid transparent',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            transition: 'all 0.15s ease'
+          }}
+        >
+          <FontAwesomeIcon icon={faWrench} style={{ fontSize: '13px' }} />
+          <span>Perbaikan FPB (Repair Tool)</span>
+          <span style={{ fontSize: '11px', fontWeight: 600, padding: '1px 6px', borderRadius: '4px', background: isDark ? '#27272A' : '#F4F4F5', color: textSecondary }}>
+            {repairList.length}
+          </span>
+        </button>
+
+      </div>
+
+      {/* ─────────────────────────────────────────────────────────────── */}
+      {/* TAB 1: ALUR APPROVER & SCREENER                                 */}
+      {/* ─────────────────────────────────────────────────────────────── */}
+      {activeTab === 'approvers' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          
+          {/* SCREENER GLOBAL BENTO CARD */}
+          <div style={{ background: cardBg, border: `1px solid ${borderColor}`, borderRadius: '10px', padding: '20px' }}>
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <span style={{ fontSize: '10px', fontWeight: 700, padding: '2px 8px', borderRadius: '4px', background: pastelBlue.bg, color: pastelBlue.text, fontFamily: 'monospace' }}>
+                    TAHAP 0 · GLOBAL
+                  </span>
+                  <h3 style={{ fontSize: '15px', fontWeight: 600, margin: 0, color: textPrimary }}>
+                    Screener FPB (Verifikasi Awal)
+                  </h3>
                 </div>
-                <div>
-                  <CardTitle style={{ color: theme.textPrimary, fontSize: 16 }}>{selRole.role_name}</CardTitle>
-                  <p style={{ fontSize: 12, color: theme.textSecondary, marginTop: 2 }}>
-                    Konfigurasi approver untuk pengaju dengan jabatan ini.
-                    <strong style={{ color: '#6366f1' }}> Semua approver harus menyetujui (AND logic).</strong>
-                  </p>
+                <p style={{ fontSize: '12px', color: textSecondary, margin: 0 }}>
+                  Screener melakukan verifikasi kelayakan sebelum FPB diteruskan ke Approver 1. Berlaku untuk seluruh pengaju.
+                </p>
+              </div>
+
+              <button
+                onClick={handleSaveScreener}
+                disabled={savingScreener}
+                style={{
+                  background: savedScreener ? pastelGreen.text : textPrimary,
+                  color: isDark ? '#09090B' : '#FFFFFF',
+                  border: 'none',
+                  borderRadius: '6px',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  padding: '8px 16px',
+                  cursor: savingScreener ? 'not-allowed' : 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  transition: 'all 0.15s ease',
+                  alignSelf: 'flex-start'
+                }}
+              >
+                {savingScreener ? (
+                  <><FontAwesomeIcon icon={faSpinner} spin /> Menyimpan...</>
+                ) : savedScreener ? (
+                  <><FontAwesomeIcon icon={faCheck} /> Tersimpan!</>
+                ) : (
+                  <><FontAwesomeIcon icon={faSave} /> Simpan Screener</>
+                )}
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center pt-3 border-t" style={{ borderColor }}>
+              <div>
+                <label style={{ fontSize: '11px', fontWeight: 600, color: textSecondary, display: 'block', marginBottom: '6px' }}>
+                  Role Screener <span style={{ fontWeight: 400 }}>(kosongkan jika verifikasi awal di-skip)</span>
+                </label>
+                <select
+                  value={screenerId}
+                  onChange={e => setScreenerId(e.target.value)}
+                  style={selectStyle}
+                >
+                  <option value="">— Tidak ada (Langsung ke Approver 1) —</option>
+                  {roles.map(r => (
+                    <option key={r.role_id} value={String(r.role_id)}>{r.role_name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <div style={{ fontSize: '11px', fontWeight: 600, color: textSecondary, marginBottom: '6px' }}>
+                  Status Alur Screening
+                </div>
+                <div style={{ padding: '8px 12px', borderRadius: '6px', background: isDark ? '#27272A' : '#F9F9F8', border: `1px solid ${borderColor}`, fontSize: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  {screenerRole ? (
+                    <>
+                      <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: pastelBlue.text }}></span>
+                      <span style={{ color: textPrimary, fontWeight: 500 }}>
+                        Aktif: <strong>{screenerRole.role_name}</strong>
+                      </span>
+                      <span style={{ fontSize: '10px', color: pastelBlue.text, background: pastelBlue.bg, padding: '1px 6px', borderRadius: '4px', marginLeft: 'auto', fontWeight: 600 }}>
+                        Wajib Verifikasi
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: textSecondary }}></span>
+                      <span style={{ color: textSecondary }}>
+                        Screening non-aktif (FPB langsung ke Approver 1)
+                      </span>
+                    </>
+                  )}
                 </div>
               </div>
-            </CardHeader>
-            <CardContent>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                {[
-                  { key: 'approver1_id', label: 'Approver 1', required: true,  desc: 'Wajib' },
-                  { key: 'approver2_id', label: 'Approver 2', required: false, desc: 'Opsional' },
-                  { key: 'approver3_id', label: 'Approver 3', required: false, desc: 'Opsional' },
-                ].map(({ key, label, required, desc }) => {
-                  const selectedUserId = curRa[key] || ''
-                  const selectedUser   = users.find(u => String(u.user_id) === selectedUserId)
+            </div>
+          </div>
+
+          {/* APPROVER PER JABATAN (2-COLUMN BENTO LAYOUT) */}
+          <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-5 items-start">
+            
+            {/* LEFT COLUMN: ROLE SELECTOR & SEARCH */}
+            <div style={{ background: cardBg, border: `1px solid ${borderColor}`, borderRadius: '10px', padding: '16px' }}>
+              <div style={{ marginBottom: '12px' }}>
+                <div className="flex items-center justify-between mb-2">
+                  <h4 style={{ fontSize: '13px', fontWeight: 600, color: textPrimary, margin: 0 }}>
+                    Daftar Jabatan
+                  </h4>
+                  <span style={{ fontSize: '11px', color: textSecondary, fontFamily: 'monospace' }}>
+                    {roles.length} total
+                  </span>
+                </div>
+                
+                <div style={{ position: 'relative' }}>
+                  <FontAwesomeIcon
+                    icon={faSearch}
+                    style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: textSecondary, fontSize: '11px', pointerEvents: 'none' }}
+                  />
+                  <input
+                    type="text"
+                    value={roleSearch}
+                    onChange={e => setRoleSearch(e.target.value)}
+                    placeholder="Cari jabatan..."
+                    style={{ ...inputStyle, paddingLeft: '28px', paddingRight: roleSearch ? '28px' : '10px', fontSize: '12px', height: '32px' }}
+                  />
+                  {roleSearch && (
+                    <button
+                      onClick={() => setRoleSearch('')}
+                      style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: textSecondary, cursor: 'pointer', fontSize: '11px' }}
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Roles List */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', maxHeight: '520px', overflowY: 'auto' }}>
+                {filteredRoles.map(r => {
+                  const ra = roleApprovers[r.role_id]
+                  const configured = !!ra?.approver1_id
+                  const isSelected = selRole?.role_id === r.role_id
+                  const approverCount = [ra?.approver1_id, ra?.approver2_id, ra?.approver3_id].filter(Boolean).length
+
                   return (
-                    <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 16px', borderRadius: 12, border: `1px solid ${selectedUserId ? 'rgba(99,102,241,0.3)' : theme.border}`, background: selectedUserId ? 'rgba(99,102,241,0.04)' : theme.subtleBg + '33', transition: 'all 0.15s' }}>
-                      <div style={{ width: 36, height: 36, borderRadius: 99, background: selectedUserId ? '#6366f1' : theme.subtleBg, border: `2px solid ${selectedUserId ? '#6366f1' : theme.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: selectedUserId ? '#fff' : theme.textSecondary, fontWeight: 800, fontSize: 14, flexShrink: 0 }}>
-                        {key === 'approver1_id' ? 1 : key === 'approver2_id' ? 2 : 3}
-                      </div>
-                      <div style={{ flex: 1 }}>
-                        <label style={{ fontSize: 11, fontWeight: 700, color: theme.textSecondary, display: 'block', marginBottom: 5 }}>
-                          {label} {required ? <span style={{ color: '#dc2626' }}>*</span> : <span style={{ fontWeight: 400 }}>(opsional)</span>}
-                          <span style={{ marginLeft: 6, fontWeight: 400 }}>{desc}</span>
-                        </label>
-                        <select value={selectedUserId} onChange={e => updateApprover(key, e.target.value)} style={inputStyle}>
-                          <option value="">— Tidak ada —</option>
-                          {users.map(u => (<option key={u.user_id} value={String(u.user_id)}>{userName(u)}</option>))}
-                        </select>
-                      </div>
-                      {selectedUser && (
-                        <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                          <div style={{ fontWeight: 700, fontSize: 12, color: theme.textPrimary }}>{userName(selectedUser).split(' ')[0]}</div>
-                          <div style={{ fontSize: 10, color: '#059669', fontWeight: 600, marginTop: 2 }}>✓ Dipilih</div>
+                    <button
+                      key={r.role_id}
+                      onClick={() => { setSelRole(r); setError(''); setSaved(false) }}
+                      style={{
+                        textAlign: 'left',
+                        padding: '10px 12px',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        border: `1px solid ${isSelected ? textPrimary : borderColor}`,
+                        background: isSelected ? (isDark ? '#27272A' : '#F4F4F5') : 'transparent',
+                        transition: 'all 0.15s ease',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: '8px'
+                      }}
+                    >
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <div style={{ fontWeight: isSelected ? 600 : 500, fontSize: '12px', color: textPrimary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {r.role_name}
                         </div>
+                      </div>
+
+                      {configured ? (
+                        <span style={{ fontSize: '10px', fontWeight: 600, padding: '2px 6px', borderRadius: '4px', background: pastelGreen.bg, color: pastelGreen.text, whiteSpace: 'nowrap' }}>
+                          {approverCount} Approver
+                        </span>
+                      ) : (
+                        <span style={{ fontSize: '10px', fontWeight: 500, padding: '2px 6px', borderRadius: '4px', background: isDark ? '#27272A' : '#F4F4F5', color: textSecondary, whiteSpace: 'nowrap' }}>
+                          Kosong
+                        </span>
                       )}
-                    </div>
+                    </button>
                   )
                 })}
 
-                {isConfigured && (
-                  <div style={{ padding: '12px 16px', borderRadius: 10, background: 'rgba(99,102,241,0.06)', border: '1px solid rgba(99,102,241,0.2)' }}>
-                    <p style={{ fontSize: 11, fontWeight: 700, color: '#6366f1', marginBottom: 10, textTransform: 'uppercase' }}>
-                      <FontAwesomeIcon icon={faUsers} style={{ marginRight: 6 }} />Preview Alur Approval
-                    </p>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', fontSize: 12 }}>
-                      <span style={{ padding: '3px 10px', borderRadius: 99, background: 'rgba(5,150,105,0.1)', border: '1px solid rgba(5,150,105,0.3)', color: '#059669', fontWeight: 600 }}>Pengaju ({selRole.role_name})</span>
-                      <span style={{ color: theme.textSecondary }}>→</span>
-                      {screenerRole && <>
-                        <span style={{ padding: '3px 10px', borderRadius: 99, background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.4)', color: '#d97706', fontWeight: 600 }}>🔍 {screenerRole.role_name}</span>
-                        <span style={{ color: theme.textSecondary }}>→</span>
-                      </>}
-                      <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                        {approverIds.map((uid, i) => {
-                          const u = users.find(u => String(u.user_id) === uid)
-                          return (
-                            <React.Fragment key={uid}>
-                              {i > 0 && <span style={{ fontSize: 11, color: theme.textSecondary, fontWeight: 700 }}>+</span>}
-                              <span style={{ padding: '3px 10px', borderRadius: 99, background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.3)', color: '#6366f1', fontWeight: 600 }}>{u ? userName(u).split(' ')[0] : uid}</span>
-                            </React.Fragment>
-                          )
-                        })}
-                      </div>
-                      <span style={{ color: theme.textSecondary }}>→</span>
-                      <span style={{ padding: '3px 10px', borderRadius: 99, background: 'rgba(5,150,105,0.1)', border: '1px solid rgba(5,150,105,0.3)', color: '#059669', fontWeight: 600 }}>Approved</span>
-                    </div>
+                {filteredRoles.length === 0 && (
+                  <div style={{ padding: '24px 12px', textAlign: 'center', color: textSecondary, fontSize: '12px' }}>
+                    Jabatan &ldquo;{roleSearch}&rdquo; tidak ditemukan.
                   </div>
                 )}
+              </div>
+            </div>
 
-                {error && <div style={{ padding: '10px 14px', borderRadius: 8, background: '#fef2f2', border: '1px solid #fca5a5', color: '#dc2626', fontSize: 13 }}>⚠ {error}</div>}
+            {/* RIGHT COLUMN: APPROVER CONFIGURATION FORM */}
+            {selRole ? (
+              <div style={{ background: cardBg, border: `1px solid ${borderColor}`, borderRadius: '10px', padding: '24px' }}>
+                
+                {/* Form Header */}
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b mb-6" style={{ borderColor }}>
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span style={{ fontSize: '11px', fontWeight: 700, padding: '2px 8px', borderRadius: '4px', background: isDark ? '#27272A' : '#F4F4F5', color: textSecondary, fontFamily: 'monospace' }}>
+                        ID #{selRole.role_id}
+                      </span>
+                      <h3 style={{ fontSize: '16px', fontWeight: 700, margin: 0, color: textPrimary }}>
+                        {selRole.role_name}
+                      </h3>
+                    </div>
+                    <p style={{ fontSize: '12px', color: textSecondary, margin: 0 }}>
+                      Konfigurasi persetujuan berjenjang untuk pemohon dengan jabatan ini. Semua approver harus menyetujui (AND logic).
+                    </p>
+                  </div>
 
-                <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: 4 }}>
-                  <Button onClick={handleSave} disabled={saving}
-                    style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 24px', background: saved ? '#059669' : saving ? theme.subtleBg : 'linear-gradient(135deg,#6366f1,#0ea5e9)', color: saving ? theme.textSecondary : '#fff', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 13, cursor: saving ? 'not-allowed' : 'pointer', boxShadow: saved || saving ? 'none' : '0 2px 12px rgba(99,102,241,0.3)', transition: 'all 0.2s' }}>
-                    {saving ? <><FontAwesomeIcon icon={faSpinner} spin />Menyimpan...</> : saved ? <><FontAwesomeIcon icon={faCheck} />Tersimpan!</> : <><FontAwesomeIcon icon={faSave} />Simpan Konfigurasi</>}
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={handleSave}
+                      disabled={saving}
+                      style={{
+                        background: saved ? pastelGreen.text : textPrimary,
+                        color: isDark ? '#09090B' : '#FFFFFF',
+                        border: 'none',
+                        borderRadius: '6px',
+                        fontSize: '12px',
+                        fontWeight: 600,
+                        padding: '8px 18px',
+                        cursor: saving ? 'not-allowed' : 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        transition: 'all 0.15s ease'
+                      }}
+                    >
+                      {saving ? (
+                        <><FontAwesomeIcon icon={faSpinner} spin /> Menyimpan...</>
+                      ) : saved ? (
+                        <><FontAwesomeIcon icon={faCheck} /> Tersimpan!</>
+                      ) : (
+                        <><FontAwesomeIcon icon={faSave} /> Simpan Konfigurasi</>
+                      )}
+                    </button>
+                  </div>
                 </div>
 
-                {/* Banner: apply new config to pending FPBs */}
+                {/* 3 Approver Slots */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginBottom: '24px' }}>
+                  {[
+                    { key: 'approver1_id', label: 'Approver 1', required: true, desc: 'Wajib diisi (Tier Pertama)' },
+                    { key: 'approver2_id', label: 'Approver 2', required: false, desc: 'Opsional (Tier Kedua)' },
+                    { key: 'approver3_id', label: 'Approver 3', required: false, desc: 'Opsional (Tier Ketiga)' },
+                  ].map(({ key, label, required, desc }, idx) => {
+                    const selectedUserId = curRa[key] || ''
+                    const selectedUser   = users.find(u => String(u.user_id) === selectedUserId)
+
+                    return (
+                      <div
+                        key={key}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '14px',
+                          padding: '14px 16px',
+                          borderRadius: '8px',
+                          border: `1px solid ${selectedUserId ? borderColor : borderColor}`,
+                          background: isDark ? '#202023' : '#FBFBFA',
+                          transition: 'all 0.15s ease'
+                        }}
+                      >
+                        {/* Step Number Badge */}
+                        <div
+                          style={{
+                            width: '32px',
+                            height: '32px',
+                            borderRadius: '50%',
+                            background: selectedUserId ? textPrimary : (isDark ? '#27272A' : '#E5E5E5'),
+                            color: selectedUserId ? (isDark ? '#09090B' : '#FFFFFF') : textSecondary,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '12px',
+                            fontWeight: 700,
+                            fontFamily: 'monospace',
+                            flexShrink: 0
+                          }}
+                        >
+                          {idx + 1}
+                        </div>
+
+                        {/* Input Area */}
+                        <div style={{ flex: 1 }}>
+                          <div className="flex items-center justify-between mb-1.5">
+                            <label style={{ fontSize: '11px', fontWeight: 600, color: textPrimary }}>
+                              {label} {required ? <span style={{ color: pastelRed.text }}>*</span> : <span style={{ color: textSecondary, fontWeight: 400 }}>(opsional)</span>}
+                            </label>
+                            <span style={{ fontSize: '10px', color: textSecondary }}>
+                              {desc}
+                            </span>
+                          </div>
+
+                          <select
+                            value={selectedUserId}
+                            onChange={e => updateApprover(key, e.target.value)}
+                            style={{ ...selectStyle, fontSize: '12px' }}
+                          >
+                            <option value="">— Tidak ada —</option>
+                            {users.map(u => (
+                              <option key={u.user_id} value={String(u.user_id)}>{userName(u)}</option>
+                            ))}
+                          </select>
+                        </div>
+
+                        {/* Selected Indicator */}
+                        {selectedUser && (
+                          <div style={{ textAlign: 'right', flexShrink: 0, paddingLeft: '8px' }}>
+                            <span style={{ fontSize: '11px', fontWeight: 600, padding: '3px 8px', borderRadius: '4px', background: pastelGreen.bg, color: pastelGreen.text }}>
+                              ✓ Terpilih
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+
+                {/* Pipeline Flow Visualizer */}
+                <div style={{ padding: '14px 18px', borderRadius: '8px', background: isDark ? '#202023' : '#F9F9F8', border: `1px solid ${borderColor}`, marginBottom: '20px' }}>
+                  <div style={{ fontSize: '10px', fontWeight: 700, color: textSecondary, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '10px' }}>
+                    PREVIEW ALUR PENGAJUAN FPB
+                  </div>
+                  <div className="flex items-center gap-2 flex-wrap text-xs">
+                    <span style={{ padding: '4px 10px', borderRadius: '9999px', background: pastelGreen.bg, border: `1px solid ${pastelGreen.border}`, color: pastelGreen.text, fontWeight: 600 }}>
+                      Pengaju: {selRole.role_name}
+                    </span>
+                    <FontAwesomeIcon icon={faArrowRight} style={{ fontSize: '10px', color: textSecondary }} />
+                    {screenerRole && (
+                      <>
+                        <span style={{ padding: '4px 10px', borderRadius: '9999px', background: pastelBlue.bg, border: `1px solid ${pastelBlue.border}`, color: pastelBlue.text, fontWeight: 600 }}>
+                          🔍 Screener: {screenerRole.role_name}
+                        </span>
+                        <FontAwesomeIcon icon={faArrowRight} style={{ fontSize: '10px', color: textSecondary }} />
+                      </>
+                    )}
+                    {approverIds.length > 0 ? (
+                      approverIds.map((uid, i) => {
+                        const u = users.find(u => String(u.user_id) === uid)
+                        return (
+                          <React.Fragment key={uid}>
+                            {i > 0 && <span style={{ fontSize: '11px', color: textSecondary, fontWeight: 700 }}>+</span>}
+                            <span style={{ padding: '4px 10px', borderRadius: '9999px', background: pastelPurple.bg, border: `1px solid ${pastelPurple.border}`, color: pastelPurple.text, fontWeight: 600 }}>
+                              Step {i + 1}: {u ? userName(u).split(' ')[0] : uid}
+                            </span>
+                          </React.Fragment>
+                        )
+                      })
+                    ) : (
+                      <span style={{ padding: '4px 10px', borderRadius: '9999px', background: pastelYellow.bg, border: `1px solid ${pastelYellow.border}`, color: pastelYellow.text, fontWeight: 600 }}>
+                        Belum ada approver
+                      </span>
+                    )}
+                    <FontAwesomeIcon icon={faArrowRight} style={{ fontSize: '10px', color: textSecondary }} />
+                    <span style={{ padding: '4px 10px', borderRadius: '9999px', background: pastelGreen.bg, border: `1px solid ${pastelGreen.border}`, color: pastelGreen.text, fontWeight: 600 }}>
+                      ✓ Approved
+                    </span>
+                  </div>
+                </div>
+
+                {/* Error Banner */}
+                {error && (
+                  <div style={{ marginBottom: '16px', padding: '10px 14px', borderRadius: '6px', background: pastelRed.bg, border: `1px solid ${pastelRed.border}`, color: pastelRed.text, fontSize: '12px' }}>
+                    ⚠ {error}
+                  </div>
+                )}
+
+                {/* Sync to Pending FPBs Banner */}
                 {pendingFpbCount !== null && pendingFpbCount > 0 && (
-                  <div style={{ marginTop: 12, padding: '14px 16px', borderRadius: 10, background: 'rgba(245,158,11,0.07)', border: '1px solid rgba(245,158,11,0.35)', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-                    <div style={{ flex: 1, minWidth: 180 }}>
-                      <div style={{ fontWeight: 700, fontSize: 13, color: '#b45309' }}>⚠ Ada {pendingFpbCount} FPB pending dengan approver lama</div>
-                      <div style={{ fontSize: 12, color: theme.textSecondary, marginTop: 3 }}>
-                        FPB yang sudah dibuat masih menggunakan konfigurasi approver sebelumnya. Klik tombol di samping untuk memperbarui.
+                  <div style={{ padding: '14px 16px', borderRadius: '8px', background: pastelYellow.bg, border: `1px solid ${pastelYellow.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '14px', flexWrap: 'wrap' }}>
+                    <div>
+                      <div style={{ fontWeight: 600, fontSize: '13px', color: pastelYellow.text }}>
+                        ⚠ Ada {pendingFpbCount} FPB pending dengan konfigurasi approver lama
+                      </div>
+                      <div style={{ fontSize: '12px', color: textSecondary, marginTop: '2px' }}>
+                        Terapkan konfigurasi baru untuk memperbarui approver pada FPB yang belum selesai.
                       </div>
                     </div>
-                    <Button onClick={handleApplyPending} disabled={applyingPending}
-                      style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 18px', background: appliedPending ? '#059669' : applyingPending ? theme.subtleBg : 'linear-gradient(135deg,#d97706,#f59e0b)', color: applyingPending ? theme.textSecondary : '#fff', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 13, cursor: applyingPending ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap', transition: 'all 0.2s' }}>
-                      {applyingPending ? <><FontAwesomeIcon icon={faSpinner} spin />Menerapkan...</> : appliedPending ? <><FontAwesomeIcon icon={faCheck} />Diterapkan!</> : <>Apply ke FPB Pending</>}
-                    </Button>
+                    <button
+                      onClick={handleApplyPending}
+                      disabled={applyingPending}
+                      style={{
+                        background: textPrimary,
+                        color: isDark ? '#09090B' : '#FFFFFF',
+                        border: 'none',
+                        borderRadius: '6px',
+                        fontSize: '12px',
+                        fontWeight: 600,
+                        padding: '8px 16px',
+                        cursor: applyingPending ? 'not-allowed' : 'pointer',
+                        whiteSpace: 'nowrap'
+                      }}
+                    >
+                      {applyingPending ? <><FontAwesomeIcon icon={faSpinner} spin /> Menerapkan...</> : appliedPending ? <><FontAwesomeIcon icon={faCheck} /> Diterapkan!</> : 'Terapkan ke Semua FPB Pending'}
+                    </button>
                   </div>
                 )}
-                {pendingFpbCount === 0 && appliedPending && (
-                  <div style={{ marginTop: 12, padding: '10px 14px', borderRadius: 8, background: 'rgba(5,150,105,0.07)', border: '1px solid rgba(5,150,105,0.3)', fontSize: 13, color: '#059669', fontWeight: 600 }}>
-                    ✓ Semua FPB pending sudah menggunakan approver baru.
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        ) : (
-          <div style={{ padding: '60px 20px', textAlign: 'center', color: theme.textSecondary }}>
-            Pilih jabatan di sebelah kiri untuk mengkonfigurasi approver
-          </div>
-        )}
-      </div>
 
-      {/* FPB Repair Tool */}
-      <Card style={{ background: theme.cardBg, marginTop: 24, borderColor: 'rgba(220,38,38,0.4)' }}>
-        <CardHeader className="pb-3">
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{ width: 36, height: 36, borderRadius: 99, background: 'rgba(220,38,38,0.1)', border: '1px solid rgba(220,38,38,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#dc2626' }}>
-              <FontAwesomeIcon icon={faWrench} />
-            </div>
-            <div>
-              <CardTitle style={{ color: theme.textPrimary, fontSize: 16 }}>🔧 FPB Repair Tool</CardTitle>
-              <p style={{ fontSize: 12, color: theme.textSecondary, marginTop: 2 }}>
-                Edit approver, status, atau reset approval untuk FPB yang sudah dibuat. Gunakan dengan hati-hati.
-              </p>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div style={{ display: 'grid', gridTemplateColumns: '280px 1fr', gap: 20, alignItems: 'start' }}>
-            {/* Left: FPB list */}
-            <div>
-              <div style={{ position: 'relative', marginBottom: 10 }}>
-                <FontAwesomeIcon icon={faSearch} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: theme.textSecondary, fontSize: 12, pointerEvents: 'none' }} />
-                <input
-                  value={repairSearch}
-                  onChange={e => setRepairSearch(e.target.value)}
-                  placeholder="Cari nomor FPB / pengaju..."
-                  style={{ ...inputStyle, paddingLeft: 30, fontSize: 12 }}
-                />
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 420, overflowY: 'auto' }}>
-                {repairLoading && !repairFpb && (
-                  <div style={{ padding: 20, textAlign: 'center', color: theme.textSecondary }}>
-                    <FontAwesomeIcon icon={faSpinner} spin />
+                {pendingFpbCount === 0 && appliedPending && (
+                  <div style={{ padding: '10px 14px', borderRadius: '6px', background: pastelGreen.bg, border: `1px solid ${pastelGreen.border}`, fontSize: '12px', color: pastelGreen.text, fontWeight: 600 }}>
+                    ✓ Seluruh FPB pending kini telah menggunakan konfigurasi approver terbaru.
                   </div>
                 )}
+
+              </div>
+            ) : (
+              <div style={{ background: cardBg, border: `1px dashed ${borderColor}`, borderRadius: '10px', padding: '60px 20px', textAlign: 'center', color: textSecondary }}>
+                <FontAwesomeIcon icon={faUserTie} style={{ fontSize: '32px', marginBottom: '12px', opacity: 0.3 }} />
+                <p style={{ margin: 0, fontSize: '13px' }}>Pilih jabatan di sebelah kiri untuk mengkonfigurasi approver.</p>
+              </div>
+            )}
+
+          </div>
+
+        </div>
+      )}
+
+      {/* ─────────────────────────────────────────────────────────────── */}
+      {/* TAB 2: KEBIJAKAN & HAK AKSES                                    */}
+      {/* ─────────────────────────────────────────────────────────────── */}
+      {activeTab === 'policies' && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+          
+          {/* CARD 1: HAK AKSES EDIT BUDGET */}
+          <div style={{ background: cardBg, border: `1px solid ${borderColor}`, borderRadius: '10px', padding: '24px' }}>
+            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 pb-4 border-b mb-5" style={{ borderColor }}>
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="w-7 h-7 rounded flex items-center justify-center border" style={{ background: pastelBlue.bg, borderColor: pastelBlue.border, color: pastelBlue.text }}>
+                    <FontAwesomeIcon icon={faWallet} style={{ fontSize: '12px' }} />
+                  </div>
+                  <h3 style={{ fontSize: '15px', fontWeight: 600, margin: 0, color: textPrimary }}>
+                    Hak Akses Edit Budget FPB
+                  </h3>
+                </div>
+                <p style={{ fontSize: '12px', color: textSecondary, margin: '4px 0 0 0' }}>
+                  Pilih jabatan yang berhak mengisi dan memperbarui kolom <strong>Budget</strong> dan <strong>Remaining Budget</strong> pada FPB.
+                </p>
+              </div>
+
+              <button
+                onClick={saveBudgetRoles}
+                disabled={savingBudget}
+                style={{
+                  background: savedBudget ? pastelGreen.text : textPrimary,
+                  color: isDark ? '#09090B' : '#FFFFFF',
+                  border: 'none',
+                  borderRadius: '6px',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  padding: '8px 16px',
+                  cursor: savingBudget ? 'not-allowed' : 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  transition: 'all 0.15s ease',
+                  flexShrink: 0
+                }}
+              >
+                {savingBudget ? (
+                  <><FontAwesomeIcon icon={faSpinner} spin /> Menyimpan...</>
+                ) : savedBudget ? (
+                  <><FontAwesomeIcon icon={faCheck} /> Tersimpan!</>
+                ) : (
+                  <><FontAwesomeIcon icon={faSave} /> Simpan Hak Akses</>
+                )}
+              </button>
+            </div>
+
+            {/* Quick search input */}
+            <div style={{ position: 'relative', marginBottom: '14px' }}>
+              <FontAwesomeIcon icon={faSearch} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: textSecondary, fontSize: '11px', pointerEvents: 'none' }} />
+              <input
+                type="text"
+                value={budgetSearch}
+                onChange={e => setBudgetSearch(e.target.value)}
+                placeholder="Cari jabatan..."
+                style={{ ...inputStyle, paddingLeft: '28px', fontSize: '12px', height: '32px' }}
+              />
+            </div>
+
+            {/* Grid of Role Checkbox Cards */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '8px', maxHeight: '380px', overflowY: 'auto', marginBottom: '16px' }}>
+              {filteredBudgetRoles.map(r => {
+                const checked = budgetRoleIds.has(r.role_id)
+                return (
+                  <label
+                    key={r.role_id}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '10px',
+                      padding: '10px 12px',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      border: `1px solid ${checked ? textPrimary : borderColor}`,
+                      background: checked ? (isDark ? '#27272A' : '#F4F4F5') : 'transparent',
+                      transition: 'all 0.15s ease',
+                      userSelect: 'none'
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() => toggleBudgetRole(r.role_id)}
+                      style={{ width: '15px', height: '15px', accentColor: textPrimary, cursor: 'pointer', flexShrink: 0 }}
+                    />
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <div style={{ fontWeight: checked ? 600 : 500, fontSize: '12px', color: textPrimary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {r.role_name}
+                      </div>
+                      {checked && (
+                        <div style={{ fontSize: '10px', color: pastelBlue.text, fontWeight: 600, marginTop: '2px' }}>
+                          ✓ Bisa edit budget
+                        </div>
+                      )}
+                    </div>
+                  </label>
+                )
+              })}
+            </div>
+
+            {/* Summary Tag */}
+            <div style={{ padding: '10px 14px', borderRadius: '6px', background: isDark ? '#202023' : '#F9F9F8', border: `1px solid ${borderColor}`, fontSize: '12px', color: textSecondary }}>
+              {budgetRoleIds.size > 0 ? (
+                <>
+                  <strong style={{ color: textPrimary }}>{budgetRoleIds.size} jabatan</strong> saat ini memiliki hak akses untuk mengedit data Budget FPB.
+                </>
+              ) : (
+                <span style={{ color: pastelRed.text }}>
+                  ⚠ Belum ada jabatan yang dipilih untuk mengedit budget.
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* CARD 2: EXTENDED NOMINAL LIMIT (> 600K - 2 JUTA) */}
+          <div style={{ background: cardBg, border: `1px solid ${borderColor}`, borderRadius: '10px', padding: '24px' }}>
+            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 pb-4 border-b mb-5" style={{ borderColor }}>
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="w-7 h-7 rounded flex items-center justify-center border" style={{ background: pastelGreen.bg, borderColor: pastelGreen.border, color: pastelGreen.text }}>
+                    <FontAwesomeIcon icon={faFileInvoiceDollar} style={{ fontSize: '12px' }} />
+                  </div>
+                  <h3 style={{ fontSize: '15px', fontWeight: 600, margin: 0, color: textPrimary }}>
+                    Limit Nominal Extended (s.d. Rp 2.000.000)
+                  </h3>
+                </div>
+                <p style={{ fontSize: '12px', color: textSecondary, margin: '4px 0 0 0' }}>
+                  Pilih jabatan yang diizinkan mengajukan FPB dengan total nominal <strong>Rp 600.000 – Rp 2.000.000</strong>. Role lainnya dibatasi maksimal <strong>Rp 600.000</strong>.
+                </p>
+              </div>
+
+              <button
+                onClick={saveHighLimitRoles}
+                disabled={savingHighLimit}
+                style={{
+                  background: savedHighLimit ? pastelGreen.text : textPrimary,
+                  color: isDark ? '#09090B' : '#FFFFFF',
+                  border: 'none',
+                  borderRadius: '6px',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  padding: '8px 16px',
+                  cursor: savingHighLimit ? 'not-allowed' : 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  transition: 'all 0.15s ease',
+                  flexShrink: 0
+                }}
+              >
+                {savingHighLimit ? (
+                  <><FontAwesomeIcon icon={faSpinner} spin /> Menyimpan...</>
+                ) : savedHighLimit ? (
+                  <><FontAwesomeIcon icon={faCheck} /> Tersimpan!</>
+                ) : (
+                  <><FontAwesomeIcon icon={faSave} /> Simpan Limit</>
+                )}
+              </button>
+            </div>
+
+            {/* Quick search input */}
+            <div style={{ position: 'relative', marginBottom: '14px' }}>
+              <FontAwesomeIcon icon={faSearch} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: textSecondary, fontSize: '11px', pointerEvents: 'none' }} />
+              <input
+                type="text"
+                value={limitSearch}
+                onChange={e => setLimitSearch(e.target.value)}
+                placeholder="Cari jabatan..."
+                style={{ ...inputStyle, paddingLeft: '28px', fontSize: '12px', height: '32px' }}
+              />
+            </div>
+
+            {/* Grid of Role Checkbox Cards */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '8px', maxHeight: '380px', overflowY: 'auto', marginBottom: '16px' }}>
+              {filteredLimitRoles.map(r => {
+                const checked = highLimitRoleIds.has(r.role_id)
+                return (
+                  <label
+                    key={r.role_id}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '10px',
+                      padding: '10px 12px',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      border: `1px solid ${checked ? textPrimary : borderColor}`,
+                      background: checked ? (isDark ? '#27272A' : '#F4F4F5') : 'transparent',
+                      transition: 'all 0.15s ease',
+                      userSelect: 'none'
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() => toggleHighLimitRole(r.role_id)}
+                      style={{ width: '15px', height: '15px', accentColor: textPrimary, cursor: 'pointer', flexShrink: 0 }}
+                    />
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <div style={{ fontWeight: checked ? 600 : 500, fontSize: '12px', color: textPrimary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {r.role_name}
+                      </div>
+                      {checked ? (
+                        <div style={{ fontSize: '10px', color: pastelGreen.text, fontWeight: 600, marginTop: '2px' }}>
+                          ✓ Limit s.d. Rp 2.000.000
+                        </div>
+                      ) : (
+                        <div style={{ fontSize: '10px', color: textSecondary, marginTop: '2px' }}>
+                          Maksimal Rp 600.000
+                        </div>
+                      )}
+                    </div>
+                  </label>
+                )
+              })}
+            </div>
+
+            {/* Summary Tag */}
+            <div style={{ padding: '10px 14px', borderRadius: '6px', background: isDark ? '#202023' : '#F9F9F8', border: `1px solid ${borderColor}`, fontSize: '12px', color: textSecondary }}>
+              {highLimitRoleIds.size > 0 ? (
+                <>
+                  <strong style={{ color: textPrimary }}>{highLimitRoleIds.size} jabatan</strong> memiliki batas limit s.d. Rp 2.000.000. Jabatan lainnya dibatasi Rp 600.000.
+                </>
+              ) : (
+                <span>
+                  Seluruh jabatan saat ini dibatasi maksimal <strong>Rp 600.000</strong>.
+                </span>
+              )}
+            </div>
+          </div>
+
+        </div>
+      )}
+
+      {/* ─────────────────────────────────────────────────────────────── */}
+      {/* TAB 3: PERBAIKAN FPB (REPAIR TOOL)                              */}
+      {/* ─────────────────────────────────────────────────────────────── */}
+      {activeTab === 'repair' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          
+          {/* Informational Guidance Banner */}
+          <div style={{ background: cardBg, border: `1px solid ${borderColor}`, borderRadius: '10px', padding: '16px 20px', display: 'flex', alignItems: 'center', gap: '14px' }}>
+            <div className="w-8 h-8 rounded flex items-center justify-center border flex-shrink-0" style={{ background: pastelYellow.bg, borderColor: pastelYellow.border, color: pastelYellow.text }}>
+              <FontAwesomeIcon icon={faWrench} style={{ fontSize: '13px' }} />
+            </div>
+            <div>
+              <div style={{ fontWeight: 600, fontSize: '13px', color: textPrimary }}>
+                Alat Audit &amp; Perbaikan Alur Persetujuan FPB
+              </div>
+              <div style={{ fontSize: '12px', color: textSecondary, marginTop: '2px' }}>
+                Perbaiki approver yang kosong, urutan step yang keliru, reset status step ke pending, atau hapus step berlebih/orphan pada dokumen FPB tertentu.
+              </div>
+            </div>
+          </div>
+
+          {/* 2-Column Repair Bento Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-6 items-start">
+            
+            {/* LEFT COLUMN: FPB SEARCH & LIST */}
+            <div style={{ background: cardBg, border: `1px solid ${borderColor}`, borderRadius: '10px', padding: '16px' }}>
+              <div style={{ marginBottom: '12px' }}>
+                <div className="flex items-center justify-between mb-2">
+                  <h4 style={{ fontSize: '13px', fontWeight: 600, color: textPrimary, margin: 0 }}>
+                    Pilih Dokumen FPB
+                  </h4>
+                  <span style={{ fontSize: '11px', color: textSecondary, fontFamily: 'monospace' }}>
+                    {filteredRepairList.length} dari {repairList.length}
+                  </span>
+                </div>
+
+                {/* Search Input */}
+                <div style={{ position: 'relative', marginBottom: '10px' }}>
+                  <FontAwesomeIcon icon={faSearch} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: textSecondary, fontSize: '11px', pointerEvents: 'none' }} />
+                  <input
+                    type="text"
+                    value={repairSearch}
+                    onChange={e => setRepairSearch(e.target.value)}
+                    placeholder="Nomor FPB atau nama pengaju..."
+                    style={{ ...inputStyle, paddingLeft: '28px', paddingRight: repairSearch ? '28px' : '10px', fontSize: '12px', height: '32px' }}
+                  />
+                  {repairSearch && (
+                    <button
+                      onClick={() => setRepairSearch('')}
+                      style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: textSecondary, cursor: 'pointer', fontSize: '11px' }}
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+
+                {/* Status Filter Pills */}
+                <div style={{ display: 'flex', gap: '4px', overflowX: 'auto', paddingBottom: '4px' }}>
+                  {[
+                    { id: 'all', label: 'Semua' },
+                    { id: 'pending', label: 'Pending' },
+                    { id: 'approved', label: 'Approved' },
+                    { id: 'revision', label: 'Revision' },
+                    { id: 'rejected', label: 'Rejected' },
+                  ].map(tab => (
+                    <button
+                      key={tab.id}
+                      onClick={() => setRepairStatusFilter(tab.id)}
+                      style={{
+                        padding: '4px 8px',
+                        fontSize: '11px',
+                        fontWeight: repairStatusFilter === tab.id ? 600 : 400,
+                        border: 'none',
+                        borderRadius: '4px',
+                        background: repairStatusFilter === tab.id ? (isDark ? '#27272A' : '#F4F4F5') : 'transparent',
+                        color: repairStatusFilter === tab.id ? textPrimary : textSecondary,
+                        cursor: 'pointer',
+                        whiteSpace: 'nowrap',
+                        transition: 'all 0.15s ease'
+                      }}
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* FPB Cards List */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '560px', overflowY: 'auto' }}>
+                {repairLoading && !repairFpb && (
+                  <div style={{ padding: '24px', textAlign: 'center', color: textSecondary, fontSize: '12px' }}>
+                    <FontAwesomeIcon icon={faSpinner} spin style={{ marginRight: '6px' }} />
+                    Memuat daftar FPB...
+                  </div>
+                )}
+
                 {filteredRepairList.map(f => {
                   const isSelected = repairFpb?.fpb_id === f.fpb_id
-                  const statusColor = f.status === 'approved' ? '#059669' : f.status === 'rejected' ? '#dc2626' : f.status === 'pending' ? '#d97706' : f.status === 'revision' ? '#f59e0b' : '#6b7280'
+                  const statusPastel = 
+                    f.status === 'approved' ? pastelGreen :
+                    f.status === 'rejected' ? pastelRed :
+                    f.status === 'pending' ? pastelYellow :
+                    pastelPurple
+
                   return (
-                    <button key={f.fpb_id} onClick={() => loadRepairFpb(f.fpb_id)}
-                      style={{ textAlign: 'left', padding: '10px 12px', borderRadius: 9, cursor: 'pointer', border: `2px solid ${isSelected ? '#dc2626' : theme.border}`, background: isSelected ? 'rgba(220,38,38,0.06)' : theme.cardBg, transition: 'all 0.15s' }}>
-                      <div style={{ fontWeight: 700, fontSize: 12, color: theme.textPrimary }}>{f.fpb_number || f.fpb_id}</div>
-                      <div style={{ fontSize: 11, color: theme.textSecondary, marginTop: 1 }}>
-                        {`${f.users?.user_nama_depan || ''} ${f.users?.user_nama_belakang || ''}`.trim()}
+                    <button
+                      key={f.fpb_id}
+                      onClick={() => loadRepairFpb(f.fpb_id)}
+                      style={{
+                        textAlign: 'left',
+                        padding: '10px 12px',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        border: `1px solid ${isSelected ? textPrimary : borderColor}`,
+                        background: isSelected ? (isDark ? '#27272A' : '#F4F4F5') : 'transparent',
+                        transition: 'all 0.15s ease'
+                      }}
+                    >
+                      <div className="flex items-center justify-between gap-2 mb-1">
+                        <span style={{ fontWeight: 600, fontSize: '12px', color: textPrimary, fontFamily: 'monospace' }}>
+                          {f.fpb_number || `FPB #${f.fpb_id}`}
+                        </span>
+                        <span style={{ fontSize: '10px', fontWeight: 600, padding: '1px 6px', borderRadius: '4px', background: statusPastel.bg, color: statusPastel.text, textTransform: 'capitalize' }}>
+                          {f.status}
+                        </span>
                       </div>
-                      <div style={{ marginTop: 4 }}>
-                        <span style={{ fontSize: 10, fontWeight: 700, color: statusColor, background: `${statusColor}18`, padding: '1px 7px', borderRadius: 99 }}>{f.status}</span>
+                      <div className="flex items-center justify-between text-[11px]" style={{ color: textSecondary }}>
+                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {`${f.users?.user_nama_depan || ''} ${f.users?.user_nama_belakang || ''}`.trim() || '—'}
+                        </span>
+                        <span style={{ fontFamily: 'monospace', fontSize: '10px' }}>
+                          Step {f.current_step ?? 1}
+                        </span>
                       </div>
                     </button>
                   )
                 })}
+
                 {filteredRepairList.length === 0 && !repairLoading && (
-                  <div style={{ padding: 20, textAlign: 'center', color: theme.textSecondary, fontSize: 12 }}>Tidak ada FPB ditemukan</div>
+                  <div style={{ padding: '32px 16px', textAlign: 'center', color: textSecondary, fontSize: '12px' }}>
+                    Tidak ada FPB yang sesuai kriteria pencarian.
+                  </div>
                 )}
               </div>
             </div>
 
-            {/* Right: Edit panel */}
+            {/* RIGHT COLUMN: FPB INSPECTION & STEP EDITOR */}
             {repairFpb ? (
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, padding: '12px 16px', borderRadius: 10, background: theme.subtleBg, border: `1px solid ${theme.border}` }}>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 800, fontSize: 15, color: theme.textPrimary }}>{repairFpb.fpb_number}</div>
-                    <div style={{ fontSize: 12, color: theme.textSecondary }}>
-                      Pengaju: {`${repairFpb.users?.user_nama_depan || ''} ${repairFpb.users?.user_nama_belakang || ''}`.trim()}
-                      {' · '}Current step: {repairFpb.current_step}
+              <div style={{ background: cardBg, border: `1px solid ${borderColor}`, borderRadius: '10px', padding: '24px' }}>
+                
+                {/* Header of selected FPB */}
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b mb-6" style={{ borderColor }}>
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span style={{ fontSize: '11px', fontWeight: 700, padding: '2px 8px', borderRadius: '4px', background: isDark ? '#27272A' : '#F4F4F5', color: textSecondary, fontFamily: 'monospace' }}>
+                        ID #{repairFpb.fpb_id}
+                      </span>
+                      <h3 style={{ fontSize: '16px', fontWeight: 700, margin: 0, color: textPrimary, fontFamily: 'monospace' }}>
+                        {repairFpb.fpb_number}
+                      </h3>
                     </div>
+                    <p style={{ fontSize: '12px', color: textSecondary, margin: 0 }}>
+                      Pengaju: <strong>{`${repairFpb.users?.user_nama_depan || ''} ${repairFpb.users?.user_nama_belakang || ''}`.trim()}</strong>
+                    </p>
                   </div>
-                  {/* FPB status editor */}
-                  <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end', flexShrink: 0 }}>
+
+                  {/* FPB Status & Current Step controls */}
+                  <div className="flex items-center gap-3 flex-wrap">
                     <div>
-                      <label style={{ fontSize: 10, fontWeight: 700, color: theme.textSecondary, display: 'block', marginBottom: 4 }}>STATUS FPB</label>
-                      <select value={repairFpbStatus} onChange={e => setRepairFpbStatus(e.target.value)}
-                        style={{ ...inputStyle, fontSize: 12, width: 'auto', padding: '6px 10px' }}>
+                      <label style={{ fontSize: '10px', fontWeight: 700, color: textSecondary, display: 'block', marginBottom: '4px', textTransform: 'uppercase' }}>
+                        STATUS FPB
+                      </label>
+                      <select
+                        value={repairFpbStatus}
+                        onChange={e => setRepairFpbStatus(e.target.value)}
+                        style={{ ...selectStyle, fontSize: '12px', padding: '6px 10px', width: 'auto' }}
+                      >
                         {['pending', 'approved', 'rejected', 'revision'].map(s => (
                           <option key={s} value={s}>{s}</option>
                         ))}
                       </select>
                     </div>
+
                     <div>
-                      <label style={{ fontSize: 10, fontWeight: 700, color: theme.textSecondary, display: 'block', marginBottom: 4 }}>CURRENT STEP</label>
-                      <select value={repairCurrentStep} onChange={e => setRepairCurrentStep(parseInt(e.target.value))}
-                        style={{ ...inputStyle, fontSize: 12, width: 'auto', padding: '6px 10px', borderColor: '#6366f1' }}>
+                      <label style={{ fontSize: '10px', fontWeight: 700, color: textSecondary, display: 'block', marginBottom: '4px', textTransform: 'uppercase' }}>
+                        CURRENT STEP
+                      </label>
+                      <select
+                        value={repairCurrentStep}
+                        onChange={e => setRepairCurrentStep(parseInt(e.target.value))}
+                        style={{ ...selectStyle, fontSize: '12px', padding: '6px 10px', width: 'auto' }}
+                      >
                         {[...new Set(repairApprovals.map(ap => ap.step_order))].sort((a,b) => a-b).map(step => (
                           <option key={step} value={step}>Step {step}</option>
                         ))}
@@ -726,221 +1547,244 @@ export default function FpbSettingsPage() {
                   </div>
                 </div>
 
-                {/* Approval rows */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
-                  {repairApprovals.length === 0 && (
-                    <div style={{ padding: 20, textAlign: 'center', color: theme.textSecondary, fontSize: 12 }}>Tidak ada baris approval</div>
-                  )}
-                  {repairApprovals.map(ap => {
-                    const edit = repairApproverEdits[ap.approval_id] || {}
-                    const orderLabel = ap.approver_order === 0 ? 'Screener' : `Approver ${ap.approver_order}`
-                    const statusColor = edit.status === 'approved' ? '#059669' : edit.status === 'rejected' ? '#dc2626' : edit.status === 'revision' ? '#f59e0b' : '#6b7280'
-                    return (
-                      <div key={ap.approval_id} style={{ padding: '12px 14px', borderRadius: 10, border: `1px solid ${theme.border}`, background: theme.subtleBg + '44' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                            <span style={{ fontSize: 10, fontWeight: 700, color: theme.textSecondary, whiteSpace: 'nowrap' }}>Step</span>
-                            <input
-                              type="number" min={0} max={99}
-                              value={edit.step_order ?? ap.step_order}
-                              onChange={e => setRepairApproverEdits(prev => ({ ...prev, [ap.approval_id]: { ...prev[ap.approval_id], step_order: parseInt(e.target.value) || 0 } }))}
-                              style={{ width: 52, padding: '2px 6px', borderRadius: 6, border: `1px solid ${(edit.step_order ?? ap.step_order) !== ap.step_order ? '#f59e0b' : '#6366f1'}`, background: (edit.step_order ?? ap.step_order) !== ap.step_order ? 'rgba(245,158,11,0.08)' : 'rgba(99,102,241,0.07)', color: '#6366f1', fontWeight: 800, fontSize: 12, outline: 'none', textAlign: 'center' }}
-                            />
-                          </div>
-                          <span style={{ fontSize: 10, fontWeight: 700, color: theme.textSecondary }}>{ap.step_name}</span>
-                          <span style={{ fontSize: 10, fontWeight: 700, color: '#d97706' }}>{orderLabel}</span>
-                          {ap.role?.role_name && (
-                            <span style={{ fontSize: 10, color: theme.textSecondary, fontStyle: 'italic' }}>role: {ap.role.role_name}</span>
-                          )}
-                          {(edit.step_order ?? ap.step_order) !== ap.step_order && (
-                            <span style={{ fontSize: 10, color: '#f59e0b', fontWeight: 700, background: 'rgba(245,158,11,0.12)', padding: '1px 7px', borderRadius: 99 }}>⚠ changed</span>
-                          )}
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteRepairStep(ap.approval_id)}
-                            disabled={repairSaving}
+                {/* Approval Chain List */}
+                <div style={{ marginBottom: '24px' }}>
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 style={{ fontSize: '13px', fontWeight: 600, color: textPrimary, margin: 0 }}>
+                      Rantai Step Persetujuan ({repairApprovals.length} Step)
+                    </h4>
+                    <span style={{ fontSize: '11px', color: textSecondary }}>
+                      Edit approver, status, atau urutan step di bawah
+                    </span>
+                  </div>
+
+                  {repairApprovals.length === 0 ? (
+                    <div style={{ padding: '36px', textAlign: 'center', color: textSecondary, border: `1px dashed ${borderColor}`, borderRadius: '8px', fontSize: '13px' }}>
+                      Tidak ada baris approval untuk FPB ini.
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                      {repairApprovals.map(ap => {
+                        const edit = repairApproverEdits[ap.approval_id] || {}
+                        const orderLabel = ap.approver_order === 0 ? 'Screener' : `Approver ${ap.approver_order}`
+                        const statusPastel = 
+                          edit.status === 'approved' ? pastelGreen :
+                          edit.status === 'rejected' ? pastelRed :
+                          edit.status === 'pending' ? pastelYellow :
+                          pastelPurple
+
+                        return (
+                          <div
+                            key={ap.approval_id}
                             style={{
-                              marginLeft: 'auto',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: 5,
-                              padding: '3px 8px',
-                              borderRadius: 6,
-                              background: '#fef2f2',
-                              border: '1px solid #fecaca',
-                              color: '#dc2626',
-                              fontSize: 11,
-                              fontWeight: 600,
-                              cursor: repairSaving ? 'not-allowed' : 'pointer',
-                              transition: 'all 0.15s'
+                              padding: '14px 16px',
+                              borderRadius: '8px',
+                              border: `1px solid ${borderColor}`,
+                              background: isDark ? '#202023' : '#FBFBFA'
                             }}
-                            title="Hapus baris step approval ini"
                           >
-                            <FontAwesomeIcon icon={faTrash} style={{ fontSize: 10 }} />
-                            Hapus Step
-                          </button>
-                        </div>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 10, alignItems: 'end' }}>
-                          <div>
-                            <label style={{ fontSize: 10, fontWeight: 700, color: theme.textSecondary, display: 'block', marginBottom: 4 }}>APPROVER USER</label>
-                            <select
-                              value={edit.approver_user_id || ''}
-                              onChange={e => setRepairApproverEdits(prev => ({ ...prev, [ap.approval_id]: { ...prev[ap.approval_id], approver_user_id: e.target.value } }))}
-                              style={{ ...inputStyle, fontSize: 12 }}>
-                              <option value="">— (null / role-based) —</option>
-                              {users.map(u => (
-                                <option key={u.user_id} value={String(u.user_id)}>{userName(u)}</option>
-                              ))}
-                            </select>
+                            {/* Step meta row */}
+                            <div className="flex items-center gap-2 mb-3 flex-wrap">
+                              <div className="flex items-center gap-1.5">
+                                <span style={{ fontSize: '11px', fontWeight: 600, color: textSecondary }}>Step</span>
+                                <input
+                                  type="number"
+                                  min={0}
+                                  max={99}
+                                  value={edit.step_order ?? ap.step_order}
+                                  onChange={e => setRepairApproverEdits(prev => ({
+                                    ...prev,
+                                    [ap.approval_id]: { ...prev[ap.approval_id], step_order: parseInt(e.target.value) || 0 }
+                                  }))}
+                                  style={{
+                                    width: '48px',
+                                    padding: '2px 6px',
+                                    borderRadius: '4px',
+                                    border: `1px solid ${(edit.step_order ?? ap.step_order) !== ap.step_order ? pastelYellow.border : borderColor}`,
+                                    background: isDark ? '#27272A' : '#FFFFFF',
+                                    color: textPrimary,
+                                    fontWeight: 700,
+                                    fontSize: '12px',
+                                    textAlign: 'center',
+                                    outline: 'none'
+                                  }}
+                                />
+                              </div>
+
+                              <span style={{ fontSize: '11px', fontWeight: 600, padding: '2px 8px', borderRadius: '4px', background: isDark ? '#27272A' : '#F4F4F5', color: textPrimary }}>
+                                {ap.step_name}
+                              </span>
+
+                              <span style={{ fontSize: '11px', fontWeight: 600, padding: '2px 8px', borderRadius: '4px', background: ap.approver_order === 0 ? pastelBlue.bg : pastelYellow.bg, color: ap.approver_order === 0 ? pastelBlue.text : pastelYellow.text }}>
+                                {orderLabel}
+                              </span>
+
+                              {ap.role?.role_name && (
+                                <span style={{ fontSize: '11px', color: textSecondary, fontStyle: 'italic' }}>
+                                  role: {ap.role.role_name}
+                                </span>
+                              )}
+
+                              {(edit.step_order ?? ap.step_order) !== ap.step_order && (
+                                <span style={{ fontSize: '10px', color: pastelYellow.text, fontWeight: 600, background: pastelYellow.bg, padding: '1px 6px', borderRadius: '4px' }}>
+                                  diubah
+                                </span>
+                              )}
+
+                              {/* Hapus Step Button */}
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteRepairStep(ap.approval_id)}
+                                disabled={repairSaving}
+                                style={{
+                                  marginLeft: 'auto',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '5px',
+                                  padding: '4px 10px',
+                                  borderRadius: '6px',
+                                  background: pastelRed.bg,
+                                  border: `1px solid ${pastelRed.border}`,
+                                  color: pastelRed.text,
+                                  fontSize: '11px',
+                                  fontWeight: 600,
+                                  cursor: repairSaving ? 'not-allowed' : 'pointer',
+                                  transition: 'all 0.15s ease'
+                                }}
+                                title="Hapus baris step approval ini"
+                              >
+                                <FontAwesomeIcon icon={faTrash} style={{ fontSize: '10px' }} />
+                                Hapus Step
+                              </button>
+                            </div>
+
+                            {/* Dropdown controls */}
+                            <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-3 items-end">
+                              <div>
+                                <label style={{ fontSize: '10px', fontWeight: 700, color: textSecondary, display: 'block', marginBottom: '4px', textTransform: 'uppercase' }}>
+                                  APPROVER USER
+                                </label>
+                                <select
+                                  value={edit.approver_user_id || ''}
+                                  onChange={e => setRepairApproverEdits(prev => ({
+                                    ...prev,
+                                    [ap.approval_id]: { ...prev[ap.approval_id], approver_user_id: e.target.value }
+                                  }))}
+                                  style={{ ...selectStyle, fontSize: '12px' }}
+                                >
+                                  <option value="">— (null / role-based) —</option>
+                                  {users.map(u => (
+                                    <option key={u.user_id} value={String(u.user_id)}>{userName(u)}</option>
+                                  ))}
+                                </select>
+                              </div>
+
+                              <div>
+                                <label style={{ fontSize: '10px', fontWeight: 700, color: textSecondary, display: 'block', marginBottom: '4px', textTransform: 'uppercase' }}>
+                                  STATUS STEP
+                                </label>
+                                <select
+                                  value={edit.status || 'pending'}
+                                  onChange={e => setRepairApproverEdits(prev => ({
+                                    ...prev,
+                                    [ap.approval_id]: { ...prev[ap.approval_id], status: e.target.value }
+                                  }))}
+                                  style={{ ...selectStyle, fontSize: '12px', width: 'auto', minWidth: '110px' }}
+                                >
+                                  {['pending', 'approved', 'revision', 'rejected'].map(s => (
+                                    <option key={s} value={s}>{s}</option>
+                                  ))}
+                                </select>
+                              </div>
+                            </div>
+
+                            {/* Comment and timestamp metadata */}
+                            {ap.comment && (
+                              <div style={{ marginTop: '8px', fontSize: '11px', color: textSecondary, fontStyle: 'italic' }}>
+                                Komentar: &ldquo;{ap.comment}&rdquo;
+                              </div>
+                            )}
+                            {ap.action_at && (
+                              <div style={{ marginTop: '4px', fontSize: '10px', color: textSecondary, fontFamily: 'monospace' }}>
+                                Diproses: {new Date(ap.action_at).toLocaleString('id-ID')}
+                              </div>
+                            )}
                           </div>
-                          <div>
-                            <label style={{ fontSize: 10, fontWeight: 700, color: theme.textSecondary, display: 'block', marginBottom: 4 }}>STATUS</label>
-                            <select
-                              value={edit.status || 'pending'}
-                              onChange={e => setRepairApproverEdits(prev => ({ ...prev, [ap.approval_id]: { ...prev[ap.approval_id], status: e.target.value } }))}
-                              style={{ ...inputStyle, fontSize: 12, width: 'auto', padding: '6px 10px', borderColor: statusColor }}>
-                              {['pending', 'approved', 'revision', 'rejected'].map(s => (
-                                <option key={s} value={s}>{s}</option>
-                              ))}
-                            </select>
-                          </div>
-                        </div>
-                        {ap.comment && (
-                          <div style={{ marginTop: 8, fontSize: 11, color: theme.textSecondary, fontStyle: 'italic' }}>Komentar: {ap.comment}</div>
-                        )}
-                        {ap.action_at && (
-                          <div style={{ marginTop: 4, fontSize: 11, color: theme.textSecondary }}>Diproses: {new Date(ap.action_at).toLocaleString('id-ID')}</div>
-                        )}
-                      </div>
-                    )
-                  })}
+                        )
+                      })}
+                    </div>
+                  )}
                 </div>
 
+                {/* Error Banner */}
                 {repairError && (
-                  <div style={{ marginBottom: 12, padding: '10px 14px', borderRadius: 8, background: '#fef2f2', border: '1px solid #fca5a5', color: '#dc2626', fontSize: 13 }}>⚠ {repairError}</div>
-                )}
-                {repairSaved && (
-                  <div style={{ marginBottom: 12, padding: '10px 14px', borderRadius: 8, background: 'rgba(5,150,105,0.07)', border: '1px solid rgba(5,150,105,0.3)', color: '#059669', fontSize: 13, fontWeight: 600 }}>✓ Perubahan berhasil disimpan.</div>
+                  <div style={{ marginBottom: '16px', padding: '10px 14px', borderRadius: '6px', background: pastelRed.bg, border: `1px solid ${pastelRed.border}`, color: pastelRed.text, fontSize: '12px' }}>
+                    ⚠ {repairError}
+                  </div>
                 )}
 
-                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
-                  <button onClick={() => { setRepairFpb(null); setRepairApprovals([]); setRepairApproverEdits({}) }}
-                    style={{ padding: '9px 18px', borderRadius: 9, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.textSecondary, fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>
-                    <FontAwesomeIcon icon={faTimes} style={{ marginRight: 6 }} />Tutup
+                {/* Bottom Action Buttons */}
+                <div className="flex items-center justify-end gap-3 pt-3 border-t" style={{ borderColor }}>
+                  <button
+                    onClick={() => { setRepairFpb(null); setRepairApprovals([]); setRepairApproverEdits({}) }}
+                    style={{
+                      padding: '8px 16px',
+                      borderRadius: '6px',
+                      border: `1px solid ${borderColor}`,
+                      background: 'transparent',
+                      color: textSecondary,
+                      fontWeight: 500,
+                      fontSize: '12px',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <FontAwesomeIcon icon={faTimes} style={{ marginRight: '6px' }} />
+                    Tutup
                   </button>
-                  <Button onClick={handleRepairSave} disabled={repairSaving}
-                    style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 24px', background: repairSaved ? '#059669' : repairSaving ? theme.subtleBg : 'linear-gradient(135deg,#dc2626,#f87171)', color: repairSaving ? theme.textSecondary : '#fff', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 13, cursor: repairSaving ? 'not-allowed' : 'pointer', transition: 'all 0.2s' }}>
-                    {repairSaving ? <><FontAwesomeIcon icon={faSpinner} spin />Menyimpan...</> : repairSaved ? <><FontAwesomeIcon icon={faCheck} />Tersimpan!</> : <><FontAwesomeIcon icon={faSave} />Simpan Perubahan</>}
-                  </Button>
+
+                  <button
+                    onClick={handleRepairSave}
+                    disabled={repairSaving}
+                    style={{
+                      background: repairSaved ? pastelGreen.text : textPrimary,
+                      color: isDark ? '#09090B' : '#FFFFFF',
+                      border: 'none',
+                      borderRadius: '6px',
+                      fontSize: '12px',
+                      fontWeight: 600,
+                      padding: '8px 20px',
+                      cursor: repairSaving ? 'not-allowed' : 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    {repairSaving ? (
+                      <><FontAwesomeIcon icon={faSpinner} spin /> Menyimpan...</>
+                    ) : repairSaved ? (
+                      <><FontAwesomeIcon icon={faCheck} /> Tersimpan!</>
+                    ) : (
+                      <><FontAwesomeIcon icon={faSave} /> Simpan Perubahan</>
+                    )}
+                  </button>
                 </div>
+
               </div>
             ) : (
-              <div style={{ padding: '60px 20px', textAlign: 'center', color: theme.textSecondary }}>
-                <FontAwesomeIcon icon={faPen} style={{ fontSize: 32, marginBottom: 12, opacity: 0.3 }} />
-                <p style={{ fontSize: 13 }}>Pilih FPB di kiri untuk mengedit approval chain-nya</p>
+              <div style={{ background: cardBg, border: `1px dashed ${borderColor}`, borderRadius: '10px', padding: '60px 20px', textAlign: 'center', color: textSecondary }}>
+                <FontAwesomeIcon icon={faPen} style={{ fontSize: '32px', marginBottom: '12px', opacity: 0.3 }} />
+                <p style={{ margin: 0, fontSize: '13px' }}>
+                  Pilih salah satu FPB di panel kiri untuk memeriksa dan memperbaiki alur persetujuannya.
+                </p>
               </div>
             )}
-          </div>
-        </CardContent>
-      </Card>
 
-      {/* Budget Roles Card */}
-      <Card style={{ background: theme.cardBg, borderColor: theme.border, marginTop: 24 }}>
-        <CardHeader className="pb-3">
-          <CardTitle style={{ color: theme.textPrimary, fontSize: 16 }}>
-            <FontAwesomeIcon icon={faWallet} style={{ marginRight: 8, color: '#6366f1' }} />
-            Hak Akses Edit Budget FPB
-          </CardTitle>
-          <p style={{ fontSize: 12, color: theme.textSecondary, marginTop: 4 }}>
-            Pilih jabatan yang berhak mengisi dan mengubah kolom <strong>Budget</strong> dan <strong>Remaining Budget</strong> pada setiap FPB.
-          </p>
-        </CardHeader>
-        <CardContent>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 10, marginBottom: 20 }}>
-            {roles.map(r => {
-              const checked = budgetRoleIds.has(r.role_id)
-              return (
-                <label key={r.role_id}
-                  style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 10, cursor: 'pointer', border: `2px solid ${checked ? '#6366f1' : theme.border}`, background: checked ? 'rgba(99,102,241,0.07)' : theme.cardBg, transition: 'all 0.15s', userSelect: 'none' }}>
-                  <input type="checkbox" checked={checked} onChange={() => toggleBudgetRole(r.role_id)}
-                    style={{ width: 16, height: 16, accentColor: '#6366f1', cursor: 'pointer', flexShrink: 0 }} />
-                  <div>
-                    <div style={{ fontWeight: 700, fontSize: 13, color: theme.textPrimary }}>{r.role_name}</div>
-                    {checked && <div style={{ fontSize: 10, color: '#6366f1', fontWeight: 600, marginTop: 1 }}>✓ Bisa edit budget</div>}
-                  </div>
-                </label>
-              )
-            })}
           </div>
-          {budgetRoleIds.size > 0 && (
-            <div style={{ marginBottom: 16, padding: '10px 14px', borderRadius: 8, background: 'rgba(99,102,241,0.06)', border: '1px solid rgba(99,102,241,0.2)', fontSize: 12, color: theme.textSecondary }}>
-              <strong style={{ color: '#6366f1' }}>{budgetRoleIds.size} jabatan</strong> dapat mengisi/mengubah Budget & Remaining Budget pada FPB.
-            </div>
-          )}
-          {budgetRoleIds.size === 0 && (
-            <div style={{ marginBottom: 16, padding: '10px 14px', borderRadius: 8, background: 'rgba(220,38,38,0.06)', border: '1px solid rgba(220,38,38,0.2)', fontSize: 12, color: '#dc2626' }}>
-              ⚠ Belum ada jabatan yang bisa mengisi budget.
-            </div>
-          )}
-          <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: 4 }}>
-            <Button onClick={saveBudgetRoles} disabled={savingBudget}
-              style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 24px', background: savedBudget ? '#059669' : savingBudget ? theme.subtleBg : 'linear-gradient(135deg,#6366f1,#0ea5e9)', color: savingBudget ? theme.textSecondary : '#fff', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 13, cursor: savingBudget ? 'not-allowed' : 'pointer', transition: 'all 0.2s' }}>
-              {savingBudget ? <><FontAwesomeIcon icon={faSpinner} spin />Menyimpan...</> : savedBudget ? <><FontAwesomeIcon icon={faCheck} />Tersimpan!</> : <><FontAwesomeIcon icon={faSave} />Simpan Hak Akses Budget</>}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
 
-      {/* High Limit Roles Card (> 600k - 2 Million) */}
-      <Card style={{ background: theme.cardBg, borderColor: theme.border, marginTop: 24 }}>
-        <CardHeader className="pb-3">
-          <CardTitle style={{ color: theme.textPrimary, fontSize: 16 }}>
-            <FontAwesomeIcon icon={faFileInvoiceDollar} style={{ marginRight: 8, color: '#059669' }} />
-            Hak Akses Nominal FPB &gt; Rp 600.000 – Rp 2.000.000 (Extended Limit)
-          </CardTitle>
-          <p style={{ fontSize: 12, color: theme.textSecondary, marginTop: 4 }}>
-            Pilih jabatan yang diizinkan untuk membuat pengajuan FPB dengan total nominal di atas <strong>Rp 600.000</strong> hingga <strong>Rp 2.000.000</strong>. Role yang tidak tercentang secara otomatis dibatasi maksimal <strong>Rp 600.000</strong>.
-          </p>
-        </CardHeader>
-        <CardContent>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 10, marginBottom: 20 }}>
-            {roles.map(r => {
-              const checked = highLimitRoleIds.has(r.role_id)
-              return (
-                <label key={r.role_id}
-                  style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 10, cursor: 'pointer', border: `2px solid ${checked ? '#059669' : theme.border}`, background: checked ? 'rgba(5,150,105,0.07)' : theme.cardBg, transition: 'all 0.15s', userSelect: 'none' }}>
-                  <input type="checkbox" checked={checked} onChange={() => toggleHighLimitRole(r.role_id)}
-                    style={{ width: 16, height: 16, accentColor: '#059669', cursor: 'pointer', flexShrink: 0 }} />
-                  <div>
-                    <div style={{ fontWeight: 700, fontSize: 13, color: theme.textPrimary }}>{r.role_name}</div>
-                    {checked ? (
-                      <div style={{ fontSize: 10, color: '#059669', fontWeight: 600, marginTop: 1 }}>✓ Limit s.d. Rp 2.000.000</div>
-                    ) : (
-                      <div style={{ fontSize: 10, color: theme.textSecondary, fontWeight: 500, marginTop: 1 }}>Limit s.d. Rp 600.000</div>
-                    )}
-                  </div>
-                </label>
-              )
-            })}
-          </div>
-          {highLimitRoleIds.size > 0 && (
-            <div style={{ marginBottom: 16, padding: '10px 14px', borderRadius: 8, background: 'rgba(5,150,105,0.06)', border: '1px solid rgba(5,150,105,0.2)', fontSize: 12, color: theme.textSecondary }}>
-              <strong style={{ color: '#059669' }}>{highLimitRoleIds.size} jabatan</strong> diizinkan mengajukan FPB hingga Rp 2.000.000. Jabatan lainnya terbatas pada Rp 600.000.
-            </div>
-          )}
-          {highLimitRoleIds.size === 0 && (
-            <div style={{ marginBottom: 16, padding: '10px 14px', borderRadius: 8, background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.2)', fontSize: 12, color: '#b45309' }}>
-              ℹ Semua jabatan saat ini dibatasi maksimal Rp 600.000.
-            </div>
-          )}
-          <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: 4 }}>
-            <Button onClick={saveHighLimitRoles} disabled={savingHighLimit}
-              style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 24px', background: savedHighLimit ? '#059669' : savingHighLimit ? theme.subtleBg : 'linear-gradient(135deg,#059669,#10b981)', color: savingHighLimit ? theme.textSecondary : '#fff', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 13, cursor: savingHighLimit ? 'not-allowed' : 'pointer', transition: 'all 0.2s' }}>
-              {savingHighLimit ? <><FontAwesomeIcon icon={faSpinner} spin />Menyimpan...</> : savedHighLimit ? <><FontAwesomeIcon icon={faCheck} />Tersimpan!</> : <><FontAwesomeIcon icon={faSave} />Simpan Limit Nominal</>}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+        </div>
+      )}
+
     </div>
   )
 }
