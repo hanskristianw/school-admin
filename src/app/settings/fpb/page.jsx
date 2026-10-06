@@ -9,7 +9,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import {
   faFileInvoiceDollar, faSave, faSpinner, faCheck,
   faUsers, faUserTie, faShield, faWallet, faSearch,
-  faPen, faWrench, faTimes, faRotateLeft,
+  faPen, faWrench, faTimes, faRotateLeft, faTrash,
 } from '@fortawesome/free-solid-svg-icons'
 
 const userName = (u) => u ? `${u.user_nama_depan || ''} ${u.user_nama_belakang || ''}`.trim() : '—'
@@ -136,6 +136,51 @@ export default function FpbSettingsPage() {
     finally { setRepairSaving(false) }
   }
 
+  const handleDeleteRepairStep = async (approvalId) => {
+    if (!repairFpb) return
+    const apToDelete = repairApprovals.find(a => a.approval_id === approvalId)
+    if (!apToDelete) return
+    const label = apToDelete.approver_order === 0 ? 'Screener' : `Approver ${apToDelete.approver_order}`
+    if (!window.confirm(`Yakin ingin menghapus baris ${label} (Step ${apToDelete.step_order}) dari FPB ini? Tindakan ini tidak dapat dibatalkan.`)) return
+
+    setRepairSaving(true)
+    setRepairError('')
+    try {
+      const { error: delErr } = await supabase
+        .from('fpb_approvals')
+        .delete()
+        .eq('approval_id', approvalId)
+      if (delErr) throw delErr
+
+      // Remaining steps
+      const remainingAps = repairApprovals.filter(a => a.approval_id !== approvalId)
+      const remainingRegular = remainingAps.filter(a => a.approver_order !== 0)
+      const allApproved = remainingRegular.length > 0 && remainingRegular.every(a => a.status === 'approved')
+      const maxRemainingStep = remainingAps.reduce((max, a) => Math.max(max, a.step_order), 0)
+
+      const fpbUpdate = {}
+      if (allApproved && repairFpb.status === 'pending') {
+        fpbUpdate.status = 'approved'
+        fpbUpdate.current_step = maxRemainingStep
+      } else if (repairCurrentStep > maxRemainingStep) {
+        fpbUpdate.current_step = maxRemainingStep
+      }
+
+      if (Object.keys(fpbUpdate).length > 0) {
+        await supabase.from('fpb').update(fpbUpdate).eq('fpb_id', repairFpb.fpb_id)
+      }
+
+      setRepairSaved(true)
+      setTimeout(() => setRepairSaved(false), 4000)
+      await loadRepairFpb(repairFpb.fpb_id)
+      await loadRepairList()
+    } catch (e) {
+      setRepairError(e.message)
+    } finally {
+      setRepairSaving(false)
+    }
+  }
+
   const filteredRepairList = repairList.filter(f => {
     const q = repairSearch.toLowerCase()
     if (!q) return true
@@ -243,6 +288,7 @@ export default function FpbSettingsPage() {
         { order: 3, uid: ra.approver3_id ? parseInt(ra.approver3_id) : null },
       ].filter(s => s.uid)
 
+      // 1. Update active slots
       for (const slot of slots) {
         await supabase
           .from('fpb_approvals')
@@ -251,6 +297,47 @@ export default function FpbSettingsPage() {
           .eq('approver_order', slot.order)
           .eq('status', 'pending')
       }
+
+      // 2. Clean up orphaned pending steps if approver slots count was reduced
+      const maxOrder = slots.reduce((max, s) => Math.max(max, s.order), 0)
+      if (maxOrder > 0) {
+        const { data: orphanedRows } = await supabase
+          .from('fpb_approvals')
+          .select('approval_id, fpb_id')
+          .eq('approver_role_id', selRole.role_id)
+          .gt('approver_order', maxOrder)
+          .eq('status', 'pending')
+
+        if (orphanedRows && orphanedRows.length > 0) {
+          const orphanedIds = orphanedRows.map(r => r.approval_id)
+          const affectedFpbIds = [...new Set(orphanedRows.map(r => r.fpb_id))]
+
+          await supabase
+            .from('fpb_approvals')
+            .delete()
+            .in('approval_id', orphanedIds)
+
+          // Check affected FPBs: if all remaining regular steps are approved, finalize to 'approved'
+          for (const fpbId of affectedFpbIds) {
+            const { data: remainingAps } = await supabase
+              .from('fpb_approvals')
+              .select('step_order, approver_order, status')
+              .eq('fpb_id', fpbId)
+
+            const regular = (remainingAps || []).filter(a => a.approver_order !== 0)
+            const allDone = regular.length > 0 && regular.every(a => a.status === 'approved')
+            const maxStep = (remainingAps || []).reduce((max, a) => Math.max(max, a.step_order), 0)
+
+            if (allDone) {
+              await supabase
+                .from('fpb')
+                .update({ status: 'approved', current_step: maxStep })
+                .eq('fpb_id', fpbId)
+            }
+          }
+        }
+      }
+
       setAppliedPending(true)
       setPendingFpbCount(0)
       setTimeout(() => setAppliedPending(false), 4000)
@@ -668,6 +755,30 @@ export default function FpbSettingsPage() {
                           {(edit.step_order ?? ap.step_order) !== ap.step_order && (
                             <span style={{ fontSize: 10, color: '#f59e0b', fontWeight: 700, background: 'rgba(245,158,11,0.12)', padding: '1px 7px', borderRadius: 99 }}>⚠ changed</span>
                           )}
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteRepairStep(ap.approval_id)}
+                            disabled={repairSaving}
+                            style={{
+                              marginLeft: 'auto',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 5,
+                              padding: '3px 8px',
+                              borderRadius: 6,
+                              background: '#fef2f2',
+                              border: '1px solid #fecaca',
+                              color: '#dc2626',
+                              fontSize: 11,
+                              fontWeight: 600,
+                              cursor: repairSaving ? 'not-allowed' : 'pointer',
+                              transition: 'all 0.15s'
+                            }}
+                            title="Hapus baris step approval ini"
+                          >
+                            <FontAwesomeIcon icon={faTrash} style={{ fontSize: 10 }} />
+                            Hapus Step
+                          </button>
                         </div>
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 10, alignItems: 'end' }}>
                           <div>

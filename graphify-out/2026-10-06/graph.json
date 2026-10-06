@@ -3307,8 +3307,8 @@
       "source_location": "L29",
       "_origin": "ast",
       "id": "package_dependencies_driver_js",
-      "community": 330,
-      "community_name": "\ud83d\udcc1 **Project Structure**",
+      "community": 147,
+      "community_name": "\ufffd\ud83c\udfd7\ufe0f **Database Structure**",
       "norm_label": "driver.js"
     },
     {
@@ -3318,8 +3318,8 @@
       "source_location": "L29",
       "_origin": "ast",
       "id": "driver_js",
-      "community": 330,
-      "community_name": "\ud83d\udcc1 **Project Structure**",
+      "community": 147,
+      "community_name": "\ufffd\ud83c\udfd7\ufe0f **Database Structure**",
       "norm_label": "driver.js"
     },
     {
@@ -3593,8 +3593,8 @@
       "source_location": "L42",
       "_origin": "ast",
       "id": "package_dependencies_pdf_lib",
-      "community": 147,
-      "community_name": "\ufffd\ud83c\udfd7\ufe0f **Database Structure**",
+      "community": 387,
+      "community_name": "16.1 Tables",
       "norm_label": "pdf-lib"
     },
     {
@@ -3604,8 +3604,8 @@
       "source_location": "L42",
       "_origin": "ast",
       "id": "pdf_lib",
-      "community": 147,
-      "community_name": "\ufffd\ud83c\udfd7\ufe0f **Database Structure**",
+      "community": 387,
+      "community_name": "16.1 Tables",
       "norm_label": "pdf-lib"
     },
     {
@@ -16452,8 +16452,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "agents_skills_imagegen_frontend_web_skill",
-      "community": 80,
-      "community_name": "Module 80",
+      "community": 330,
+      "community_name": "\ud83d\udcc1 **Project Structure**",
       "norm_label": "skill.md"
     },
     {
@@ -16463,8 +16463,8 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "agents_skills_imagegen_frontend_web_skill_hard_output_rule_read_first",
-      "community": 80,
-      "community_name": "Module 80",
+      "community": 330,
+      "community_name": "\ud83d\udcc1 **Project Structure**",
       "norm_label": "hard output rule \u2014 read first"
     },
     {
@@ -16474,8 +16474,8 @@
       "source_location": "L25",
       "_origin": "ast",
       "id": "agents_skills_imagegen_frontend_web_skill_hero_composition_bias_read_first",
-      "community": 80,
-      "community_name": "Module 80",
+      "community": 330,
+      "community_name": "\ud83d\udcc1 **Project Structure**",
       "norm_label": "hero composition bias \u2014 read first"
     },
     {
@@ -19378,8 +19378,8 @@
       "source_location": "L1096",
       "_origin": "ast",
       "id": "c_users_kutut_school_admin_database_schema_7_menu_role_permissions_domain_data_menu_management",
-      "community": 101,
-      "community_name": "Module 101",
+      "community": 313,
+      "community_name": "SKILL.md",
       "norm_label": "7. menu & role permissions domain (`/data/menu_management`)"
     },
     {
@@ -19389,8 +19389,8 @@
       "source_location": "L1100",
       "_origin": "ast",
       "id": "c_users_kutut_school_admin_database_schema_7_1_tables",
-      "community": 101,
-      "community_name": "Module 101",
+      "community": 313,
+      "community_name": "SKILL.md",
       "norm_label": "7.1 tables"
     },
     {
@@ -19400,8 +19400,8 @@
       "source_location": "L1102",
       "_origin": "ast",
       "id": "c_users_kutut_school_admin_database_schema_menus",
-      "community": 101,
-      "community_name": "Module 101",
+      "community": 313,
+      "community_name": "SKILL.md",
       "norm_label": "`menus`"
     },
     {
@@ -19411,8 +19411,8 @@
       "source_location": "L1115",
       "_origin": "ast",
       "id": "c_users_kutut_school_admin_database_schema_menu_permissions",
-      "community": 101,
-      "community_name": "Module 101",
+      "community": 313,
+      "community_name": "SKILL.md",
       "norm_label": "`menu_permissions`"
     },
     {
@@ -19422,8 +19422,8 @@
       "source_location": "L1127",
       "_origin": "ast",
       "id": "c_users_kutut_school_admin_database_schema_7_2_erd_relationships_menu_domain",
-      "community": 101,
-      "community_name": "Module 101",
+      "community": 313,
+      "community_name": "SKILL.md",
       "norm_label": "7.2 erd / relationships (menu domain)"
     },
     {
@@ -19576,8 +19576,8 @@
       "source_location": "L1370",
       "_origin": "ast",
       "id": "c_users_kutut_school_admin_database_schema_10_duty_greeter_devotion_schedule_domain_data_door_greeter",
-      "community": 313,
-      "community_name": "SKILL.md",
+      "community": 101,
+      "community_name": "Module 101",
       "norm_label": "10. duty, greeter & devotion schedule domain (`/data/door_greeter`)"
     },
     {
@@ -19587,8 +19587,8 @@
       "source_location": "L1374",
       "_origin": "ast",
       "id": "c_users_kutut_school_admin_database_schema_10_1_tables",
-      "community": 313,
-      "community_name": "SKILL.md",
+      "community": 101,
+      "community_name": "Module 101",
       "norm_label": "10.1 tables"
     },
     {
@@ -19598,8 +19598,8 @@
       "source_location": "L1376",
       "_origin": "ast",
       "id": "c_users_kutut_school_admin_database_schema_duty_schedules",
-      "community": 313,
-      "community_name": "SKILL.md",
+      "community": 101,
+      "community_name": "Module 101",
       "norm_label": "`duty_schedules`"
     },
     {
@@ -19609,8 +19609,8 @@
       "source_location": "L1405",
       "_origin": "ast",
       "id": "c_users_kutut_school_admin_database_schema_duty_settings",
-      "community": 313,
-      "community_name": "SKILL.md",
+      "community": 101,
+      "community_name": "Module 101",
       "norm_label": "`duty_settings`"
     },
     {
@@ -19620,8 +19620,8 @@
       "source_location": "L1419",
       "_origin": "ast",
       "id": "c_users_kutut_school_admin_database_schema_10_2_erd_relationships_duty_devotion_schedule_domain",
-      "community": 313,
-      "community_name": "SKILL.md",
+      "community": 101,
+      "community_name": "Module 101",
       "norm_label": "10.2 erd / relationships (duty & devotion schedule domain)"
     },
     {
@@ -38143,7 +38143,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/app/settings/fpb/page.jsx",
-      "source_location": "L558",
+      "source_location": "L471",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_settings_fpb_page_fpbsettingspage",
@@ -52528,5 +52528,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "bf16196148aa63242835d5cd1eb8babdb7a32f14"
+  "built_at_commit": "5cff9b09c663be1cfa7b0df35d6c0a1ece3ad340"
 }

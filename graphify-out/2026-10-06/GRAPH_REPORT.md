@@ -1,16 +1,16 @@
-# Graph Report - school-admin  (2026-10-06)
+# Graph Report - school-admin  (2026-10-05)
 
 ## Corpus Check
-- 416 files · ~704,264 words
+- 416 files · ~703,879 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 2322 nodes · 2417 edges · 392 communities (276 shown, 116 thin omitted)
+- 2322 nodes · 2417 edges · 393 communities (276 shown, 117 thin omitted)
 - Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 7 edges (avg confidence: 0.63)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `bf161961`
+- Built from commit: `5cff9b09`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -288,6 +288,7 @@
 - @radix-ui/react-slot
 - react-easy-crop
 - exceljs
+- 16.1 Tables
 - page.jsx
 - page.jsx
 - browser-image-compression
@@ -319,7 +320,7 @@
 ## Import Cycles
 - None detected.
 
-## Communities (392 total, 116 thin omitted)
+## Communities (393 total, 117 thin omitted)
 
 ### Community 0 - "Admission Management"
 Cohesion: 0.07
@@ -566,8 +567,8 @@ Cohesion: 0.11
 Nodes (17): aliases, components, hooks, lib, ui, utils, iconLibrary, rsc (+9 more)
 
 ### Community 80 - "Module 80"
-Cohesion: 0.12
-Nodes (16): 10. SECTION RHYTHM RULE, 12. DENSITY & SPACING DISCIPLINE, 14. IMAGE / MEDIA DIRECTION, 16. MULTI-IMAGE CONSISTENCY RULE, 17. CLARITY CHECK, 19. RESPONSE BEHAVIOR, 1. ACTIVE BASELINE CONFIGURATION, 21. FINAL GOAL (+8 more)
+Cohesion: 0.14
+Nodes (14): 10. SECTION RHYTHM RULE, 12. DENSITY & SPACING DISCIPLINE, 14. IMAGE / MEDIA DIRECTION, 16. MULTI-IMAGE CONSISTENCY RULE, 17. CLARITY CHECK, 19. RESPONSE BEHAVIOR, 1. ACTIVE BASELINE CONFIGURATION, 21. FINAL GOAL (+6 more)
 
 ### Community 81 - "Module 81"
 Cohesion: 0.12
@@ -607,7 +608,7 @@ Nodes (13): public.uniform, public.uniform_purchase, public.uniform_purchase_ite
 
 ### Community 101 - "Module 101"
 Cohesion: 0.15
-Nodes (12): 11.2 ERD / Relationships (Uniform & Stock Domain), 11.3 Initial Stock & Inventory Ledger Workflows (`/stock/uniform/initial`), 11.4 POS Uniform Sales Workflows (`/sales/uniform`), 11. Uniform & Stock Management Domain (`/sales/uniform`, `/stock/uniform/add`, `/stock/uniform/initial`, `/stock/uniform/po-settings`, `/data/uniform`, `/data/uniform-size`), 5.2 ERD / Relationships (Attendance Domain), 5. Attendance & Leave Management Domain (`/data/attendance-settings`, `/data/attendance-leave`, `/data/attendance-form`), 7.1 Tables, 7.2 ERD / Relationships (Menu Domain) (+4 more)
+Nodes (12): 10.1 Tables, 10.2 ERD / Relationships (Duty & Devotion Schedule Domain), 10. Duty, Greeter & Devotion Schedule Domain (`/data/door_greeter`), 11.2 ERD / Relationships (Uniform & Stock Domain), 11.3 Initial Stock & Inventory Ledger Workflows (`/stock/uniform/initial`), 11.4 POS Uniform Sales Workflows (`/sales/uniform`), 11. Uniform & Stock Management Domain (`/sales/uniform`, `/stock/uniform/add`, `/stock/uniform/initial`, `/stock/uniform/po-settings`, `/data/uniform`, `/data/uniform-size`), 5.2 ERD / Relationships (Attendance Domain) (+4 more)
 
 ### Community 102 - "Module 102"
 Cohesion: 0.14
@@ -767,7 +768,7 @@ Nodes (5): absen, attendance_scan_log, _backup_absen, _backup_attendance_scan_lo
 
 ### Community 147 - "�🏗️ **Database Structure**"
 Cohesion: 0.18
-Nodes (11): bcryptjs, @hookform/resolvers, dependencies, bcryptjs, @hookform/resolvers, pdf-lib, @radix-ui/react-select, react-hook-form (+3 more)
+Nodes (11): bcryptjs, driver.js, @hookform/resolvers, dependencies, bcryptjs, driver.js, @hookform/resolvers, @radix-ui/react-select (+3 more)
 
 ### Community 149 - "bcryptjs"
 Cohesion: 0.33
@@ -943,7 +944,7 @@ Nodes (3): POST(), supabaseAdmin, verifyAuth()
 
 ### Community 313 - "SKILL.md"
 Cohesion: 0.40
-Nodes (5): 10.1 Tables, 10.2 ERD / Relationships (Duty & Devotion Schedule Domain), 10. Duty, Greeter & Devotion Schedule Domain (`/data/door_greeter`), `duty_schedules`, `duty_settings`
+Nodes (5): 7.1 Tables, 7.2 ERD / Relationships (Menu Domain), 7. Menu & Role Permissions Domain (`/data/menu_management`), `menu_permissions`, `menus`
 
 ### Community 316 - "**3. Assessment System**"
 Cohesion: 0.40
@@ -964,16 +965,16 @@ Nodes (3): AthleticDayLivePage(), isLightColor(), normalizeTeamColor()
 ## Knowledge Gaps
 - **1168 isolated node(s):** `extends`, `next/core-web-vitals`, `$schema`, `style`, `rsc` (+1163 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **116 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **117 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `dependencies` connect `�🏗️ **Database Structure**` to `Admission Management`, `Package Dependencies & Config`, `exceljs`, `Module 133`, `Module 134`, `browser-image-compression`, `Module 140`, `🎓 **IB MYP Assessment Grading System**`, `clsx`, `2026-07-16 — Timetable Refactor + Weekly Plan Dates + Weekly Overview`, `React UI Components`, `Module 145`, `Module 148`, `docx`, `Module 153`, `Module 154`, `Module 155`, `@googleapis/chat`, `dotenv`, `zod`, `bcryptjs`, `Appendix B - Canonical Sources (read these before reinventing)`, `Analysis & Synthesis Instructions`, `12. THE COMBINATORIAL VARIATION ENGINE`, `📁 **Project Structure**`, `@sparticuz/chromium-min`, `11. REDESIGN PROTOCOL`, `3. DEFAULT ARCHITECTURE & CONVENTIONS`, `33. CATEGORY-SPECIFIC BIAS`, `pngjs`, `Module 239`, `Module 240`, `docx`, `browser-image-compression`, `dotenv`, `@fortawesome/free-solid-svg-icons`, `@radix-ui/react-slot`, `react-easy-crop`?**
+- **Why does `dependencies` connect `�🏗️ **Database Structure**` to `Admission Management`, `Package Dependencies & Config`, `exceljs`, `16.1 Tables`, `Module 133`, `Module 134`, `browser-image-compression`, `Module 140`, `🎓 **IB MYP Assessment Grading System**`, `clsx`, `2026-07-16 — Timetable Refactor + Weekly Plan Dates + Weekly Overview`, `React UI Components`, `Module 145`, `Module 148`, `docx`, `Module 153`, `Module 154`, `Module 155`, `@googleapis/chat`, `dotenv`, `zod`, `bcryptjs`, `Appendix B - Canonical Sources (read these before reinventing)`, `Analysis & Synthesis Instructions`, `12. THE COMBINATORIAL VARIATION ENGINE`, `@sparticuz/chromium-min`, `11. REDESIGN PROTOCOL`, `3. DEFAULT ARCHITECTURE & CONVENTIONS`, `33. CATEGORY-SPECIFIC BIAS`, `pngjs`, `Module 239`, `Module 240`, `docx`, `browser-image-compression`, `dotenv`, `@fortawesome/free-solid-svg-icons`, `@radix-ui/react-slot`, `react-easy-crop`?**
   _High betweenness centrality (0.011) - this node is a cross-community bridge._
 - **Why does `jspdf` connect `Admission Management` to `page.jsx`, `�🏗️ **Database Structure**`, `Module 236`?**
   _High betweenness centrality (0.009) - this node is a cross-community bridge._
-- **Why does `Database Schema & Relationships` connect `Module 101` to `bcryptjs`, `Module 103`, `Module 235`, `Module 107`, `Module 108`, `Module 237`, `Module 114`, `Module 115`, `Module 118`, `Module 151`, `SKILL.md`?**
+- **Why does `Database Schema & Relationships` connect `Module 101` to `bcryptjs`, `Module 103`, `Module 107`, `Module 235`, `Module 108`, `Module 237`, `Module 114`, `Module 115`, `Module 118`, `Module 151`, `SKILL.md`?**
   _High betweenness centrality (0.002) - this node is a cross-community bridge._
 - **What connects `extends`, `next/core-web-vitals`, `$schema` to the rest of the system?**
   _1168 weakly-connected nodes found - possible documentation gaps or missing edges._
