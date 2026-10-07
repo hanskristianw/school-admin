@@ -1,6 +1,7 @@
 import { jsPDF } from 'jspdf'
 import JSZip from 'jszip'
 import { supabase } from '@/lib/supabase'
+import autoTable from 'jspdf-autotable'
 
 /**
  * Loads image URL as Base64 data URI
@@ -1896,6 +1897,285 @@ export const renderPypTeacherCommentPage = async (doc, {
 }
 
 /**
+ * Builds the PYP Health Report Card as the final page of the PYP Student Report Card PDF
+ */
+export const renderPypHealthReportPage = async (doc, {
+  studentName = '',
+  studentDOB = '-',
+  className = '',
+  yearName = '',
+  semesterLabel = '',
+  preparedDate = '',
+  healthData = null,
+  nurseName = '',
+  nurseSigBase64 = null,
+  stampBase64 = null,
+  logoBase64 = null
+}) => {
+  try {
+    const pw = doc.internal.pageSize.getWidth()
+    const ph = doc.internal.pageSize.getHeight()
+    const ml = 18
+    const mr = 18
+    const mt = 14
+    const cw = pw - ml - mr
+
+    // 1. Watermark: Subtle school crest in the center background
+    if (logoBase64) {
+      try {
+        const wmH = 75
+        const wmProps = doc.getImageProperties(logoBase64)
+        const wmW = (wmProps.width / wmProps.height) * wmH
+        doc.saveGraphicsState()
+        doc.setGState(new doc.GState({ opacity: 0.05 }))
+        doc.addImage(logoBase64, 'PNG', (pw - wmW) / 2, (ph - wmH) / 2, wmW, wmH)
+        doc.restoreGraphicsState()
+      } catch (e) {}
+    }
+
+    // 2. Top Header: Logo + Title + School Name + Divider Line
+    let hy = mt
+    if (logoBase64) {
+      try {
+        const logoH = 22
+        const imgP = doc.getImageProperties(logoBase64)
+        const logoW = (imgP.width / imgP.height) * logoH
+        doc.addImage(logoBase64, 'PNG', ml, hy, logoW, logoH)
+      } catch (e) {}
+    }
+
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(15)
+    doc.setTextColor(17, 24, 39)
+    doc.text('PYP HEALTH REPORT CARD', pw / 2, hy + 9.5, { align: 'center' })
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(8.5)
+    doc.setTextColor(107, 114, 128)
+    doc.text('Chung Chung Christian School', pw / 2, hy + 15.5, { align: 'center' })
+    hy += 24
+
+    doc.setDrawColor(209, 213, 219)
+    doc.setLineWidth(0.35)
+    doc.line(ml, hy, pw - mr, hy)
+    hy += 3
+
+    // 3. Student Information Metadata Table
+    autoTable(doc, {
+      startY: hy,
+      body: [
+        ['Name:', (studentName || '').toUpperCase()],
+        ['DOB:', studentDOB || '-'],
+        ['Class:', `${className || ''} - ${yearName || ''} ${semesterLabel || ''}`],
+        ['Allergy:', healthData?.allergy || '-'],
+      ],
+      theme: 'plain',
+      styles: {
+        fontSize: 8.5,
+        cellPadding: { top: 1.2, right: 3, bottom: 1.2, left: 3 },
+        lineColor: [209, 213, 219],
+        lineWidth: 0.25,
+        textColor: [31, 41, 55]
+      },
+      columnStyles: {
+        0: { cellWidth: 22, fontStyle: 'bold', textColor: [107, 114, 128] },
+        1: { cellWidth: 'auto' }
+      },
+      margin: { left: ml, right: mr },
+      pageBreak: 'avoid'
+    })
+    hy = doc.lastAutoTable.finalY + 4
+
+    const hHalfW = (cw - 4) / 2
+    const H_BLUE = [37, 99, 235]
+    const H_HEAD_BG = [219, 234, 254]
+    const H_HEAD_TX = [30, 64, 175]
+
+    const drawSectionHdr = (x, y, w, label) => {
+      doc.setFillColor(...H_BLUE)
+      doc.rect(x, y, w, 6, 'F')
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(7.5)
+      doc.setTextColor(255, 255, 255)
+      doc.text(label, x + w / 2, y + 4.2, { align: 'center' })
+    }
+
+    // 4. Physical Check & Growth Development (Side by Side)
+    drawSectionHdr(ml, hy, hHalfW, 'PHYSICAL CHECK')
+    drawSectionHdr(ml + hHalfW + 4, hy, hHalfW, 'GROWTH DEVELOPMENT')
+    hy += 6
+
+    // Left: Physical Check (Month, Mata, Telinga, Gigi, TD)
+    const pcRows = healthData?.physicalChecks && healthData.physicalChecks.length > 0
+      ? healthData.physicalChecks.map(r => [
+          r.month || '',
+          r.eye || '',
+          r.ear || '',
+          r.dental || '',
+          r.blood_pressure || ''
+        ])
+      : [['', '', '', '', '']]
+
+    autoTable(doc, {
+      startY: hy,
+      head: [['MONTH', 'MATA', 'TELINGA', 'GIGI', 'TD']],
+      body: pcRows,
+      theme: 'grid',
+      styles: { fontSize: 7, cellPadding: 1.8, textColor: [31, 41, 55], lineColor: [209, 213, 219], lineWidth: 0.25 },
+      headStyles: { fillColor: H_HEAD_BG, textColor: H_HEAD_TX, fontStyle: 'bold', fontSize: 6.5, halign: 'center' },
+      tableWidth: hHalfW,
+      margin: { left: ml, right: pw - ml - hHalfW },
+      pageBreak: 'avoid'
+    })
+    const hPcY = doc.lastAutoTable.finalY
+
+    // Right: Growth Development (Month, Weight, Height)
+    const gdRows = healthData?.growthRecords && healthData.growthRecords.length > 0
+      ? healthData.growthRecords.map(r => [
+          r.month || '',
+          r.weight != null ? String(r.weight) : '',
+          r.height != null ? String(r.height) : ''
+        ])
+      : [['', '', '']]
+
+    autoTable(doc, {
+      startY: hy,
+      head: [['MONTH', 'WEIGHT (kg)', 'HEIGHT (cm)']],
+      body: gdRows,
+      theme: 'grid',
+      styles: { fontSize: 7, cellPadding: 1.8, textColor: [31, 41, 55], lineColor: [209, 213, 219], lineWidth: 0.25 },
+      headStyles: { fillColor: H_HEAD_BG, textColor: H_HEAD_TX, fontStyle: 'bold', fontSize: 6.5, halign: 'center' },
+      tableWidth: hHalfW,
+      margin: { left: ml + hHalfW + 4, right: mr },
+      pageBreak: 'avoid'
+    })
+    hy = Math.max(hPcY, doc.lastAutoTable.finalY) + 4
+
+    // 5. Immunization Table (Full Width)
+    drawSectionHdr(ml, hy, cw, 'IMMUNIZATION')
+    hy += 6
+
+    const immRows = healthData?.immunizations && healthData.immunizations.length > 0
+      ? healthData.immunizations.map(r => [
+          r.type || '',
+          r.date ? new Date(r.date).toLocaleDateString('en-GB') : ''
+        ])
+      : [['', '']]
+
+    autoTable(doc, {
+      startY: hy,
+      head: [['TYPE', 'DATE']],
+      body: immRows,
+      theme: 'grid',
+      styles: { fontSize: 7, cellPadding: 1.8, textColor: [31, 41, 55], lineColor: [209, 213, 219], lineWidth: 0.25 },
+      headStyles: { fillColor: H_HEAD_BG, textColor: H_HEAD_TX, fontStyle: 'bold', fontSize: 6.5, halign: 'center' },
+      columnStyles: { 0: { cellWidth: cw * 0.65 }, 1: { cellWidth: cw * 0.35 } },
+      margin: { left: ml, right: mr },
+      pageBreak: 'avoid'
+    })
+    hy = doc.lastAutoTable.finalY + 4
+
+    // 6. Health Record Table (Full Width)
+    drawSectionHdr(ml, hy, cw, 'HEALTH RECORD')
+    hy += 6
+
+    const hrRows = healthData?.healthRecords && healthData.healthRecords.length > 0
+      ? healthData.healthRecords.map(r => [
+          r.month || '',
+          r.date_day != null ? String(r.date_day) : '',
+          r.chronology || '',
+          r.treatment || ''
+        ])
+      : [['', '', '', '']]
+
+    autoTable(doc, {
+      startY: hy,
+      head: [['MONTH', 'DATE', 'CHRONOLOGY', 'TREATMENT']],
+      body: hrRows,
+      theme: 'grid',
+      styles: { fontSize: 7, cellPadding: 1.8, textColor: [31, 41, 55], lineColor: [209, 213, 219], lineWidth: 0.25, overflow: 'linebreak' },
+      headStyles: { fillColor: H_HEAD_BG, textColor: H_HEAD_TX, fontStyle: 'bold', fontSize: 6.5, halign: 'center' },
+      columnStyles: { 0: { cellWidth: 18 }, 1: { cellWidth: 14 }, 2: { cellWidth: 'auto' }, 3: { cellWidth: 44 } },
+      margin: { left: ml, right: mr },
+      pageBreak: 'avoid'
+    })
+    hy = doc.lastAutoTable.finalY + 4
+
+    // 7. Notes (Left) + Nurse Signature & Stamp (Right)
+    const notesColW = cw * 0.58
+    const sigColW = cw * 0.38
+    const sigColX = ml + cw - sigColW
+    const hSigCX = sigColX + sigColW / 2
+
+    const notesTextW = notesColW - 8
+    const notesLines = healthData?.notes
+      ? doc.splitTextToSize(healthData.notes.toUpperCase(), notesTextW)
+      : []
+    const sectionH = Math.max(notesLines.length * 4.2 + 12, 42)
+
+    // Left Notes Box
+    drawSectionHdr(ml, hy, notesColW, 'NOTES')
+    const nbY = hy + 6
+    const nbH = sectionH - 6
+    doc.setFillColor(249, 250, 251)
+    doc.rect(ml, nbY, notesColW, nbH, 'F')
+    doc.setDrawColor(209, 213, 219)
+    doc.setLineWidth(0.25)
+    doc.rect(ml, nbY, notesColW, nbH)
+
+    if (notesLines.length > 0) {
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(7.5)
+      doc.setTextColor(31, 41, 55)
+      let ny = nbY + 4.5
+      notesLines.forEach(line => {
+        doc.text(line, ml + 4, ny)
+        ny += 4.2
+      })
+    }
+
+    // Right: Date + Signature + Stamp + Nurse Name
+    const sigStartY = hy
+    const displayDate = preparedDate || new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(8.5)
+    doc.setTextColor(17, 24, 39)
+    doc.text('Surabaya, ' + displayDate, hSigCX, sigStartY + 4.5, { align: 'center' })
+
+    const sigImgY = sigStartY + 7
+    if (nurseSigBase64) {
+      try {
+        const nsH = 15
+        const nsProp = doc.getImageProperties(nurseSigBase64)
+        const nsW = (nsProp.width / nsProp.height) * nsH
+        doc.addImage(nurseSigBase64, 'PNG', hSigCX - nsW / 2, sigImgY, nsW, nsH)
+      } catch (e) {}
+    }
+    if (stampBase64) {
+      try {
+        const stH = 17
+        const stProp = doc.getImageProperties(stampBase64)
+        const stW = (stProp.width / stProp.height) * stH
+        doc.addImage(stampBase64, 'PNG', hSigCX - stW / 2 + 7, sigImgY, stW, stH)
+      } catch (e) {}
+    }
+
+    const nameY = sigImgY + 17 + 2.5
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(8.5)
+    doc.setTextColor(17, 24, 39)
+    doc.text(nurseName || '....................', hSigCX, nameY, { align: 'center' })
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(7.5)
+    doc.text('(School Nurse)', hSigCX, nameY + 4, { align: 'center' })
+
+    // 8. Render Standard PYP Footer (Address & Contact Info)
+    renderPypReportFooter(doc)
+  } catch (err) {
+    console.error('Error rendering PYP Health Report page:', err)
+  }
+}
+
+/**
  * Main handler to generate and open PYP Report PDF for a class & semester
  */
 export const generatePypClassReportPDF = async ({
@@ -2042,6 +2322,7 @@ export const generatePypClassReportPDF = async ({
     let principalTitle = ''
     let preparedDate = ''
     let signatureUrl = null
+    let stampUrl = null
     let reportGreeting = null
 
     try {
@@ -2079,6 +2360,9 @@ export const generatePypClassReportPDF = async ({
         if (rs.signature_principal_url && rs.signature_principal_url.trim() !== '') {
           signatureUrl = rs.signature_principal_url.trim()
         }
+        if (rs.stamp_url && rs.stamp_url.trim() !== '') {
+          stampUrl = rs.stamp_url.trim()
+        }
         const greeting = semester === '1' ? rs.report_greeting_s1 : rs.report_greeting_s2
         if (greeting && greeting.trim() !== '') {
           reportGreeting = greeting.trim()
@@ -2101,6 +2385,65 @@ export const generatePypClassReportPDF = async ({
         }
       } catch (e) {
         console.warn('Custom date parsing fallback:', e)
+      }
+    }
+
+    // 4.1 Fetch School Nurse details for Health Report
+    let nurseName = ''
+    let nurseSignatureUrl = null
+    try {
+      const { data: nurseRoles } = await supabase.from('role').select('role_id').eq('is_nurse', true)
+      if (nurseRoles && nurseRoles.length > 0) {
+        const nurseRoleIds = nurseRoles.map(r => r.role_id)
+        const { data: nurseUser } = await supabase
+          .from('users')
+          .select('user_nama_depan, user_nama_belakang, signature_url')
+          .in('user_role_id', nurseRoleIds)
+          .limit(1)
+          .maybeSingle()
+        if (nurseUser) {
+          nurseName = `${nurseUser.user_nama_depan || ''} ${nurseUser.user_nama_belakang || ''}`.trim()
+          nurseSignatureUrl = nurseUser.signature_url || null
+        }
+      }
+    } catch (e) {
+      console.warn('Error querying school nurse details:', e)
+    }
+
+    // 4.2 Fetch Health Report Cards for all students in batch
+    let healthDataMap = {}
+    if (studentUserIds.length > 0 && yearId) {
+      try {
+        const { data: hrCards } = await supabase
+          .from('health_report_card')
+          .select('*')
+          .in('student_user_id', studentUserIds)
+          .eq('year_id', Number(yearId))
+          .eq('semester', Number(semester))
+
+        if (hrCards && hrCards.length > 0) {
+          const hrCardIds = hrCards.map(h => h.id)
+          const [pcRes, gdRes, immRes, hrRes] = await Promise.all([
+            supabase.from('health_physical_check').select('*').in('health_report_id', hrCardIds).order('id'),
+            supabase.from('health_growth_development').select('*').in('health_report_id', hrCardIds).order('id'),
+            supabase.from('health_immunization').select('*').in('health_report_id', hrCardIds).order('id'),
+            supabase.from('health_record').select('*').in('health_report_id', hrCardIds).order('id')
+          ])
+
+          for (const card of hrCards) {
+            healthDataMap[card.student_user_id] = {
+              allergy: card.allergy || '',
+              notes: card.notes || '',
+              reportType: card.report_type || 'PYP',
+              physicalChecks: (pcRes.data || []).filter(r => r.health_report_id === card.id),
+              growthRecords: (gdRes.data || []).filter(r => r.health_report_id === card.id),
+              immunizations: (immRes.data || []).filter(r => r.health_report_id === card.id),
+              healthRecords: (hrRes.data || []).filter(r => r.health_report_id === card.id)
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('Error fetching health report batch in PYP PDF generator:', err)
       }
     }
 
@@ -2360,7 +2703,9 @@ export const generatePypClassReportPDF = async ({
       kcRespBase64,
       atlHeaderIconBase64,
       subjectHeaderIconBase64,
-      teacherCommentHeaderIconBase64
+      teacherCommentHeaderIconBase64,
+      stampBase64,
+      nurseSigBase64
     ] = await Promise.all([
       loadImgBase64('/images/login-logo.png'),
       loadImgBase64('/images/pyp-descriptor-icon.png'),
@@ -2391,7 +2736,9 @@ export const generatePypClassReportPDF = async ({
       loadImgBase64('/images/kc_responsibility.jpg'),
       loadImgBase64('/images/atl-header-icon.jpg') || loadImgBase64('/images/atl-header-icon.png'),
       loadImgBase64('/images/subject-header-icon.jpg') || loadImgBase64('/images/subject-header-icon.png'),
-      loadImgBase64('/images/teacher-comment-header-icon.png') || loadImgBase64('/images/teacher-comment-header-icon.jpg')
+      loadImgBase64('/images/teacher-comment-header-icon.png') || loadImgBase64('/images/teacher-comment-header-icon.jpg'),
+      stampUrl ? loadImgBase64(stampUrl) : null,
+      nurseSignatureUrl ? loadImgBase64(nurseSignatureUrl) : null
     ])
 
     const lpIcons = {
@@ -2544,6 +2891,34 @@ export const generatePypClassReportPDF = async ({
           headerIconBase64: teacherCommentHeaderIconBase64 || poiHeaderIconBase64 || lpHeaderIconBase64
         })
       }
+
+      // ── Page: PYP Health Report Card (Final Page) ──
+      const studentHealthData = healthDataMap[st.user_id] || {
+        allergy: '',
+        notes: '',
+        reportType: 'PYP',
+        physicalChecks: [],
+        growthRecords: [],
+        immunizations: [],
+        healthRecords: []
+      }
+
+      doc.addPage()
+      await renderPypHealthReportPage(doc, {
+        studentName: fullName,
+        studentDOB: st.user_birth_date
+          ? new Date(st.user_birth_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
+          : '-',
+        className: activeClassName,
+        yearName: yearName || '2025/2026',
+        semesterLabel: semester === '1' ? 'Semester 1' : 'Semester 2',
+        preparedDate: preparedDate,
+        healthData: studentHealthData,
+        nurseName: nurseName,
+        nurseSigBase64: nurseSigBase64,
+        stampBase64: stampBase64,
+        logoBase64: logoBase64
+      })
 
       // Stamp page numbers into footer: "Page X of Y"
       const totalStudentPages = doc.internal.getNumberOfPages()

@@ -2933,8 +2933,8 @@
       "source_location": "L12",
       "_origin": "ast",
       "id": "package_dependencies_fortawesome_fontawesome_svg_core",
-      "community": 329,
-      "community_name": "12. THE COMBINATORIAL VARIATION ENGINE",
+      "community": 133,
+      "community_name": "Module 133",
       "norm_label": "@fortawesome/fontawesome-svg-core"
     },
     {
@@ -2944,8 +2944,8 @@
       "source_location": "L12",
       "_origin": "ast",
       "id": "fortawesome_fontawesome_svg_core",
-      "community": 329,
-      "community_name": "12. THE COMBINATORIAL VARIATION ENGINE",
+      "community": 133,
+      "community_name": "Module 133",
       "norm_label": "@fortawesome/fontawesome-svg-core"
     },
     {
@@ -3197,8 +3197,8 @@
       "source_location": "L24",
       "_origin": "ast",
       "id": "package_dependencies_browser_image_compression",
-      "community": 133,
-      "community_name": "Module 133",
+      "community": 329,
+      "community_name": "12. THE COMBINATORIAL VARIATION ENGINE",
       "norm_label": "browser-image-compression"
     },
     {
@@ -3208,8 +3208,8 @@
       "source_location": "L24",
       "_origin": "ast",
       "id": "browser_image_compression",
-      "community": 133,
-      "community_name": "Module 133",
+      "community": 329,
+      "community_name": "12. THE COMBINATORIAL VARIATION ENGINE",
       "norm_label": "browser-image-compression"
     },
     {
@@ -8683,7 +8683,7 @@
       "label": "MenuTree()",
       "file_type": "code",
       "source_file": "src/app/data/menu_management/page.jsx",
-      "source_location": "L670",
+      "source_location": "L661",
       "_origin": "ast",
       "id": "src_app_data_menu_management_page_menutree",
       "community": 87,
@@ -16441,8 +16441,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "agents_skills_imagegen_frontend_web_skill",
-      "community": 80,
-      "community_name": "Module 80",
+      "community": 391,
+      "community_name": "browser-image-compression",
       "norm_label": "skill.md"
     },
     {
@@ -16452,8 +16452,8 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "agents_skills_imagegen_frontend_web_skill_hard_output_rule_read_first",
-      "community": 80,
-      "community_name": "Module 80",
+      "community": 391,
+      "community_name": "browser-image-compression",
       "norm_label": "hard output rule \u2014 read first"
     },
     {
@@ -16463,8 +16463,8 @@
       "source_location": "L25",
       "_origin": "ast",
       "id": "agents_skills_imagegen_frontend_web_skill_hero_composition_bias_read_first",
-      "community": 80,
-      "community_name": "Module 80",
+      "community": 391,
+      "community_name": "browser-image-compression",
       "norm_label": "hero composition bias \u2014 read first"
     },
     {
@@ -34988,7 +34988,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/app/data/menu_management/page.jsx",
-      "source_location": "L670",
+      "source_location": "L661",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_menu_management_page",

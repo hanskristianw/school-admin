@@ -18,9 +18,11 @@ import {
   faExclamationTriangle,
   faChevronLeft,
   faChevronRight,
-  faInbox
+  faInbox,
+  faGraduationCap
 } from '@fortawesome/free-solid-svg-icons'
 import { generateStudentReportHTML } from '@/app/data/topic-new/lib/pdfGenerators'
+import { generatePypClassReportPDF } from '@/app/data/pyp/lib/pypPdfGenerator'
 
 const MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC']
 
@@ -32,7 +34,7 @@ function DocumentTable({
   onAdd,
   onUpdate,
   onRequestDelete,
-  addLabel = '+ Tambah Baris',
+  addLabel = '+ Baris',
   isDark,
   tokens
 }) {
@@ -91,7 +93,7 @@ function DocumentTable({
         background: tokens.cardBg
       }}
     >
-      {/* Official Blue Banner Header (Exact match with PDF drawHdr) */}
+      {/* Blue Header Banner (Official Report Header) */}
       <div
         className="px-3 py-1.5 text-center font-bold text-white text-xs tracking-wider flex items-center justify-between"
         style={{ background: '#2563EB' }}
@@ -114,7 +116,7 @@ function DocumentTable({
         </div>
       </div>
 
-      {/* Table Content (Exact match with PDF autoTable head/body style) */}
+      {/* Table Content */}
       <div className="overflow-x-auto">
         <table className="w-full border-collapse text-xs">
           <thead>
@@ -127,7 +129,7 @@ function DocumentTable({
               {columns.map((c) => (
                 <th
                   key={c.key}
-                  className="px-2.5 py-1.5 text-left font-bold uppercase text-[10px] tracking-wider border-r last:border-r-0"
+                  className="px-2.5 py-1.5 text-left font-bold uppercase text-[10px] tracking-wider border-r last:border-r-0 whitespace-nowrap"
                   style={{
                     color: isDark ? '#93C5FD' : '#1E40AF',
                     borderColor: tokens.docBorder,
@@ -363,12 +365,43 @@ export default function HealthReportPage() {
 
   // ─── Filters & Selectors ──────────────────────────────────────────
   const [years, setYears] = useState([])
+  const [units, setUnits] = useState([])
   const [kelasOptions, setKelasOptions] = useState([])
   const [students, setStudents] = useState([])
   const [selYear, setSelYear] = useState('')
   const [selSem, setSelSem] = useState('1')
   const [selKelas, setSelKelas] = useState('')
   const [selStudent, setSelStudent] = useState('')
+
+  // Report Type: 'PYP' or 'MYP'
+  const [reportType, setReportType] = useState('PYP')
+
+  // ─── Group & Sort Classes into PYP and MYP Alphabetically ──────────
+  const groupedKelas = useMemo(() => {
+    const pyp = []
+    const myp = []
+
+    kelasOptions.forEach((k) => {
+      const unitObj = units.find((u) => u.unit_id === k.kelas_unit_id)
+      const isMyp = unitObj ? Boolean(unitObj.is_myp) : k.kelas_unit_id === 2
+      if (isMyp) {
+        myp.push(k)
+      } else {
+        pyp.push(k)
+      }
+    })
+
+    const sortFn = (a, b) =>
+      (a.kelas_nama || '').localeCompare(b.kelas_nama || '', undefined, {
+        numeric: true,
+        sensitivity: 'base'
+      })
+
+    pyp.sort(sortFn)
+    myp.sort(sortFn)
+
+    return { pyp, myp }
+  }, [kelasOptions, units])
 
   // ─── Report Data ──────────────────────────────────────────────────
   const [healthReport, setHealthReport] = useState(null)
@@ -401,34 +434,38 @@ export default function HealthReportPage() {
     setTimeout(() => setToast(null), 3000)
   }
 
-  // ─── 1. Load Academic Years & Automatically Select Active Year ─────
+  // ─── 1. Load Academic Years & Units on Mount ──────────────────────
   useEffect(() => {
-    const fetchYears = async () => {
-      const { data: resYears } = await supabase
-        .from('year')
-        .select('year_id, year_name, start_date, end_date')
-        .order('year_name', { ascending: false })
+    const fetchInitialData = async () => {
+      const [resYears, resUnits] = await Promise.all([
+        supabase.from('year').select('year_id, year_name, start_date, end_date').order('year_name', { ascending: false }),
+        supabase.from('unit').select('unit_id, unit_name, is_pyp, is_myp')
+      ])
 
-      if (resYears && resYears.length > 0) {
-        setYears(resYears)
+      if (resUnits.data) {
+        setUnits(resUnits.data)
+      }
 
-        // Otomatis tentukan tahun ajaran yang sedang aktif hari ini (sama persis dengan /data/pyp)
+      if (resYears.data && resYears.data.length > 0) {
+        setYears(resYears.data)
+
+        // Otomatis tentukan tahun ajaran yang sedang aktif hari ini
         const todayStr = new Date().toISOString().split('T')[0]
-        const currentActiveYear = resYears.find((y) => {
+        const currentActiveYear = resYears.data.find((y) => {
           if (!y.start_date || !y.end_date) return false
           return todayStr >= y.start_date && todayStr <= y.end_date
         })
 
-        const targetYear = currentActiveYear || resYears[0]
+        const targetYear = currentActiveYear || resYears.data[0]
         setSelYear(String(targetYear.year_id))
 
-        // Otomatis tentukan semester berdasarkan kalender sekolah (Juli-Desember = Sem 1, Jan-Juni = Sem 2)
+        // Otomatis tentukan semester kalender (Juli-Desember = Sem 1, Jan-Juni = Sem 2)
         const currentMonth = new Date().getMonth() + 1
         const defaultSemester = currentMonth >= 7 ? '1' : '2'
         setSelSem(defaultSemester)
       }
     }
-    fetchYears()
+    fetchInitialData()
   }, [])
 
   // ─── 2. Load Classes when Year changes ────────────────────────────
@@ -440,7 +477,7 @@ export default function HealthReportPage() {
     }
     supabase
       .from('kelas')
-      .select('kelas_id, kelas_nama')
+      .select('kelas_id, kelas_nama, kelas_unit_id')
       .eq('kelas_year_id', selYear)
       .order('kelas_nama')
       .then(({ data }) => {
@@ -449,7 +486,21 @@ export default function HealthReportPage() {
       })
   }, [selYear])
 
-  // ─── 3. Load Students when Class changes ──────────────────────────
+  // ─── 3. Auto-Detect PYP vs MYP based on Selected Class ────────────
+  useEffect(() => {
+    if (!selKelas) return
+    const selClassObj = kelasOptions.find((k) => String(k.kelas_id) === String(selKelas))
+    if (selClassObj) {
+      const unitObj = units.find((u) => u.unit_id === selClassObj.kelas_unit_id)
+      if (unitObj?.is_myp || selClassObj.kelas_unit_id === 2) {
+        setReportType('MYP')
+      } else {
+        setReportType('PYP')
+      }
+    }
+  }, [selKelas, kelasOptions, units])
+
+  // ─── 4. Load Students when Class changes ──────────────────────────
   useEffect(() => {
     if (!selKelas) {
       setStudents([])
@@ -491,14 +542,14 @@ export default function HealthReportPage() {
     load()
   }, [selKelas])
 
-  // ─── 4. Load Report when selection is complete ────────────────────
+  // ─── 5. Load Report when selection is complete ────────────────────
   useEffect(() => {
     if (selStudent && selYear && selSem) {
       loadReport()
     } else {
       clearReport()
     }
-  }, [selStudent, selYear, selSem])
+  }, [selStudent, selYear, selSem, reportType])
 
   const fetchSections = async (rid) => {
     const [a, b, c, d] = await Promise.all([
@@ -535,13 +586,21 @@ export default function HealthReportPage() {
               student_user_id: +selStudent,
               kelas_id: +selKelas,
               year_id: +selYear,
-              semester: +selSem
+              semester: +selSem,
+              report_type: reportType
             }
           ])
           .select()
           .single()
         if (error) throw error
         report = nr
+      } else if (report.report_type !== reportType) {
+        // Ensure report record reflects the true class curriculum
+        report.report_type = reportType
+        await supabase
+          .from('health_report_card')
+          .update({ report_type: reportType })
+          .eq('id', report.id)
       }
 
       setHealthReport(report)
@@ -667,9 +726,41 @@ export default function HealthReportPage() {
     }
   }
 
+  const yearName = years.find((y) => String(y.year_id) === String(selYear))?.year_name || '—'
+  const kelasName = kelasOptions.find((k) => String(k.kelas_id) === String(selKelas))?.kelas_nama || '—'
+
   // ─── Preview / Print PDF Report ───────────────────────────────────
   const handlePreviewReport = async () => {
     const stu = students.find((s) => String(s.user_id) === String(selStudent))
+    if (!stu) {
+      showToast('Siswa belum dipilih.', 'error')
+      return
+    }
+
+    // ── If PYP Curriculum: direct to generatePypClassReportPDF (same as in /data/pyp) ──
+    if (reportType === 'PYP') {
+      try {
+        setLoadingReport(true)
+        await generatePypClassReportPDF({
+          classId: selKelas,
+          className: kelasName,
+          yearId: selYear,
+          yearName: yearName,
+          semester: selSem,
+          targetStudentId: selStudent,
+          onLoading: setLoadingReport,
+          onError: (err) => showToast(err?.message || String(err), 'error')
+        })
+      } catch (err) {
+        console.error('Error generating PYP PDF in health report:', err)
+        showToast(err?.message || 'Gagal menghasilkan report PDF PYP', 'error')
+      } finally {
+        setLoadingReport(false)
+      }
+      return
+    }
+
+    // ── If MYP Curriculum: direct to generateStudentReportHTML ──
     if (!stu?.detail_siswa_id) {
       showToast('ID siswa tidak ditemukan.', 'error')
       return
@@ -695,9 +786,6 @@ export default function HealthReportPage() {
     })
   }
 
-  const yearName = years.find((y) => String(y.year_id) === String(selYear))?.year_name || '—'
-  const kelasName = kelasOptions.find((k) => String(k.kelas_id) === String(selKelas))?.kelas_nama || '—'
-
   const formatDob = (iso) => {
     if (!iso) return '—'
     const d = new Date(iso)
@@ -710,12 +798,52 @@ export default function HealthReportPage() {
     year: 'numeric'
   })
 
+  // ─── Define Columns based on PYP vs MYP ────────────────────────────
+  const growthColumns = useMemo(() => {
+    if (reportType === 'PYP') {
+      return [
+        { key: 'month', label: 'MONTH', type: 'select', width: '75px' },
+        { key: 'weight', label: 'BB (kg)', type: 'number', width: '110px' },
+        { key: 'height', label: 'TB (cm)', type: 'number', width: '110px' }
+      ]
+    }
+    return [
+      { key: 'month', label: 'MONTH', type: 'select', width: '75px' },
+      { key: 'height', label: 'TB (cm)', type: 'number', width: '110px' },
+      { key: 'weight', label: 'BB (kg)', type: 'number', width: '110px' }
+    ]
+  }, [reportType])
+
+  const physicalColumns = useMemo(() => {
+    if (reportType === 'PYP') {
+      return [
+        { key: 'month', label: 'MONTH', type: 'select', width: '75px' },
+        { key: 'eye', label: 'MATA (Ka/Ki)' },
+        { key: 'ear', label: 'TELINGA' },
+        { key: 'dental', label: 'GIGI' },
+        { key: 'blood_pressure', label: 'TD', width: '85px' }
+      ]
+    }
+    return [
+      { key: 'month', label: 'MONTH', type: 'select', width: '65px' },
+      { key: 'eye', label: 'EYE' },
+      { key: 'ear', label: 'EAR' },
+      { key: 'dental', label: 'DENTAL' },
+      { key: 'blood_pressure', label: 'TD', width: '75px' },
+      { key: 'gda', label: 'GDA', width: '65px' },
+      { key: 'hb', label: 'HB', width: '65px' },
+      { key: 'color_blindness', label: 'BUTA WARNA' },
+      { key: 'nails', label: 'NAILS' },
+      { key: 'hair', label: 'HAIR' }
+    ]
+  }, [reportType])
+
   return (
     <div
       className="w-full px-4 md:px-6 py-5 min-h-screen"
       style={{ background: tokens.pageBg, color: tokens.textPrimary }}
     >
-      {/* ── BREADCRUMB & HEADER (Full Width, style /data/pyp) ───────── */}
+      {/* ── BREADCRUMB & HEADER (Full Width) ────────────────────────── */}
       <div className="mb-4">
         <div
           className="flex items-center gap-2 text-[10px] font-mono tracking-wider uppercase mb-1"
@@ -726,7 +854,7 @@ export default function HealthReportPage() {
           <span>[HEALTH]</span>
           <span>/</span>
           <span className="font-semibold" style={{ color: tokens.accentColor }}>
-            [HEALTH REPORT CARD]
+            [{reportType} HEALTH REPORT CARD]
           </span>
         </div>
 
@@ -770,7 +898,7 @@ export default function HealthReportPage() {
         </div>
       </div>
 
-      {/* ── TOP CONTROL TOOLBAR (Full Width like Toddle / ManageBac) ── */}
+      {/* ── TOP CONTROL TOOLBAR (AUTO-DETECT CURRICULUM FROM CLASS) ─── */}
       <div
         className="p-3 rounded border mb-6"
         style={{
@@ -779,9 +907,9 @@ export default function HealthReportPage() {
           borderRadius: '8px'
         }}
       >
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          {/* 1. Academic Year (Otomatis tahun berjalan) */}
-          <div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3">
+          {/* 1. Academic Year */}
+          <div className="col-span-1 lg:col-span-3 min-w-0">
             <label
               className="text-[10px] font-mono uppercase block mb-1 font-bold"
               style={{ color: tokens.accentColor }}
@@ -791,7 +919,7 @@ export default function HealthReportPage() {
             <select
               value={selYear}
               onChange={(e) => setSelYear(e.target.value)}
-              className="w-full px-2.5 py-1.5 text-xs font-mono rounded border outline-none cursor-pointer font-bold"
+              className="w-full px-2.5 py-1.5 text-xs font-mono rounded border outline-none cursor-pointer font-bold truncate"
               style={{
                 background: isDark ? '#18181B' : '#FFFFFF',
                 borderColor: tokens.borderColor,
@@ -809,7 +937,7 @@ export default function HealthReportPage() {
           </div>
 
           {/* 2. Semester Switcher */}
-          <div>
+          <div className="col-span-1 lg:col-span-2 min-w-0">
             <label
               className="text-[10px] font-mono uppercase block mb-1 font-bold"
               style={{ color: tokens.accentColor }}
@@ -842,7 +970,7 @@ export default function HealthReportPage() {
                   transition: 'all 0.15s ease'
                 }}
               >
-                Semester 1
+                Sem 1
               </button>
               <button
                 type="button"
@@ -860,13 +988,13 @@ export default function HealthReportPage() {
                   transition: 'all 0.15s ease'
                 }}
               >
-                Semester 2
+                Sem 2
               </button>
             </div>
           </div>
 
-          {/* 3. Class Selector */}
-          <div>
+          {/* 3. Class Selector Grouped into PYP & MYP */}
+          <div className="col-span-1 lg:col-span-3 min-w-0">
             <label
               className="text-[10px] font-mono uppercase block mb-1 font-bold"
               style={{ color: tokens.accentColor }}
@@ -877,7 +1005,7 @@ export default function HealthReportPage() {
               value={selKelas}
               onChange={(e) => setSelKelas(e.target.value)}
               disabled={!selYear}
-              className="w-full px-2.5 py-1.5 text-xs font-mono rounded border outline-none cursor-pointer font-bold"
+              className="w-full px-2.5 py-1.5 text-xs font-mono rounded border outline-none cursor-pointer font-bold truncate"
               style={{
                 background: isDark ? '#18181B' : '#FFFFFF',
                 borderColor: tokens.borderColor,
@@ -886,28 +1014,48 @@ export default function HealthReportPage() {
               }}
             >
               <option value="">Select Class</option>
-              {kelasOptions.map((k) => (
-                <option key={k.kelas_id} value={k.kelas_id}>
-                  {k.kelas_nama}
-                </option>
-              ))}
+              {groupedKelas.pyp.length > 0 && (
+                <optgroup label="PYP">
+                  {groupedKelas.pyp.map((k) => (
+                    <option key={k.kelas_id} value={k.kelas_id}>
+                      {k.kelas_nama}
+                    </option>
+                  ))}
+                </optgroup>
+              )}
+              {groupedKelas.myp.length > 0 && (
+                <optgroup label="MYP">
+                  {groupedKelas.myp.map((k) => (
+                    <option key={k.kelas_id} value={k.kelas_id}>
+                      {k.kelas_nama}
+                    </option>
+                  ))}
+                </optgroup>
+              )}
             </select>
           </div>
 
-          {/* 4. Student Selector with Quick Switchers (Toddle / ManageBac style) */}
-          <div>
+          {/* 4. Student Selector with Quick Switchers */}
+          <div className="col-span-1 sm:col-span-2 lg:col-span-4 min-w-0">
             <label
               className="text-[10px] font-mono uppercase block mb-1 font-bold"
               style={{ color: tokens.accentColor }}
             >
               4. Student ({students.length})
             </label>
-            <div className="flex items-center gap-1">
+            <div
+              className="flex items-center rounded border overflow-hidden w-full min-w-0"
+              style={{
+                borderColor: tokens.borderColor,
+                background: isDark ? '#18181B' : '#FFFFFF',
+                borderRadius: '4px'
+              }}
+            >
               <button
                 type="button"
                 onClick={handlePrevStudent}
                 disabled={currentStudentIdx <= 0}
-                className="px-2 py-1.5 text-xs rounded border transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                className="shrink-0 px-2.5 py-1.5 text-xs transition-colors disabled:opacity-30 disabled:cursor-not-allowed border-r"
                 style={{
                   background: tokens.cardBgAlt,
                   borderColor: tokens.borderColor,
@@ -922,12 +1070,9 @@ export default function HealthReportPage() {
                 value={selStudent}
                 onChange={(e) => setSelStudent(e.target.value)}
                 disabled={!selKelas}
-                className="flex-1 px-2 py-1.5 text-xs font-mono rounded border outline-none cursor-pointer font-bold truncate"
+                className="flex-1 min-w-0 w-0 px-2.5 py-1.5 text-xs font-mono outline-none cursor-pointer font-bold truncate bg-transparent border-none"
                 style={{
-                  background: isDark ? '#18181B' : '#FFFFFF',
-                  borderColor: tokens.borderColor,
-                  color: tokens.textPrimary,
-                  borderRadius: '4px'
+                  color: tokens.textPrimary
                 }}
               >
                 <option value="">Select Student</option>
@@ -942,7 +1087,7 @@ export default function HealthReportPage() {
                 type="button"
                 onClick={handleNextStudent}
                 disabled={currentStudentIdx >= students.length - 1 || currentStudentIdx === -1}
-                className="px-2 py-1.5 text-xs rounded border transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                className="shrink-0 px-2.5 py-1.5 text-xs transition-colors disabled:opacity-30 disabled:cursor-not-allowed border-l"
                 style={{
                   background: tokens.cardBgAlt,
                   borderColor: tokens.borderColor,
@@ -974,12 +1119,12 @@ export default function HealthReportPage() {
             style={{ color: tokens.accentColor }}
           />
           <div className="text-xs font-mono" style={{ color: tokens.textSecondary }}>
-            Memuat lembar rapor kesehatan siswa...
+            Memuat lembar rapor kesehatan {reportType} siswa...
           </div>
         </div>
       )}
 
-      {/* ── EMPTY STATE (Prompt to select class & student) ───────────── */}
+      {/* ── EMPTY STATE ─────────────────────────────────────────────── */}
       {!loading && !selStudent && (
         <div
           className="p-12 text-center rounded border"
@@ -999,7 +1144,7 @@ export default function HealthReportPage() {
         </div>
       )}
 
-      {/* ── WYSIWYG DOCUMENT SHEET (What You See Is What You Get) ────── */}
+      {/* ── WYSIWYG DOCUMENT SHEET (PYP / MYP ACCORDING TO SELECTION) ─ */}
       {healthReport && !loading && (
         <div
           className="w-full border rounded shadow-xs p-5 md:p-8 space-y-6 transition-all"
@@ -1009,20 +1154,20 @@ export default function HealthReportPage() {
             borderRadius: '6px'
           }}
         >
-          {/* 1. DOCUMENT HEADER (Identical to PDF Report Header) */}
+          {/* 1. DOCUMENT HEADER */}
           <div className="text-center pb-4 border-b" style={{ borderColor: tokens.docBorder }}>
             <h2
               className="text-lg md:text-xl font-bold tracking-wider text-gray-900 dark:text-gray-100 uppercase"
               style={{ letterSpacing: '0.05em' }}
             >
-              HEALTH REPORT CARD
+              {reportType} HEALTH REPORT CARD
             </h2>
             <p className="text-xs text-gray-500 font-medium tracking-wide mt-0.5">
               Chung Chung Christian School
             </p>
           </div>
 
-          {/* 2. STUDENT INFORMATION (Identical to PDF Report Table) */}
+          {/* 2. STUDENT INFORMATION */}
           <div
             className="border text-xs rounded overflow-hidden"
             style={{ borderColor: tokens.docBorder }}
@@ -1117,17 +1262,12 @@ export default function HealthReportPage() {
             </div>
           </div>
 
-          {/* 3. PHYSICAL CHECK & GROWTH DEVELOPMENT (Side by Side Grid in PDF) */}
+          {/* 3. PHYSICAL CHECK & GROWTH DEVELOPMENT (PYP or MYP formatted) */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
             {/* PHYSICAL CHECK TABLE */}
             <DocumentTable
-              title="PHYSICAL CHECK"
-              columns={[
-                { key: 'month', label: 'MONTH', type: 'select', width: '75px' },
-                { key: 'ear', label: 'EAR' },
-                { key: 'hair', label: 'HAIR' },
-                { key: 'nails', label: 'NAILS' }
-              ]}
+              title={reportType === 'PYP' ? 'PHYSICAL CHECK' : 'CLINICAL & PHYSICAL CHECK'}
+              columns={physicalColumns}
               rows={physicalChecks}
               onAdd={(d) => addRow('health_physical_check', d, setPhysicalChecks)}
               onUpdate={(id, d) => updateRow('health_physical_check', id, d, setPhysicalChecks)}
@@ -1147,11 +1287,7 @@ export default function HealthReportPage() {
             {/* GROWTH DEVELOPMENT TABLE */}
             <DocumentTable
               title="GROWTH DEVELOPMENT"
-              columns={[
-                { key: 'month', label: 'MONTH', type: 'select', width: '75px' },
-                { key: 'height', label: 'HEIGHT (cm)', type: 'number', width: '110px' },
-                { key: 'weight', label: 'WEIGHT (kg)', type: 'number', width: '110px' }
-              ]}
+              columns={growthColumns}
               rows={growthRecords}
               onAdd={(d) => addRow('health_growth_development', d, setGrowthRecords)}
               onUpdate={(id, d) => updateRow('health_growth_development', id, d, setGrowthRecords)}
@@ -1169,7 +1305,7 @@ export default function HealthReportPage() {
             />
           </div>
 
-          {/* 4. IMMUNIZATION TABLE (Full Width in PDF) */}
+          {/* 4. IMMUNIZATION TABLE (Full Width) */}
           <DocumentTable
             title="IMMUNIZATION"
             columns={[
@@ -1192,7 +1328,7 @@ export default function HealthReportPage() {
             tokens={tokens}
           />
 
-          {/* 5. HEALTH RECORD TABLE (Full Width in PDF) */}
+          {/* 5. HEALTH RECORD TABLE (Full Width) */}
           <DocumentTable
             title="HEALTH RECORD"
             columns={[
@@ -1217,7 +1353,7 @@ export default function HealthReportPage() {
             tokens={tokens}
           />
 
-          {/* 6. BOTTOM SECTION: NOTES & SIGNATURE (Side by Side in PDF) */}
+          {/* 6. BOTTOM SECTION: NOTES & SIGNATURE */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 pt-2">
             {/* Left: Notes (col-span-7) */}
             <div
@@ -1326,7 +1462,7 @@ export default function HealthReportPage() {
           >
             <button
               onClick={() => setDeleteModal({ isOpen: false, table: '', id: null, title: '', setter: null })}
-              className="px-3 py-1.5 rounded text-xs font-medium border"
+              className="px-3.5 py-1.5 rounded text-xs font-medium border"
               style={{
                 background: 'transparent',
                 borderColor: tokens.borderColor,

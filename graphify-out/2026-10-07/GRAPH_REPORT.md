@@ -1,11 +1,11 @@
 # Graph Report - school-admin  (2026-10-07)
 
 ## Corpus Check
-- 416 files · ~717,520 words
+- 416 files · ~717,460 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 2329 nodes · 2428 edges · 394 communities (277 shown, 117 thin omitted)
+- 2329 nodes · 2428 edges · 395 communities (277 shown, 118 thin omitted)
 - Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 7 edges (avg confidence: 0.63)
 - Token cost: 0 input · 0 output
 
@@ -294,6 +294,7 @@
 - page.jsx
 - react-dom
 - page.jsx
+- browser-image-compression
 - pdf-lib
 
 ## God Nodes (most connected - your core abstractions)
@@ -323,7 +324,7 @@
 ## Import Cycles
 - None detected.
 
-## Communities (394 total, 117 thin omitted)
+## Communities (395 total, 118 thin omitted)
 
 ### Community 0 - "Admission Management"
 Cohesion: 0.06
@@ -570,8 +571,8 @@ Cohesion: 0.11
 Nodes (17): aliases, components, hooks, lib, ui, utils, iconLibrary, rsc (+9 more)
 
 ### Community 80 - "Module 80"
-Cohesion: 0.12
-Nodes (16): 10. SECTION RHYTHM RULE, 12. DENSITY & SPACING DISCIPLINE, 14. IMAGE / MEDIA DIRECTION, 16. MULTI-IMAGE CONSISTENCY RULE, 17. CLARITY CHECK, 19. RESPONSE BEHAVIOR, 1. ACTIVE BASELINE CONFIGURATION, 21. FINAL GOAL (+8 more)
+Cohesion: 0.14
+Nodes (14): 10. SECTION RHYTHM RULE, 12. DENSITY & SPACING DISCIPLINE, 14. IMAGE / MEDIA DIRECTION, 16. MULTI-IMAGE CONSISTENCY RULE, 17. CLARITY CHECK, 19. RESPONSE BEHAVIOR, 1. ACTIVE BASELINE CONFIGURATION, 21. FINAL GOAL (+6 more)
 
 ### Community 81 - "Module 81"
 Cohesion: 0.12
@@ -739,7 +740,7 @@ Nodes (7): 33. CATEGORY-SPECIFIC BIAS, Commerce, Fintech, Health / Fitness, Prod
 
 ### Community 133 - "Module 133"
 Cohesion: 0.18
-Nodes (11): bcryptjs, browser-image-compression, @hookform/resolvers, dependencies, bcryptjs, browser-image-compression, @hookform/resolvers, @radix-ui/react-select (+3 more)
+Nodes (11): bcryptjs, @fortawesome/fontawesome-svg-core, @hookform/resolvers, dependencies, bcryptjs, @fortawesome/fontawesome-svg-core, @hookform/resolvers, @radix-ui/react-select (+3 more)
 
 ### Community 135 - "Module 135"
 Cohesion: 0.29
@@ -980,7 +981,7 @@ Nodes (3): AthleticDayLivePage(), isLightColor(), normalizeTeamColor()
 ## Knowledge Gaps
 - **1175 isolated node(s):** `extends`, `next/core-web-vitals`, `$schema`, `style`, `rsc` (+1170 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **117 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **118 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_

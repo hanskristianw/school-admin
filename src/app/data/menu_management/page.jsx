@@ -88,7 +88,7 @@ export default function MenuManagementPage() {
       menu_path: '', 
       menu_icon: '', 
       menu_order: (menus.length + 1) * 10, 
-      menu_parent_id: selectedMenu?.menu_id || null,
+      menu_parent_id: null,
       menu_show_dashboard: false
     })
     setShowEdit(true)
@@ -602,6 +602,15 @@ export default function MenuManagementPage() {
                 .map(m => (
                   <option key={m.menu_id} value={m.menu_id}>[ROOT #{m.menu_id}] {m.menu_name}</option>
                 ))}
+              {/* Safeguard: If current parent_id is not a root menu, render it explicitly so it never falsely displays 'None' */}
+              {form.menu_parent_id != null && !menus.some(m => m.menu_parent_id == null && m.menu_id === form.menu_parent_id) && (() => {
+                const parentObj = menus.find(m => m.menu_id === form.menu_parent_id)
+                return (
+                  <option key={form.menu_parent_id} value={form.menu_parent_id}>
+                    ⚠️ [SUBMENU #{form.menu_parent_id}] {parentObj?.menu_name || 'Parent #' + form.menu_parent_id}
+                  </option>
+                )
+              })()}
             </select>
           </div>
 

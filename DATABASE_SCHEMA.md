@@ -2578,6 +2578,156 @@ The API `/api/athletic-day` implements automatic dual-mode persistence:
 1. **Dedicated Database Tables**: Used when `athletic_events`, `athletic_teams`, and `athletic_scores` are present in Supabase (`migrations/create-athletic-day-tables.sql`).
 2. **Settings Store Fallback**: If dedicated tables are not yet created (error `42P01`), data is stored atomically as structured JSON in the existing `settings` table (`key: 'athletic_day_data'`). This ensures 100% out-of-the-box operation.
 
+---
+
+## 17. Health & Medical Report Domain (`/data/health_report`)
+
+This domain manages student periodic health evaluations, physical growth monitoring, medical check-ups (Growth Checks), immunization tracking, and clinic incident records. The module caters to two distinct school curricula:
+1. **PYP Health Report (Early Years & Elementary):** Focuses on physical development (Height, Weight, Eyes/Visus, Ears, Dental, Blood Pressure), immunizations, and clinic incidents without invasive blood tests.
+2. **MYP Health Report (Middle Years / Secondary):** Extends the evaluation to adolescent laboratory screenings including Random Blood Glucose (GDA), Hemoglobin (HB), Color Blindness, Blood Pressure, Personal Hygiene (Hair, Nails), and Dental health.
+
+### 17.1 Tables
+
+#### `health_report_card`
+Primary report card header linking a student to an academic year, semester, class, and curriculum report type.
+
+| Column Name | Type | Description / Constraint |
+| --- | --- | --- |
+| `id` | `SERIAL` | Primary Key |
+| `student_user_id` | `BIGINT` | Foreign Key to `users(user_id)` ON DELETE CASCADE |
+| `kelas_id` | `BIGINT` | Foreign Key to `kelas(kelas_id)` ON DELETE CASCADE |
+| `year_id` | `BIGINT` | Foreign Key to `year(year_id)` ON DELETE CASCADE |
+| `semester` | `SMALLINT` | Semester evaluation period (`1` or `2`) |
+| `report_type` | `VARCHAR(10)` | Curriculum type (`'PYP'` or `'MYP'`). Default `'PYP'` |
+| `allergy` | `TEXT` | Medical allergy warnings (e.g. peanuts, penicillin, seafood) |
+| `notes` | `TEXT` | Health observation notes and homeroom/nurse comments |
+| `created_at` | `TIMESTAMPTZ` | Record creation timestamp |
+| `updated_at` | `TIMESTAMPTZ` | Record last update timestamp |
+| `(student_user_id, year_id, semester)` | `UNIQUE` | Unique constraint per student, academic year, and semester |
+
+#### `health_growth_development`
+Periodic height and weight growth tracking records throughout the academic term.
+
+| Column Name | Type | Description / Constraint |
+| --- | --- | --- |
+| `id` | `SERIAL` | Primary Key |
+| `health_report_id` | `INTEGER` | Foreign Key to `health_report_card(id)` ON DELETE CASCADE |
+| `month` | `VARCHAR(10)` | Month abbreviation (e.g. `'JAN'`, `'FEB'`, `'AUG'`) |
+| `height` | `NUMERIC` | Height / Tinggi Badan in cm (TB) |
+| `weight` | `NUMERIC` | Weight / Berat Badan in kg (BB) |
+| `created_at` | `TIMESTAMPTZ` | Record creation timestamp |
+| `updated_at` | `TIMESTAMPTZ` | Record last update timestamp |
+
+#### `health_physical_check`
+Clinical and physical examination records. Accommodates both PYP and MYP parameters.
+
+| Column Name | Type | Description / Constraint |
+| --- | --- | --- |
+| `id` | `SERIAL` | Primary Key |
+| `health_report_id` | `INTEGER` | Foreign Key to `health_report_card(id)` ON DELETE CASCADE |
+| `month` | `VARCHAR(10)` | Month abbreviation (e.g. `'AUG'`, `'JAN'`) |
+| `ear` | `VARCHAR(100)` | Ear condition (e.g. `"Clean"`, `"Serumen"`, `"Serumen -/+"`) |
+| `eye` | `VARCHAR(100)` | Eye visual acuity / visus (e.g. `"Normal"`, `"Ka Ki 5/20"`, `"KC Normal"`) |
+| `dental` | `VARCHAR(100)` | Dental health condition (e.g. `"Normal"`, `"Karies"`) |
+| `blood_pressure` | `VARCHAR(50)` | Blood pressure / TD (e.g. `"90/60"`, `"120/80"`) |
+| `hair` | `VARCHAR(100)` | Hair cleanliness & hygiene (MYP) |
+| `nails` | `VARCHAR(100)` | Nails hygiene & trim condition (MYP) |
+| `gda` | `VARCHAR(50)` | Random Blood Glucose / Gula Darah Acak in mg/dL (MYP adolescent screening) |
+| `hb` | `VARCHAR(50)` | Hemoglobin level in g/dL for anemia screening (MYP) |
+| `color_blindness` | `VARCHAR(50)` | Color vision screening test (e.g. `"Normal"`, `"Parsial"`) (MYP) |
+| `created_at` | `TIMESTAMPTZ` | Record creation timestamp |
+| `updated_at` | `TIMESTAMPTZ` | Record last update timestamp |
+
+#### `health_immunization`
+Immunization and vaccination history for the student.
+
+| Column Name | Type | Description / Constraint |
+| --- | --- | --- |
+| `id` | `SERIAL` | Primary Key |
+| `health_report_id` | `INTEGER` | Foreign Key to `health_report_card(id)` ON DELETE CASCADE |
+| `type` | `VARCHAR(150)` | Vaccine / Immunization type (e.g. `"Hepatitis B"`, `"Polio"`, `"MMR"`) |
+| `date` | `DATE` | Administration date |
+| `created_at` | `TIMESTAMPTZ` | Record creation timestamp |
+| `updated_at` | `TIMESTAMPTZ` | Record last update timestamp |
+
+#### `health_record`
+School clinic visit log and emergency health incidents during school hours.
+
+| Column Name | Type | Description / Constraint |
+| --- | --- | --- |
+| `id` | `SERIAL` | Primary Key |
+| `health_report_id` | `INTEGER` | Foreign Key to `health_report_card(id)` ON DELETE CASCADE |
+| `month` | `VARCHAR(10)` | Month abbreviation |
+| `date_day` | `INTEGER` | Day of the incident (1–31) |
+| `chronology` | `TEXT` | Chronology of symptoms, complaints, or accidents |
+| `treatment` | `TEXT` | Medical treatment or first aid administered by the clinic |
+| `created_at` | `TIMESTAMPTZ` | Record creation timestamp |
+| `updated_at` | `TIMESTAMPTZ` | Record last update timestamp |
+
+### 17.2 ERD / Relationships (Health Report Domain)
+
+```mermaid
+erDiagram
+    users ||--o{ health_report_card : "has_health_card"
+    kelas ||--o{ health_report_card : "enrolled_class"
+    year ||--o{ health_report_card : "academic_year"
+    health_report_card ||--o{ health_growth_development : "contains_growth"
+    health_report_card ||--o{ health_physical_check : "contains_physical"
+    health_report_card ||--o{ health_immunization : "contains_immunization"
+    health_report_card ||--o{ health_record : "contains_incidents"
+
+    health_report_card {
+        int id PK
+        bigint student_user_id FK
+        bigint kelas_id FK
+        bigint year_id FK
+        smallint semester
+        string report_type
+        text allergy
+        text notes
+    }
+
+    health_growth_development {
+        int id PK
+        int health_report_id FK
+        string month
+        numeric height
+        numeric weight
+    }
+
+    health_physical_check {
+        int id PK
+        int health_report_id FK
+        string month
+        string ear
+        string eye
+        string dental
+        string blood_pressure
+        string hair
+        string nails
+        string gda
+        string hb
+        string color_blindness
+    }
+
+    health_immunization {
+        int id PK
+        int health_report_id FK
+        string type
+        date date
+    }
+
+    health_record {
+        int id PK
+        int health_report_id FK
+        string month
+        int date_day
+        text chronology
+        text treatment
+    }
+```
+
+
 
 
 

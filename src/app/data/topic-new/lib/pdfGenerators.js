@@ -3563,6 +3563,7 @@ if (includeCpPage && cpRows.length > 0) {
 // ── HEALTH REPORT CARD PAGE ───────────────────────────────────────────────
 if (healthData) {
   doc.addPage();
+  const isMypReport = healthData.reportType === 'MYP';
 
   if (logoBase64) {
     try {
@@ -3590,7 +3591,7 @@ if (healthData) {
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(16);
   doc.setTextColor(17, 24, 39);
-  doc.text('HEALTH REPORT CARD', pw / 2, hy + 12, { align: 'center' });
+  doc.text((isMypReport ? 'MYP ' : 'PYP ') + 'HEALTH REPORT CARD', pw / 2, hy + 12, { align: 'center' });
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9);
   doc.setTextColor(107, 114, 128);
@@ -3630,26 +3631,60 @@ if (healthData) {
     doc.text(label, x + w / 2, y + 4.8, { align: 'center' });
   };
 
-  drawHdr(ml, hy, hHalfW, 'PHYSICAL CHECK');
+  drawHdr(ml, hy, hHalfW, isMypReport ? 'CLINICAL & PHYSICAL CHECK' : 'PHYSICAL CHECK');
   drawHdr(ml + hHalfW + 4, hy, hHalfW, 'GROWTH DEVELOPMENT');
   hy += 7;
 
-  autoTable(doc, {
-    startY: hy,
-    head: [['MONTH', 'EAR', 'HAIR', 'NAILS']],
-    body: healthData.physicalChecks.length > 0 ? healthData.physicalChecks.map(r => [r.month||'', r.ear||'', r.hair||'', r.nails||'']) : [['','','','']],
-    theme: 'grid',
-    styles: { fontSize: 7.5, cellPadding: 2, textColor: [31,41,55], lineColor: [209,213,219], lineWidth: 0.3 },
-    headStyles: { fillColor: H_HEAD_BG, textColor: H_HEAD_TX, fontStyle: 'bold', fontSize: 7 },
-    tableWidth: hHalfW,
-    margin: { left: ml, right: pw - ml - hHalfW },
-  });
+  if (isMypReport) {
+    autoTable(doc, {
+      startY: hy,
+      head: [['MTH', 'EYE', 'EAR', 'DENT', 'TD', 'GDA', 'HB', 'BW', 'NAIL', 'HAIR']],
+      body: healthData.physicalChecks.length > 0 ? healthData.physicalChecks.map(r => [
+        r.month || '',
+        r.eye || '',
+        r.ear || '',
+        r.dental || '',
+        r.blood_pressure || '',
+        r.gda || '',
+        r.hb || '',
+        r.color_blindness || '',
+        r.nails || '',
+        r.hair || ''
+      ]) : [['','','','','','','','','','']],
+      theme: 'grid',
+      styles: { fontSize: 6, cellPadding: 1.5, textColor: [31,41,55], lineColor: [209,213,219], lineWidth: 0.3 },
+      headStyles: { fillColor: H_HEAD_BG, textColor: H_HEAD_TX, fontStyle: 'bold', fontSize: 5.5 },
+      tableWidth: hHalfW,
+      margin: { left: ml, right: pw - ml - hHalfW },
+    });
+  } else {
+    autoTable(doc, {
+      startY: hy,
+      head: [['MONTH', 'MATA', 'TELINGA', 'GIGI', 'TD']],
+      body: healthData.physicalChecks.length > 0 ? healthData.physicalChecks.map(r => [
+        r.month || '',
+        r.eye || '',
+        r.ear || '',
+        r.dental || '',
+        r.blood_pressure || ''
+      ]) : [['','','','','']],
+      theme: 'grid',
+      styles: { fontSize: 7, cellPadding: 2, textColor: [31,41,55], lineColor: [209,213,219], lineWidth: 0.3 },
+      headStyles: { fillColor: H_HEAD_BG, textColor: H_HEAD_TX, fontStyle: 'bold', fontSize: 6.5 },
+      tableWidth: hHalfW,
+      margin: { left: ml, right: pw - ml - hHalfW },
+    });
+  }
   const hPcY = doc.lastAutoTable.finalY;
 
   autoTable(doc, {
     startY: hy,
-    head: [['MONTH', 'HEIGHT (cm)', 'WEIGHT (kg)']],
-    body: healthData.growthRecords.length > 0 ? healthData.growthRecords.map(r => [r.month||'', r.height!=null?r.height:'', r.weight!=null?r.weight:'']) : [['','','']],
+    head: isMypReport ? [['MONTH', 'HEIGHT (cm)', 'WEIGHT (kg)']] : [['MONTH', 'WEIGHT (kg)', 'HEIGHT (cm)']],
+    body: healthData.growthRecords.length > 0 ? healthData.growthRecords.map(r => [
+      r.month || '',
+      isMypReport ? (r.height != null ? r.height : '') : (r.weight != null ? r.weight : ''),
+      isMypReport ? (r.weight != null ? r.weight : '') : (r.height != null ? r.height : '')
+    ]) : [['','','']],
     theme: 'grid',
     styles: { fontSize: 7.5, cellPadding: 2, textColor: [31,41,55], lineColor: [209,213,219], lineWidth: 0.3 },
     headStyles: { fillColor: H_HEAD_BG, textColor: H_HEAD_TX, fontStyle: 'bold', fontSize: 7 },
@@ -3924,6 +3959,7 @@ export const generateStudentReportHTML = async ({ reportFilters, reportStudents,
         healthData = {
           allergy: hrCard.allergy || '',
           notes: hrCard.notes || '',
+          reportType: hrCard.report_type || (unitName?.toUpperCase().includes('MYP') ? 'MYP' : 'PYP'),
           physicalChecks: pc.data || [],
           growthRecords: gd.data || [],
           immunizations: imm.data || [],
@@ -4636,7 +4672,15 @@ export const generateClassReportZIP = async ({
             supabase.from('health_immunization').select('*').eq('health_report_id', hrCard.id).order('id'),
             supabase.from('health_record').select('*').eq('health_report_id', hrCard.id).order('id'),
           ]);
-          healthData = { allergy: hrCard.allergy||'', notes: hrCard.notes||'', physicalChecks: pc.data||[], growthRecords: gd.data||[], immunizations: imm.data||[], healthRecords: hr.data||[] };
+          healthData = {
+            allergy: hrCard.allergy || '',
+            notes: hrCard.notes || '',
+            reportType: hrCard.report_type || (unitName?.toUpperCase().includes('MYP') ? 'MYP' : 'PYP'),
+            physicalChecks: pc.data || [],
+            growthRecords: gd.data || [],
+            immunizations: imm.data || [],
+            healthRecords: hr.data || []
+          };
         }
       }
 
