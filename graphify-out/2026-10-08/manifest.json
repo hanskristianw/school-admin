@@ -1015,8 +1015,8 @@
     "semantic_hash": ""
   },
   "src/app/data/room/page.jsx": {
-    "mtime": 1791443515.660386,
-    "ast_hash": "63b41706376ffb05baa05d8725557a2c",
+    "mtime": 1791443125.3962255,
+    "ast_hash": "04331b63535417ec92406e8a5287bbd7",
     "semantic_hash": ""
   },
   "src/app/data/school-fee/page.jsx": {
@@ -2362,11 +2362,6 @@
   "cpanel-vendor-checklist/README.md": {
     "mtime": 1791439413.735893,
     "ast_hash": "37ac936155b3ebe2fb4e6130c207561d",
-    "semantic_hash": ""
-  },
-  "src/app/data/room/lib/roomPdfGenerator.js": {
-    "mtime": 1791443446.1206088,
-    "ast_hash": "6e0c7973439dd192ba21b52bd1a7503f",
     "semantic_hash": ""
   }
 }
