@@ -41,12 +41,12 @@ cpanel-vendor-checklist/
    - Pastikan folder `public_html/checklist/uploads/` memiliki permission **755** atau **775** agar PHP dapat menyimpan file foto.
 
 5. **Pengaturan Token `config.php`**:
-   - Pastikan token di `config.php`:
+   - Pastikan token di `config.php` sama dengan token Sewa Lapangan (`COURT_RENTAL_SECRET_KEY`):
      ```php
-     define('API_SECRET_TOKEN', 'ccs_vendor_auth_2026_v9x2k7p4');
+     define('API_SECRET_TOKEN', 'ccs_court_auth_2026_x7k9p2m4');
      define('NEXTJS_API_URL', 'https://www.manageccs.online/api/public/vendor-checklist');
      ```
-   - Token ini sama dengan environment variable `VENDOR_CHECKLIST_SECRET_KEY` di server Next.js.
+   - Token ini menggunakan secret key yang sama persis dengan modul Sewa Lapangan (`COURT_RENTAL_SECRET_KEY`), sehingga Anda tidak perlu menambahkan environment variable baru di Vercel/Next.js.
 
 ---
 

@@ -1,11 +1,11 @@
 # Graph Report - school-admin  (2026-10-08)
 
 ## Corpus Check
-- 426 files · ~731,084 words
+- 427 files · ~731,812 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 2360 nodes · 2457 edges · 402 communities (283 shown, 119 thin omitted)
+- 2365 nodes · 2474 edges · 399 communities (280 shown, 119 thin omitted)
 - Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 7 edges (avg confidence: 0.63)
 - Token cost: 0 input · 0 output
 
@@ -250,7 +250,6 @@
 - Project Agent Rules
 - pg
 - zod
-- bcryptjs
 - Appendix B - Canonical Sources (read these before reinventing)
 - SKILL.md
 - Analysis & Synthesis Instructions
@@ -291,7 +290,6 @@
 - @radix-ui/react-slot
 - react-easy-crop
 - next-auth
-- @radix-ui/react-label
 - page.jsx
 - react-dom
 - page.jsx
@@ -300,12 +298,11 @@
 - @radix-ui/react-select
 - react-hook-form
 - class-variance-authority
-- class-variance-authority
 
 ## God Nodes (most connected - your core abstractions)
-1. `CORE DIRECTIVE: IMAGE-FIRST WEBSITE DESIGN TO CODE` - 39 edges
-2. `CORE DIRECTIVE: PREMIUM MOBILE APP IMAGE DIRECTION` - 39 edges
-3. `jspdf` - 36 edges
+1. `jspdf` - 39 edges
+2. `CORE DIRECTIVE: IMAGE-FIRST WEBSITE DESIGN TO CODE` - 39 edges
+3. `CORE DIRECTIVE: PREMIUM MOBILE APP IMAGE DIRECTION` - 39 edges
 4. `CORE DIRECTIVE: AWWWARDS-LEVEL IMAGE ART DIRECTION` - 22 edges
 5. `🚀 Supabase Connection Fixed!` - 18 edges
 6. `generatePypClassReportPDF()` - 17 edges
@@ -323,13 +320,13 @@
   src/app/data/psikotest/lib/psikotestPdfGenerator.js → package.json
 - `drawPrincipalSignature()` --references--> `jspdf`  [EXTRACTED]
   src/app/data/pyp/lib/pypPdfGenerator.js → package.json
-- `TopicPage()` --references--> `jspdf`  [EXTRACTED]
-  src/app/data/topic/page.jsx → package.json
+- `generateBatchRoomPDF()` --references--> `jspdf`  [EXTRACTED]
+  src/app/data/room/lib/roomPdfGenerator.js → package.json
 
 ## Import Cycles
 - None detected.
 
-## Communities (402 total, 119 thin omitted)
+## Communities (399 total, 119 thin omitted)
 
 ### Community 0 - "Admission Management"
 Cohesion: 0.06
@@ -584,8 +581,8 @@ Cohesion: 0.12
 Nodes (16): 1. Skill Meta, 2.1 Swiss Industrial Print, 2.2 Tactical Telemetry & CRT Terminal, 2. Visual Archetypes, 3.1 Macro-Typography (Structural Headers), 3.2 Micro-Typography (Data & Telemetry), 3.3 Textural Contrast (Artistic Disruption), 3. Typographic Architecture (+8 more)
 
 ### Community 82 - "Module 82"
-Cohesion: 0.14
-Nodes (14): **10. Data Mapping Note**, **11. Attendance (QR Sessions & Scans)**, **12. Student Consultation (BK)**, **13. Room Booking Module**, **14. Uniform Sales Module (NEW)**, **1. Authentication & User Management**, **2. Academic Data Management**, **4. User Profile System** (+6 more)
+Cohesion: 0.12
+Nodes (17): **10. Data Mapping Note**, **11. Attendance (QR Sessions & Scans)**, **12. Student Consultation (BK)**, **13. Room Booking Module**, **14. Uniform Sales Module (NEW)**, **1. Authentication & User Management**, **2. Academic Data Management**, **3. Assessment System** (+9 more)
 
 ### Community 94 - "Module 94"
 Cohesion: 0.13
@@ -620,8 +617,8 @@ Cohesion: 0.15
 Nodes (13): 15.1 Tables, 15.2 ERD / Relationships (Admissions Domain), 15.3 Admissions Lifecycle & Operational Integration, 15. Student Admission & Enrollment Domain (`/login`, `/admission`, `/admission/status`, `/data/admission`, `/data/admission-level`, `/data/school-fee`), `admission_form_fee`, `admission_level`, `application_discount`, `application_installment` (+5 more)
 
 ### Community 102 - "Module 102"
-Cohesion: 0.09
-Nodes (22): 2025-08-13, 2025-08-17, 2025-08-17 (Subsequent Updates), 2025-08-20, 2025-08-21, 2025-08-22, 2025-08-23, 2025-08-30 (+14 more)
+Cohesion: 0.14
+Nodes (14): 2025-08-13, 2025-08-17, 2025-08-17 (Subsequent Updates), 2025-08-20, 2025-08-21, 2025-08-22, 2025-08-23, 2025-08-30 (+6 more)
 
 ### Community 103 - "Module 103"
 Cohesion: 0.13
@@ -632,8 +629,8 @@ Cohesion: 0.17
 Nodes (12): 2.1 Tables, 2.2 ERD / Relationships (Class Domain), 2. Academic & Class Management Domain (`/data/class`), `class_development_areas`, `class_development_criteria`, `detail_kelas`, `detail_siswa`, `kelas` (+4 more)
 
 ### Community 105 - "Module 105"
-Cohesion: 0.25
-Nodes (8): **Assessment Cards** (`/data/topic-new`), **Database Migrations**, **Grading Modal**, **Grading Workflow**, 🎓 **IB MYP Assessment Grading System**, **Overview**, **Removed Features**, **UI Features**
+Cohesion: 0.15
+Nodes (13): **1. MYP Year Level Selection**, **2. Criterion Grades (A, B, C, D)**, **3. Strand Grades**, **4. Final Grade (1-7)**, **Assessment Cards** (`/data/topic-new`), **Database Migrations**, **Grading Modal**, **Grading Workflow** (+5 more)
 
 ### Community 106 - "Module 106"
 Cohesion: 0.17
@@ -688,8 +685,8 @@ Cohesion: 0.22
 Nodes (9): 1.1 Tables, 1.2 ERD / Relationships (User & Unit Domain), 1.3 Tables referencing `users`, 1. User, Role & Unit Management Domain (`/data/user`, `/data/role_management`, `/settings/unit`), `dashboard_type`, `report_settings`, `role`, `unit` (+1 more)
 
 ### Community 119 - "Module 119"
-Cohesion: 0.18
-Nodes (10): **Additional Files:**, **Completed Features:**, **Database Migration Files (Execute in Order):**, **Development:**, **Key Business Rules:**, **Key Environment:**, 📝 Recent Changes (Aug 2025), School Admin System - Complete Documentation (+2 more)
+Cohesion: 0.12
+Nodes (16): Attendance (QR) Tables, **Backend & Database:**, **Completed Features:**, **Core Tables:**, �🏗️ **Database Structure**, **Frontend Stack:**, Grades (Nilai) Table, **Important Files:** (+8 more)
 
 ### Community 120 - "Module 120"
 Cohesion: 0.22
@@ -745,7 +742,7 @@ Nodes (7): 33. CATEGORY-SPECIFIC BIAS, Commerce, Fintech, Health / Fitness, Prod
 
 ### Community 133 - "Module 133"
 Cohesion: 0.18
-Nodes (11): bcryptjs, browser-image-compression, google-auth-library, dependencies, bcryptjs, browser-image-compression, google-auth-library, pngjs (+3 more)
+Nodes (11): bcryptjs, browser-image-compression, jspdf-autotable, lucide-react, dependencies, bcryptjs, browser-image-compression, jspdf-autotable (+3 more)
 
 ### Community 135 - "Module 135"
 Cohesion: 0.29
@@ -815,6 +812,10 @@ Nodes (6): 16.1 Tables, 16.2 Zero-Friction Fallback Architecture, 16. Athletic D
 Cohesion: 0.33
 Nodes (6): **1. Icons Not Showing:**, **2. Teacher Filter Not Working:**, **3. Assessment Date Validation:**, **4. Menu Permissions:**, **5. RLS write blocked on subject-class mapping (detail_kelas)**, 📋 **Common Issues & Solutions**
 
+### Community 155 - "Module 155"
+Cohesion: 0.25
+Nodes (8): 2026-07-16 — Timetable Refactor + Weekly Plan Dates + Weekly Overview, Full Data Flow: Timetable → Weekly Overview, Timetable Exceptions (`timetable_exception`) — New Table, Timetable Refactor (`/data/timetable`), `topic_weekly_plan` — Complete Schema Reference, Weekly Overview (`/data/weekly-overview`) — New Page, `weekly_overview_draft` Table — New, Weekly Plan Dates — `topic_weekly_plan.week_date`
+
 ### Community 156 - "**3. Assessment System**"
 Cohesion: 0.33
 Nodes (6): Access flow (guards), **Admin (`is_admin = true`):**, 🔐 **Role-Based Access Control**, **Staff (default):**, **Student (`is_student = true`):**, **Teacher (`is_teacher = true`):**
@@ -825,11 +826,11 @@ Nodes (6): **Assessment Calendar (View + RPC)**, **Assessment with Relations:**,
 
 ### Community 193 - "Module 193"
 Cohesion: 0.40
-Nodes (3): qrcode, qrcode, RoomMasterPage()
+Nodes (7): qrcode, qrcode, generateBatchRoomPDF(), generateSingleRoomPDF(), getRoomQrDataUrl(), renderRoomStickerPage(), RoomMasterPage()
 
 ### Community 194 - "Module 194"
 Cohesion: 0.40
-Nodes (5): **1. MYP Year Level Selection**, **2. Criterion Grades (A, B, C, D)**, **3. Strand Grades**, **4. Final Grade (1-7)**, **Key Components**
+Nodes (5): **Additional Files:**, **Database Migration Files (Execute in Order):**, **Development:**, **Key Environment:**, 🚀 **Setup & Deployment**
 
 ### Community 229 - "Module 229"
 Cohesion: 0.40
@@ -935,10 +936,6 @@ Nodes (3): absen, attendance_scan_log, attendance_session
 Cohesion: 0.43
 Nodes (5): AdmissionManagement(), getEmailStatusLabel(), getEmailTypeLabel(), statusConfig, UnifiedAdmissionModal()
 
-### Community 259 - "DDL"
-Cohesion: 0.50
-Nodes (4): **Backend & Database:**, **Frontend Stack:**, **Key Technical Notes:**, 🔧 **Technical Implementation**
-
 ### Community 262 - "sendGoogleChatMessage"
 Cohesion: 0.80
 Nodes (4): getCredentials(), getPrivateKey(), getUserIdByEmail(), sendGoogleChatMessage()
@@ -975,17 +972,9 @@ Nodes (3): POST(), supabaseAdmin, verifyAuth()
 Cohesion: 0.50
 Nodes (3): POST(), supabaseAdmin, verifyAuth()
 
-### Community 310 - "bcryptjs"
-Cohesion: 0.67
-Nodes (3): **3. Assessment System**, **Admin Workflow**:, **Teacher Workflow**:
-
 ### Community 368 - "route.js"
 Cohesion: 0.57
 Nodes (6): extractScheduleMeta(), GET(), POST(), resolveCurrentFormFee(), supabaseAdmin, verifyAuth()
-
-### Community 387 - "@radix-ui/react-label"
-Cohesion: 0.50
-Nodes (4): Attendance (QR) Tables, **Core Tables:**, �🏗️ **Database Structure**, Grades (Nilai) Table
 
 ### Community 388 - "page.jsx"
 Cohesion: 0.38
@@ -995,10 +984,6 @@ Nodes (6): ALLOWED_POINTS, AthleticDayManagementPage(), isLightColor(), normaliz
 Cohesion: 0.83
 Nodes (3): AthleticDayLivePage(), isLightColor(), normalizeTeamColor()
 
-### Community 398 - "class-variance-authority"
-Cohesion: 0.67
-Nodes (3): **Important Files:**, **Key Directories:**, 📁 **Project Structure**
-
 ## Knowledge Gaps
 - **1183 isolated node(s):** `extends`, `next/core-web-vitals`, `$schema`, `style`, `rsc` (+1178 more)
   These have ≤1 connection - possible missing edges or undocumented components.
@@ -1007,10 +992,10 @@ Nodes (3): **Important Files:**, **Key Directories:**, 📁 **Project Structure*
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `dependencies` connect `Module 133` to `Admission Management`, `Package Dependencies & Config`, `next-auth`, `react-dom`, `Module 134`, `@hookform/resolvers`, `pdf-lib`, `@radix-ui/react-select`, `react-hook-form`, `React UI Components`, `🎓 **IB MYP Assessment Grading System**`, `clsx`, `class-variance-authority`, `docx`, `Module 153`, `Module 154`, `Module 155`, `@googleapis/chat`, `dotenv`, `zod`, `Appendix B - Canonical Sources (read these before reinventing)`, `SKILL.md`, `Analysis & Synthesis Instructions`, `**3. Assessment System**`, `Module 193`, `12. THE COMBINATORIAL VARIATION ENGINE`, `📁 **Project Structure**`, `@sparticuz/chromium-min`, `11. REDESIGN PROTOCOL`, `33. CATEGORY-SPECIFIC BIAS`, `Module 239`, `Module 240`, `jsonwebtoken`, `browser-image-compression`, `dotenv`, `@fortawesome/free-solid-svg-icons`, `@radix-ui/react-slot`, `react-easy-crop`?**
-  _High betweenness centrality (0.011) - this node is a cross-community bridge._
-- **Why does `jspdf` connect `Admission Management` to `Module 145`, `page.jsx`, `Module 133`?**
-  _High betweenness centrality (0.009) - this node is a cross-community bridge._
+- **Why does `dependencies` connect `Module 133` to `Admission Management`, `Package Dependencies & Config`, `next-auth`, `DDL`, `react-dom`, `Module 134`, `@hookform/resolvers`, `pdf-lib`, `@radix-ui/react-select`, `react-hook-form`, `React UI Components`, `🎓 **IB MYP Assessment Grading System**`, `clsx`, `class-variance-authority`, `docx`, `Module 153`, `Module 154`, `@googleapis/chat`, `dotenv`, `zod`, `Appendix B - Canonical Sources (read these before reinventing)`, `SKILL.md`, `Analysis & Synthesis Instructions`, `**3. Assessment System**`, `Module 193`, `12. THE COMBINATORIAL VARIATION ENGINE`, `📁 **Project Structure**`, `@sparticuz/chromium-min`, `11. REDESIGN PROTOCOL`, `33. CATEGORY-SPECIFIC BIAS`, `Module 239`, `Module 240`, `jsonwebtoken`, `browser-image-compression`, `dotenv`, `@fortawesome/free-solid-svg-icons`, `@radix-ui/react-slot`, `react-easy-crop`?**
+  _High betweenness centrality (0.013) - this node is a cross-community bridge._
+- **Why does `jspdf` connect `Admission Management` to `Module 145`, `page.jsx`, `Module 193`, `Module 133`?**
+  _High betweenness centrality (0.010) - this node is a cross-community bridge._
 - **Why does `Database Schema & Relationships` connect `Module 115` to `bcryptjs`, `Module 101`, `Module 103`, `Module 104`, `Module 107`, `Module 140`, `Module 108`, `Module 139`, `Module 235`, `Module 114`, `Module 148`, `Module 118`, `Module 151`?**
   _High betweenness centrality (0.003) - this node is a cross-community bridge._
 - **What connects `extends`, `next/core-web-vitals`, `$schema` to the rest of the system?**

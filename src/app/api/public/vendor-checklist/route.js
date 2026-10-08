@@ -8,12 +8,17 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 )
 
-const EXPECTED_SECRET = process.env.VENDOR_CHECKLIST_SECRET_KEY || process.env.COURT_RENTAL_SECRET_KEY || 'ccs_vendor_auth_2026_v9x2k7p4'
+const VALID_SECRETS = [
+  process.env.VENDOR_CHECKLIST_SECRET_KEY,
+  process.env.COURT_RENTAL_SECRET_KEY,
+  'ccs_vendor_auth_2026_v9x2k7p4',
+  'ccs_court_auth_2026_x7k9p2m4'
+].filter(Boolean)
 
 function verifyAuth(request, bodySecret) {
   const authHeader = request.headers.get('authorization') || ''
   const token = authHeader.replace(/^Bearer\s+/i, '').trim()
-  return token === EXPECTED_SECRET || bodySecret === EXPECTED_SECRET
+  return (token && VALID_SECRETS.includes(token)) || (bodySecret && VALID_SECRETS.includes(bodySecret))
 }
 
 // Helper WIB date (YYYY-MM-DD)

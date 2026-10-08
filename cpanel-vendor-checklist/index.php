@@ -21,7 +21,7 @@ if (file_exists(__DIR__ . '/config.php')) {
     require_once __DIR__ . '/config.php';
 }
 
-if (!defined('API_SECRET_TOKEN')) define('API_SECRET_TOKEN', 'ccs_vendor_auth_2026_v9x2k7p4');
+if (!defined('API_SECRET_TOKEN')) define('API_SECRET_TOKEN', getenv('COURT_RENTAL_SECRET_KEY') ?: 'ccs_court_auth_2026_x7k9p2m4');
 if (!defined('NEXTJS_API_URL')) define('NEXTJS_API_URL', 'https://www.manageccs.online/api/public/vendor-checklist');
 
 define('UPLOAD_DIR', __DIR__ . '/uploads');
@@ -36,7 +36,12 @@ if (!file_exists(UPLOAD_DIR)) {
 // ─── 1. SECURE STREAMING FOTO UNTUK NEXT.JS ADMIN ─────────────────────────
 if (isset($_GET['action']) && $_GET['action'] === 'view_photo') {
     $token = $_GET['token'] ?? '';
-    if ($token !== API_SECRET_TOKEN) {
+    $validTokens = [
+        defined('API_SECRET_TOKEN') ? API_SECRET_TOKEN : 'ccs_vendor_auth_2026_v9x2k7p4',
+        'ccs_vendor_auth_2026_v9x2k7p4',
+        'ccs_court_auth_2026_x7k9p2m4'
+    ];
+    if (!in_array($token, $validTokens, true)) {
         http_response_code(403);
         header('Content-Type: application/json');
         echo json_encode(['error' => 'Forbidden: Invalid security token']);

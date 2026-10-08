@@ -6,5 +6,6 @@ if (!defined('CCS_VENDOR_LOADED')) {
 }
 
 // Konfigurasi Sinkronisasi cPanel Vendor Checklist ke Next.js (manageccs.online)
-define('API_SECRET_TOKEN', 'ccs_vendor_auth_2026_v9x2k7p4');
+// Menggunakan token yang sama dengan Sewa Lapangan (COURT_RENTAL_SECRET_KEY)
+define('API_SECRET_TOKEN', 'ccs_court_auth_2026_x7k9p2m4');
 define('NEXTJS_API_URL', 'https://www.manageccs.online/api/public/vendor-checklist');

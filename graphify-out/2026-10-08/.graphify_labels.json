@@ -309,7 +309,6 @@
   "307": "pg",
   "308": "page.jsx",
   "309": "zod",
-  "310": "bcryptjs",
   "311": "page.jsx",
   "312": "Appendix B - Canonical Sources (read these before reinventing)",
   "313": "SKILL.md",
@@ -386,7 +385,6 @@
   "384": "inspect_psikotest.py",
   "385": "seed_questions_supabase.py",
   "386": "next-auth",
-  "387": "@radix-ui/react-label",
   "388": "page.jsx",
   "389": "react-dom",
   "390": "page.jsx",
@@ -397,7 +395,6 @@
   "395": "config.php",
   "396": "config.sample.php",
   "397": "index.php",
-  "398": "class-variance-authority",
   "399": "class-variance-authority",
   "453": "route.js",
   "457": "status.php"
