@@ -6,6 +6,7 @@
 import { Document, Packer, Paragraph, Table, TableRow, TableCell, TextRun, AlignmentType, WidthType, BorderStyle, VerticalAlign, ImageRun } from 'docx';
 import fs from 'fs/promises';
 import path from 'path';
+import { convertInstructionsToDocxElements } from '@/app/data/topic-new/lib/instructionDocxHelper';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -488,16 +489,18 @@ function buildDocument(payload, { logoBuffer } = {}) {
       })
     );
 
-    const instructionLines = instructions.split('\n').filter(line => line.trim());
-    instructionLines.forEach((line) => {
-      sections.push(
-        new Paragraph({
-          children: [
-            new TextRun({ text: line, size: 22, font: 'Arial' }),
-          ],
-          spacing: { after: 150 },
-        })
-      );
+    const instructionParagraphs = convertInstructionsToDocxElements(instructions, { 
+      Paragraph, 
+      TextRun, 
+      Table, 
+      TableRow, 
+      TableCell, 
+      AlignmentType, 
+      WidthType, 
+      BorderStyle 
+    });
+    instructionParagraphs.forEach((para) => {
+      sections.push(para);
     });
 
     sections.push(new Paragraph({ text: '', spacing: { after: 400 } }));

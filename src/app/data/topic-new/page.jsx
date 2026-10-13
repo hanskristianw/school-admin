@@ -26,6 +26,7 @@ import useAiHelp from './lib/useAiHelp'
 import WizardStepContent from './components/WizardStepContent'
 import UnitPlannerDocumentEditor from './components/UnitPlannerDocumentEditor'
 import CommunityProjectTab from './components/CommunityProjectTab'
+import { isHtmlEmpty } from './lib/instructionDocxHelper'
 import 'driver.js/dist/driver.css'
 
 export default function TopicNewPage() {
@@ -4921,7 +4922,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
     if (!wizardAssessment.assessment_nama?.trim()) missing.push({ step: 7, field: 'Assessment Name' })
     if (!wizardAssessment.assessment_semester?.trim()) missing.push({ step: 7, field: 'Semester' })
     if (!wizardAssessment.assessment_conceptual_understanding?.trim()) missing.push({ step: 7, field: 'Conceptual Understanding' })
-    if (!wizardAssessment.assessment_instructions?.trim()) missing.push({ step: 7, field: 'Assessment Instructions' })
+    if (!wizardAssessment.assessment_instructions?.trim() || isHtmlEmpty(wizardAssessment.assessment_instructions)) missing.push({ step: 7, field: 'Assessment Instructions' })
     
     // Step 7: Relationship
     if (!wizardAssessment.assessment_relationship?.trim()) missing.push({ step: 8, field: 'Relationship: Assessment & Statement of Inquiry' })
@@ -4973,7 +4974,8 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
       if (!wizardAssessment.assessment_nama || 
           !wizardAssessment.assessment_semester || wizardAssessment.selected_criteria.length === 0 ||
           !wizardAssessment.assessment_conceptual_understanding?.trim() ||
-          !wizardAssessment.assessment_instructions?.trim()) {
+          !wizardAssessment.assessment_instructions?.trim() ||
+          isHtmlEmpty(wizardAssessment.assessment_instructions)) {
         alert('Please complete all assessment fields including Conceptual Understanding and Instructions')
         return
       }

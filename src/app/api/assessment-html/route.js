@@ -9,6 +9,7 @@ export const dynamic = 'force-dynamic';
 
 import fs from 'fs/promises';
 import path from 'path';
+import { isHtmlContent, isHtmlEmpty } from '@/app/data/topic-new/lib/instructionDocxHelper';
 
 function escapeHtml(value) {
   return String(value ?? '')
@@ -159,11 +160,27 @@ function buildHtml(payload, { logoDataUrl = '' } = {}) {
     return `<div class="instructions-list">${rows}</div>`;
   };
 
-  const instructionsSection = instructions
+  const sanitizeHtmlContent = (html) => {
+    return String(html || '')
+      .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+      .replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, '')
+      .replace(/\bon\w+="[^"]*"/gi, '')
+      .replace(/\bon\w+='[^']*'/gi, '');
+  };
+
+  const renderInstructionsContent = (instructionsText) => {
+    if (!instructionsText || isHtmlEmpty(instructionsText)) return '';
+    if (isHtmlContent(instructionsText)) {
+      return `<div class="instructions-rich-content">${sanitizeHtmlContent(instructionsText)}</div>`;
+    }
+    return renderInstructions(instructionsText);
+  };
+
+  const instructionsSection = (instructions && !isHtmlEmpty(instructions))
     ? `
       <div class="page-break"></div>
       <div class="section-title">INSTRUCTIONS:</div>
-      ${renderInstructions(instructions)}
+      ${renderInstructionsContent(instructions)}
     `
     : '';
 
@@ -430,6 +447,61 @@ function buildHtml(payload, { logoDataUrl = '' } = {}) {
       flex-direction: column;
       gap: 8pt;
       margin: 0 0 12px 0;
+    }
+
+    .instructions-rich-content {
+      font-size: 10pt;
+      line-height: 1.5;
+      color: #000;
+      margin: 0 0 14pt 0;
+    }
+
+    .instructions-rich-content p {
+      margin: 0 0 6pt 0;
+    }
+
+    .instructions-rich-content h2,
+    .instructions-rich-content h3,
+    .instructions-rich-content h4 {
+      margin: 8pt 0 4pt 0;
+      font-weight: 700;
+      font-size: 10.5pt;
+    }
+
+    .instructions-rich-content ul {
+      list-style-type: disc;
+      margin: 4pt 0 8pt 0;
+      padding-left: 20pt;
+    }
+
+    .instructions-rich-content ol {
+      list-style-type: decimal;
+      margin: 4pt 0 8pt 0;
+      padding-left: 20pt;
+    }
+
+    .instructions-rich-content li {
+      margin-bottom: 3pt;
+      line-height: 1.4;
+    }
+
+    .instructions-rich-content li p {
+      margin-left: 0 !important;
+      padding-left: 0 !important;
+    }
+
+    .instructions-rich-content strong,
+    .instructions-rich-content b {
+      font-weight: 700;
+    }
+
+    .instructions-rich-content em,
+    .instructions-rich-content i {
+      font-style: italic;
+    }
+
+    .instructions-rich-content u {
+      text-decoration: underline;
     }
 
     .instr-row {

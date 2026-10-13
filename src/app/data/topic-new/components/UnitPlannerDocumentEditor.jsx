@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
+import AssessmentInstructionEditor from './AssessmentInstructionEditor'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import {
   faTimes,
@@ -983,11 +984,11 @@ export default function UnitPlannerDocumentEditor({
                       </div>
 
                       <AutoExpandingTextarea
-                        value={wizardAssessment?.assessment_task_specific_description || wizardAssessment?.assessment_instructions || ''}
+                        value={wizardAssessment?.assessment_task_specific_description || ''}
                         onChange={(e) => setWizardAssessment(prev => ({
                           ...prev,
                           assessment_task_specific_description: e.target.value,
-                          assessment_instructions: e.target.value,
+                          ...(!prev.assessment_instructions ? { assessment_instructions: e.target.value } : {})
                         }))}
                         triggerResize={`${activeTab}-${isOpen}-${activeDoc}`}
                         placeholder={"You will present the preliminary research highlights of your poster project which include:\n- identifying the need for the poster in your classroom (literacy skill)\n- planning of the research (self-management skill)\n- analysis of existing product (critical thinking skill)\n- presentation of the research findings (communication skill)"}
@@ -1444,13 +1445,11 @@ export default function UnitPlannerDocumentEditor({
               <div className="font-bold text-[11pt] text-black uppercase mb-1">
                 INSTRUCTIONS:
               </div>
-              <AutoExpandingTextarea
+              <AssessmentInstructionEditor
                 value={wizardAssessment.assessment_instructions || ''}
-                onChange={(e) => setWizardAssessment(prev => ({ ...prev, assessment_instructions: e.target.value }))}
-                triggerResize={`${activeTab}-${isOpen}-${activeDoc}`}
-                placeholder={"1. Read all criteria carefully before starting your work.\n2. Ensure all research findings are documented with citations.\n3. Complete the task within the designated timeline."}
-                minHeight={90}
-                className="w-full bg-transparent text-black outline-none leading-relaxed hover:bg-yellow-50 focus:bg-white text-[11pt] border border-gray-300 p-2.5 rounded"
+                onChange={(html) => setWizardAssessment(prev => ({ ...prev, assessment_instructions: html }))}
+                placeholder="1. Read all criteria carefully before starting your work.&#10;2. Ensure all research findings are documented with citations.&#10;3. Complete the task within the designated timeline."
+                minHeight={120}
               />
             </div>
 

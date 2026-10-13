@@ -9,6 +9,7 @@ import { jsPDF } from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import { supabase } from '@/lib/supabase'
 import JSZip from 'jszip'
+import { isHtmlContent, isHtmlEmpty, htmlToPlainText } from './instructionDocxHelper'
 
 // ─── Pure Helpers ────────────────────────────────────────────────────────────
 
@@ -674,7 +675,7 @@ export const generateUnitPlannerPDF = async (topic, { currentUserId, onSuccess, 
     if (!summativeText.trim() && assessmentData) {
       const parts = [];
       if (assessmentData.assessment_nama) parts.push(`Task: ${assessmentData.assessment_nama}`);
-      if (assessmentData.assessment_instructions) parts.push(assessmentData.assessment_instructions);
+      if (assessmentData.assessment_instructions) parts.push(htmlToPlainText(assessmentData.assessment_instructions));
       if (assessmentData.assessment_keterangan) parts.push(assessmentData.assessment_keterangan);
       if (assessmentData.assessment_task_specific_description) parts.push(assessmentData.assessment_task_specific_description);
       summativeText = parts.join('\n\n');
@@ -1304,41 +1305,241 @@ const renderInstructionsToPdf = (pdf, { instructions, margin }) => {
   pdf.text('INSTRUCTIONS:', margin, yPos);
   yPos += 8;
 
-  const instructionText = instructions;
+  const instructionText = instructions || '';
+  if (!instructionText.trim() || isHtmlEmpty(instructionText)) return yPos;
+
+  const isHtml = isHtmlContent(instructionText);
   const instructionItems = [];
-  
-  const regex = /(\d+\.\s*)/g;
-  const parts = instructionText.split(regex).filter(p => p.trim());
-  
-  for (let i = 0; i < parts.length; i++) {
-    if (/^\d+\.\s*$/.test(parts[i]) && parts[i + 1]) {
-      instructionItems.push([parts[i].trim(), parts[i + 1].trim()]);
-      i++;
-    } else if (!/^\d+\.\s*$/.test(parts[i])) {
-      instructionItems.push(['', parts[i].trim()]);
+
+  if (isHtml && typeof window !== 'undefined' && typeof window.DOMParser !== 'undefined') {
+    try {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(instructionText, 'text/html');
+
+      const processNode = (node) => {
+        if (node.nodeType === 1) { // ELEMENT_NODE
+          const tag = node.tagName.toLowerCase();
+          if (tag === 'h1' || tag === 'h2' || tag === 'h3' || tag === 'h4') {
+            const text = node.textContent?.trim();
+            if (text) {
+              instructionItems.push({
+                prefix: '',
+                text: text,
+                isBold: true,
+                isHeading: true,
+              });
+            }
+          } else if (tag === 'ul') {
+            const lis = node.querySelectorAll(':scope > li');
+            lis.forEach((li) => {
+              const text = li.textContent?.trim();
+              if (text) {
+                const indentAttr = parseInt(li.getAttribute?.('data-indent'), 10) || 0;
+                const marginMatch = (li.style?.marginLeft || '').match(/(\d+)px/);
+                const indentLevel = indentAttr || (marginMatch ? Math.round(parseInt(marginMatch[1], 10) / 24) : 0);
+
+                instructionItems.push({
+                  prefix: '•',
+                  text: text,
+                  isBold: false,
+                  isHeading: false,
+                  indent: indentLevel,
+                });
+              }
+            });
+          } else if (tag === 'ol') {
+            const startVal = parseInt(node.getAttribute('start'), 10) || 1;
+            const lis = node.querySelectorAll(':scope > li');
+            lis.forEach((li, idx) => {
+              const text = li.textContent?.trim();
+              if (text) {
+                const indentAttr = parseInt(li.getAttribute?.('data-indent'), 10) || 0;
+                const marginMatch = (li.style?.marginLeft || '').match(/(\d+)px/);
+                const indentLevel = indentAttr || (marginMatch ? Math.round(parseInt(marginMatch[1], 10) / 24) : 0);
+
+                instructionItems.push({
+                  prefix: `${startVal + idx}.`,
+                  text: text,
+                  isBold: false,
+                  isHeading: false,
+                  indent: indentLevel,
+                });
+              }
+            });
+          } else if (tag === 'table') {
+            const tableHead = [];
+            const tableBody = [];
+            node.querySelectorAll('tr').forEach((tr) => {
+              const ths = tr.querySelectorAll('th');
+              if (ths.length > 0) {
+                const headerRow = [];
+                ths.forEach(th => headerRow.push(th.textContent?.trim() || ''));
+                tableHead.push(headerRow);
+              } else {
+                const tds = tr.querySelectorAll('td');
+                const dataRow = [];
+                tds.forEach(td => dataRow.push(td.textContent?.trim() || ''));
+                if (dataRow.length > 0) tableBody.push(dataRow);
+              }
+            });
+            if (tableHead.length > 0 || tableBody.length > 0) {
+              instructionItems.push({
+                isTable: true,
+                head: tableHead,
+                body: tableBody,
+              });
+            }
+          } else if (tag === 'p' || tag === 'div') {
+            const text = node.textContent?.trim();
+            if (text) {
+              const hasStrongOnly = node.children.length === 1 && 
+                (node.children[0].tagName === 'STRONG' || node.children[0].tagName === 'B');
+
+              const indentAttr = parseInt(node.getAttribute?.('data-indent'), 10) || 0;
+              const marginMatch = (node.style?.marginLeft || '').match(/(\d+)px/);
+              const indentLevel = indentAttr || (marginMatch ? Math.round(parseInt(marginMatch[1], 10) / 24) : 0);
+
+              const numMatch = text.match(/^(\d+[.)])\s*(.*)$/);
+              if (numMatch) {
+                instructionItems.push({
+                  prefix: numMatch[1],
+                  text: numMatch[2],
+                  isBold: hasStrongOnly,
+                  isHeading: false,
+                  indent: indentLevel,
+                });
+              } else if (text.startsWith('•') || text.startsWith('-')) {
+                instructionItems.push({
+                  prefix: '•',
+                  text: text.replace(/^[•\-]\s*/, ''),
+                  isBold: hasStrongOnly,
+                  isHeading: false,
+                  indent: indentLevel,
+                });
+              } else {
+                instructionItems.push({
+                  prefix: '',
+                  text: text,
+                  isBold: hasStrongOnly,
+                  isHeading: false,
+                  indent: indentLevel,
+                });
+              }
+            }
+          } else {
+            node.childNodes.forEach(processNode);
+          }
+        }
+      };
+
+      doc.body.childNodes.forEach(processNode);
+    } catch (err) {
+      console.warn('Could not parse HTML instructions for PDF, using fallback:', err);
     }
   }
 
-  autoTable(pdf, {
-    startY: yPos,
-    margin: { left: margin, right: margin },
-    head: [],
-    body: instructionItems.map(item => [
-      { content: item[0], styles: { fontStyle: 'bold', cellWidth: 8 }},
-      { content: item[1], styles: { cellWidth: 'auto' }},
-    ]),
-    theme: 'plain',
-    styles: { 
-      fontSize: 9, 
-      cellPadding: { top: 2, bottom: 2, left: 1, right: 1 }, 
-      valign: 'top', 
-      textColor: [0, 0, 0],
-      lineWidth: 0 },
-    columnStyles: {
-      0: { cellWidth: 8 },
-      1: { cellWidth: 'auto' } } });
-  
-  return pdf.lastAutoTable.finalY + 8;
+  // Fallback for legacy plain text or if parsing produced no items
+  if (instructionItems.length === 0) {
+    const plainText = isHtml ? htmlToPlainText(instructionText) : instructionText;
+    const regex = /(\d+\.\s*)/g;
+    const parts = plainText.split(regex).filter(p => p.trim());
+
+    for (let i = 0; i < parts.length; i++) {
+      if (/^\d+\.\s*$/.test(parts[i]) && parts[i + 1]) {
+        instructionItems.push({ prefix: parts[i].trim(), text: parts[i + 1].trim(), isBold: false, isHeading: false });
+        i++;
+      } else if (!/^\d+\.\s*$/.test(parts[i])) {
+        instructionItems.push({ prefix: '', text: parts[i].trim(), isBold: false, isHeading: false });
+      }
+    }
+  }
+
+  let currentY = yPos;
+  let textItemsBuffer = [];
+
+  const flushTextBuffer = () => {
+    if (textItemsBuffer.length === 0) return;
+    autoTable(pdf, {
+      startY: currentY,
+      margin: { left: margin, right: margin },
+      head: [],
+      body: textItemsBuffer.map(item => [
+        { 
+          content: item.prefix || '', 
+          styles: { 
+            fontStyle: 'bold', 
+            cellWidth: 8,
+            fontSize: item.isHeading ? 10 : 9,
+            cellPadding: { 
+              top: item.isHeading ? 4 : 2, 
+              bottom: 2, 
+              left: 1 + (item.prefix ? (item.indent ? item.indent * 4 : 0) : 0), 
+              right: 1 
+            },
+          }
+        },
+        { 
+          content: item.text, 
+          styles: { 
+            fontStyle: item.isBold || item.isHeading ? 'bold' : 'normal',
+            fontSize: item.isHeading ? 10 : 9,
+            cellWidth: 'auto',
+            cellPadding: { 
+              top: item.isHeading ? 4 : 2, 
+              bottom: 2, 
+              left: 1 + (!item.prefix ? (item.indent ? item.indent * 4 : 0) : 0), 
+              right: 1 
+            },
+          }
+        },
+      ]),
+      theme: 'plain',
+      styles: { 
+        fontSize: 9, 
+        cellPadding: { top: 2, bottom: 2, left: 1, right: 1 }, 
+        valign: 'top', 
+        textColor: [0, 0, 0],
+        lineWidth: 0 
+      },
+      columnStyles: {
+        0: { cellWidth: 8 },
+        1: { cellWidth: 'auto' } 
+      } 
+    });
+    currentY = pdf.lastAutoTable.finalY + 4;
+    textItemsBuffer = [];
+  };
+
+  for (const item of instructionItems) {
+    if (item.isTable) {
+      flushTextBuffer();
+      autoTable(pdf, {
+        startY: currentY,
+        margin: { left: margin, right: margin },
+        head: item.head,
+        body: item.body,
+        theme: 'grid',
+        styles: {
+          fontSize: 8.5,
+          cellPadding: 3,
+          textColor: [0, 0, 0],
+          lineColor: [200, 200, 200],
+          lineWidth: 0.5,
+        },
+        headStyles: {
+          fillColor: [240, 240, 240],
+          textColor: [0, 0, 0],
+          fontStyle: 'bold',
+        },
+      });
+      currentY = pdf.lastAutoTable.finalY + 6;
+    } else {
+      textItemsBuffer.push(item);
+    }
+  }
+  flushTextBuffer();
+
+  return currentY + 4;
 };
 
 /**

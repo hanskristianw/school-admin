@@ -660,8 +660,8 @@
     "semantic_hash": "655ff4969401f85d067a205512767404"
   },
   "package.json": {
-    "mtime": 1787123069.6187854,
-    "ast_hash": "31766a84d369e6aed5f35636083148f7",
+    "mtime": 1791879179.2224092,
+    "ast_hash": "8320c66dbcee9eabb5df52c884a1bf3f",
     "semantic_hash": ""
   },
   "postcss.config.mjs": {
@@ -690,13 +690,13 @@
     "semantic_hash": "be6f93ea7a9e04d6fab7b1591fc80e17"
   },
   "src/app/api/assessment-docx/route.js": {
-    "mtime": 1784179362.4065633,
-    "ast_hash": "28699a3909468142bc9a90a121592d20",
-    "semantic_hash": "28699a3909468142bc9a90a121592d20"
+    "mtime": 1791879297.444052,
+    "ast_hash": "5c817eacde6ddd6a7ba0bf190c8ca33d",
+    "semantic_hash": ""
   },
   "src/app/api/assessment-html/route.js": {
-    "mtime": 1791169313.9629567,
-    "ast_hash": "ab187d86208bdcb01287a7b175046f83",
+    "mtime": 1791882143.495196,
+    "ast_hash": "047c43e71516664ae749227a7df18e2e",
     "semantic_hash": ""
   },
   "src/app/api/assessment-pdf/route.js": {
@@ -1045,23 +1045,23 @@
     "semantic_hash": "9dd72ae7ed1ea3476de6b324728de633"
   },
   "src/app/data/topic-new/components/WizardStepContent.jsx": {
-    "mtime": 1789440085.019959,
-    "ast_hash": "5ece22d2a1b0d6cf9bf7faa67a46fdac",
+    "mtime": 1791875619.3324878,
+    "ast_hash": "8087ff099798bb91ef90be447041e825",
     "semantic_hash": ""
   },
   "src/app/data/topic-new/lib/pdfGenerators.js": {
-    "mtime": 1791343301.7502563,
-    "ast_hash": "b55e0aa8e41d6f6cef7c30054da5c0ae",
+    "mtime": 1791882187.7136722,
+    "ast_hash": "0d6ff068fd713d5008ea795fa4818776",
     "semantic_hash": ""
   },
   "src/app/data/topic-new/lib/useAiHelp.js": {
-    "mtime": 1784179362.4446633,
-    "ast_hash": "ed62be15a684e4722d48de789ed2e4ba",
-    "semantic_hash": "ed62be15a684e4722d48de789ed2e4ba"
+    "mtime": 1791875707.6249528,
+    "ast_hash": "f4f0862a921af891b3bfdf953dfa5a6b",
+    "semantic_hash": ""
   },
   "src/app/data/topic-new/page.jsx": {
-    "mtime": 1791169313.9676828,
-    "ast_hash": "ed65727b85e417b9da9021212c414155",
+    "mtime": 1791875668.2982013,
+    "ast_hash": "6d4029ef7822bdcc40d9405ae090aecd",
     "semantic_hash": ""
   },
   "src/app/data/topic/page.jsx": {
@@ -2070,8 +2070,8 @@
     "semantic_hash": ""
   },
   "src/app/data/topic-new/components/UnitPlannerDocumentEditor.jsx": {
-    "mtime": 1791169313.9639904,
-    "ast_hash": "28b39e54bddd17b0d3d2fd69e22366a9",
+    "mtime": 1791875589.7762847,
+    "ast_hash": "a5751bf746b974fd0f7aec8027c907b1",
     "semantic_hash": ""
   },
   "migrations/add-kelas-user-id-2.sql": {
@@ -2367,6 +2367,16 @@
   "src/app/data/room/lib/roomPdfGenerator.js": {
     "mtime": 1791443446.1206088,
     "ast_hash": "6e0c7973439dd192ba21b52bd1a7503f",
+    "semantic_hash": ""
+  },
+  "src/app/data/topic-new/components/AssessmentInstructionEditor.jsx": {
+    "mtime": 1791882129.4871151,
+    "ast_hash": "52668867630711d778d93c07debdd92d",
+    "semantic_hash": ""
+  },
+  "src/app/data/topic-new/lib/instructionDocxHelper.js": {
+    "mtime": 1791882237.88118,
+    "ast_hash": "a545fd6cfbf0bb97bbd3abf47ae4123f",
     "semantic_hash": ""
   }
 }

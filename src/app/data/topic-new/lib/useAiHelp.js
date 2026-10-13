@@ -9,6 +9,7 @@
 
 import { useState } from 'react'
 import { supabase } from '@/lib/supabase'
+import { htmlToPlainText } from './instructionDocxHelper'
 
 /**
  * @param {Object} deps - external state/refs from the parent component
@@ -1189,7 +1190,7 @@ Requirements:
       const unitTitle = selectedTopic?.topic_nama || 'Unit Title'
       const assessmentName = wizardAssessment.assessment_nama || 'Assessment'
       const taskDescription = wizardAssessment.assessment_task_specific_description || ''
-      const instructions = wizardAssessment.assessment_instructions || ''
+      const instructions = htmlToPlainText(wizardAssessment.assessment_instructions || '')
       const conceptualUnderstanding = wizardAssessment.assessment_conceptual_understanding || ''
       const mypYear = selectedTopic?.topic_year || 1
 

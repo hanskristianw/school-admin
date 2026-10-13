@@ -8,6 +8,7 @@
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faSpinner, faBookOpen } from '@fortawesome/free-solid-svg-icons'
+import AssessmentInstructionEditor from './AssessmentInstructionEditor'
 
 export default function WizardStepContent({
   currentStep,
@@ -1108,13 +1109,12 @@ export default function WizardStepContent({
             <label className="block text-xs font-semibold text-gray-700 mb-1">
               Assessment Instructions <span className="text-red-500">*</span>
             </label>
-            <textarea
-              value={wizardAssessment.assessment_instructions}
-              onChange={(e) => setWizardAssessment(prev => ({ ...prev, assessment_instructions: e.target.value }))}
+            <AssessmentInstructionEditor
+              value={wizardAssessment.assessment_instructions || ''}
+              onChange={(html) => setWizardAssessment(prev => ({ ...prev, assessment_instructions: html }))}
               disabled={isAssessmentReadOnly}
-              className={`w-full px-3 py-2 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500 ${isAssessmentReadOnly ? 'bg-gray-100 cursor-not-allowed' : ''}`}
-              rows={3}
               placeholder="1. Research your chosen topic...&#10;2. Create an outline..."
+              minHeight={100}
             />
           </div>
               </>
