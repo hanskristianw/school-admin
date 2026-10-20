@@ -9,8 +9,71 @@ const supabaseAdmin = createClient(
 )
 
 /**
+ * Helper to compute cumulative attendance statistics per student for a given class.
+ */
+async function computeClassAttendanceSummary(kelasId, studentsList = []) {
+  const { data: allClassAtt, error } = await supabaseAdmin
+    .from('kelas_attendance')
+    .select('detail_siswa_id, tanggal, status')
+    .eq('kelas_id', kelasId)
+
+  if (error) {
+    console.error('[kelas-attendance] computeSummary error:', error)
+    return { summary: {}, totalDays: 0 }
+  }
+
+  const distinctDates = new Set((allClassAtt || []).map(r => r.tanggal))
+  const totalDays = distinctDates.size
+
+  const summary = {}
+  for (const s of studentsList) {
+    summary[s.detail_siswa_id] = {
+      hadir: 0,
+      terlambat: 0,
+      pulang_cepat: 0,
+      sakit: 0,
+      ijin: 0,
+      tidak_hadir: 0,
+      total_masuk: 0,
+      total_hari: totalDays,
+      persentase: 0
+    }
+  }
+
+  for (const r of (allClassAtt || [])) {
+    if (!summary[r.detail_siswa_id]) {
+      summary[r.detail_siswa_id] = {
+        hadir: 0,
+        terlambat: 0,
+        pulang_cepat: 0,
+        sakit: 0,
+        ijin: 0,
+        tidak_hadir: 0,
+        total_masuk: 0,
+        total_hari: totalDays,
+        persentase: 0
+      }
+    }
+    const st = r.status
+    if (summary[r.detail_siswa_id][st] !== undefined) {
+      summary[r.detail_siswa_id][st]++
+    }
+    if (['hadir', 'terlambat', 'pulang_cepat'].includes(st)) {
+      summary[r.detail_siswa_id].total_masuk++
+    }
+  }
+
+  for (const id in summary) {
+    summary[id].total_hari = totalDays
+    summary[id].persentase = totalDays > 0 ? Math.round((summary[id].total_masuk / totalDays) * 100) : 0
+  }
+
+  return { summary, totalDays }
+}
+
+/**
  * GET /api/kelas-attendance?kelas_id=X&tanggal=YYYY-MM-DD
- * Returns: { students: [...], records: {...} }
+ * Returns: { students: [...], records: {...}, summary: {...}, totalDays: N }
  */
 export async function GET(request) {
   try {
@@ -49,7 +112,10 @@ export async function GET(request) {
       records[r.detail_siswa_id] = { id: r.id, status: r.status, keterangan: r.keterangan || '' }
     }
 
-    return NextResponse.json({ students, records })
+    // Compute cumulative attendance summary
+    const { summary, totalDays } = await computeClassAttendanceSummary(kelasId, students)
+
+    return NextResponse.json({ students, records, summary, totalDays })
   } catch (err) {
     console.error('[kelas-attendance] GET error:', err)
     return NextResponse.json({ error: err.message }, { status: 500 })
@@ -101,7 +167,10 @@ export async function POST(request) {
     }
 
     if (result.error) throw result.error
-    return NextResponse.json(result.data)
+
+    const { summary, totalDays } = await computeClassAttendanceSummary(parseInt(kelas_id))
+
+    return NextResponse.json({ ...result.data, summary, totalDays })
   } catch (err) {
     console.error('[kelas-attendance] POST error:', err)
     return NextResponse.json({ error: err.message }, { status: 500 })
@@ -129,7 +198,10 @@ export async function DELETE(request) {
       .eq('tanggal', tanggal)
 
     if (error) throw error
-    return NextResponse.json({ success: true })
+
+    const { summary, totalDays } = await computeClassAttendanceSummary(parseInt(kelasId))
+
+    return NextResponse.json({ success: true, summary, totalDays })
   } catch (err) {
     console.error('[kelas-attendance] DELETE error:', err)
     return NextResponse.json({ error: err.message }, { status: 500 })

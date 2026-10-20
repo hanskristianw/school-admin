@@ -1212,6 +1212,7 @@ export default function TopicNewPage() {
   const [loadingAttendance, setLoadingAttendance] = useState(false)
   const [savingAttendanceId, setSavingAttendanceId] = useState(null)
   const [attendanceStudents, setAttendanceStudents] = useState([]) // [{detail_siswa_id, nama}]
+  const [attendanceStats, setAttendanceStats] = useState({}) // { [detail_siswa_id]: { total_masuk, total_hari, hadir, terlambat, sakit, ijin, tidak_hadir, persentase } }
   const [attendanceExpanded, setAttendanceExpanded] = useState(true)
 
   // Wizard/Stepper state for Add Mode
@@ -4010,15 +4011,17 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
     if (!kelasId || !date) {
       setAttendanceStudents([])
       setAttendanceRecords({})
+      setAttendanceStats({})
       return
     }
     setLoadingAttendance(true)
     try {
       const res = await fetch(`/api/kelas-attendance?kelas_id=${kelasId}&tanggal=${date}`)
       if (!res.ok) throw new Error(await res.text())
-      const { students, records } = await res.json()
+      const { students, records, summary } = await res.json()
       setAttendanceStudents(students || [])
       setAttendanceRecords(records || {})
+      setAttendanceStats(summary || {})
     } catch (err) {
       console.error('[attendance] fetchDailyAttendance error:', err)
     } finally {
@@ -4028,16 +4031,17 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
 
   // Keep fetchAttendanceStudents as alias (called on kelas change without date)
   const fetchAttendanceStudents = useCallback(async (kelasId) => {
-    if (!kelasId) { setAttendanceStudents([]); setAttendanceRecords({}); return }
+    if (!kelasId) { setAttendanceStudents([]); setAttendanceRecords({}); setAttendanceStats({}); return }
     // Students are fetched together with records in fetchDailyAttendance
     // This is only called to pre-load student list when kelas changes
     setLoadingAttendance(true)
     try {
       const res = await fetch(`/api/kelas-attendance?kelas_id=${kelasId}&tanggal=${attendanceDate}`)
       if (!res.ok) throw new Error(await res.text())
-      const { students, records } = await res.json()
+      const { students, records, summary } = await res.json()
       setAttendanceStudents(students || [])
       setAttendanceRecords(records || {})
+      setAttendanceStats(summary || {})
     } catch (err) {
       console.error('[attendance] fetchAttendanceStudents error:', err)
     } finally {
@@ -4084,6 +4088,9 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
         ...prev,
         [detailSiswaId]: { id: saved.id, status: saved.status, keterangan: saved.keterangan || '' }
       }))
+      if (saved.summary) {
+        setAttendanceStats(saved.summary)
+      }
     } catch (err) {
       console.error('[attendance] saveSingleAttendance error:', err)
     } finally {
@@ -4107,7 +4114,11 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
     try {
       const res = await fetch(`/api/kelas-attendance?kelas_id=${mentorKelas}&tanggal=${attendanceDate}`, { method: 'DELETE' })
       if (!res.ok) throw new Error(await res.text())
+      const delRes = await res.json()
       setAttendanceRecords({})
+      if (delRes.summary) {
+        setAttendanceStats(delRes.summary)
+      }
     } catch (err) {
       console.error('[attendance] clearAttendance error:', err)
     } finally {
@@ -4123,6 +4134,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
     } else {
       setAttendanceStudents([])
       setAttendanceRecords({})
+      setAttendanceStats({})
     }
   }, [mentorKelas, fetchAttendanceStudents, fetchDailyAttendance, attendanceDate])
 
@@ -8459,7 +8471,14 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                             <th className="py-3 px-3 w-10 text-center">{t('topicNew.mentorCommentTab.dailyAttendance.colNo') || '#'}</th>
                             <th className="py-3 px-4 min-w-[190px] max-w-[240px]">{t('topicNew.mentorCommentTab.dailyAttendance.colName') || 'STUDENT NAME'}</th>
                             <th className="py-3 px-4 min-w-[360px] text-center">{t('topicNew.mentorCommentTab.dailyAttendance.colStatus') || 'STATUS'}</th>
-                            <th className="py-3 px-4 min-w-[180px]">{t('topicNew.mentorCommentTab.dailyAttendance.colNote') || 'NOTE / DETAILS'}</th>
+                            <th className="py-3 px-4 min-w-[270px]">
+                            <div className="flex items-center justify-between gap-2">
+                              <span>{t('topicNew.mentorCommentTab.dailyAttendance.colNote') || 'NOTE / DETAILS'}</span>
+                              <span className="text-[9px] font-mono font-normal opacity-70 tracking-normal uppercase">
+                                {t('topicNew.mentorCommentTab.dailyAttendance.colTotalAttendance') || 'TOTAL MASUK'}
+                              </span>
+                            </div>
+                          </th>
                           </tr>
                         </thead>
                         <tbody className="divide-y" style={{ borderColor: theme.border }}>
@@ -8467,6 +8486,10 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                             const rec = attendanceRecords[student.detail_siswa_id]
                             const currentStatus = rec?.status || ''
                             const isSaving = savingAttendanceId === student.detail_siswa_id
+                            const stats = attendanceStats[student.detail_siswa_id] || { total_masuk: 0, total_hari: 0, hadir: 0, terlambat: 0, sakit: 0, ijin: 0, tidak_hadir: 0, persentase: 0 }
+                            const totalMasuk = stats.total_masuk || 0
+                            const totalHari = stats.total_hari || 0
+                            const isAlwaysPresent = totalHari > 0 && totalMasuk === totalHari
                             const statusOptions = [
                               { value: 'hadir',        label: t('topicNew.mentorCommentTab.dailyAttendance.statusHadir')        || 'Present',     bg: isDark ? 'rgba(34, 197, 94, 0.18)' : '#DCFCE7', color: isDark ? '#4ADE80' : '#15803D', border: isDark ? '#22C55E' : '#86EFAC' },
                               { value: 'tidak_hadir',  label: t('topicNew.mentorCommentTab.dailyAttendance.statusTidakHadir')  || 'Absent',      bg: isDark ? 'rgba(239, 68, 68, 0.15)' : '#FEE2E2', color: isDark ? '#F87171' : '#DC2626', border: isDark ? 'rgba(248, 113, 113, 0.4)' : '#FCA5A5' },
@@ -8518,21 +8541,58 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                                     })}
                                   </div>
                                 </td>
-                                <td className="py-2.5 px-4 min-w-[180px]">
-                                  <input
-                                    type="text"
-                                    value={rec?.keterangan || ''}
-                                    placeholder={t('topicNew.mentorCommentTab.dailyAttendance.notePlaceholder') || 'Optional note...'}
-                                    onChange={e => setAttendanceRecords(prev => ({
-                                      ...prev,
-                                      [student.detail_siswa_id]: { ...(prev[student.detail_siswa_id] || {}), keterangan: e.target.value }
-                                    }))}
-                                    onBlur={e => {
-                                      if (currentStatus) saveSingleAttendance(student.detail_siswa_id, currentStatus, e.target.value)
-                                    }}
-                                    className="w-full px-2.5 py-1 text-xs font-mono rounded border outline-none transition-colors"
-                                    style={{ border: `1px solid ${theme.border}`, borderRadius: '4px', background: theme.inputBg, color: theme.textPrimary }}
-                                  />
+                                <td className="py-2.5 px-4 min-w-[270px]">
+                                  <div className="flex items-center gap-2">
+                                    <input
+                                      type="text"
+                                      value={rec?.keterangan || ''}
+                                      placeholder={t('topicNew.mentorCommentTab.dailyAttendance.notePlaceholder') || 'Optional note...'}
+                                      onChange={e => setAttendanceRecords(prev => ({
+                                        ...prev,
+                                        [student.detail_siswa_id]: { ...(prev[student.detail_siswa_id] || {}), keterangan: e.target.value }
+                                      }))}
+                                      onBlur={e => {
+                                        if (currentStatus) saveSingleAttendance(student.detail_siswa_id, currentStatus, e.target.value)
+                                      }}
+                                      className="flex-1 min-w-[110px] px-2.5 py-1 text-xs font-mono rounded border outline-none transition-colors"
+                                      style={{ border: `1px solid ${theme.border}`, borderRadius: '4px', background: theme.inputBg, color: theme.textPrimary }}
+                                    />
+                                    {totalHari > 0 ? (
+                                      <div
+                                        className="shrink-0 px-2 py-0.5 rounded text-[11px] font-mono font-bold flex items-center gap-1 cursor-help border transition-all select-none"
+                                        style={{
+                                          background: isAlwaysPresent
+                                            ? (isDark ? 'rgba(34, 197, 94, 0.18)' : '#DCFCE7')
+                                            : (stats.persentase >= 80
+                                                ? (isDark ? 'rgba(59, 130, 246, 0.15)' : '#DBEAFE')
+                                                : (isDark ? 'rgba(239, 68, 68, 0.15)' : '#FEE2E2')),
+                                          color: isAlwaysPresent
+                                            ? (isDark ? '#4ADE80' : '#15803D')
+                                            : (stats.persentase >= 80
+                                                ? (isDark ? '#60A5FA' : '#2563EB')
+                                                : (isDark ? '#F87171' : '#DC2626')),
+                                          borderColor: isAlwaysPresent
+                                            ? (isDark ? '#22C55E' : '#86EFAC')
+                                            : (stats.persentase >= 80
+                                                ? (isDark ? 'rgba(96, 165, 250, 0.4)' : '#93C5FD')
+                                                : (isDark ? 'rgba(248, 113, 113, 0.4)' : '#FCA5A5')),
+                                          borderRadius: '4px',
+                                        }}
+                                        title={`Masuk: ${totalMasuk}/${totalHari} hari (${stats.persentase}%)${isAlwaysPresent ? ' • Selalu Masuk' : ''}\nRincian:\n• Hadir (Tepat Waktu): ${stats.hadir || 0}\n• Terlambat: ${stats.terlambat || 0}\n• Ijin: ${stats.ijin || 0}\n• Sakit: ${stats.sakit || 0}\n• Tidak Hadir (Alfa): ${stats.tidak_hadir || 0}`}
+                                      >
+                                        <span>{totalMasuk}/{totalHari} hari</span>
+                                        {isAlwaysPresent ? (
+                                          <span className="text-[9.5px] font-sans font-bold" title="Selalu masuk">✓</span>
+                                        ) : (
+                                          <span className="text-[9.5px] font-sans font-normal opacity-75">({stats.persentase}%)</span>
+                                        )}
+                                      </div>
+                                    ) : (
+                                      <span className="shrink-0 text-[10px] font-mono opacity-40 px-1.5 py-0.5" style={{ color: theme.textSecondary }} title="Belum ada riwayat absensi">
+                                        0/0 hari
+                                      </span>
+                                    )}
+                                  </div>
                                 </td>
                               </tr>
                             )
