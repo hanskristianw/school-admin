@@ -10,8 +10,26 @@ const supabaseAdmin = createClient(
 
 /**
  * Helper to compute cumulative attendance statistics per student for a given class.
+ * Respects student's resign_date so days after resignation are not counted against the student.
  */
 async function computeClassAttendanceSummary(kelasId, studentsList = []) {
+  let students = studentsList
+  if (!students || students.length === 0) {
+    const { data: siswaData } = await supabaseAdmin
+      .from('detail_siswa')
+      .select('detail_siswa_id, users:detail_siswa_user_id(user_id, user_nama_depan, user_nama_belakang, is_active, resign_date)')
+      .eq('detail_siswa_kelas_id', kelasId)
+      .order('detail_siswa_id')
+
+    students = (siswaData || []).map(d => ({
+      detail_siswa_id: d.detail_siswa_id,
+      user_id: d.users?.user_id,
+      nama: `${d.users?.user_nama_depan || ''} ${d.users?.user_nama_belakang || ''}`.trim(),
+      is_active: d.users?.is_active ?? true,
+      resign_date: d.users?.resign_date || null
+    }))
+  }
+
   const { data: allClassAtt, error } = await supabaseAdmin
     .from('kelas_attendance')
     .select('detail_siswa_id, tanggal, status')
@@ -22,11 +40,17 @@ async function computeClassAttendanceSummary(kelasId, studentsList = []) {
     return { summary: {}, totalDays: 0 }
   }
 
-  const distinctDates = new Set((allClassAtt || []).map(r => r.tanggal))
-  const totalDays = distinctDates.size
+  const allDistinctDates = Array.from(new Set((allClassAtt || []).map(r => r.tanggal))).sort()
+  const totalDays = allDistinctDates.length
 
   const summary = {}
-  for (const s of studentsList) {
+  for (const s of students) {
+    // If student has resign_date, effective days for this student only count dates <= resign_date
+    const studentDates = s.resign_date
+      ? allDistinctDates.filter(d => d <= s.resign_date)
+      : allDistinctDates
+    const studentTotalDays = studentDates.length
+
     summary[s.detail_siswa_id] = {
       hadir: 0,
       terlambat: 0,
@@ -35,25 +59,15 @@ async function computeClassAttendanceSummary(kelasId, studentsList = []) {
       ijin: 0,
       tidak_hadir: 0,
       total_masuk: 0,
-      total_hari: totalDays,
-      persentase: 0
+      total_hari: studentTotalDays,
+      persentase: 0,
+      is_active: s.is_active ?? true,
+      resign_date: s.resign_date || null
     }
   }
 
   for (const r of (allClassAtt || [])) {
-    if (!summary[r.detail_siswa_id]) {
-      summary[r.detail_siswa_id] = {
-        hadir: 0,
-        terlambat: 0,
-        pulang_cepat: 0,
-        sakit: 0,
-        ijin: 0,
-        tidak_hadir: 0,
-        total_masuk: 0,
-        total_hari: totalDays,
-        persentase: 0
-      }
-    }
+    if (!summary[r.detail_siswa_id]) continue
     const st = r.status
     if (summary[r.detail_siswa_id][st] !== undefined) {
       summary[r.detail_siswa_id][st]++
@@ -64,8 +78,8 @@ async function computeClassAttendanceSummary(kelasId, studentsList = []) {
   }
 
   for (const id in summary) {
-    summary[id].total_hari = totalDays
-    summary[id].persentase = totalDays > 0 ? Math.round((summary[id].total_masuk / totalDays) * 100) : 0
+    const sHari = summary[id].total_hari
+    summary[id].persentase = sHari > 0 ? Math.round((summary[id].total_masuk / sHari) * 100) : 0
   }
 
   return { summary, totalDays }
@@ -73,6 +87,7 @@ async function computeClassAttendanceSummary(kelasId, studentsList = []) {
 
 /**
  * GET /api/kelas-attendance?kelas_id=X&tanggal=YYYY-MM-DD
+ * Mode export: /api/kelas-attendance?kelas_id=X&mode=export
  * Returns: { students: [...], records: {...}, summary: {...}, totalDays: N }
  */
 export async function GET(request) {
@@ -80,24 +95,85 @@ export async function GET(request) {
     const { searchParams } = new URL(request.url)
     const kelasId = searchParams.get('kelas_id')
     const tanggal = searchParams.get('tanggal')
+    const mode = searchParams.get('mode')
 
-    if (!kelasId || !tanggal) {
-      return NextResponse.json({ error: 'kelas_id and tanggal required' }, { status: 400 })
+    if (!kelasId) {
+      return NextResponse.json({ error: 'kelas_id is required' }, { status: 400 })
+    }
+
+    // Export mode: fetch full attendance history across all months for the class
+    if (mode === 'export' || !tanggal) {
+      const { data: kelasData } = await supabaseAdmin
+        .from('kelas')
+        .select('kelas_id, kelas_nama')
+        .eq('kelas_id', kelasId)
+        .single()
+
+      const { data: siswaData, error: siswaError } = await supabaseAdmin
+        .from('detail_siswa')
+        .select('detail_siswa_id, users:detail_siswa_user_id(user_id, user_nama_depan, user_nama_belakang, is_active, resign_date)')
+        .eq('detail_siswa_kelas_id', kelasId)
+        .order('detail_siswa_id')
+
+      if (siswaError) throw siswaError
+
+      const students = (siswaData || []).map(d => ({
+        detail_siswa_id: d.detail_siswa_id,
+        user_id: d.users?.user_id,
+        nama: `${d.users?.user_nama_depan || ''} ${d.users?.user_nama_belakang || ''}`.trim(),
+        is_active: d.users?.is_active ?? true,
+        resign_date: d.users?.resign_date || null
+      })).sort((a, b) => a.nama.localeCompare(b.nama))
+
+      const { data: attData, error: attError } = await supabaseAdmin
+        .from('kelas_attendance')
+        .select('id, detail_siswa_id, tanggal, status, keterangan')
+        .eq('kelas_id', kelasId)
+        .order('tanggal', { ascending: true })
+        .range(0, 99999)
+
+      if (attError) throw attError
+
+      const records = attData || []
+      const distinctDates = Array.from(new Set(records.map(r => r.tanggal))).sort()
+      const distinctMonths = Array.from(new Set(records.map(r => r.tanggal.slice(0, 7)))).sort()
+
+      const { summary, totalDays } = await computeClassAttendanceSummary(kelasId, students)
+
+      return NextResponse.json({
+        kelas: kelasData || { kelas_id: kelasId, kelas_nama: `Kelas ${kelasId}` },
+        students,
+        records,
+        dates: distinctDates,
+        months: distinctMonths,
+        summary,
+        totalDays
+      })
     }
 
     const { data: siswaData, error: siswaError } = await supabaseAdmin
       .from('detail_siswa')
-      .select('detail_siswa_id, users:detail_siswa_user_id(user_id, user_nama_depan, user_nama_belakang)')
+      .select('detail_siswa_id, users:detail_siswa_user_id(user_id, user_nama_depan, user_nama_belakang, is_active, resign_date)')
       .eq('detail_siswa_kelas_id', kelasId)
       .order('detail_siswa_id')
 
     if (siswaError) throw siswaError
 
-    const students = (siswaData || []).map(d => ({
-      detail_siswa_id: d.detail_siswa_id,
-      user_id: d.users?.user_id,
-      nama: `${d.users?.user_nama_depan || ''} ${d.users?.user_nama_belakang || ''}`.trim()
-    }))
+    // Filter students: if student has resigned, they only appear on dates <= resign_date
+    const students = (siswaData || [])
+      .map(d => ({
+        detail_siswa_id: d.detail_siswa_id,
+        user_id: d.users?.user_id,
+        nama: `${d.users?.user_nama_depan || ''} ${d.users?.user_nama_belakang || ''}`.trim(),
+        is_active: d.users?.is_active ?? true,
+        resign_date: d.users?.resign_date || null
+      }))
+      .filter(s => {
+        if (s.resign_date) {
+          return tanggal <= s.resign_date
+        }
+        return s.is_active !== false
+      })
 
     const { data: attData, error: attError } = await supabaseAdmin
       .from('kelas_attendance')

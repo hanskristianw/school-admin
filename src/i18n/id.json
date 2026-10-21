@@ -1026,7 +1026,10 @@
         "statusIjin": "Ijin",
         "statusSakit": "Sakit",
         "statusTerlambat": "Terlambat",
-        "statusPulangCepat": "Pulang Cepat"
+        "statusPulangCepat": "Pulang Cepat",
+        "downloadExcel": "Download Excel",
+        "downloadingExcel": "Mengunduh...",
+        "noAttendanceRecords": "Belum ada data presensi yang tercatat untuk kelas ini."
       }
     },
     "aiHelp": {

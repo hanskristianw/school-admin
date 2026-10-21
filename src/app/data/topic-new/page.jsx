@@ -5,7 +5,7 @@ import { flushSync } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faSpinner, faPlus, faTimes, faClipboardList, faBook, faInfoCircle, faPaperPlane, faTrash, faPrint, faFileAlt, faFileWord, faSave, faLightbulb, faCalendar, faCalendarCheck, faCheck, faTableCells, faListUl, faMap, faClipboardCheck, faComments, faHouseUser, faChartBar, faWandMagicSparkles, faSliders, faEllipsisV, faClock, faEye, faSearch, faChevronDown, faChevronRight } from '@fortawesome/free-solid-svg-icons'
+import { faSpinner, faPlus, faTimes, faClipboardList, faBook, faInfoCircle, faPaperPlane, faTrash, faPrint, faFileAlt, faFileWord, faFileExcel, faSave, faLightbulb, faCalendar, faCalendarCheck, faCheck, faTableCells, faListUl, faMap, faClipboardCheck, faComments, faHouseUser, faChartBar, faWandMagicSparkles, faSliders, faEllipsisV, faClock, faEye, faSearch, faChevronDown, faChevronRight } from '@fortawesome/free-solid-svg-icons'
 import { useTheme } from '@/lib/theme'
 import SlideOver from '@/components/ui/slide-over'
 import Modal from '@/components/ui/modal'
@@ -1211,6 +1211,7 @@ export default function TopicNewPage() {
   const [attendanceRecords, setAttendanceRecords] = useState({}) // { [detail_siswa_id]: { status, keterangan, id } }
   const [loadingAttendance, setLoadingAttendance] = useState(false)
   const [savingAttendanceId, setSavingAttendanceId] = useState(null)
+  const [downloadingAttendanceExcel, setDownloadingAttendanceExcel] = useState(false)
   const [attendanceStudents, setAttendanceStudents] = useState([]) // [{detail_siswa_id, nama}]
   const [attendanceStats, setAttendanceStats] = useState({}) // { [detail_siswa_id]: { total_masuk, total_hari, hadir, terlambat, sakit, ijin, tidak_hadir, persentase } }
   const [attendanceExpanded, setAttendanceExpanded] = useState(true)
@@ -4125,6 +4126,336 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
       setLoadingAttendance(false)
     }
   }, [mentorKelas, attendanceDate, t])
+
+  // Download multi-tab monthly attendance report as Excel workbook
+  const downloadDailyAttendanceExcel = useCallback(async () => {
+    if (!mentorKelas) {
+      alert(t('topicNew.mentorCommentTab.dailyAttendance.selectClassFirst') || 'Pilih kelas terlebih dahulu.')
+      return
+    }
+
+    setDownloadingAttendanceExcel(true)
+    try {
+      const res = await fetch(`/api/kelas-attendance?kelas_id=${mentorKelas}&mode=export`)
+      if (!res.ok) throw new Error(await res.text())
+      const data = await res.json()
+
+      const { kelas, students, records, dates, months } = data
+
+      if (!students || students.length === 0) {
+        alert(t('topicNew.mentorCommentTab.dailyAttendance.noStudents') || 'Tidak ada siswa di kelas ini.')
+        return
+      }
+
+      if (!records || records.length === 0) {
+        alert(t('topicNew.mentorCommentTab.dailyAttendance.noAttendanceRecords') || 'Belum ada data presensi yang tercatat untuk kelas ini.')
+        return
+      }
+
+      const ExcelJS = (await import('exceljs')).default
+      const workbook = new ExcelJS.Workbook()
+      workbook.creator = 'School Admin'
+      workbook.created = new Date()
+
+      const MONTH_NAMES_ID = {
+        '01': 'Januari', '02': 'Februari', '03': 'Maret', '04': 'April',
+        '05': 'Mei', '06': 'Juni', '07': 'Juli', '08': 'Agustus',
+        '09': 'September', '10': 'Oktober', '11': 'November', '12': 'Desember'
+      }
+
+      const STATUS_CONFIG = {
+        hadir:        { code: 'H',  bg: 'FFDCFCE7', text: 'FF15803D' },
+        terlambat:    { code: 'T',  bg: 'FFDBEAFE', text: 'FF1D4ED8' },
+        pulang_cepat: { code: 'PC', bg: 'FFF3E8FF', text: 'FF7E22CE' },
+        ijin:         { code: 'I',  bg: 'FFFEF3C7', text: 'FFB45309' },
+        sakit:        { code: 'S',  bg: 'FFFFEDD5', text: 'FFC2410C' },
+        tidak_hadir:  { code: 'A',  bg: 'FFFEE2E2', text: 'FFB91C1C' },
+      }
+
+      // Group records by student ID and date
+      const recordsByStudentDate = {}
+      const recordsByMonth = {}
+      const allDatesSet = new Set(dates || [])
+
+      for (const r of records) {
+        if (!recordsByStudentDate[r.detail_siswa_id]) recordsByStudentDate[r.detail_siswa_id] = {}
+        recordsByStudentDate[r.detail_siswa_id][r.tanggal] = r
+
+        const m = r.tanggal.slice(0, 7)
+        if (!recordsByMonth[m]) recordsByMonth[m] = new Set()
+        recordsByMonth[m].add(r.tanggal)
+      }
+
+      const sortedMonths = Object.keys(recordsByMonth).sort()
+      const kelasTitle = kelas?.kelas_nama || `Kelas ${mentorKelas}`
+
+      // TAB 1: Ringkasan Kumulatif (Summary)
+      const wsSummary = workbook.addWorksheet('Ringkasan', {
+        views: [{ state: 'frozen', xSplit: 2, ySplit: 4, showGridLines: true }]
+      })
+
+      wsSummary.mergeCells(1, 1, 1, 8)
+      const sumTitleCell = wsSummary.getCell(1, 1)
+      sumTitleCell.value = `REKAPITULASI PRESENSI SISWA - ${kelasTitle.toUpperCase()}`
+      sumTitleCell.font = { size: 13, bold: true, color: { argb: 'FF1E293B' } }
+
+      wsSummary.mergeCells(2, 1, 2, 8)
+      const sumSubCell = wsSummary.getCell(2, 1)
+      sumSubCell.value = `Total Hari Efektif: ${allDatesSet.size} Hari  |  Jumlah Siswa: ${students.length}  |  Dicetak: ${new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}`
+      sumSubCell.font = { size: 9.5, italic: true, color: { argb: 'FF64748B' } }
+
+      const sumHeaders = ['No', 'Nama Siswa', 'Hadir (H)', 'Terlambat (T)', 'Pulang Cepat (PC)', 'Izin (I)', 'Sakit (S)', 'Alfa (A)', 'Total Masuk', 'Hari Efektif', '% Kehadiran', 'Kategori']
+      const sumHeaderRow = wsSummary.getRow(4)
+      sumHeaderRow.values = sumHeaders
+      sumHeaderRow.height = 24
+
+      sumHeaders.forEach((h, idx) => {
+        const cell = sumHeaderRow.getCell(idx + 1)
+        cell.font = { bold: true, size: 9, color: { argb: 'FFFFFFFF' } }
+        cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: idx < 2 ? 'FF1E293B' : 'FF0F766E' } }
+        cell.border = {
+          top: { style: 'thin', color: { argb: 'FFCBD5E1' } },
+          bottom: { style: 'medium', color: { argb: 'FF0F172A' } },
+          left: { style: 'thin', color: { argb: 'FFCBD5E1' } },
+          right: { style: 'thin', color: { argb: 'FFCBD5E1' } }
+        }
+      })
+
+      wsSummary.getColumn(1).width = 5
+      wsSummary.getColumn(2).width = 30
+      for (let c = 3; c <= 12; c++) {
+        wsSummary.getColumn(c).width = c >= 9 ? 14 : 12
+      }
+
+      students.forEach((s, idx) => {
+        let cH = 0, cT = 0, cPC = 0, cI = 0, cS = 0, cA = 0
+        const studentRecs = recordsByStudentDate[s.detail_siswa_id] || {}
+        const studentDates = s.resign_date
+          ? Array.from(allDatesSet).filter(d => d <= s.resign_date)
+          : Array.from(allDatesSet)
+        const studentDays = studentDates.length
+
+        for (const d of studentDates) {
+          const st = studentRecs[d]?.status
+          if (st === 'hadir') cH++
+          else if (st === 'terlambat') cT++
+          else if (st === 'pulang_cepat') cPC++
+          else if (st === 'ijin') cI++
+          else if (st === 'sakit') cS++
+          else if (st === 'tidak_hadir') cA++
+        }
+        const masuk = cH + cT + cPC
+        const pct = studentDays > 0 ? Math.round((masuk / studentDays) * 100) : 0
+        let kat = pct === 100 ? 'Sempurna' : pct >= 90 ? 'Sangat Baik' : pct >= 80 ? 'Baik' : 'Perlu Perhatian'
+        if (s.resign_date) {
+          const [ry, rm, rd] = s.resign_date.split('-')
+          kat = `Keluar (${rd}/${rm}/${ry})`
+        }
+
+        const row = wsSummary.getRow(5 + idx)
+        row.height = 20
+        row.values = [idx + 1, s.nama, cH, cT, cPC, cI, cS, cA, masuk, studentDays, pct + '%', kat]
+        row.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' }
+        row.getCell(2).alignment = { horizontal: 'left', vertical: 'middle' }
+        for (let c = 3; c <= 12; c++) {
+          row.getCell(c).alignment = { horizontal: 'center', vertical: 'middle' }
+        }
+        const pctCell = row.getCell(11)
+        if (s.resign_date) {
+          pctCell.font = { italic: true, color: { argb: 'FF64748B' } }
+          row.getCell(12).font = { bold: true, color: { argb: 'FFDC2626' } }
+        } else if (pct < 80) {
+          pctCell.font = { bold: true, color: { argb: 'FFDC2626' } }
+        } else if (pct === 100) {
+          pctCell.font = { bold: true, color: { argb: 'FF15803D' } }
+        }
+
+        for (let c = 1; c <= 12; c++) {
+          const cell = row.getCell(c)
+          cell.border = {
+            top: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+            bottom: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+            left: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+            right: { style: 'thin', color: { argb: 'FFE2E8F0' } }
+          }
+        }
+      })
+
+      // TABS PER BULAN (Worksheet per Month)
+      for (const m of sortedMonths) {
+        const [yyyy, mm] = m.split('-')
+        const monthLabel = `${MONTH_NAMES_ID[mm] || mm} ${yyyy}`
+        const monthDates = Array.from(recordsByMonth[m]).sort()
+
+        const ws = workbook.addWorksheet(monthLabel, {
+          views: [{ state: 'frozen', xSplit: 2, ySplit: 4, showGridLines: true }]
+        })
+
+        // Title row
+        ws.mergeCells(1, 1, 1, 6)
+        const tCell = ws.getCell(1, 1)
+        tCell.value = `PRESENSI SISWA - ${kelasTitle.toUpperCase()}`
+        tCell.font = { size: 13, bold: true, color: { argb: 'FF1E293B' } }
+
+        // Subtitle row
+        ws.mergeCells(2, 1, 2, 6)
+        const subCell = ws.getCell(2, 1)
+        subCell.value = `Bulan: ${monthLabel}  |  Hari Efektif: ${monthDates.length} Hari  |  Kelas: ${kelasTitle}`
+        subCell.font = { size: 9.5, italic: true, color: { argb: 'FF64748B' } }
+
+        // Headers
+        const headers = ['No', 'Nama Siswa']
+        monthDates.forEach(d => {
+          const parts = d.split('-')
+          headers.push(`${parts[2]}/${parts[1]}`)
+        })
+        headers.push('H', 'T', 'PC', 'I', 'S', 'A', 'Masuk', '%')
+
+        const headerRow = ws.getRow(4)
+        headerRow.values = headers
+        headerRow.height = 24
+
+        headers.forEach((h, idx) => {
+          const colNum = idx + 1
+          const cell = headerRow.getCell(colNum)
+          const isMetaCol = colNum <= 2
+          const isSummaryCol = colNum > 2 + monthDates.length
+
+          cell.font = { bold: true, size: 9, color: { argb: 'FFFFFFFF' } }
+          cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }
+          cell.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: isMetaCol ? 'FF1E293B' : isSummaryCol ? 'FF0F766E' : 'FF3B82F6' }
+          }
+          cell.border = {
+            top: { style: 'thin', color: { argb: 'FFCBD5E1' } },
+            bottom: { style: 'medium', color: { argb: 'FF0F172A' } },
+            left: { style: 'thin', color: { argb: 'FFCBD5E1' } },
+            right: { style: 'thin', color: { argb: 'FFCBD5E1' } }
+          }
+        })
+
+        // Column widths
+        ws.getColumn(1).width = 5
+        ws.getColumn(2).width = 28
+        monthDates.forEach((_, i) => {
+          ws.getColumn(3 + i).width = 5.5
+        })
+        const summaryStartCol = 3 + monthDates.length
+        for (let c = 0; c < 8; c++) {
+          ws.getColumn(summaryStartCol + c).width = c >= 6 ? 8.5 : 5.5
+        }
+
+        const monthStart = `${m}-01`
+        const monthStudents = students.filter(s => {
+          if (s.resign_date && s.resign_date < monthStart) return false
+          return true
+        })
+
+        // Student rows
+        monthStudents.forEach((student, sIdx) => {
+          const rowNum = 5 + sIdx
+          const row = ws.getRow(rowNum)
+          row.height = 20
+
+          let cntH = 0, cntT = 0, cntPC = 0, cntI = 0, cntS = 0, cntA = 0
+
+          row.getCell(1).value = sIdx + 1
+          row.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' }
+          row.getCell(2).value = student.nama
+          row.getCell(2).alignment = { horizontal: 'left', vertical: 'middle' }
+
+          monthDates.forEach((d, dIdx) => {
+            const colNum = 3 + dIdx
+            const cell = row.getCell(colNum)
+            cell.alignment = { horizontal: 'center', vertical: 'middle' }
+
+            if (student.resign_date && d > student.resign_date) {
+              cell.value = '-'
+              cell.font = { size: 9, color: { argb: 'FFCBD5E1' } }
+              return
+            }
+
+            const rec = recordsByStudentDate[student.detail_siswa_id]?.[d]
+            if (rec) {
+              const cfg = STATUS_CONFIG[rec.status] || { code: '?', bg: 'FFF1F5F9', text: 'FF64748B' }
+              cell.value = cfg.code
+              cell.font = { bold: true, size: 9, color: { argb: cfg.text } }
+              cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: cfg.bg } }
+
+              if (rec.status === 'hadir') cntH++
+              else if (rec.status === 'terlambat') cntT++
+              else if (rec.status === 'pulang_cepat') cntPC++
+              else if (rec.status === 'ijin') cntI++
+              else if (rec.status === 'sakit') cntS++
+              else if (rec.status === 'tidak_hadir') cntA++
+
+              if (rec.keterangan && rec.keterangan.trim()) {
+                cell.note = rec.keterangan.trim()
+              }
+            } else {
+              cell.value = '-'
+              cell.font = { size: 9, color: { argb: 'FFCBD5E1' } }
+            }
+          })
+
+          const effectiveMonthDays = student.resign_date
+            ? monthDates.filter(d => d <= student.resign_date).length
+            : monthDates.length
+          const totalMasuk = cntH + cntT + cntPC
+          const pct = effectiveMonthDays > 0 ? Math.round((totalMasuk / effectiveMonthDays) * 100) : 0
+
+          const summaryValues = [cntH, cntT, cntPC, cntI, cntS, cntA, totalMasuk, pct + '%']
+          summaryValues.forEach((val, valIdx) => {
+            const cell = row.getCell(summaryStartCol + valIdx)
+            cell.value = val
+            cell.alignment = { horizontal: 'center', vertical: 'middle' }
+            cell.font = { bold: valIdx >= 6, size: 9, color: { argb: valIdx === 7 && pct < 80 ? 'FFDC2626' : 'FF1E293B' } }
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8FAFC' } }
+          })
+
+          for (let c = 1; c <= 2 + monthDates.length + 8; c++) {
+            const cell = row.getCell(c)
+            cell.border = {
+              top: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+              bottom: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+              left: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+              right: { style: 'thin', color: { argb: 'FFE2E8F0' } }
+            }
+          }
+        })
+
+        // Legend row at the bottom
+        const legendRowIdx = 5 + monthStudents.length + 2
+        ws.mergeCells(legendRowIdx, 1, legendRowIdx, Math.min(12, 2 + monthDates.length + 8))
+        const legendCell = ws.getCell(legendRowIdx, 1)
+        legendCell.value = 'Keterangan:  H = Hadir  |  T = Terlambat  |  PC = Pulang Cepat  |  I = Izin  |  S = Sakit  |  A = Alfa  |  * Segitiga merah = Catatan'
+        legendCell.font = { size: 9, italic: true, color: { argb: 'FF64748B' } }
+      }
+
+      // Download file in browser
+      const buffer = await workbook.xlsx.writeBuffer()
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      const sanitizedKelas = kelasTitle.replace(/[^a-zA-Z0-9_-]/g, '_')
+      const periodLabel = sortedMonths.length === 1 ? sortedMonths[0] : `${sortedMonths[0]}_sd_${sortedMonths[sortedMonths.length - 1]}`
+      a.download = `Presensi_${sanitizedKelas}_${periodLabel}.xlsx`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      console.error('[attendance] downloadDailyAttendanceExcel error:', err)
+      alert('Gagal mendownload file Excel: ' + (err.message || err))
+    } finally {
+      setDownloadingAttendanceExcel(false)
+    }
+  }, [mentorKelas, t])
+
 
   // Fetch attendance students when kelas changes
   useEffect(() => {
@@ -8421,6 +8752,23 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
 
                   {/* Summary Metric Chips & Quick Action Buttons */}
                   <div className="flex items-center gap-2 flex-wrap justify-end w-full md:w-auto">
+                    <button
+                      type="button"
+                      onClick={downloadDailyAttendanceExcel}
+                      disabled={downloadingAttendanceExcel || !mentorKelas}
+                      className="px-3 py-1.5 text-xs font-semibold rounded border transition-colors cursor-pointer disabled:opacity-40 flex items-center gap-1.5"
+                      style={{
+                        background: isDark ? 'rgba(34, 197, 94, 0.15)' : '#DCFCE7',
+                        borderColor: isDark ? '#22C55E' : '#86EFAC',
+                        color: isDark ? '#4ADE80' : '#15803D',
+                        borderRadius: '4px'
+                      }}
+                      title="Download rekap presensi per bulan dalam format Excel (.xlsx)"
+                    >
+                      <FontAwesomeIcon icon={downloadingAttendanceExcel ? faSpinner : faFileExcel} spin={downloadingAttendanceExcel} className="text-[11px]" />
+                      <span>{downloadingAttendanceExcel ? (t('topicNew.mentorCommentTab.dailyAttendance.downloadingExcel') || 'Mengunduh...') : (t('topicNew.mentorCommentTab.dailyAttendance.downloadExcel') || 'Download Excel')}</span>
+                    </button>
+
                     <button
                       type="button"
                       onClick={clearAttendance}

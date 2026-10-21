@@ -1026,7 +1026,10 @@
         "statusIjin": "Excused",
         "statusSakit": "Sick",
         "statusTerlambat": "Late",
-        "statusPulangCepat": "Early Leave"
+        "statusPulangCepat": "Early Leave",
+        "downloadExcel": "Download Excel",
+        "downloadingExcel": "Downloading...",
+        "noAttendanceRecords": "No attendance records found for this class."
       }
     },
     "aiHelp": {

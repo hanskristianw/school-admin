@@ -1,7 +1,7 @@
-# Graph Report - school-admin  (2026-10-20)
+# Graph Report - school-admin  (2026-10-21)
 
 ## Corpus Check
-- 429 files · ~738,241 words
+- 429 files · ~740,386 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
@@ -10,7 +10,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `9f047456`
+- Built from commit: `73eae2b8`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -288,6 +288,7 @@
 - dotenv
 - driver.js
 - @fortawesome/free-solid-svg-icons
+- @supabase/supabase-js
 - react-easy-crop
 - next-auth
 - 📁 **Project Structure**
@@ -297,7 +298,6 @@
 - pdf-lib
 - @radix-ui/react-select
 - react-hook-form
-- browser-image-compression
 - class-variance-authority
 - @tiptap/extension-table-cell
 - @tiptap/extension-table-header
@@ -763,7 +763,7 @@ Nodes (7): 33. CATEGORY-SPECIFIC BIAS, Commerce, Fintech, Health / Fitness, Prod
 
 ### Community 133 - "Module 133"
 Cohesion: 0.15
-Nodes (13): bcryptjs, @fortawesome/react-fontawesome, @hookform/resolvers, lucide-react, dependencies, bcryptjs, @fortawesome/react-fontawesome, @hookform/resolvers (+5 more)
+Nodes (13): browser-image-compression, @fortawesome/react-fontawesome, @hookform/resolvers, lucide-react, dependencies, browser-image-compression, @fortawesome/react-fontawesome, @hookform/resolvers (+5 more)
 
 ### Community 135 - "Module 135"
 Cohesion: 0.29
@@ -1025,7 +1025,7 @@ Nodes (3): **Important Files:**, **Key Directories:**, 📁 **Project Structure*
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `dependencies` connect `Module 133` to `Admission Management`, `Package Dependencies & Config`, `next-auth`, `DDL`, `📁 **Project Structure**`, `react-dom`, `Module 134`, `pdf-lib`, `@radix-ui/react-select`, `react-hook-form`, `React UI Components`, `🎓 **IB MYP Assessment Grading System**`, `browser-image-compression`, `clsx`, `class-variance-authority`, `@tiptap/extension-table-cell`, `@tiptap/extension-table-header`, `@tiptap/extension-table-row`, `@tiptap/extension-task-item`, `@tiptap/extension-task-list`, `docx`, `@tiptap/extension-text-align`, `@tiptap/extension-text-style`, `Module 153`, `Module 154`, `Module 155`, `@tiptap/extension-underline`, `@tiptap/pm`, `@tiptap/react`, `clsx`, `@tiptap/starter-kit`, `xlsx`, `dotenv`, `zod`, `🔧 **Technical Implementation**`, `Appendix B - Canonical Sources (read these before reinventing)`, `SKILL.md`, `Analysis & Synthesis Instructions`, `**3. Assessment System**`, `Module 193`, `12. THE COMBINATORIAL VARIATION ENGINE`, `📁 **Project Structure**`, `11. REDESIGN PROTOCOL`, `33. CATEGORY-SPECIFIC BIAS`, `Module 239`, `Module 240`, `jsonwebtoken`, `jspdf-autotable`, `dotenv`, `@fortawesome/free-solid-svg-icons`, `react-easy-crop`?**
+- **Why does `dependencies` connect `Module 133` to `Admission Management`, `Package Dependencies & Config`, `next-auth`, `DDL`, `📁 **Project Structure**`, `react-dom`, `Module 134`, `pdf-lib`, `@radix-ui/react-select`, `react-hook-form`, `React UI Components`, `🎓 **IB MYP Assessment Grading System**`, `clsx`, `class-variance-authority`, `@tiptap/extension-table-cell`, `@tiptap/extension-table-header`, `@tiptap/extension-table-row`, `@tiptap/extension-task-item`, `@tiptap/extension-task-list`, `@tiptap/extension-text-align`, `docx`, `@tiptap/extension-text-style`, `@tiptap/extension-underline`, `Module 153`, `Module 154`, `Module 155`, `@tiptap/pm`, `@tiptap/react`, `@tiptap/starter-kit`, `clsx`, `xlsx`, `dotenv`, `zod`, `🔧 **Technical Implementation**`, `Appendix B - Canonical Sources (read these before reinventing)`, `SKILL.md`, `Analysis & Synthesis Instructions`, `**3. Assessment System**`, `Module 193`, `12. THE COMBINATORIAL VARIATION ENGINE`, `📁 **Project Structure**`, `11. REDESIGN PROTOCOL`, `33. CATEGORY-SPECIFIC BIAS`, `Module 239`, `Module 240`, `jsonwebtoken`, `jspdf-autotable`, `dotenv`, `@fortawesome/free-solid-svg-icons`, `@supabase/supabase-js`, `react-easy-crop`?**
   _High betweenness centrality (0.019) - this node is a cross-community bridge._
 - **Why does `jspdf` connect `Admission Management` to `Module 194`, `page.jsx`, `Module 145`, `Module 133`?**
   _High betweenness centrality (0.013) - this node is a cross-community bridge._
