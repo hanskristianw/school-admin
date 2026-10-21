@@ -3560,8 +3560,8 @@
       "source_location": "L39",
       "_origin": "ast",
       "id": "package_dependencies_browser_image_compression",
-      "community": 133,
-      "community_name": "Module 133",
+      "community": 391,
+      "community_name": "browser-image-compression",
       "norm_label": "browser-image-compression"
     },
     {
@@ -3571,8 +3571,8 @@
       "source_location": "L39",
       "_origin": "ast",
       "id": "browser_image_compression",
-      "community": 133,
-      "community_name": "Module 133",
+      "community": 391,
+      "community_name": "browser-image-compression",
       "norm_label": "browser-image-compression"
     },
     {
@@ -3648,8 +3648,8 @@
       "source_location": "L43",
       "_origin": "ast",
       "id": "package_dependencies_dotenv",
-      "community": 193,
-      "community_name": "Module 193",
+      "community": 133,
+      "community_name": "Module 133",
       "norm_label": "dotenv"
     },
     {
@@ -3659,8 +3659,8 @@
       "source_location": "L43",
       "_origin": "ast",
       "id": "dotenv",
-      "community": 193,
-      "community_name": "Module 193",
+      "community": 133,
+      "community_name": "Module 133",
       "norm_label": "dotenv"
     },
     {
@@ -11345,7 +11345,7 @@
       "label": "GoogleIcon()",
       "file_type": "code",
       "source_file": "src/app/profile/page.jsx",
-      "source_location": "L19",
+      "source_location": "L22",
       "_origin": "ast",
       "id": "src_app_profile_page_googleicon",
       "community": 88,
@@ -11356,7 +11356,7 @@
       "label": "ProfilePage()",
       "file_type": "code",
       "source_file": "src/app/profile/page.jsx",
-      "source_location": "L28",
+      "source_location": "L31",
       "_origin": "ast",
       "id": "src_app_profile_page_profilepage",
       "community": 88,
@@ -17321,8 +17321,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "agents_skills_imagegen_frontend_web_skill",
-      "community": 80,
-      "community_name": "Module 80",
+      "community": 193,
+      "community_name": "Module 193",
       "norm_label": "skill.md"
     },
     {
@@ -17332,8 +17332,8 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "agents_skills_imagegen_frontend_web_skill_hard_output_rule_read_first",
-      "community": 80,
-      "community_name": "Module 80",
+      "community": 193,
+      "community_name": "Module 193",
       "norm_label": "hard output rule \u2014 read first"
     },
     {
@@ -17343,8 +17343,8 @@
       "source_location": "L25",
       "_origin": "ast",
       "id": "agents_skills_imagegen_frontend_web_skill_hero_composition_bias_read_first",
-      "community": 80,
-      "community_name": "Module 80",
+      "community": 193,
+      "community_name": "Module 193",
       "norm_label": "hero composition bias \u2014 read first"
     },
     {
@@ -19532,8 +19532,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "database_schema",
-      "community": 139,
-      "community_name": "Module 139",
+      "community": 115,
+      "community_name": "Module 115",
       "norm_label": "database_schema.md"
     },
     {
@@ -19543,8 +19543,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "database_schema_database_schema_relationships",
-      "community": 139,
-      "community_name": "Module 139",
+      "community": 115,
+      "community_name": "Module 115",
       "norm_label": "database schema & relationships"
     },
     {
@@ -20027,8 +20027,8 @@
       "source_location": "L757",
       "_origin": "ast",
       "id": "database_schema_5_attendance_leave_management_domain_data_attendance_settings_data_attendance_leave_data_attendance_form",
-      "community": 139,
-      "community_name": "Module 139",
+      "community": 115,
+      "community_name": "Module 115",
       "norm_label": "5. attendance & leave management domain (`/data/attendance-settings`, `/data/attendance-leave`, `/data/attendance-form`)"
     },
     {
@@ -20181,8 +20181,8 @@
       "source_location": "L930",
       "_origin": "ast",
       "id": "database_schema_5_2_erd_relationships_attendance_domain",
-      "community": 139,
-      "community_name": "Module 139",
+      "community": 115,
+      "community_name": "Module 115",
       "norm_label": "5.2 erd / relationships (attendance domain)"
     },
     {
@@ -40469,7 +40469,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/app/profile/page.jsx",
-      "source_location": "L19",
+      "source_location": "L22",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_profile_page",
@@ -40480,7 +40480,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/app/profile/page.jsx",
-      "source_location": "L28",
+      "source_location": "L31",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_profile_page",
@@ -55166,5 +55166,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "73eae2b8a4801fee6427d9863e7f8740f7c8a2ea"
+  "built_at_commit": "2c5cfe66482a7679d0d80107c1eb5d37de8c6b0f"
 }
