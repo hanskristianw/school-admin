@@ -1,35 +1,56 @@
 /**
  * vertexClient.js
  *
- * Shared Vertex AI generative model factory.
- *
- * Auth strategy:
- *   1. Vercel / serverless  → set GOOGLE_APPLICATION_CREDENTIALS_JSON = full JSON string of the SA key
- *   2. Local / Docker        → set GOOGLE_APPLICATION_CREDENTIALS = path to the SA key JSON file
- *
- * VertexAI accepts `googleAuthOptions` which is forwarded directly to google-auth-library's
- * GoogleAuth constructor — so we can pass `credentials` (parsed object) instead of a file path.
+ * Dual Gemini client provider:
+ * 1. Primary: Direct Google Gemini API (AI Studio) via GEMINI_API_KEY (fast, no billing restriction).
+ * 2. Secondary / Fallback: Google Cloud Vertex AI via Service Account / ADC.
  */
 
 import { VertexAI } from '@google-cloud/vertexai'
 import fs from 'fs'
 import path from 'path'
 
-let _genModel = null
+let _vertexGenModel = null
 
-export function getVertexModel() {
-  if (_genModel) return _genModel
+export function getVertexModel(modelOverride) {
+  const apiKey = process.env.GEMINI_API_KEY
+  let modelId = (modelOverride || process.env.GEMINI_MODEL || 'gemini-2.5-flash').replace(/^models\//, '')
+
+  // ── Strategy 1: Direct Google Generative Language API (GEMINI_API_KEY) ──
+  if (apiKey) {
+    return {
+      async generateContent({ contents }) {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent?key=${apiKey}`
+        console.log(`[GeminiClient] Calling Google AI Studio API with model: ${modelId}`)
+
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ contents }),
+        })
+
+        if (!res.ok) {
+          const errText = await res.text()
+          console.error(`[GeminiClient] Error ${res.status}:`, errText)
+          throw new Error(`Gemini API error (${res.status}): ${errText}`)
+        }
+
+        const data = await res.json()
+        return { response: data }
+      }
+    }
+  }
+
+  // ── Strategy 2: Google Cloud Vertex AI ──
+  if (_vertexGenModel && !modelOverride) return _vertexGenModel
 
   const saFilePath = path.join(process.cwd(), 'project-c16c7efe-fd40-417e-8ee-a95d10636d04.json')
-
   let project  = process.env.GCP_PROJECT_ID || '213755729408'
   const location = process.env.GCP_LOCATION   || 'us-central1'
-  const modelId  = process.env.GEMINI_MODEL   || 'gemini-2.5-flash-lite'
 
   /** @type {import('@google-cloud/vertexai').VertexInit} */
   const vertexInit = { project, location }
 
-  // ── Vercel / serverless: credentials injected as a JSON string ──────────────
   const credsJson = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON
   if (credsJson) {
     try {
@@ -56,11 +77,11 @@ export function getVertexModel() {
       console.error('[vertexClient] Failed to read SA key file:', e.message)
     }
   } else {
-    // ── Local: ADC reads GOOGLE_APPLICATION_CREDENTIALS file path automatically ─
     console.log('[vertexClient] Using ADC (GOOGLE_APPLICATION_CREDENTIALS):', process.env.GOOGLE_APPLICATION_CREDENTIALS)
   }
 
   const vertex = new VertexAI(vertexInit)
-  _genModel = vertex.getGenerativeModel({ model: modelId })
-  return _genModel
+  const genModel = vertex.getGenerativeModel({ model: modelId })
+  if (!modelOverride) _vertexGenModel = genModel
+  return genModel
 }

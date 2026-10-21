@@ -9,7 +9,7 @@
 
 import { useState } from 'react'
 import { supabase } from '@/lib/supabase'
-import { htmlToPlainText } from './instructionDocxHelper'
+import { htmlToPlainText, isHtmlEmpty } from './instructionDocxHelper'
 
 /**
  * @param {Object} deps - external state/refs from the parent component
@@ -1180,8 +1180,29 @@ Requirements:
 
   // ── TSC AI Help ────────────────────────────────────────────────────────────
   const requestAiHelpTSC = async () => {
+    const rawInstructions = wizardAssessment?.assessment_instructions || ''
+    const hasInstructions = !isHtmlEmpty(rawInstructions) && htmlToPlainText(rawInstructions).trim().length > 0
+    const hasName = Boolean(wizardAssessment?.assessment_nama?.trim())
+    const hasTaskDesc = Boolean(wizardAssessment?.assessment_task_specific_description?.trim())
+    const hasCriteria = Array.isArray(wizardAssessment?.selected_criteria) && wizardAssessment.selected_criteria.length > 0
+
+    if (!hasName || !hasTaskDesc || !hasInstructions || !hasCriteria) {
+      const missing = []
+      if (!hasCriteria) missing.push('Criteria to Assess')
+      if (!hasName) missing.push('Assessment Name')
+      if (!hasTaskDesc) missing.push('Task Specific Description')
+      if (!hasInstructions) missing.push('Assessment Instructions')
+
+      const msg = `TSC AI Help memerlukan kelengkapan Step 6 (Assessment). Mohon lengkapi terlebih dahulu: ${missing.join(', ')}.`
+      alert(msg)
+      setAiError(msg)
+      return
+    }
+
     setAiLoading(true)
     setAiError('')
+    // Yield tick so UI renders loader immediately
+    await new Promise(resolve => setTimeout(resolve, 50))
 
     try {
       const subj = subjects.find(s => String(s.subject_id) === String(selectedTopic?.topic_subject_id))

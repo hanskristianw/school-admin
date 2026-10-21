@@ -10,13 +10,13 @@ export const dynamic = 'force-dynamic'
  */
 export async function POST(req) {
   try {
-    const { prompt, context } = await req.json()
+    const { prompt, context, model } = await req.json()
 
     if (!prompt || typeof prompt !== 'string') {
       return NextResponse.json({ error: 'Invalid prompt' }, { status: 400 })
     }
 
-    const genModel = getVertexModel()
+    const genModel = getVertexModel(model)
 
     // Build contents — inject optional system context as a user/model pair
     const contents = []
@@ -26,16 +26,16 @@ export async function POST(req) {
     }
     contents.push({ role: 'user', parts: [{ text: prompt }] })
 
-    console.log('[Vertex AI /api/gemini] Generating content, prompt length:', prompt.length)
+    console.log('[Gemini /api/gemini] Generating content, prompt length:', prompt.length)
 
     const result = await genModel.generateContent({ contents })
     const text   = result.response?.candidates?.[0]?.content?.parts?.map(p => p.text).join('\n') || ''
 
-    console.log('[Vertex AI /api/gemini] Response length:', text.length)
+    console.log('[Gemini /api/gemini] Response length:', text.length)
 
     return NextResponse.json({ text })
   } catch (e) {
-    console.error('[Vertex AI /api/gemini] Error:', e?.message || e)
-    return NextResponse.json({ error: e?.message || 'Vertex AI request failed' }, { status: 500 })
+    console.error('[Gemini /api/gemini] Error:', e?.message || e)
+    return NextResponse.json({ error: e?.message || 'Gemini request failed' }, { status: 500 })
   }
 }

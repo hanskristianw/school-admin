@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import AssessmentInstructionEditor from './AssessmentInstructionEditor'
+import { isHtmlEmpty } from '../lib/instructionDocxHelper'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import {
   faTimes,
@@ -1459,18 +1460,47 @@ export default function UnitPlannerDocumentEditor({
                 <h3 className="font-bold text-[12pt] uppercase tracking-wide text-black">
                   SUBJECT CRITERIA AND TASK-SPECIFIC CLARIFICATION
                 </h3>
-                {requestAiHelpTSC && (
-                  <button
-                    type="button"
-                    onClick={requestAiHelpTSC}
-                    disabled={aiLoading}
-                    className="text-xs text-purple-700 font-semibold flex items-center gap-1 hover:underline cursor-pointer"
-                  >
-                    <FontAwesomeIcon icon={faWandMagicSparkles} className="text-xs" />
-                    <span>AI Assist Clarifications</span>
-                  </button>
-                )}
+                {requestAiHelpTSC && (() => {
+                  if (aiLoading) {
+                    return (
+                      <span className="text-xs font-semibold text-purple-700 flex items-center gap-1.5 cursor-wait bg-purple-50 px-2.5 py-1 rounded-full border border-purple-200 shadow-xs animate-pulse">
+                        <FontAwesomeIcon icon={faSpinner} className="text-xs animate-spin text-purple-700" />
+                        <span>AI Generating Clarifications...</span>
+                      </span>
+                    )
+                  }
+
+                  const hasInstructions = !isHtmlEmpty(wizardAssessment?.assessment_instructions)
+                  const hasName = Boolean(wizardAssessment?.assessment_nama?.trim())
+                  const hasTaskDesc = Boolean(wizardAssessment?.assessment_task_specific_description?.trim())
+                  const hasCriteria = Boolean(wizardAssessment?.selected_criteria?.length > 0)
+                  const canGenerateTSC = hasName && hasTaskDesc && hasInstructions && hasCriteria
+
+                  return (
+                    <button
+                      type="button"
+                      onClick={requestAiHelpTSC}
+                      disabled={!canGenerateTSC}
+                      title={!canGenerateTSC ? 'Lengkapi Assessment Name, Task Description, dan Assessment Instructions terlebih dahulu' : 'Generate AI TSC'}
+                      className={`text-xs font-semibold flex items-center gap-1 ${
+                        canGenerateTSC ? 'text-purple-700 hover:underline cursor-pointer' : 'text-gray-400 cursor-not-allowed opacity-60'
+                      }`}
+                    >
+                      <FontAwesomeIcon icon={faWandMagicSparkles} className="text-xs" />
+                      <span>AI Assist Clarifications</span>
+                    </button>
+                  )
+                })()}
               </div>
+
+              {aiLoading && (
+                <div className="p-3 my-2 rounded-lg border border-purple-200 bg-gradient-to-r from-purple-50 via-pink-50 to-indigo-50 text-xs text-purple-800 flex items-center gap-2.5 shadow-xs animate-pulse">
+                  <FontAwesomeIcon icon={faSpinner} className="animate-spin text-purple-600 text-sm" />
+                  <div className="flex-1">
+                    <span className="font-bold">AI sedang merumuskan TSC:</span> Menyelaraskan kriteria dan instruksi tugas dengan achievement level (7-8, 5-6, 3-4, 1-2)...
+                  </div>
+                </div>
+              )}
 
               {selectedCriteriaList.length > 0 ? (
                 selectedCriteriaList.map(criterion => {

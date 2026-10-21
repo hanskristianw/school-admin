@@ -5165,7 +5165,11 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
       // Check required fields (date will be submitted later)
       if (!wizardAssessment.assessment_nama?.trim() ||
           !wizardAssessment.assessment_semester?.trim() ||
-          !wizardAssessment.selected_criteria?.length) {
+          !wizardAssessment.selected_criteria?.length ||
+          !wizardAssessment.assessment_conceptual_understanding?.trim() ||
+          !wizardAssessment.assessment_task_specific_description?.trim() ||
+          !wizardAssessment.assessment_instructions?.trim() ||
+          isHtmlEmpty(wizardAssessment.assessment_instructions)) {
         return false
       }
       
@@ -5265,6 +5269,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
     if (!wizardAssessment.assessment_nama?.trim()) missing.push({ step: 7, field: 'Assessment Name' })
     if (!wizardAssessment.assessment_semester?.trim()) missing.push({ step: 7, field: 'Semester' })
     if (!wizardAssessment.assessment_conceptual_understanding?.trim()) missing.push({ step: 7, field: 'Conceptual Understanding' })
+    if (!wizardAssessment.assessment_task_specific_description?.trim()) missing.push({ step: 7, field: 'Task Specific Description' })
     if (!wizardAssessment.assessment_instructions?.trim() || isHtmlEmpty(wizardAssessment.assessment_instructions)) missing.push({ step: 7, field: 'Assessment Instructions' })
     
     // Step 7: Relationship

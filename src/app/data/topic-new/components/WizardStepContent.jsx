@@ -9,6 +9,7 @@
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faSpinner, faBookOpen } from '@fortawesome/free-solid-svg-icons'
 import AssessmentInstructionEditor from './AssessmentInstructionEditor'
+import { isHtmlEmpty } from '../lib/instructionDocxHelper'
 
 export default function WizardStepContent({
   currentStep,
@@ -1196,34 +1197,89 @@ export default function WizardStepContent({
       )}
 
       {/* ─── Step 8: Task Specific Clarification (TSC) ─── */}
-      {currentStep === 8 && (
-        <>
-          <div className="bg-amber-50 border border-amber-200 rounded-md p-3 mb-3 text-xs text-amber-700 flex items-start justify-between">
-            <p className="flex-1">
-              <strong>📝 Task Specific Clarification (TSC)</strong> helps students understand what is expected at each achievement level.
-            </p>
-            {wizardStrands.length > 0 && (
-              <button
-                onClick={() => requestAiHelpTSC()}
-                disabled={aiLoading || !wizardAssessment.assessment_nama?.trim() || !wizardAssessment.assessment_task_specific_description?.trim()}
-                className="ml-3 inline-flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-md text-xs font-medium transition-all shadow disabled:opacity-50 flex-shrink-0"
-              >
-                {aiLoading ? (
-                  <>
-                    <FontAwesomeIcon icon={faSpinner} className="w-3 h-3 animate-spin" />
-                    <span>Generating...</span>
-                  </>
-                ) : (
-                  <>
-                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                    </svg>
-                    AI Help
-                  </>
-                )}
-              </button>
+      {currentStep === 8 && (() => {
+        const hasInstructions = !isHtmlEmpty(wizardAssessment.assessment_instructions)
+        const hasName = Boolean(wizardAssessment.assessment_nama?.trim())
+        const hasTaskDesc = Boolean(wizardAssessment.assessment_task_specific_description?.trim())
+        const hasCriteria = Boolean(wizardAssessment.selected_criteria?.length > 0)
+        const canGenerateTSC = !aiLoading && hasName && hasTaskDesc && hasInstructions && hasCriteria
+
+        const missingRequirements = []
+        if (!hasCriteria) missingRequirements.push('Criteria to Assess')
+        if (!hasName) missingRequirements.push('Assessment Name')
+        if (!hasTaskDesc) missingRequirements.push('Task Specific Description')
+        if (!hasInstructions) missingRequirements.push('Assessment Instructions')
+
+        return (
+          <>
+            <div className="bg-amber-50 border border-amber-200 rounded-md p-3 mb-3 text-xs text-amber-700 flex items-start justify-between">
+              <p className="flex-1">
+                <strong>📝 Task Specific Clarification (TSC)</strong> helps students understand what is expected at each achievement level.
+              </p>
+              {wizardStrands.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => requestAiHelpTSC()}
+                  disabled={aiLoading || !canGenerateTSC}
+                  title={aiLoading ? 'AI sedang menyusun TSC...' : !canGenerateTSC ? `Lengkapi ${missingRequirements.join(', ')} di Step 6 terlebih dahulu` : 'Generate AI TSC'}
+                  className={`ml-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all shadow flex-shrink-0 ${
+                    aiLoading
+                      ? 'bg-purple-700 text-white cursor-wait shadow-md animate-pulse'
+                      : canGenerateTSC
+                      ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white cursor-pointer hover:opacity-90'
+                      : 'bg-gray-200 text-gray-400 cursor-not-allowed opacity-60'
+                  }`}
+                >
+                  {aiLoading ? (
+                    <>
+                      <FontAwesomeIcon icon={faSpinner} className="w-3 h-3 animate-spin" />
+                      <span>Generating TSC...</span>
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                      </svg>
+                      AI Help
+                    </>
+                  )}
+                </button>
+              )}
+            </div>
+
+            {!canGenerateTSC && !aiLoading && missingRequirements.length > 0 && (
+              <div className="bg-amber-50 border border-amber-300 rounded-md p-2.5 mb-3 text-xs text-amber-800 flex items-center gap-2">
+                <span>⚠️</span>
+                <span>
+                  <strong>TSC AI Help belum dapat digunakan:</strong> Mohon lengkapi <strong>{missingRequirements.join(', ')}</strong> pada Step 6 (Assessment) terlebih dahulu agar AI memahami konteks tugas siswa.
+                </span>
+              </div>
             )}
-          </div>
+
+            {/* ─── Prominent Loader Banner when TSC AI Help is in progress ─── */}
+            {aiLoading && (
+              <div className="mb-4 p-4 rounded-xl border border-purple-300 bg-gradient-to-r from-purple-50 via-pink-50 to-indigo-50 shadow-md flex items-start gap-3.5">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-purple-600 to-pink-500 text-white flex items-center justify-center flex-shrink-0 shadow">
+                  <FontAwesomeIcon icon={faSpinner} className="w-5 h-5 animate-spin" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between gap-2">
+                    <h4 className="text-xs font-bold text-purple-900 flex items-center gap-1.5">
+                      <span>🤖 AI sedang merumuskan Task-Specific Clarification (TSC)...</span>
+                    </h4>
+                    <span className="text-[10px] font-semibold tracking-wide uppercase px-2 py-0.5 rounded-full bg-purple-200/80 text-purple-800 animate-pulse">
+                      Memproses
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-purple-700 mt-1 leading-relaxed">
+                    Menyelaraskan kriteria asesmen, strand, dan instruksi tugas Anda dengan setiap achievement level (Band 7-8, 5-6, 3-4, 1-2). Mohon tunggu beberapa detik...
+                  </p>
+                  <div className="mt-2.5 w-full bg-purple-200/70 rounded-full h-1.5 overflow-hidden">
+                    <div className="bg-gradient-to-r from-purple-600 via-pink-500 to-indigo-600 h-1.5 rounded-full w-full animate-pulse" />
+                  </div>
+                </div>
+              </div>
+            )}
 
           {loadingStrands ? (
             <div className="flex items-center justify-center py-6">
@@ -1235,7 +1291,7 @@ export default function WizardStepContent({
               No strands found for selected criteria and MYP Year level.
             </div>
           ) : (
-            <>
+            <div className={`transition-all duration-300 ${aiLoading ? 'opacity-40 pointer-events-none select-none filter blur-[0.3px]' : ''}`}>
               {wizardAssessment.selected_criteria.map(criterionId => {
                 const criterion = wizardCriteria.find(c => c.criterion_id === criterionId)
                 if (!criterion) return null
@@ -1314,10 +1370,11 @@ export default function WizardStepContent({
                   </div>
                 )
               })}
-            </>
+            </div>
           )}
         </>
-      )}
+      )
+    })()}
       
       {/* ─── Step 9: Unit Reflection (Prior & After) ─── */}
       {currentStep === 9 && (

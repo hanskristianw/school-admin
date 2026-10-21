@@ -5,18 +5,18 @@ export const dynamic = 'force-dynamic'
 
 /**
  * POST /api/gemini/chat
- * Body: { message: string, history?: Array<{ role: 'user'|'model', text: string }>, context?: string }
+ * Body: { message: string, history?: Array<{ role: 'user'|'model', text: string }>, context?: string, model?: string }
  * Returns: { text: string }
  */
 export async function POST(req) {
   try {
-    const { history, message, context } = await req.json()
+    const { history, message, context, model } = await req.json()
 
     if (!message || typeof message !== 'string') {
       return NextResponse.json({ error: 'Invalid message' }, { status: 400 })
     }
 
-    const genModel = getVertexModel()
+    const genModel = getVertexModel(model)
 
     // Build contents from optional system context + conversation history + current message
     const contents = []
@@ -34,16 +34,16 @@ export async function POST(req) {
 
     contents.push({ role: 'user', parts: [{ text: message }] })
 
-    console.log('[Vertex AI /api/gemini/chat] Generating, turns:', contents.length)
+    console.log('[Gemini /api/gemini/chat] Generating, turns:', contents.length)
 
     const result = await genModel.generateContent({ contents })
     const text   = result.response?.candidates?.[0]?.content?.parts?.map(p => p.text).join('\n') || ''
 
-    console.log('[Vertex AI /api/gemini/chat] Response length:', text.length)
+    console.log('[Gemini /api/gemini/chat] Response length:', text.length)
 
     return NextResponse.json({ text })
   } catch (e) {
-    console.error('[Vertex AI /api/gemini/chat] Error:', e?.message || e)
-    return NextResponse.json({ error: e?.message || 'Vertex AI request failed' }, { status: 500 })
+    console.error('[Gemini /api/gemini/chat] Error:', e?.message || e)
+    return NextResponse.json({ error: e?.message || 'Gemini request failed' }, { status: 500 })
   }
 }
