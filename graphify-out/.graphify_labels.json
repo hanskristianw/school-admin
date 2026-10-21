@@ -330,6 +330,7 @@
   "328": "9. AI TELLS (Forbidden Patterns)",
   "329": "12. THE COMBINATORIAL VARIATION ENGINE",
   "330": "📁 **Project Structure**",
+  "331": "bcryptjs",
   "332": "11. REDESIGN PROTOCOL",
   "333": "3. DEFAULT ARCHITECTURE & CONVENTIONS",
   "334": "route.js",
@@ -408,7 +409,6 @@
   "409": "@tiptap/react",
   "410": "@tiptap/starter-kit",
   "411": "xlsx",
-  "415": "clsx",
   "453": "route.js",
   "457": "status.php"
 }

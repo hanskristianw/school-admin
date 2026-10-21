@@ -1,16 +1,16 @@
 # Graph Report - school-admin  (2026-10-21)
 
 ## Corpus Check
-- 429 files · ~743,121 words
+- 429 files · ~743,653 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 2414 nodes · 2566 edges · 414 communities (281 shown, 133 thin omitted)
+- 2414 nodes · 2566 edges · 412 communities (280 shown, 132 thin omitted)
 - Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 7 edges (avg confidence: 0.63)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `6f88ee08`
+- Built from commit: `5874bae5`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -270,7 +270,6 @@
 - 9. AI TELLS (Forbidden Patterns)
 - 12. THE COMBINATORIAL VARIATION ENGINE
 - 📁 **Project Structure**
-- @sparticuz/chromium-min
 - 11. REDESIGN PROTOCOL
 - 3. DEFAULT ARCHITECTURE & CONVENTIONS
 - route.js
@@ -311,7 +310,6 @@
 - @tiptap/react
 - @tiptap/starter-kit
 - xlsx
-- 🔧 **Technical Implementation**
 - clsx
 
 ## God Nodes (most connected - your core abstractions)
@@ -341,7 +339,7 @@
 ## Import Cycles
 - None detected.
 
-## Communities (414 total, 133 thin omitted)
+## Communities (412 total, 132 thin omitted)
 
 ### Community 0 - "Admission Management"
 Cohesion: 0.07
@@ -592,8 +590,8 @@ Cohesion: 0.11
 Nodes (17): aliases, components, hooks, lib, ui, utils, iconLibrary, rsc (+9 more)
 
 ### Community 80 - "Module 80"
-Cohesion: 0.14
-Nodes (14): 10. SECTION RHYTHM RULE, 12. DENSITY & SPACING DISCIPLINE, 14. IMAGE / MEDIA DIRECTION, 16. MULTI-IMAGE CONSISTENCY RULE, 17. CLARITY CHECK, 19. RESPONSE BEHAVIOR, 1. ACTIVE BASELINE CONFIGURATION, 21. FINAL GOAL (+6 more)
+Cohesion: 0.12
+Nodes (16): 10. SECTION RHYTHM RULE, 12. DENSITY & SPACING DISCIPLINE, 14. IMAGE / MEDIA DIRECTION, 16. MULTI-IMAGE CONSISTENCY RULE, 17. CLARITY CHECK, 19. RESPONSE BEHAVIOR, 1. ACTIVE BASELINE CONFIGURATION, 21. FINAL GOAL (+8 more)
 
 ### Community 81 - "Module 81"
 Cohesion: 0.12
@@ -689,7 +687,7 @@ Nodes (10): 3.1 Tables, 3.2 ERD / Relationships (Curriculum Domain), 3. Curricul
 
 ### Community 115 - "Module 115"
 Cohesion: 0.40
-Nodes (5): 6.1 Tables, 6.2 ERD / Relationships (Assessment & Grading), 6. Assessment & Grading Domain (`/data/topic-new` / Reports), `assessment_grade_strands`, `assessment_grades`
+Nodes (5): 10.1 Tables, 10.2 ERD / Relationships (Duty & Devotion Schedule Domain), 10. Duty, Greeter & Devotion Schedule Domain (`/data/door_greeter`), `duty_schedules`, `duty_settings`
 
 ### Community 116 - "Module 116"
 Cohesion: 0.22
@@ -704,8 +702,8 @@ Cohesion: 0.22
 Nodes (9): 1.1 Tables, 1.2 ERD / Relationships (User & Unit Domain), 1.3 Tables referencing `users`, 1. User, Role & Unit Management Domain (`/data/user`, `/data/role_management`, `/settings/unit`), `dashboard_type`, `report_settings`, `role`, `unit` (+1 more)
 
 ### Community 119 - "Module 119"
-Cohesion: 0.14
-Nodes (13): **Additional Files:**, **Completed Features:**, **Database Migration Files (Execute in Order):**, **Development:**, **Important Files:**, **Key Business Rules:**, **Key Directories:**, **Key Environment:** (+5 more)
+Cohesion: 0.12
+Nodes (16): Attendance (QR) Tables, **Backend & Database:**, **Completed Features:**, **Core Tables:**, �🏗️ **Database Structure**, **Frontend Stack:**, Grades (Nilai) Table, **Important Files:** (+8 more)
 
 ### Community 120 - "Module 120"
 Cohesion: 0.22
@@ -781,7 +779,7 @@ Nodes (5): public.admission_level, public.fee_discount, public.school_fee_defini
 
 ### Community 139 - "Module 139"
 Cohesion: 0.15
-Nodes (12): 10.1 Tables, 10.2 ERD / Relationships (Duty & Devotion Schedule Domain), 10. Duty, Greeter & Devotion Schedule Domain (`/data/door_greeter`), 11.2 ERD / Relationships (Uniform & Stock Domain), 11.3 Initial Stock & Inventory Ledger Workflows (`/stock/uniform/initial`), 11.4 POS Uniform Sales Workflows (`/sales/uniform`), 11. Uniform & Stock Management Domain (`/sales/uniform`, `/stock/uniform/add`, `/stock/uniform/initial`, `/stock/uniform/po-settings`, `/data/uniform`, `/data/uniform-size`), 5.2 ERD / Relationships (Attendance Domain) (+4 more)
+Nodes (12): 11.2 ERD / Relationships (Uniform & Stock Domain), 11.3 Initial Stock & Inventory Ledger Workflows (`/stock/uniform/initial`), 11.4 POS Uniform Sales Workflows (`/sales/uniform`), 11. Uniform & Stock Management Domain (`/sales/uniform`, `/stock/uniform/add`, `/stock/uniform/initial`, `/stock/uniform/po-settings`, `/data/uniform`, `/data/uniform-size`), 5.2 ERD / Relationships (Attendance Domain), 5. Attendance & Leave Management Domain (`/data/attendance-settings`, `/data/attendance-leave`, `/data/attendance-form`), 6.1 Tables, 6.2 ERD / Relationships (Assessment & Grading) (+4 more)
 
 ### Community 140 - "Module 140"
 Cohesion: 0.25
@@ -975,6 +973,10 @@ Nodes (5): 7.1 Tables, 7.2 ERD / Relationships (Menu Domain), 7. Menu & Role Per
 Cohesion: 0.22
 Nodes (8): ⚙️ Apa yang Terjadi Saat File Pertama Kali Dibuka?, 🔐 Cara Mengakses Panel Admin Petugas Lapangan, 🚀 Cara Pemasangan di cPanel / Hostinger (Sangat Mudah), ✨ Fitur-fitur Lengkap yang Tersedia di Halaman Ini, Opsi A: Menggunakan Folder Khusus (Direkomendasikan), Opsi B: Sebagai File Tunggal, Panduan Pemasangan: Sistem Persewaan Lapangan CCS di cPanel / Hostinger, 🛠️ Pengaturan & Kustomisasi (Opsional)
 
+### Community 293 - "SKILL.md"
+Cohesion: 0.40
+Nodes (5): **Additional Files:**, **Database Migration Files (Execute in Order):**, **Development:**, **Key Environment:**, 🚀 **Setup & Deployment**
+
 ### Community 298 - "react-hook-form"
 Cohesion: 0.50
 Nodes (3): POST(), supabaseAdmin, verifyAuth()
@@ -982,10 +984,6 @@ Nodes (3): POST(), supabaseAdmin, verifyAuth()
 ### Community 301 - "driver.js"
 Cohesion: 0.50
 Nodes (3): POST(), supabaseAdmin, verifyAuth()
-
-### Community 331 - "@sparticuz/chromium-min"
-Cohesion: 0.50
-Nodes (4): Attendance (QR) Tables, **Core Tables:**, �🏗️ **Database Structure**, Grades (Nilai) Table
 
 ### Community 368 - "route.js"
 Cohesion: 0.57
@@ -999,14 +997,10 @@ Nodes (6): ALLOWED_POINTS, AthleticDayManagementPage(), isLightColor(), normaliz
 Cohesion: 0.83
 Nodes (3): AthleticDayLivePage(), isLightColor(), normalizeTeamColor()
 
-### Community 412 - "🔧 **Technical Implementation**"
-Cohesion: 0.50
-Nodes (4): **Backend & Database:**, **Frontend Stack:**, **Key Technical Notes:**, 🔧 **Technical Implementation**
-
 ## Knowledge Gaps
 - **1202 isolated node(s):** `extends`, `next/core-web-vitals`, `$schema`, `style`, `rsc` (+1197 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **133 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **132 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_

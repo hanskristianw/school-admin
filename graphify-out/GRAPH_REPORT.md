@@ -1,7 +1,7 @@
 # Graph Report - school-admin  (2026-10-21)
 
 ## Corpus Check
-- 429 files · ~743,653 words
+- 429 files · ~743,843 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
@@ -10,7 +10,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `5874bae5`
+- Built from commit: `58446d7e`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -270,6 +270,7 @@
 - 9. AI TELLS (Forbidden Patterns)
 - 12. THE COMBINATORIAL VARIATION ENGINE
 - 📁 **Project Structure**
+- bcryptjs
 - 11. REDESIGN PROTOCOL
 - 3. DEFAULT ARCHITECTURE & CONVENTIONS
 - route.js
@@ -310,7 +311,6 @@
 - @tiptap/react
 - @tiptap/starter-kit
 - xlsx
-- clsx
 
 ## God Nodes (most connected - your core abstractions)
 1. `jspdf` - 39 edges
@@ -687,7 +687,7 @@ Nodes (10): 3.1 Tables, 3.2 ERD / Relationships (Curriculum Domain), 3. Curricul
 
 ### Community 115 - "Module 115"
 Cohesion: 0.40
-Nodes (5): 10.1 Tables, 10.2 ERD / Relationships (Duty & Devotion Schedule Domain), 10. Duty, Greeter & Devotion Schedule Domain (`/data/door_greeter`), `duty_schedules`, `duty_settings`
+Nodes (5): 6.1 Tables, 6.2 ERD / Relationships (Assessment & Grading), 6. Assessment & Grading Domain (`/data/topic-new` / Reports), `assessment_grade_strands`, `assessment_grades`
 
 ### Community 116 - "Module 116"
 Cohesion: 0.22
@@ -759,7 +759,7 @@ Nodes (7): 33. CATEGORY-SPECIFIC BIAS, Commerce, Fintech, Health / Fitness, Prod
 
 ### Community 133 - "Module 133"
 Cohesion: 0.15
-Nodes (13): bcryptjs, @fortawesome/react-fontawesome, @hookform/resolvers, lucide-react, dependencies, bcryptjs, @fortawesome/react-fontawesome, @hookform/resolvers (+5 more)
+Nodes (13): clsx, @fortawesome/react-fontawesome, @hookform/resolvers, lucide-react, dependencies, clsx, @fortawesome/react-fontawesome, @hookform/resolvers (+5 more)
 
 ### Community 135 - "Module 135"
 Cohesion: 0.29
@@ -779,7 +779,7 @@ Nodes (5): public.admission_level, public.fee_discount, public.school_fee_defini
 
 ### Community 139 - "Module 139"
 Cohesion: 0.15
-Nodes (12): 11.2 ERD / Relationships (Uniform & Stock Domain), 11.3 Initial Stock & Inventory Ledger Workflows (`/stock/uniform/initial`), 11.4 POS Uniform Sales Workflows (`/sales/uniform`), 11. Uniform & Stock Management Domain (`/sales/uniform`, `/stock/uniform/add`, `/stock/uniform/initial`, `/stock/uniform/po-settings`, `/data/uniform`, `/data/uniform-size`), 5.2 ERD / Relationships (Attendance Domain), 5. Attendance & Leave Management Domain (`/data/attendance-settings`, `/data/attendance-leave`, `/data/attendance-form`), 6.1 Tables, 6.2 ERD / Relationships (Assessment & Grading) (+4 more)
+Nodes (12): 10.1 Tables, 10.2 ERD / Relationships (Duty & Devotion Schedule Domain), 10. Duty, Greeter & Devotion Schedule Domain (`/data/door_greeter`), 11.2 ERD / Relationships (Uniform & Stock Domain), 11.3 Initial Stock & Inventory Ledger Workflows (`/stock/uniform/initial`), 11.4 POS Uniform Sales Workflows (`/sales/uniform`), 11. Uniform & Stock Management Domain (`/sales/uniform`, `/stock/uniform/add`, `/stock/uniform/initial`, `/stock/uniform/po-settings`, `/data/uniform`, `/data/uniform-size`), 5.2 ERD / Relationships (Attendance Domain) (+4 more)
 
 ### Community 140 - "Module 140"
 Cohesion: 0.25
@@ -1005,7 +1005,7 @@ Nodes (3): AthleticDayLivePage(), isLightColor(), normalizeTeamColor()
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `dependencies` connect `Module 133` to `Admission Management`, `Package Dependencies & Config`, `page.jsx`, `DDL`, `next-auth`, `react-dom`, `Module 134`, `📁 **Project Structure**`, `pdf-lib`, `@radix-ui/react-select`, `react-hook-form`, `React UI Components`, `🎓 **IB MYP Assessment Grading System**`, `clsx`, `class-variance-authority`, `@tiptap/extension-table-cell`, `@tiptap/extension-table-header`, `@tiptap/extension-table-row`, `@tiptap/extension-task-item`, `@tiptap/extension-task-list`, `@tiptap/extension-text-align`, `docx`, `@tiptap/extension-text-style`, `@tiptap/extension-underline`, `@tiptap/pm`, `Module 154`, `Module 155`, `@tiptap/react`, `@tiptap/starter-kit`, `xlsx`, `clsx`, `dotenv`, `zod`, `🔧 **Technical Implementation**`, `Appendix B - Canonical Sources (read these before reinventing)`, `SKILL.md`, `Analysis & Synthesis Instructions`, `**3. Assessment System**`, `Module 193`, `12. THE COMBINATORIAL VARIATION ENGINE`, `📁 **Project Structure**`, `11. REDESIGN PROTOCOL`, `33. CATEGORY-SPECIFIC BIAS`, `Module 239`, `Module 240`, `jsonwebtoken`, `jspdf-autotable`, `dotenv`, `@fortawesome/free-solid-svg-icons`, `@supabase/supabase-js`, `react-easy-crop`?**
+- **Why does `dependencies` connect `Module 133` to `Admission Management`, `Package Dependencies & Config`, `page.jsx`, `DDL`, `next-auth`, `react-dom`, `Module 134`, `📁 **Project Structure**`, `pdf-lib`, `@radix-ui/react-select`, `react-hook-form`, `React UI Components`, `🎓 **IB MYP Assessment Grading System**`, `clsx`, `class-variance-authority`, `@tiptap/extension-table-cell`, `@tiptap/extension-table-header`, `@tiptap/extension-table-row`, `@tiptap/extension-task-item`, `@tiptap/extension-task-list`, `@tiptap/extension-text-align`, `docx`, `@tiptap/extension-text-style`, `@tiptap/extension-underline`, `@tiptap/pm`, `Module 154`, `Module 155`, `@tiptap/react`, `@tiptap/starter-kit`, `xlsx`, `dotenv`, `zod`, `🔧 **Technical Implementation**`, `Appendix B - Canonical Sources (read these before reinventing)`, `SKILL.md`, `Analysis & Synthesis Instructions`, `**3. Assessment System**`, `Module 193`, `12. THE COMBINATORIAL VARIATION ENGINE`, `📁 **Project Structure**`, `bcryptjs`, `11. REDESIGN PROTOCOL`, `33. CATEGORY-SPECIFIC BIAS`, `Module 239`, `Module 240`, `jsonwebtoken`, `jspdf-autotable`, `dotenv`, `@fortawesome/free-solid-svg-icons`, `@supabase/supabase-js`, `react-easy-crop`?**
   _High betweenness centrality (0.019) - this node is a cross-community bridge._
 - **Why does `jspdf` connect `Admission Management` to `Module 145`, `Module 194`, `Module 133`?**
   _High betweenness centrality (0.013) - this node is a cross-community bridge._
