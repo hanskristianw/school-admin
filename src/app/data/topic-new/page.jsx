@@ -5016,8 +5016,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
       fetchSubjectsForKelas(initKelas)
       const foundK = sourceKelas.find(k => String(k.kelas_id) === String(initKelas))
       const kname = foundK?.kelas_nama || ''
-      if (kname.includes('7')) initialMypYear = '1'
-      else if (kname.includes('8')) initialMypYear = '2'
+      if (kname.includes('7') || kname.includes('8')) initialMypYear = '1'
       else if (kname.includes('9')) initialMypYear = '3'
       else if (kname.includes('10')) initialMypYear = '5'
     } else {

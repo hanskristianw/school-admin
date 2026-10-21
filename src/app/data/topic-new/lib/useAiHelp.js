@@ -1193,7 +1193,7 @@ Requirements:
       if (!hasTaskDesc) missing.push('Task Specific Description')
       if (!hasInstructions) missing.push('Assessment Instructions')
 
-      const msg = `TSC AI Help memerlukan kelengkapan Step 6 (Assessment). Mohon lengkapi terlebih dahulu: ${missing.join(', ')}.`
+      const msg = `TSC AI Help requires Step 6 (Assessment) to be completed. Please fill in: ${missing.join(', ')}.`
       alert(msg)
       setAiError(msg)
       return

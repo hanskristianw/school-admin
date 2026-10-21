@@ -1,11 +1,11 @@
 # Graph Report - school-admin  (2026-10-21)
 
 ## Corpus Check
-- 429 files · ~742,861 words
+- 429 files · ~743,121 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 2414 nodes · 2566 edges · 413 communities (281 shown, 132 thin omitted)
+- 2414 nodes · 2566 edges · 414 communities (281 shown, 133 thin omitted)
 - Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 7 edges (avg confidence: 0.63)
 - Token cost: 0 input · 0 output
 
@@ -238,6 +238,7 @@
 - Panduan Pemasangan: Sistem Persewaan Lapangan CCS di cPanel / Hostinger
 - Database Schema & Relationships
 - googleapis
+- SKILL.md
 - ASSESSMENT Table.md
 - SUPPLIER SERAGAM STOCK.md
 - Users.md
@@ -340,7 +341,7 @@
 ## Import Cycles
 - None detected.
 
-## Communities (413 total, 132 thin omitted)
+## Communities (414 total, 133 thin omitted)
 
 ### Community 0 - "Admission Management"
 Cohesion: 0.07
@@ -591,8 +592,8 @@ Cohesion: 0.11
 Nodes (17): aliases, components, hooks, lib, ui, utils, iconLibrary, rsc (+9 more)
 
 ### Community 80 - "Module 80"
-Cohesion: 0.12
-Nodes (16): 10. SECTION RHYTHM RULE, 12. DENSITY & SPACING DISCIPLINE, 14. IMAGE / MEDIA DIRECTION, 16. MULTI-IMAGE CONSISTENCY RULE, 17. CLARITY CHECK, 19. RESPONSE BEHAVIOR, 1. ACTIVE BASELINE CONFIGURATION, 21. FINAL GOAL (+8 more)
+Cohesion: 0.14
+Nodes (14): 10. SECTION RHYTHM RULE, 12. DENSITY & SPACING DISCIPLINE, 14. IMAGE / MEDIA DIRECTION, 16. MULTI-IMAGE CONSISTENCY RULE, 17. CLARITY CHECK, 19. RESPONSE BEHAVIOR, 1. ACTIVE BASELINE CONFIGURATION, 21. FINAL GOAL (+6 more)
 
 ### Community 81 - "Module 81"
 Cohesion: 0.12
@@ -668,7 +669,7 @@ Nodes (10): 10. REFERENCE VOCABULARY (Pattern Names the Agent Should Know), Anim
 
 ### Community 110 - "Module 110"
 Cohesion: 0.20
-Nodes (10): 13. OUT OF SCOPE, 14. FINAL PRE-FLIGHT CHECK, 2.A When to reach for a real design system (use official packages), 2.B When the brief is an aesthetic, not a system, 2. BRIEF → DESIGN SYSTEM MAP, 7. DIAL DEFINITIONS (Technical Reference), DESIGN_VARIANCE (Level 1-10), MOTION_INTENSITY (Level 1-10) (+2 more)
+Nodes (10): 13. OUT OF SCOPE, 14. FINAL PRE-FLIGHT CHECK, 1.A Dial Inference (design read → dial values), 1.B Use-Case Presets, 1.C How the Dials Drive Output, 1. THE THREE DIALS (Core Configuration), 2.A When to reach for a real design system (use official packages), 2.B When the brief is an aesthetic, not a system (+2 more)
 
 ### Community 111 - "Module 111"
 Cohesion: 0.20
@@ -688,7 +689,7 @@ Nodes (10): 3.1 Tables, 3.2 ERD / Relationships (Curriculum Domain), 3. Curricul
 
 ### Community 115 - "Module 115"
 Cohesion: 0.40
-Nodes (5): 10.1 Tables, 10.2 ERD / Relationships (Duty & Devotion Schedule Domain), 10. Duty, Greeter & Devotion Schedule Domain (`/data/door_greeter`), `duty_schedules`, `duty_settings`
+Nodes (5): 6.1 Tables, 6.2 ERD / Relationships (Assessment & Grading), 6. Assessment & Grading Domain (`/data/topic-new` / Reports), `assessment_grade_strands`, `assessment_grades`
 
 ### Community 116 - "Module 116"
 Cohesion: 0.22
@@ -780,7 +781,7 @@ Nodes (5): public.admission_level, public.fee_discount, public.school_fee_defini
 
 ### Community 139 - "Module 139"
 Cohesion: 0.15
-Nodes (12): 11.2 ERD / Relationships (Uniform & Stock Domain), 11.3 Initial Stock & Inventory Ledger Workflows (`/stock/uniform/initial`), 11.4 POS Uniform Sales Workflows (`/sales/uniform`), 11. Uniform & Stock Management Domain (`/sales/uniform`, `/stock/uniform/add`, `/stock/uniform/initial`, `/stock/uniform/po-settings`, `/data/uniform`, `/data/uniform-size`), 5.2 ERD / Relationships (Attendance Domain), 5. Attendance & Leave Management Domain (`/data/attendance-settings`, `/data/attendance-leave`, `/data/attendance-form`), 6.1 Tables, 6.2 ERD / Relationships (Assessment & Grading) (+4 more)
+Nodes (12): 10.1 Tables, 10.2 ERD / Relationships (Duty & Devotion Schedule Domain), 10. Duty, Greeter & Devotion Schedule Domain (`/data/door_greeter`), 11.2 ERD / Relationships (Uniform & Stock Domain), 11.3 Initial Stock & Inventory Ledger Workflows (`/stock/uniform/initial`), 11.4 POS Uniform Sales Workflows (`/sales/uniform`), 11. Uniform & Stock Management Domain (`/sales/uniform`, `/stock/uniform/add`, `/stock/uniform/initial`, `/stock/uniform/po-settings`, `/data/uniform`, `/data/uniform-size`), 5.2 ERD / Relationships (Attendance Domain) (+4 more)
 
 ### Community 140 - "Module 140"
 Cohesion: 0.25
@@ -876,7 +877,7 @@ Nodes (6): 8.1 Tables, 8.2 ERD / Relationships (Room Booking), 8. Room & Booking
 
 ### Community 236 - "Module 236"
 Cohesion: 0.50
-Nodes (4): 1.A Dial Inference (design read → dial values), 1.B Use-Case Presets, 1.C How the Dials Drive Output, 1. THE THREE DIALS (Core Configuration)
+Nodes (4): 7. DIAL DEFINITIONS (Technical Reference), DESIGN_VARIANCE (Level 1-10), MOTION_INTENSITY (Level 1-10), VISUAL_DENSITY (Level 1-10)
 
 ### Community 238 - "Module 238"
 Cohesion: 0.46
@@ -1005,7 +1006,7 @@ Nodes (4): **Backend & Database:**, **Frontend Stack:**, **Key Technical Notes:*
 ## Knowledge Gaps
 - **1202 isolated node(s):** `extends`, `next/core-web-vitals`, `$schema`, `style`, `rsc` (+1197 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **132 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **133 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_

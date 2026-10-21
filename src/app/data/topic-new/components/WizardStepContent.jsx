@@ -1251,7 +1251,7 @@ export default function WizardStepContent({
               <div className="bg-amber-50 border border-amber-300 rounded-md p-2.5 mb-3 text-xs text-amber-800 flex items-center gap-2">
                 <span>⚠️</span>
                 <span>
-                  <strong>TSC AI Help belum dapat digunakan:</strong> Mohon lengkapi <strong>{missingRequirements.join(', ')}</strong> pada Step 6 (Assessment) terlebih dahulu agar AI memahami konteks tugas siswa.
+                  <strong>TSC AI Help is not available yet:</strong> Please complete <strong>{missingRequirements.join(', ')}</strong> in Step 6 (Assessment) first so the AI understands the task context.
                 </span>
               </div>
             )}
@@ -1265,14 +1265,14 @@ export default function WizardStepContent({
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-2">
                     <h4 className="text-xs font-bold text-purple-900 flex items-center gap-1.5">
-                      <span>🤖 AI sedang merumuskan Task-Specific Clarification (TSC)...</span>
+                      <span>🤖 AI is generating Task-Specific Clarifications (TSC)...</span>
                     </h4>
                     <span className="text-[10px] font-semibold tracking-wide uppercase px-2 py-0.5 rounded-full bg-purple-200/80 text-purple-800 animate-pulse">
-                      Memproses
+                      Processing
                     </span>
                   </div>
                   <p className="text-[11px] text-purple-700 mt-1 leading-relaxed">
-                    Menyelaraskan kriteria asesmen, strand, dan instruksi tugas Anda dengan setiap achievement level (Band 7-8, 5-6, 3-4, 1-2). Mohon tunggu beberapa detik...
+                    Aligning criteria, strands, and your task instructions with each achievement band (7-8, 5-6, 3-4, 1-2). Please wait a moment...
                   </p>
                   <div className="mt-2.5 w-full bg-purple-200/70 rounded-full h-1.5 overflow-hidden">
                     <div className="bg-gradient-to-r from-purple-600 via-pink-500 to-indigo-600 h-1.5 rounded-full w-full animate-pulse" />

@@ -10300,7 +10300,7 @@
       "label": "AutoExpandingTextarea()",
       "file_type": "code",
       "source_file": "src/app/data/topic-new/components/UnitPlannerDocumentEditor.jsx",
-      "source_location": "L30",
+      "source_location": "L31",
       "_origin": "ast",
       "id": "src_app_data_topic_new_components_unitplannerdocumenteditor_autoexpandingtextarea",
       "community": 145,
@@ -10311,7 +10311,7 @@
       "label": "UnitPlannerDocumentEditor()",
       "file_type": "code",
       "source_file": "src/app/data/topic-new/components/UnitPlannerDocumentEditor.jsx",
-      "source_location": "L92",
+      "source_location": "L93",
       "_origin": "ast",
       "id": "src_app_data_topic_new_components_unitplannerdocumenteditor_unitplannerdocumenteditor",
       "community": 145,
@@ -17321,8 +17321,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "agents_skills_imagegen_frontend_web_skill",
-      "community": 293,
-      "community_name": "SKILL.md",
+      "community": 80,
+      "community_name": "Module 80",
       "norm_label": "skill.md"
     },
     {
@@ -17332,8 +17332,8 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "agents_skills_imagegen_frontend_web_skill_hard_output_rule_read_first",
-      "community": 293,
-      "community_name": "SKILL.md",
+      "community": 80,
+      "community_name": "Module 80",
       "norm_label": "hard output rule \u2014 read first"
     },
     {
@@ -17343,8 +17343,8 @@
       "source_location": "L25",
       "_origin": "ast",
       "id": "agents_skills_imagegen_frontend_web_skill_hero_composition_bias_read_first",
-      "community": 293,
-      "community_name": "SKILL.md",
+      "community": 80,
+      "community_name": "Module 80",
       "norm_label": "hero composition bias \u2014 read first"
     },
     {
@@ -20192,8 +20192,8 @@
       "source_location": "L1027",
       "_origin": "ast",
       "id": "database_schema_6_assessment_grading_domain_data_topic_new_reports",
-      "community": 115,
-      "community_name": "Module 115",
+      "community": 139,
+      "community_name": "Module 139",
       "norm_label": "6. assessment & grading domain (`/data/topic-new` / reports)"
     },
     {
@@ -20203,8 +20203,8 @@
       "source_location": "L1031",
       "_origin": "ast",
       "id": "database_schema_6_1_tables",
-      "community": 115,
-      "community_name": "Module 115",
+      "community": 139,
+      "community_name": "Module 139",
       "norm_label": "6.1 tables"
     },
     {
@@ -20214,8 +20214,8 @@
       "source_location": "L1033",
       "_origin": "ast",
       "id": "database_schema_assessment_grades",
-      "community": 115,
-      "community_name": "Module 115",
+      "community": 139,
+      "community_name": "Module 139",
       "norm_label": "`assessment_grades`"
     },
     {
@@ -20225,8 +20225,8 @@
       "source_location": "L1055",
       "_origin": "ast",
       "id": "database_schema_assessment_grade_strands",
-      "community": 115,
-      "community_name": "Module 115",
+      "community": 139,
+      "community_name": "Module 139",
       "norm_label": "`assessment_grade_strands`"
     },
     {
@@ -20236,8 +20236,8 @@
       "source_location": "L1066",
       "_origin": "ast",
       "id": "database_schema_6_2_erd_relationships_assessment_grading",
-      "community": 115,
-      "community_name": "Module 115",
+      "community": 139,
+      "community_name": "Module 139",
       "norm_label": "6.2 erd / relationships (assessment & grading)"
     },
     {
@@ -20445,8 +20445,8 @@
       "source_location": "L1370",
       "_origin": "ast",
       "id": "database_schema_10_duty_greeter_devotion_schedule_domain_data_door_greeter",
-      "community": 139,
-      "community_name": "Module 139",
+      "community": 115,
+      "community_name": "Module 115",
       "norm_label": "10. duty, greeter & devotion schedule domain (`/data/door_greeter`)"
     },
     {
@@ -20456,8 +20456,8 @@
       "source_location": "L1374",
       "_origin": "ast",
       "id": "database_schema_10_1_tables",
-      "community": 139,
-      "community_name": "Module 139",
+      "community": 115,
+      "community_name": "Module 115",
       "norm_label": "10.1 tables"
     },
     {
@@ -20467,8 +20467,8 @@
       "source_location": "L1376",
       "_origin": "ast",
       "id": "database_schema_duty_schedules",
-      "community": 139,
-      "community_name": "Module 139",
+      "community": 115,
+      "community_name": "Module 115",
       "norm_label": "`duty_schedules`"
     },
     {
@@ -20478,8 +20478,8 @@
       "source_location": "L1405",
       "_origin": "ast",
       "id": "database_schema_duty_settings",
-      "community": 139,
-      "community_name": "Module 139",
+      "community": 115,
+      "community_name": "Module 115",
       "norm_label": "`duty_settings`"
     },
     {
@@ -20489,8 +20489,8 @@
       "source_location": "L1419",
       "_origin": "ast",
       "id": "database_schema_10_2_erd_relationships_duty_devotion_schedule_domain",
-      "community": 139,
-      "community_name": "Module 139",
+      "community": 115,
+      "community_name": "Module 115",
       "norm_label": "10.2 erd / relationships (duty & devotion schedule domain)"
     },
     {
@@ -22007,8 +22007,8 @@
       "source_location": "L287",
       "_origin": "ast",
       "id": "main_documentation_database_structure",
-      "community": 331,
-      "community_name": "@sparticuz/chromium-min",
+      "community": 119,
+      "community_name": "Module 119",
       "norm_label": "\ufffd\ud83c\udfd7\ufe0f **database structure**"
     },
     {
@@ -22018,8 +22018,8 @@
       "source_location": "L289",
       "_origin": "ast",
       "id": "main_documentation_core_tables",
-      "community": 331,
-      "community_name": "@sparticuz/chromium-min",
+      "community": 119,
+      "community_name": "Module 119",
       "norm_label": "**core tables:**"
     },
     {
@@ -22029,8 +22029,8 @@
       "source_location": "L524",
       "_origin": "ast",
       "id": "main_documentation_grades_nilai_table",
-      "community": 331,
-      "community_name": "@sparticuz/chromium-min",
+      "community": 119,
+      "community_name": "Module 119",
       "norm_label": "grades (nilai) table"
     },
     {
@@ -22040,8 +22040,8 @@
       "source_location": "L539",
       "_origin": "ast",
       "id": "main_documentation_attendance_qr_tables",
-      "community": 331,
-      "community_name": "@sparticuz/chromium-min",
+      "community": 119,
+      "community_name": "Module 119",
       "norm_label": "attendance (qr) tables"
     },
     {
@@ -22238,8 +22238,8 @@
       "source_location": "L812",
       "_origin": "ast",
       "id": "main_documentation_technical_implementation",
-      "community": 412,
-      "community_name": "\ud83d\udd27 **Technical Implementation**",
+      "community": 119,
+      "community_name": "Module 119",
       "norm_label": "\ud83d\udd27 **technical implementation**"
     },
     {
@@ -22249,8 +22249,8 @@
       "source_location": "L814",
       "_origin": "ast",
       "id": "main_documentation_frontend_stack",
-      "community": 412,
-      "community_name": "\ud83d\udd27 **Technical Implementation**",
+      "community": 119,
+      "community_name": "Module 119",
       "norm_label": "**frontend stack:**"
     },
     {
@@ -22260,8 +22260,8 @@
       "source_location": "L821",
       "_origin": "ast",
       "id": "main_documentation_backend_database",
-      "community": 412,
-      "community_name": "\ud83d\udd27 **Technical Implementation**",
+      "community": 119,
+      "community_name": "Module 119",
       "norm_label": "**backend & database:**"
     },
     {
@@ -22271,8 +22271,8 @@
       "source_location": "L827",
       "_origin": "ast",
       "id": "main_documentation_key_technical_notes",
-      "community": 412,
-      "community_name": "\ud83d\udd27 **Technical Implementation**",
+      "community": 119,
+      "community_name": "Module 119",
       "norm_label": "**key technical notes:**"
     },
     {
@@ -22282,8 +22282,8 @@
       "source_location": "L881",
       "_origin": "ast",
       "id": "main_documentation_setup_deployment",
-      "community": 119,
-      "community_name": "Module 119",
+      "community": 293,
+      "community_name": "SKILL.md",
       "norm_label": "\ud83d\ude80 **setup & deployment**"
     },
     {
@@ -22293,8 +22293,8 @@
       "source_location": "L883",
       "_origin": "ast",
       "id": "main_documentation_database_migration_files_execute_in_order",
-      "community": 119,
-      "community_name": "Module 119",
+      "community": 293,
+      "community_name": "SKILL.md",
       "norm_label": "**database migration files (execute in order):**"
     },
     {
@@ -22304,8 +22304,8 @@
       "source_location": "L911",
       "_origin": "ast",
       "id": "main_documentation_development",
-      "community": 119,
-      "community_name": "Module 119",
+      "community": 293,
+      "community_name": "SKILL.md",
       "norm_label": "**development:**"
     },
     {
@@ -22315,8 +22315,8 @@
       "source_location": "L918",
       "_origin": "ast",
       "id": "main_documentation_key_environment",
-      "community": 119,
-      "community_name": "Module 119",
+      "community": 293,
+      "community_name": "SKILL.md",
       "norm_label": "**key environment:**"
     },
     {
@@ -22326,8 +22326,8 @@
       "source_location": "L928",
       "_origin": "ast",
       "id": "main_documentation_additional_files",
-      "community": 119,
-      "community_name": "Module 119",
+      "community": 293,
+      "community_name": "SKILL.md",
       "norm_label": "**additional files:**"
     },
     {
@@ -38586,7 +38586,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/app/data/topic-new/components/UnitPlannerDocumentEditor.jsx",
-      "source_location": "L30",
+      "source_location": "L31",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_topic_new_components_unitplannerdocumenteditor",
@@ -38597,7 +38597,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/app/data/topic-new/components/UnitPlannerDocumentEditor.jsx",
-      "source_location": "L92",
+      "source_location": "L93",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_topic_new_components_unitplannerdocumenteditor",
@@ -38646,7 +38646,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/app/data/topic-new/components/UnitPlannerDocumentEditor.jsx",
-      "source_location": "L1473",
+      "source_location": "L1544",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_topic_new_components_unitplannerdocumenteditor_unitplannerdocumenteditor",
@@ -38962,7 +38962,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/app/data/topic-new/page.jsx",
-      "source_location": "L5172",
+      "source_location": "L5171",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_topic_new_page_topicnewpage",
@@ -39538,7 +39538,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/app/data/topic-new/page.jsx",
-      "source_location": "L6223",
+      "source_location": "L6222",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_topic_new_page_topicnewpage",
@@ -39562,7 +39562,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/app/data/topic-new/page.jsx",
-      "source_location": "L6224",
+      "source_location": "L6223",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_topic_new_page_topicnewpage",
@@ -39586,7 +39586,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/app/data/topic-new/page.jsx",
-      "source_location": "L5793",
+      "source_location": "L5792",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_topic_new_page_topicnewpage",
@@ -39814,7 +39814,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/app/data/topic-new/page.jsx",
-      "source_location": "L5802",
+      "source_location": "L5801",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_topic_new_page_topicnewpage",
@@ -39838,7 +39838,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/app/data/topic-new/page.jsx",
-      "source_location": "L5817",
+      "source_location": "L5816",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_topic_new_page_topicnewpage",
@@ -39862,7 +39862,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/app/data/topic-new/page.jsx",
-      "source_location": "L5833",
+      "source_location": "L5832",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_topic_new_page_topicnewpage",
@@ -39886,7 +39886,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/app/data/topic-new/page.jsx",
-      "source_location": "L5845",
+      "source_location": "L5844",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_topic_new_page_topicnewpage",
@@ -40029,7 +40029,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/app/data/topic-new/page.jsx",
-      "source_location": "L5122",
+      "source_location": "L5121",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_topic_new_page_topicnewpage",
@@ -55262,5 +55262,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "6f88ee087931df85cd2045c9f2a21ac8e03d1ade"
+  "built_at_commit": "5874bae5b6f6aa06c9842e89fe1df6d4ae88c801"
 }

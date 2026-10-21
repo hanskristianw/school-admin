@@ -7,6 +7,7 @@ import { isHtmlEmpty } from '../lib/instructionDocxHelper'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import {
   faTimes,
+  faExclamationTriangle,
   faSave,
   faFilePdf,
   faWandMagicSparkles,
@@ -140,6 +141,85 @@ export default function UnitPlannerDocumentEditor({
   const [activeTab, setActiveTab] = useState('all') // 'all' | 'p1' | 'p2' | 'p3'
   const [keyConceptDropdownOpen, setKeyConceptDropdownOpen] = useState(false)
   const [validationErrors, setValidationErrors] = useState([])
+  // MYP Year change warning & grade protection states
+  const [hasGrades, setHasGrades] = useState(false)
+  const [mypYearModalOpen, setMypYearModalOpen] = useState(false)
+  const [pendingMypYear, setPendingMypYear] = useState(null)
+
+  // Check if topic assessment already has student grades
+  useEffect(() => {
+    let isMounted = true
+    async function checkGrades() {
+      if (!selectedTopic?.topic_id || isAddMode) {
+        if (isMounted) setHasGrades(false)
+        return
+      }
+      try {
+        const { data: assData } = await supabase
+          .from('assessment')
+          .select('assessment_id')
+          .eq('assessment_topic_id', selectedTopic.topic_id)
+
+        if (assData && assData.length > 0) {
+          const assIds = assData.map(a => a.assessment_id)
+          const { count } = await supabase
+            .from('assessment_grades')
+            .select('grade_id', { count: 'exact', head: true })
+            .in('assessment_id', assIds)
+
+          if (isMounted) setHasGrades(Boolean(count && count > 0))
+        } else {
+          if (isMounted) setHasGrades(false)
+        }
+      } catch (e) {
+        console.error('Error checking assessment grades:', e)
+      }
+    }
+    checkGrades()
+    return () => { isMounted = false }
+  }, [selectedTopic?.topic_id, isAddMode])
+
+  const handleMypYearSelectChange = (newYear) => {
+    if (!newYear || String(newYear) === String(selectedTopic?.topic_year)) return
+
+    // If no year was set previously (first time picking year), apply directly
+    if (!selectedTopic?.topic_year) {
+      setSelectedTopic(prev => ({ ...prev, topic_year: newYear }))
+      if (fetchStrandsForCriteria && wizardAssessment?.selected_criteria?.length > 0) {
+        fetchStrandsForCriteria(wizardAssessment.selected_criteria, newYear)
+      }
+      return
+    }
+
+    // Changing existing MYP Year -> open confirmation popup
+    setPendingMypYear(newYear)
+    setMypYearModalOpen(true)
+  }
+
+  const confirmMypYearChange = async () => {
+    const newYr = pendingMypYear
+    setMypYearModalOpen(false)
+    setPendingMypYear(null)
+
+    // 1. Update topic_year
+    setSelectedTopic(prev => ({ ...prev, topic_year: newYr }))
+
+    // 2. Clear assessment_tsc
+    setWizardAssessment(prev => ({
+      ...prev,
+      assessment_tsc: {}
+    }))
+
+    // 3. Re-fetch strands & rubrics for this new MYP Year
+    if (fetchStrandsForCriteria && wizardAssessment?.selected_criteria?.length > 0) {
+      await fetchStrandsForCriteria(wizardAssessment.selected_criteria, newYr)
+    }
+  }
+
+  const cancelMypYearChange = () => {
+    setMypYearModalOpen(false)
+    setPendingMypYear(null)
+  }
 
   const page1Ref = useRef(null)
   const page2Ref = useRef(null)
@@ -520,8 +600,7 @@ export default function UnitPlannerDocumentEditor({
                             const foundK = (allKelas || []).find(k => String(k.kelas_id) === String(kid))
                             const kname = foundK?.kelas_nama || ''
                             let suggestedYear = ''
-                            if (kname.includes('7')) suggestedYear = '1'
-                            else if (kname.includes('8')) suggestedYear = '2'
+                            if (kname.includes('7') || kname.includes('8')) suggestedYear = '1'
                             else if (kname.includes('9')) suggestedYear = '3'
                             else if (kname.includes('10')) suggestedYear = '5'
                             if (suggestedYear) {
@@ -636,30 +715,22 @@ export default function UnitPlannerDocumentEditor({
                     <td className="w-[15%] bg-[#E8E8E8] font-bold border border-black px-2.5 py-1.5 align-middle">
                       MYP year
                     </td>
-                    <td className={`w-[12%] border border-black px-2.5 py-1.5 align-middle ${!isAddMode ? 'bg-[#F2F2F2]' : ''}`}>
+                    <td className={`w-[12%] border border-black px-2.5 py-1.5 align-middle ${hasGrades ? 'bg-[#F2F2F2]' : ''}`}>
                       <select
-                        disabled={!isAddMode}
+                        disabled={hasGrades}
                         value={selectedTopic.topic_year || ''}
-                        onChange={(e) => {
-                          const yr = e.target.value
-                          setSelectedTopic(prev => ({ ...prev, topic_year: yr }))
-                          if (fetchStrandsForCriteria && wizardAssessment?.selected_criteria?.length > 0) {
-                            fetchStrandsForCriteria(wizardAssessment.selected_criteria, yr)
-                          }
-                        }}
+                        onChange={(e) => handleMypYearSelectChange(e.target.value)}
                         className={`w-full bg-transparent font-semibold outline-none ${
-                          !isAddMode 
-                            ? 'cursor-not-allowed text-gray-700' 
+                          hasGrades 
+                            ? 'cursor-not-allowed text-gray-500' 
                             : 'cursor-pointer hover:bg-yellow-50 focus:bg-white text-black'
                         }`}
-                        title={!isAddMode ? 'MYP Year cannot be changed on existing units' : ''}
+                        title={hasGrades ? 'MYP Year cannot be changed because this assessment already has student grades recorded' : 'Change MYP Year (MYP 1, 3, 5)'}
                       >
                         <option value="">Year</option>
-                        <option value="1">1</option>
-                        <option value="2">2</option>
-                        <option value="3">3</option>
-                        <option value="4">4</option>
-                        <option value="5">5</option>
+                        <option value="1">MYP 1</option>
+                        <option value="3">MYP 3</option>
+                        <option value="5">MYP 5</option>
                       </select>
                     </td>
                     <td className="w-[11%] bg-[#E8E8E8] font-bold border border-black px-2.5 py-1.5 align-middle">
@@ -1497,7 +1568,7 @@ export default function UnitPlannerDocumentEditor({
                 <div className="p-3 my-2 rounded-lg border border-purple-200 bg-gradient-to-r from-purple-50 via-pink-50 to-indigo-50 text-xs text-purple-800 flex items-center gap-2.5 shadow-xs animate-pulse">
                   <FontAwesomeIcon icon={faSpinner} className="animate-spin text-purple-600 text-sm" />
                   <div className="flex-1">
-                    <span className="font-bold">AI sedang merumuskan TSC:</span> Menyelaraskan kriteria dan instruksi tugas dengan achievement level (7-8, 5-6, 3-4, 1-2)...
+                    <span className="font-bold">AI is generating TSC:</span> Aligning criteria and task instructions with achievement levels (7-8, 5-6, 3-4, 1-2)...
                   </div>
                 </div>
               )}
@@ -1607,6 +1678,90 @@ export default function UnitPlannerDocumentEditor({
         )}
 
       </main>
+
+      {/* ─── MYP Year Change Confirmation Pop-up Modal ─── */}
+      {mypYearModalOpen && (
+        <div
+          className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200"
+          onClick={cancelMypYearChange}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden border border-gray-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="px-6 py-4 bg-amber-50 border-b border-amber-200 flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-amber-500 text-white flex items-center justify-center flex-shrink-0 shadow-sm">
+                <FontAwesomeIcon icon={faExclamationTriangle} className="w-5 h-5" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="text-base font-bold text-amber-950">
+                  Change MYP Year?
+                </h3>
+                <p className="text-xs text-amber-700">
+                  Confirm curriculum level change
+                </p>
+              </div>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 space-y-4 text-xs text-gray-700 leading-relaxed">
+              <p>
+                You are about to change the unit level from{' '}
+                <strong className="text-gray-900 font-semibold">
+                  MYP Year {selectedTopic.topic_year || '-'}
+                </strong>{' '}
+                to{' '}
+                <strong className="text-purple-700 font-bold">
+                  MYP Year {pendingMypYear}
+                </strong>
+                .
+              </p>
+
+              <div className="p-3.5 rounded-xl bg-amber-50/80 border border-amber-200 space-y-2">
+                <div className="flex items-center gap-1.5 font-semibold text-amber-900 text-xs">
+                  <span>⚠️</span>
+                  <span>Important Notice regarding Task-Specific Clarification (TSC):</span>
+                </div>
+                <ul className="list-disc pl-5 space-y-1.5 text-amber-800 text-[11px] leading-relaxed">
+                  <li>
+                    Subject criteria strands and rubrics will automatically update to the <strong>MYP Year {pendingMypYear}</strong> standard.
+                  </li>
+                  <li>
+                    <strong>All existing Task-Specific Clarification (TSC) entries will be cleared (reset)</strong> because achievement descriptors differ across year levels.
+                  </li>
+                  <li>
+                    You can easily regenerate fresh TSCs using the <strong>AI Help</strong> button once the change is applied.
+                  </li>
+                </ul>
+              </div>
+
+              <p className="text-gray-500 text-[11px]">
+                Are you sure you want to proceed with this MYP Year change?
+              </p>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="px-6 py-3.5 bg-gray-50 border-t border-gray-200 flex items-center justify-end gap-2.5">
+              <button
+                type="button"
+                onClick={cancelMypYearChange}
+                className="px-4 py-2 text-xs font-semibold text-gray-700 bg-white hover:bg-gray-100 border border-gray-300 rounded-lg transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmMypYearChange}
+                className="px-4 py-2 text-xs font-semibold text-white bg-amber-600 hover:bg-amber-700 rounded-lg shadow-sm transition-colors cursor-pointer flex items-center gap-1.5"
+              >
+                <FontAwesomeIcon icon={faCheck} className="text-xs" />
+                <span>Yes, Change & Reset TSC</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

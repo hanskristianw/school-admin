@@ -14450,8 +14450,8 @@
       "source_location": "L43",
       "_origin": "ast",
       "id": "agents_skills_design_taste_frontend_skill_1_the_three_dials_core_configuration",
-      "community": 236,
-      "community_name": "Module 236",
+      "community": 110,
+      "community_name": "Module 110",
       "norm_label": "1. the three dials (core configuration)"
     },
     {
@@ -14461,8 +14461,8 @@
       "source_location": "L53",
       "_origin": "ast",
       "id": "agents_skills_design_taste_frontend_skill_1_a_dial_inference_design_read_dial_values",
-      "community": 236,
-      "community_name": "Module 236",
+      "community": 110,
+      "community_name": "Module 110",
       "norm_label": "1.a dial inference (design read \u2192 dial values)"
     },
     {
@@ -14472,8 +14472,8 @@
       "source_location": "L64",
       "_origin": "ast",
       "id": "agents_skills_design_taste_frontend_skill_1_b_use_case_presets",
-      "community": 236,
-      "community_name": "Module 236",
+      "community": 110,
+      "community_name": "Module 110",
       "norm_label": "1.b use-case presets"
     },
     {
@@ -14483,8 +14483,8 @@
       "source_location": "L77",
       "_origin": "ast",
       "id": "agents_skills_design_taste_frontend_skill_1_c_how_the_dials_drive_output",
-      "community": 236,
-      "community_name": "Module 236",
+      "community": 110,
+      "community_name": "Module 110",
       "norm_label": "1.c how the dials drive output"
     },
     {
@@ -14868,8 +14868,8 @@
       "source_location": "L552",
       "_origin": "ast",
       "id": "agents_skills_design_taste_frontend_skill_7_dial_definitions_technical_reference",
-      "community": 110,
-      "community_name": "Module 110",
+      "community": 236,
+      "community_name": "Module 236",
       "norm_label": "7. dial definitions (technical reference)"
     },
     {
@@ -14879,8 +14879,8 @@
       "source_location": "L554",
       "_origin": "ast",
       "id": "agents_skills_design_taste_frontend_skill_design_variance_level_1_10",
-      "community": 110,
-      "community_name": "Module 110",
+      "community": 236,
+      "community_name": "Module 236",
       "norm_label": "design_variance (level 1-10)"
     },
     {
@@ -14890,8 +14890,8 @@
       "source_location": "L560",
       "_origin": "ast",
       "id": "agents_skills_design_taste_frontend_skill_motion_intensity_level_1_10",
-      "community": 110,
-      "community_name": "Module 110",
+      "community": 236,
+      "community_name": "Module 236",
       "norm_label": "motion_intensity (level 1-10)"
     },
     {
@@ -14901,8 +14901,8 @@
       "source_location": "L565",
       "_origin": "ast",
       "id": "agents_skills_design_taste_frontend_skill_visual_density_level_1_10",
-      "community": 110,
-      "community_name": "Module 110",
+      "community": 236,
+      "community_name": "Module 236",
       "norm_label": "visual_density (level 1-10)"
     },
     {
@@ -17321,8 +17321,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "agents_skills_imagegen_frontend_web_skill",
-      "community": 80,
-      "community_name": "Module 80",
+      "community": 293,
+      "community_name": "SKILL.md",
       "norm_label": "skill.md"
     },
     {
@@ -17332,8 +17332,8 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "agents_skills_imagegen_frontend_web_skill_hard_output_rule_read_first",
-      "community": 80,
-      "community_name": "Module 80",
+      "community": 293,
+      "community_name": "SKILL.md",
       "norm_label": "hard output rule \u2014 read first"
     },
     {
@@ -17343,8 +17343,8 @@
       "source_location": "L25",
       "_origin": "ast",
       "id": "agents_skills_imagegen_frontend_web_skill_hero_composition_bias_read_first",
-      "community": 80,
-      "community_name": "Module 80",
+      "community": 293,
+      "community_name": "SKILL.md",
       "norm_label": "hero composition bias \u2014 read first"
     },
     {
@@ -20192,8 +20192,8 @@
       "source_location": "L1027",
       "_origin": "ast",
       "id": "database_schema_6_assessment_grading_domain_data_topic_new_reports",
-      "community": 139,
-      "community_name": "Module 139",
+      "community": 115,
+      "community_name": "Module 115",
       "norm_label": "6. assessment & grading domain (`/data/topic-new` / reports)"
     },
     {
@@ -20203,8 +20203,8 @@
       "source_location": "L1031",
       "_origin": "ast",
       "id": "database_schema_6_1_tables",
-      "community": 139,
-      "community_name": "Module 139",
+      "community": 115,
+      "community_name": "Module 115",
       "norm_label": "6.1 tables"
     },
     {
@@ -20214,8 +20214,8 @@
       "source_location": "L1033",
       "_origin": "ast",
       "id": "database_schema_assessment_grades",
-      "community": 139,
-      "community_name": "Module 139",
+      "community": 115,
+      "community_name": "Module 115",
       "norm_label": "`assessment_grades`"
     },
     {
@@ -20225,8 +20225,8 @@
       "source_location": "L1055",
       "_origin": "ast",
       "id": "database_schema_assessment_grade_strands",
-      "community": 139,
-      "community_name": "Module 139",
+      "community": 115,
+      "community_name": "Module 115",
       "norm_label": "`assessment_grade_strands`"
     },
     {
@@ -20236,8 +20236,8 @@
       "source_location": "L1066",
       "_origin": "ast",
       "id": "database_schema_6_2_erd_relationships_assessment_grading",
-      "community": 139,
-      "community_name": "Module 139",
+      "community": 115,
+      "community_name": "Module 115",
       "norm_label": "6.2 erd / relationships (assessment & grading)"
     },
     {
@@ -20445,8 +20445,8 @@
       "source_location": "L1370",
       "_origin": "ast",
       "id": "database_schema_10_duty_greeter_devotion_schedule_domain_data_door_greeter",
-      "community": 115,
-      "community_name": "Module 115",
+      "community": 139,
+      "community_name": "Module 139",
       "norm_label": "10. duty, greeter & devotion schedule domain (`/data/door_greeter`)"
     },
     {
@@ -20456,8 +20456,8 @@
       "source_location": "L1374",
       "_origin": "ast",
       "id": "database_schema_10_1_tables",
-      "community": 115,
-      "community_name": "Module 115",
+      "community": 139,
+      "community_name": "Module 139",
       "norm_label": "10.1 tables"
     },
     {
@@ -20467,8 +20467,8 @@
       "source_location": "L1376",
       "_origin": "ast",
       "id": "database_schema_duty_schedules",
-      "community": 115,
-      "community_name": "Module 115",
+      "community": 139,
+      "community_name": "Module 139",
       "norm_label": "`duty_schedules`"
     },
     {
@@ -20478,8 +20478,8 @@
       "source_location": "L1405",
       "_origin": "ast",
       "id": "database_schema_duty_settings",
-      "community": 115,
-      "community_name": "Module 115",
+      "community": 139,
+      "community_name": "Module 139",
       "norm_label": "`duty_settings`"
     },
     {
@@ -20489,8 +20489,8 @@
       "source_location": "L1419",
       "_origin": "ast",
       "id": "database_schema_10_2_erd_relationships_duty_devotion_schedule_domain",
-      "community": 115,
-      "community_name": "Module 115",
+      "community": 139,
+      "community_name": "Module 139",
       "norm_label": "10.2 erd / relationships (duty & devotion schedule domain)"
     },
     {
@@ -38646,7 +38646,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/app/data/topic-new/components/UnitPlannerDocumentEditor.jsx",
-      "source_location": "L1464",
+      "source_location": "L1473",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_topic_new_components_unitplannerdocumenteditor_unitplannerdocumenteditor",
