@@ -150,24 +150,11 @@ export async function POST(request) {
       .single()
     if (uErr) throw uErr
 
-    // Priority 1: Check unit_approvers
+    // Determine approvers from role_approvers
     let approver1_id = null
     let approver2_id = null
 
-    if (userData.user_unit_id) {
-      const { data: unitApp } = await supabaseAdmin
-        .from('unit_approvers')
-        .select('approver1_id, approver2_id')
-        .eq('unit_id', userData.user_unit_id)
-        .maybeSingle()
-      if (unitApp) {
-        approver1_id = unitApp.approver1_id
-        approver2_id = unitApp.approver2_id
-      }
-    }
-
-    // Priority 2: Fallback to role_approvers if unit_approvers not configured
-    if (!approver1_id && userData.user_role_id) {
+    if (userData.user_role_id) {
       const { data: roleApp } = await supabaseAdmin
         .from('role_approvers')
         .select('approver1_id, approver2_id')
