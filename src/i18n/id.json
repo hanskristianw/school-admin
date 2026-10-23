@@ -715,6 +715,7 @@
       "fileReplaceDoc": "Klik untuk ganti file",
       "fileNote": "Gambar akan di-crop dan dikompres otomatis • PDF diupload langsung",
       "mandatory": "wajib",
+      "optional": "opsional",
       "placeholderReason": "Jelaskan alasan Anda...",
       "btnCancel": "Batal",
       "btnProcessing": "Memproses...",

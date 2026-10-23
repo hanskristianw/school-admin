@@ -50,6 +50,7 @@ function dbToCategory(lt) {
     value:        lt.code,
     label:        lt.name_en,
     requireUpload: lt.requires_upload || false,
+    allowUpload:   Boolean(lt.requires_upload) || lt.code === 'incidental_leave' || Boolean(lt.upload_label),
     uploadLabel:  lt.upload_label || '',
     max_days:     lt.max_days || null,
   }
@@ -132,6 +133,7 @@ function ExcuseModal({ record, excuse, userId, leaveTypes, onClose, onSuccess })
   const categories = getCategoriesForType(issueType, leaveTypes)
   const selectedCat = categories.find(c => c.value === category)
   const requireUpload = selectedCat?.requireUpload || false
+  const allowUpload   = selectedCat?.allowUpload || requireUpload || false
 
   const issueLabel = {
     late:        t('attendanceForm.issueLate'),
@@ -288,12 +290,17 @@ function ExcuseModal({ record, excuse, userId, leaveTypes, onClose, onSuccess })
                       style={{ accentColor: isDark ? '#F4F4F5' : '#111111', marginTop: '3px', flexShrink: 0 }} />
                     <div className="flex-1 flex items-center justify-between gap-2">
                       <span className="text-xs font-medium" style={{ color: textPrimary }}>{c.label}</span>
-                      {c.requireUpload && (
+                      {c.requireUpload ? (
                         <span className="text-[11px] px-1.5 py-0.5 rounded inline-flex items-center gap-1 font-mono" style={{ background: isDark ? 'rgba(245, 158, 11, 0.15)' : '#FBF3DB', color: isDark ? '#FCD34D' : '#956400' }}>
                           <FontAwesomeIcon icon={faPaperclip} className="text-[9px]" />
                           <span>{t('attendanceForm.modal.mandatory')}</span>
                         </span>
-                      )}
+                      ) : c.allowUpload ? (
+                        <span className="text-[11px] px-1.5 py-0.5 rounded inline-flex items-center gap-1 font-mono" style={{ background: isDark ? 'rgba(161, 161, 170, 0.15)' : '#F4F4F5', color: isDark ? '#A1A1AA' : '#71717A' }}>
+                          <FontAwesomeIcon icon={faPaperclip} className="text-[9px]" />
+                          <span>{t('attendanceForm.modal.optional')}</span>
+                        </span>
+                      ) : null}
                     </div>
                   </label>
                 )
@@ -332,10 +339,15 @@ function ExcuseModal({ record, excuse, userId, leaveTypes, onClose, onSuccess })
           )}
 
           {/* File upload */}
-          {requireUpload && (
+          {allowUpload && (
             <div>
               <label className="text-xs font-medium block mb-1.5" style={{ color: textSecondary }}>
-                {selectedCat?.uploadLabel || t('attendanceForm.modal.labelRequired')} <span style={{ color: '#ef4444' }}>*</span>
+                {selectedCat?.uploadLabel || t('attendanceForm.modal.labelRequired')}
+                {requireUpload ? (
+                  <span style={{ color: '#ef4444' }}> *</span>
+                ) : (
+                  <span className="font-normal" style={{ color: textSecondary }}> ({t('attendanceForm.modal.optional')})</span>
+                )}
               </label>
               {isEdit && excuse?.attachment_url && !uploadFile && (
                 <div className="flex items-center gap-2 mb-2 px-3 py-2 rounded-md text-xs" style={{ background: isDark ? 'rgba(34, 197, 94, 0.1)' : '#EDF3EC', border: `1px solid ${isDark ? 'rgba(34, 197, 94, 0.3)' : '#D1E7DD'}`, color: isDark ? '#86EFAC' : '#2A6335' }}>

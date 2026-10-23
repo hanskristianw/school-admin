@@ -920,8 +920,8 @@
     "semantic_hash": ""
   },
   "src/app/data/attendance-excuses/page.jsx": {
-    "mtime": 1790129788.3417132,
-    "ast_hash": "9553ba002f1346688646dafdaa15aa1d",
+    "mtime": 1792737387.4529479,
+    "ast_hash": "4e767b901ccc28d98299210b6500e26f",
     "semantic_hash": ""
   },
   "src/app/data/attendance-leave-quota/page.jsx": {
@@ -1330,18 +1330,18 @@
     "semantic_hash": "a7c1c38cae37e55ea43d9bff76355a4c"
   },
   "src/i18n/en.json": {
-    "mtime": 1792547892.6468325,
-    "ast_hash": "265cbde8945dc9d36a0953b65cbc17c2",
+    "mtime": 1792737272.2726674,
+    "ast_hash": "92c20763ba206df7a2f1080586b0467c",
     "semantic_hash": ""
   },
   "src/i18n/id.json": {
-    "mtime": 1792547892.6417575,
-    "ast_hash": "5b4f47d022d5712a0fb300f4e8d11d22",
+    "mtime": 1792737276.0927668,
+    "ast_hash": "82a69fa2503255eae30f7df7e4025e2c",
     "semantic_hash": ""
   },
   "src/i18n/zh.json": {
-    "mtime": 1789094550.3111975,
-    "ast_hash": "790ef979aa1f0c419e6c60e676928267",
+    "mtime": 1792737279.4280083,
+    "ast_hash": "6e6bd11db4b20944d0a0e7c0d2627456",
     "semantic_hash": ""
   },
   "src/lib/auth.js": {
@@ -1595,8 +1595,8 @@
     "semantic_hash": ""
   },
   "src/app/data/attendance-form/page.jsx": {
-    "mtime": 1791169167.2562635,
-    "ast_hash": "4b847f007e132f3cf42713418ac4fb85",
+    "mtime": 1792737367.1062624,
+    "ast_hash": "f4cc8558f23eecd7c2c9ca45bab8485a",
     "semantic_hash": ""
   },
   "src/app/api/class/list/route.js": {

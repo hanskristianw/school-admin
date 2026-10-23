@@ -712,6 +712,7 @@
       "fileReplaceDoc": "点击替换文件",
       "fileNote": "图片将自动裁剪和压缩 • PDF 直接上传",
       "mandatory": "必须",
+      "optional": "可选",
       "placeholderReason": "请说明您的理由...",
       "btnCancel": "取消",
       "btnProcessing": "处理中...",

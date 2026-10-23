@@ -715,6 +715,7 @@
       "fileReplaceDoc": "Click to replace file",
       "fileNote": "Image will be cropped and compressed automatically • PDF uploaded directly",
       "mandatory": "required",
+      "optional": "optional",
       "placeholderReason": "Explain your reason...",
       "btnCancel": "Cancel",
       "btnProcessing": "Processing...",

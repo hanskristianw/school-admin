@@ -27,6 +27,7 @@ function dbToCategory(lt) {
     value:        lt.code,
     label:        lt.name_en,
     requireUpload: lt.requires_upload || false,
+    allowUpload:   Boolean(lt.requires_upload) || lt.code === 'incidental_leave' || Boolean(lt.upload_label),
     uploadLabel:  lt.upload_label || '',
     max_days:     lt.max_days || null,
   }
@@ -128,6 +129,7 @@ function ExcuseModal({ record, excuse, userId, leaveTypes, onClose, onSuccess })
   const categories = getCategoriesForType(issueType, leaveTypes)
   const selectedCat = categories.find(c => c.value === category)
   const requireUpload = selectedCat?.requireUpload || false
+  const allowUpload   = selectedCat?.allowUpload || requireUpload || false
 
   const fetchQuota = async (catCode) => {
     if (!catCode) { setQuotaInfo(null); return }
@@ -357,9 +359,11 @@ function ExcuseModal({ record, excuse, userId, leaveTypes, onClose, onSuccess })
                   style={{ accentColor: theme.blueText || '#2563eb', marginTop: '2px', flexShrink: 0 }} />
                 <div>
                   <span className="text-sm" style={{ color: theme.textBody }}>{c.label}</span>
-                  {c.requireUpload && (
+                  {c.requireUpload ? (
                     <span className="text-xs ml-1 px-1.5 py-0.5 rounded" style={{ background: '#fef3c7', color: '#92400e' }}>📎 wajib</span>
-                  )}
+                  ) : c.allowUpload ? (
+                    <span className="text-xs ml-1 px-1.5 py-0.5 rounded" style={{ background: '#f3f4f6', color: '#6b7280' }}>📎 opsional</span>
+                  ) : null}
                 </div>
               </label>
             ))}
@@ -389,10 +393,15 @@ function ExcuseModal({ record, excuse, userId, leaveTypes, onClose, onSuccess })
         )}
 
         {/* File upload */}
-        {requireUpload && (
+        {allowUpload && (
           <div className="mb-3">
             <label className="text-xs font-medium block mb-1.5" style={{ color: theme.textSecondary }}>
-              {selectedCat?.uploadLabel || 'Upload Dokumen'} <span style={{ color: '#ef4444' }}>*</span>
+              {selectedCat?.uploadLabel || 'Upload Dokumen'}
+              {requireUpload ? (
+                <span style={{ color: '#ef4444' }}> *</span>
+              ) : (
+                <span style={{ color: theme.textSecondary, fontWeight: 400 }}> (Opsional)</span>
+              )}
             </label>
             {/* Show existing attachment if editing */}
             {isEdit && excuse?.attachment_url && !uploadFile && (
