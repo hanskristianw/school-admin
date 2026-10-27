@@ -23,8 +23,10 @@ import {
   formatWeeklyPlansToDuringReflection,
 } from './lib/pdfGenerators'
 import useAiHelp from './lib/useAiHelp'
-import WizardStepContent from './components/WizardStepContent'
+// NOTE: Wizard planner is DEPRECATED in favor of Toddle-style WYSIWYG (UnitPlannerDocumentEditor)
+// import WizardStepContent from './components/WizardStepContent' // DEPRECATED
 import UnitPlannerDocumentEditor from './components/UnitPlannerDocumentEditor'
+import GoogleClassroomConnector from './components/GoogleClassroomConnector'
 import CommunityProjectTab from './components/CommunityProjectTab'
 import { isHtmlEmpty } from './lib/instructionDocxHelper'
 import 'driver.js/dist/driver.css'
@@ -2003,7 +2005,8 @@ export default function TopicNewPage() {
           assessment_user_id,
           assessment_detail_kelas_id,
           assessment_topic_id,
-          assessment_semester
+          assessment_semester,
+          assessment_tsc
         `)
         .in('assessment_detail_kelas_id', userDetailKelasIds)
         .order('assessment_tanggal', { ascending: false })
@@ -5558,6 +5561,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
         
         const assessmentUpdatePayload = {
           assessment_nama: wizardAssessment.assessment_nama || null,
+          assessment_tanggal: wizardAssessment.assessment_tanggal || null,
           assessment_semester: wizardAssessment.assessment_semester ? parseInt(wizardAssessment.assessment_semester) : null,
           assessment_conceptual_understanding: wizardAssessment.assessment_conceptual_understanding || null,
           assessment_task_specific_description: wizardAssessment.assessment_task_specific_description || null,
@@ -5636,7 +5640,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
         // Create new assessment
         const assessmentInsertPayload = {
           assessment_nama: wizardAssessment.assessment_nama || 'Untitled Assessment',
-          assessment_tanggal: null, // Will be set later via Assessment tab
+          assessment_tanggal: wizardAssessment.assessment_tanggal || null,
           assessment_keterangan: wizardAssessment.assessment_keterangan || null,
           assessment_conceptual_understanding: wizardAssessment.assessment_conceptual_understanding || null,
           assessment_task_specific_description: wizardAssessment.assessment_task_specific_description || null,
@@ -6242,6 +6246,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
       .select(`
         assessment_id,
         assessment_nama,
+        assessment_tanggal,
         assessment_keterangan,
         assessment_semester,
         assessment_conceptual_understanding,
@@ -6259,6 +6264,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
       const criteriaIds = assessmentData.assessment_criteria?.map(ac => ac.criterion_id) || []
       setWizardAssessment({
         assessment_nama: assessmentData.assessment_nama || '',
+        assessment_tanggal: assessmentData.assessment_tanggal || '',
         assessment_keterangan: assessmentData.assessment_keterangan || '',
         assessment_semester: assessmentData.assessment_semester?.toString() || '',
         assessment_relationship: topic.topic_relationship_summative_assessment_statement_of_inquiry || '',
@@ -7661,12 +7667,8 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                       style={{
                         borderColor: theme.border,
                         borderRadius: '8px',
-                        background: theme.cardBg,
-                        cursor: canEdit ? 'pointer' : 'default'
+                        background: theme.cardBg
                       }}
-                      onClick={() => canEdit && handleEditAssessment(assessment)}
-                      onMouseEnter={e => { if (canEdit) e.currentTarget.style.borderColor = theme.textSecondary }}
-                      onMouseLeave={e => { e.currentTarget.style.borderColor = theme.border }}
                     >
                       {/* Grade Watermark */}
                       {gradeNumber && (
@@ -7759,11 +7761,20 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                               {assessment.graded_count || 0}/{assessment.total_students || 0} Graded
                             </span>
                           </div>
+
                         </div>
                       </div>
 
                       {/* Action Footer */}
                       <div className="relative z-10 pt-3 border-t flex flex-col gap-2" style={{ borderColor: theme.border }}>
+                        {/* Google Classroom Connection */}
+                        <div onClick={(e) => e.stopPropagation()}>
+                          <GoogleClassroomConnector
+                            assessment={assessment}
+                            onSuccess={fetchAssessments}
+                            isReadOnly={!canEdit}
+                          />
+                        </div>
                         {hasCriteria && (
                           <button
                             type="button"
@@ -7784,11 +7795,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                           </button>
                         )}
 
-                        {canEdit && (
-                          <div className="text-center text-[10px] font-mono" style={{ color: theme.textSecondary }}>
-                            {!hasCriteria ? '// CLICK CARD TO ADD CRITERIA' : '// CLICK CARD TO EDIT'}
-                          </div>
-                        )}
+
                       </div>
                     </div>
                   )
@@ -7829,8 +7836,6 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                           <tr
                             key={assessment.assessment_id}
                             className="transition-colors"
-                            style={{ cursor: canEdit ? 'pointer' : 'default' }}
-                            onClick={() => canEdit && handleEditAssessment(assessment)}
                             onMouseEnter={e => e.currentTarget.style.background = theme.subtleBg}
                             onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                           >
@@ -9166,6 +9171,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
           setSelectedTopic={setSelectedTopic}
           wizardAssessment={wizardAssessment}
           setWizardAssessment={setWizardAssessment}
+          topicAssessment={topicAssessment}
           wizardCriteria={wizardCriteria}
           wizardStrands={wizardStrands}
           wizardRubrics={wizardRubrics}

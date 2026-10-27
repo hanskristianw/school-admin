@@ -2988,8 +2988,8 @@
       "source_location": "L13",
       "_origin": "ast",
       "id": "package_dependencies_fortawesome_free_solid_svg_icons",
-      "community": 379,
-      "community_name": "@fortawesome/free-solid-svg-icons",
+      "community": 270,
+      "community_name": "clsx",
       "norm_label": "@fortawesome/free-solid-svg-icons"
     },
     {
@@ -2999,8 +2999,8 @@
       "source_location": "L13",
       "_origin": "ast",
       "id": "fortawesome_free_solid_svg_icons",
-      "community": 379,
-      "community_name": "@fortawesome/free-solid-svg-icons",
+      "community": 270,
+      "community_name": "clsx",
       "norm_label": "@fortawesome/free-solid-svg-icons"
     },
     {
@@ -3010,8 +3010,8 @@
       "source_location": "L14",
       "_origin": "ast",
       "id": "package_dependencies_fortawesome_react_fontawesome",
-      "community": 133,
-      "community_name": "Module 133",
+      "community": 269,
+      "community_name": "\ud83c\udf93 **IB MYP Assessment Grading System**",
       "norm_label": "@fortawesome/react-fontawesome"
     },
     {
@@ -3021,8 +3021,8 @@
       "source_location": "L14",
       "_origin": "ast",
       "id": "fortawesome_react_fontawesome",
-      "community": 133,
-      "community_name": "Module 133",
+      "community": 269,
+      "community_name": "\ud83c\udf93 **IB MYP Assessment Grading System**",
       "norm_label": "@fortawesome/react-fontawesome"
     },
     {
@@ -3054,8 +3054,8 @@
       "source_location": "L16",
       "_origin": "ast",
       "id": "package_dependencies_googleapis_chat",
-      "community": 269,
-      "community_name": "\ud83c\udf93 **IB MYP Assessment Grading System**",
+      "community": 133,
+      "community_name": "Module 133",
       "norm_label": "@googleapis/chat"
     },
     {
@@ -3065,8 +3065,8 @@
       "source_location": "L16",
       "_origin": "ast",
       "id": "googleapis_chat",
-      "community": 269,
-      "community_name": "\ud83c\udf93 **IB MYP Assessment Grading System**",
+      "community": 133,
+      "community_name": "Module 133",
       "norm_label": "@googleapis/chat"
     },
     {
@@ -3142,8 +3142,8 @@
       "source_location": "L20",
       "_origin": "ast",
       "id": "package_dependencies_radix_ui_react_slot",
-      "community": 133,
-      "community_name": "Module 133",
+      "community": 379,
+      "community_name": "@sparticuz/chromium-min",
       "norm_label": "@radix-ui/react-slot"
     },
     {
@@ -3153,8 +3153,8 @@
       "source_location": "L20",
       "_origin": "ast",
       "id": "radix_ui_react_slot",
-      "community": 133,
-      "community_name": "Module 133",
+      "community": 379,
+      "community_name": "@sparticuz/chromium-min",
       "norm_label": "@radix-ui/react-slot"
     },
     {
@@ -3164,8 +3164,8 @@
       "source_location": "L21",
       "_origin": "ast",
       "id": "package_dependencies_sparticuz_chromium_min",
-      "community": 310,
-      "community_name": "\ud83d\udd27 **Technical Implementation**",
+      "community": 133,
+      "community_name": "Module 133",
       "norm_label": "@sparticuz/chromium-min"
     },
     {
@@ -3175,8 +3175,8 @@
       "source_location": "L21",
       "_origin": "ast",
       "id": "sparticuz_chromium_min",
-      "community": 310,
-      "community_name": "\ud83d\udd27 **Technical Implementation**",
+      "community": 133,
+      "community_name": "Module 133",
       "norm_label": "@sparticuz/chromium-min"
     },
     {
@@ -3230,8 +3230,8 @@
       "source_location": "L24",
       "_origin": "ast",
       "id": "package_dependencies_tiptap_extension_font_family",
-      "community": 133,
-      "community_name": "Module 133",
+      "community": 398,
+      "community_name": "@fortawesome/react-fontawesome",
       "norm_label": "@tiptap/extension-font-family"
     },
     {
@@ -3241,8 +3241,8 @@
       "source_location": "L24",
       "_origin": "ast",
       "id": "tiptap_extension_font_family",
-      "community": 133,
-      "community_name": "Module 133",
+      "community": 398,
+      "community_name": "@fortawesome/react-fontawesome",
       "norm_label": "@tiptap/extension-font-family"
     },
     {
@@ -3252,8 +3252,8 @@
       "source_location": "L25",
       "_origin": "ast",
       "id": "package_dependencies_tiptap_extension_highlight",
-      "community": 377,
-      "community_name": "dotenv",
+      "community": 133,
+      "community_name": "Module 133",
       "norm_label": "@tiptap/extension-highlight"
     },
     {
@@ -3263,8 +3263,8 @@
       "source_location": "L25",
       "_origin": "ast",
       "id": "tiptap_extension_highlight",
-      "community": 377,
-      "community_name": "dotenv",
+      "community": 133,
+      "community_name": "Module 133",
       "norm_label": "@tiptap/extension-highlight"
     },
     {
@@ -3538,8 +3538,8 @@
       "source_location": "L38",
       "_origin": "ast",
       "id": "package_dependencies_bcryptjs",
-      "community": 331,
-      "community_name": "bcryptjs",
+      "community": 133,
+      "community_name": "Module 133",
       "norm_label": "bcryptjs"
     },
     {
@@ -3549,8 +3549,8 @@
       "source_location": "L38",
       "_origin": "ast",
       "id": "bcryptjs",
-      "community": 331,
-      "community_name": "bcryptjs",
+      "community": 133,
+      "community_name": "Module 133",
       "norm_label": "bcryptjs"
     },
     {
@@ -3560,8 +3560,8 @@
       "source_location": "L39",
       "_origin": "ast",
       "id": "package_dependencies_browser_image_compression",
-      "community": 133,
-      "community_name": "Module 133",
+      "community": 377,
+      "community_name": "dotenv",
       "norm_label": "browser-image-compression"
     },
     {
@@ -3571,8 +3571,8 @@
       "source_location": "L39",
       "_origin": "ast",
       "id": "browser_image_compression",
-      "community": 133,
-      "community_name": "Module 133",
+      "community": 377,
+      "community_name": "dotenv",
       "norm_label": "browser-image-compression"
     },
     {
@@ -3582,8 +3582,8 @@
       "source_location": "L40",
       "_origin": "ast",
       "id": "package_dependencies_class_variance_authority",
-      "community": 155,
-      "community_name": "Module 155",
+      "community": 313,
+      "community_name": "SKILL.md",
       "norm_label": "class-variance-authority"
     },
     {
@@ -3593,8 +3593,8 @@
       "source_location": "L40",
       "_origin": "ast",
       "id": "class_variance_authority",
-      "community": 155,
-      "community_name": "Module 155",
+      "community": 313,
+      "community_name": "SKILL.md",
       "norm_label": "class-variance-authority"
     },
     {
@@ -3648,8 +3648,8 @@
       "source_location": "L43",
       "_origin": "ast",
       "id": "package_dependencies_dotenv",
-      "community": 193,
-      "community_name": "Module 193",
+      "community": 293,
+      "community_name": "SKILL.md",
       "norm_label": "dotenv"
     },
     {
@@ -3659,8 +3659,8 @@
       "source_location": "L43",
       "_origin": "ast",
       "id": "dotenv",
-      "community": 193,
-      "community_name": "Module 193",
+      "community": 293,
+      "community_name": "SKILL.md",
       "norm_label": "dotenv"
     },
     {
@@ -3670,8 +3670,8 @@
       "source_location": "L44",
       "_origin": "ast",
       "id": "package_dependencies_driver_js",
-      "community": 313,
-      "community_name": "SKILL.md",
+      "community": 413,
+      "community_name": "bcryptjs",
       "norm_label": "driver.js"
     },
     {
@@ -3681,8 +3681,8 @@
       "source_location": "L44",
       "_origin": "ast",
       "id": "driver_js",
-      "community": 313,
-      "community_name": "SKILL.md",
+      "community": 413,
+      "community_name": "bcryptjs",
       "norm_label": "driver.js"
     },
     {
@@ -3780,8 +3780,8 @@
       "source_location": "L49",
       "_origin": "ast",
       "id": "package_dependencies_html5_qrcode",
-      "community": 270,
-      "community_name": "clsx",
+      "community": 331,
+      "community_name": "html5-qrcode",
       "norm_label": "html5-qrcode"
     },
     {
@@ -3791,8 +3791,8 @@
       "source_location": "L49",
       "_origin": "ast",
       "id": "html5_qrcode",
-      "community": 270,
-      "community_name": "clsx",
+      "community": 331,
+      "community_name": "html5-qrcode",
       "norm_label": "html5-qrcode"
     },
     {
@@ -4044,8 +4044,8 @@
       "source_location": "L61",
       "_origin": "ast",
       "id": "package_dependencies_qrcode",
-      "community": 0,
-      "community_name": "Admission Management",
+      "community": 310,
+      "community_name": "@googleapis/chat",
       "norm_label": "qrcode"
     },
     {
@@ -4055,8 +4055,8 @@
       "source_location": "L61",
       "_origin": "ast",
       "id": "qrcode",
-      "community": 0,
-      "community_name": "Admission Management",
+      "community": 310,
+      "community_name": "@googleapis/chat",
       "norm_label": "qrcode"
     },
     {
@@ -5954,6 +5954,72 @@
     {
       "label": "route.js",
       "file_type": "code",
+      "source_file": "src/app/api/classroom/courses/route.js",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "src_app_api_classroom_courses_route",
+      "community": 415,
+      "community_name": "route.js",
+      "norm_label": "route.js"
+    },
+    {
+      "label": "GET()",
+      "file_type": "code",
+      "source_file": "src/app/api/classroom/courses/route.js",
+      "source_location": "L5",
+      "_origin": "ast",
+      "id": "src_app_api_classroom_courses_route_get",
+      "community": 415,
+      "community_name": "route.js",
+      "norm_label": "get()"
+    },
+    {
+      "label": "route.js",
+      "file_type": "code",
+      "source_file": "src/app/api/classroom/coursework/route.js",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "src_app_api_classroom_coursework_route",
+      "community": 416,
+      "community_name": "route.js",
+      "norm_label": "route.js"
+    },
+    {
+      "label": "GET()",
+      "file_type": "code",
+      "source_file": "src/app/api/classroom/coursework/route.js",
+      "source_location": "L5",
+      "_origin": "ast",
+      "id": "src_app_api_classroom_coursework_route_get",
+      "community": 416,
+      "community_name": "route.js",
+      "norm_label": "get()"
+    },
+    {
+      "label": "route.js",
+      "file_type": "code",
+      "source_file": "src/app/api/classroom/submissions/route.js",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "src_app_api_classroom_submissions_route",
+      "community": 14,
+      "community_name": "Attendance Leave Management",
+      "norm_label": "route.js"
+    },
+    {
+      "label": "GET()",
+      "file_type": "code",
+      "source_file": "src/app/api/classroom/submissions/route.js",
+      "source_location": "L5",
+      "_origin": "ast",
+      "id": "src_app_api_classroom_submissions_route_get",
+      "community": 14,
+      "community_name": "Attendance Leave Management",
+      "norm_label": "get()"
+    },
+    {
+      "label": "route.js",
+      "file_type": "code",
       "source_file": "src/app/api/court-rental/[id]/approve/route.js",
       "source_location": "L1",
       "_origin": "ast",
@@ -7443,8 +7509,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_app_data_admission_unifiedadmissionmodal",
-      "community": 0,
-      "community_name": "Admission Management",
+      "community": 115,
+      "community_name": "Module 115",
       "norm_label": "unifiedadmissionmodal.jsx"
     },
     {
@@ -7454,8 +7520,8 @@
       "source_location": "L40",
       "_origin": "ast",
       "id": "src_app_data_admission_unifiedadmissionmodal_unifiedadmissionmodal",
-      "community": 0,
-      "community_name": "Admission Management",
+      "community": 115,
+      "community_name": "Module 115",
       "norm_label": "unifiedadmissionmodal()"
     },
     {
@@ -7509,8 +7575,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_app_data_admission_page",
-      "community": 0,
-      "community_name": "Admission Management",
+      "community": 115,
+      "community_name": "Module 115",
       "norm_label": "page.jsx"
     },
     {
@@ -7520,8 +7586,8 @@
       "source_location": "L64",
       "_origin": "ast",
       "id": "src_app_data_admission_page_statusconfig",
-      "community": 0,
-      "community_name": "Admission Management",
+      "community": 115,
+      "community_name": "Module 115",
       "norm_label": "statusconfig"
     },
     {
@@ -7531,8 +7597,8 @@
       "source_location": "L95",
       "_origin": "ast",
       "id": "src_app_data_admission_page_getemailtypelabel",
-      "community": 0,
-      "community_name": "Admission Management",
+      "community": 115,
+      "community_name": "Module 115",
       "norm_label": "getemailtypelabel()"
     },
     {
@@ -7542,8 +7608,8 @@
       "source_location": "L108",
       "_origin": "ast",
       "id": "src_app_data_admission_page_getemailstatuslabel",
-      "community": 0,
-      "community_name": "Admission Management",
+      "community": 115,
+      "community_name": "Module 115",
       "norm_label": "getemailstatuslabel()"
     },
     {
@@ -7553,8 +7619,8 @@
       "source_location": "L119",
       "_origin": "ast",
       "id": "src_app_data_admission_page_admissionmanagement",
-      "community": 0,
-      "community_name": "Admission Management",
+      "community": 115,
+      "community_name": "Module 115",
       "norm_label": "admissionmanagement()"
     },
     {
@@ -7649,7 +7715,7 @@
       "label": "AssessmentGradingPage()",
       "file_type": "code",
       "source_file": "src/app/data/assessment_grading/[id]/page.jsx",
-      "source_location": "L10",
+      "source_location": "L33",
       "_origin": "ast",
       "id": "src_app_data_assessment_grading_id_page_assessmentgradingpage",
       "community": 183,
@@ -9269,8 +9335,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_app_data_psikotest_lib_psikotestpdfgenerator",
-      "community": 194,
-      "community_name": "Module 194",
+      "community": 0,
+      "community_name": "Admission Management",
       "norm_label": "psikotestpdfgenerator.js"
     },
     {
@@ -9280,8 +9346,8 @@
       "source_location": "L7",
       "_origin": "ast",
       "id": "src_app_data_psikotest_lib_psikotestpdfgenerator_loadimgbase64",
-      "community": 194,
-      "community_name": "Module 194",
+      "community": 0,
+      "community_name": "Admission Management",
       "norm_label": "loadimgbase64()"
     },
     {
@@ -9291,8 +9357,8 @@
       "source_location": "L28",
       "_origin": "ast",
       "id": "src_app_data_psikotest_lib_psikotestpdfgenerator_formatindonesiandate",
-      "community": 194,
-      "community_name": "Module 194",
+      "community": 0,
+      "community_name": "Admission Management",
       "norm_label": "formatindonesiandate()"
     },
     {
@@ -9302,8 +9368,8 @@
       "source_location": "L42",
       "_origin": "ast",
       "id": "src_app_data_psikotest_lib_psikotestpdfgenerator_generatepsikotestpdf",
-      "community": 194,
-      "community_name": "Module 194",
+      "community": 0,
+      "community_name": "Admission Management",
       "norm_label": "generatepsikotestpdf()"
     },
     {
@@ -9313,8 +9379,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_app_data_psikotest_page",
-      "community": 194,
-      "community_name": "Module 194",
+      "community": 0,
+      "community_name": "Admission Management",
       "norm_label": "page.jsx"
     },
     {
@@ -9324,8 +9390,8 @@
       "source_location": "L30",
       "_origin": "ast",
       "id": "src_app_data_psikotest_page_psikotestmanagementpage",
-      "community": 194,
-      "community_name": "Module 194",
+      "community": 0,
+      "community_name": "Admission Management",
       "norm_label": "psikotestmanagementpage()"
     },
     {
@@ -10286,6 +10352,94 @@
       "norm_label": "communityprojecttab()"
     },
     {
+      "label": "GoogleClassroomConnector.jsx",
+      "file_type": "code",
+      "source_file": "src/app/data/topic-new/components/GoogleClassroomConnector.jsx",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "src_app_data_topic_new_components_googleclassroomconnector",
+      "community": 145,
+      "community_name": "Module 145",
+      "norm_label": "googleclassroomconnector.jsx"
+    },
+    {
+      "label": "GoogleClassroomIcon()",
+      "file_type": "code",
+      "source_file": "src/app/data/topic-new/components/GoogleClassroomConnector.jsx",
+      "source_location": "L22",
+      "_origin": "ast",
+      "id": "src_app_data_topic_new_components_googleclassroomconnector_googleclassroomicon",
+      "community": 145,
+      "community_name": "Module 145",
+      "norm_label": "googleclassroomicon()"
+    },
+    {
+      "label": "GOOGLE_CLASSROOM_SCOPES",
+      "file_type": "code",
+      "source_file": "src/app/data/topic-new/components/GoogleClassroomConnector.jsx",
+      "source_location": "L39",
+      "_origin": "ast",
+      "id": "src_app_data_topic_new_components_googleclassroomconnector_google_classroom_scopes",
+      "community": 145,
+      "community_name": "Module 145",
+      "norm_label": "google_classroom_scopes"
+    },
+    {
+      "label": "getStoredClassroomToken()",
+      "file_type": "code",
+      "source_file": "src/app/data/topic-new/components/GoogleClassroomConnector.jsx",
+      "source_location": "L48",
+      "_origin": "ast",
+      "id": "src_app_data_topic_new_components_googleclassroomconnector_getstoredclassroomtoken",
+      "community": 145,
+      "community_name": "Module 145",
+      "norm_label": "getstoredclassroomtoken()"
+    },
+    {
+      "label": "setStoredClassroomToken()",
+      "file_type": "code",
+      "source_file": "src/app/data/topic-new/components/GoogleClassroomConnector.jsx",
+      "source_location": "L57",
+      "_origin": "ast",
+      "id": "src_app_data_topic_new_components_googleclassroomconnector_setstoredclassroomtoken",
+      "community": 145,
+      "community_name": "Module 145",
+      "norm_label": "setstoredclassroomtoken()"
+    },
+    {
+      "label": "clearStoredClassroomToken()",
+      "file_type": "code",
+      "source_file": "src/app/data/topic-new/components/GoogleClassroomConnector.jsx",
+      "source_location": "L63",
+      "_origin": "ast",
+      "id": "src_app_data_topic_new_components_googleclassroomconnector_clearstoredclassroomtoken",
+      "community": 145,
+      "community_name": "Module 145",
+      "norm_label": "clearstoredclassroomtoken()"
+    },
+    {
+      "label": "extractClassroomLinks()",
+      "file_type": "code",
+      "source_file": "src/app/data/topic-new/components/GoogleClassroomConnector.jsx",
+      "source_location": "L70",
+      "_origin": "ast",
+      "id": "src_app_data_topic_new_components_googleclassroomconnector_extractclassroomlinks",
+      "community": 145,
+      "community_name": "Module 145",
+      "norm_label": "extractclassroomlinks()"
+    },
+    {
+      "label": "GoogleClassroomConnector()",
+      "file_type": "code",
+      "source_file": "src/app/data/topic-new/components/GoogleClassroomConnector.jsx",
+      "source_location": "L81",
+      "_origin": "ast",
+      "id": "src_app_data_topic_new_components_googleclassroomconnector_googleclassroomconnector",
+      "community": 145,
+      "community_name": "Module 145",
+      "norm_label": "googleclassroomconnector()"
+    },
+    {
       "label": "UnitPlannerDocumentEditor.jsx",
       "file_type": "code",
       "source_file": "src/app/data/topic-new/components/UnitPlannerDocumentEditor.jsx",
@@ -10333,7 +10487,7 @@
       "label": "WizardStepContent()",
       "file_type": "code",
       "source_file": "src/app/data/topic-new/components/WizardStepContent.jsx",
-      "source_location": "L14",
+      "source_location": "L20",
       "_origin": "ast",
       "id": "src_app_data_topic_new_components_wizardstepcontent_wizardstepcontent",
       "community": 145,
@@ -10740,12 +10894,23 @@
       "label": "TopicNewPage()",
       "file_type": "code",
       "source_file": "src/app/data/topic-new/page.jsx",
-      "source_location": "L32",
+      "source_location": "L34",
       "_origin": "ast",
       "id": "src_app_data_topic_new_page_topicnewpage",
       "community": 145,
       "community_name": "Module 145",
       "norm_label": "topicnewpage()"
+    },
+    {
+      "label": "NOTE: Wizard planner is DEPRECATED in favor of Toddle-style WYSIWYG (UnitPlanner",
+      "file_type": "rationale",
+      "source_file": "src/app/data/topic-new/page.jsx",
+      "source_location": "L26",
+      "_origin": "ast",
+      "id": "src_app_data_topic_new_page_rationale_26",
+      "community": 145,
+      "community_name": "Module 145",
+      "norm_label": "note: wizard planner is deprecated in favor of toddle-style wysiwyg (unitplanner"
     },
     {
       "label": "page.jsx",
@@ -17321,8 +17486,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "agents_skills_imagegen_frontend_web_skill",
-      "community": 258,
-      "community_name": "page.jsx",
+      "community": 80,
+      "community_name": "Module 80",
       "norm_label": "skill.md"
     },
     {
@@ -17332,8 +17497,8 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "agents_skills_imagegen_frontend_web_skill_hard_output_rule_read_first",
-      "community": 258,
-      "community_name": "page.jsx",
+      "community": 80,
+      "community_name": "Module 80",
       "norm_label": "hard output rule \u2014 read first"
     },
     {
@@ -17343,8 +17508,8 @@
       "source_location": "L25",
       "_origin": "ast",
       "id": "agents_skills_imagegen_frontend_web_skill_hero_composition_bias_read_first",
-      "community": 258,
-      "community_name": "page.jsx",
+      "community": 80,
+      "community_name": "Module 80",
       "norm_label": "hero composition bias \u2014 read first"
     },
     {
@@ -20192,8 +20357,8 @@
       "source_location": "L1027",
       "_origin": "ast",
       "id": "database_schema_6_assessment_grading_domain_data_topic_new_reports",
-      "community": 139,
-      "community_name": "Module 139",
+      "community": 153,
+      "community_name": "Module 153",
       "norm_label": "6. assessment & grading domain (`/data/topic-new` / reports)"
     },
     {
@@ -20203,8 +20368,8 @@
       "source_location": "L1031",
       "_origin": "ast",
       "id": "database_schema_6_1_tables",
-      "community": 139,
-      "community_name": "Module 139",
+      "community": 153,
+      "community_name": "Module 153",
       "norm_label": "6.1 tables"
     },
     {
@@ -20214,8 +20379,8 @@
       "source_location": "L1033",
       "_origin": "ast",
       "id": "database_schema_assessment_grades",
-      "community": 139,
-      "community_name": "Module 139",
+      "community": 153,
+      "community_name": "Module 153",
       "norm_label": "`assessment_grades`"
     },
     {
@@ -20225,8 +20390,8 @@
       "source_location": "L1055",
       "_origin": "ast",
       "id": "database_schema_assessment_grade_strands",
-      "community": 139,
-      "community_name": "Module 139",
+      "community": 153,
+      "community_name": "Module 153",
       "norm_label": "`assessment_grade_strands`"
     },
     {
@@ -20236,8 +20401,8 @@
       "source_location": "L1066",
       "_origin": "ast",
       "id": "database_schema_6_2_erd_relationships_assessment_grading",
-      "community": 139,
-      "community_name": "Module 139",
+      "community": 153,
+      "community_name": "Module 153",
       "norm_label": "6.2 erd / relationships (assessment & grading)"
     },
     {
@@ -20445,8 +20610,8 @@
       "source_location": "L1370",
       "_origin": "ast",
       "id": "database_schema_10_duty_greeter_devotion_schedule_domain_data_door_greeter",
-      "community": 115,
-      "community_name": "Module 115",
+      "community": 139,
+      "community_name": "Module 139",
       "norm_label": "10. duty, greeter & devotion schedule domain (`/data/door_greeter`)"
     },
     {
@@ -20456,8 +20621,8 @@
       "source_location": "L1374",
       "_origin": "ast",
       "id": "database_schema_10_1_tables",
-      "community": 115,
-      "community_name": "Module 115",
+      "community": 139,
+      "community_name": "Module 139",
       "norm_label": "10.1 tables"
     },
     {
@@ -20467,8 +20632,8 @@
       "source_location": "L1376",
       "_origin": "ast",
       "id": "database_schema_duty_schedules",
-      "community": 115,
-      "community_name": "Module 115",
+      "community": 139,
+      "community_name": "Module 139",
       "norm_label": "`duty_schedules`"
     },
     {
@@ -20478,8 +20643,8 @@
       "source_location": "L1405",
       "_origin": "ast",
       "id": "database_schema_duty_settings",
-      "community": 115,
-      "community_name": "Module 115",
+      "community": 139,
+      "community_name": "Module 139",
       "norm_label": "`duty_settings`"
     },
     {
@@ -20489,8 +20654,8 @@
       "source_location": "L1419",
       "_origin": "ast",
       "id": "database_schema_10_2_erd_relationships_duty_devotion_schedule_domain",
-      "community": 115,
-      "community_name": "Module 115",
+      "community": 139,
+      "community_name": "Module 139",
       "norm_label": "10.2 erd / relationships (duty & devotion schedule domain)"
     },
     {
@@ -21776,8 +21941,8 @@
       "source_location": "L5",
       "_origin": "ast",
       "id": "main_documentation_2026_07_16_timetable_refactor_weekly_plan_dates_weekly_overview",
-      "community": 153,
-      "community_name": "Module 153",
+      "community": 102,
+      "community_name": "Module 102",
       "norm_label": "2026-07-16 \u2014 timetable refactor + weekly plan dates + weekly overview"
     },
     {
@@ -21787,8 +21952,8 @@
       "source_location": "L7",
       "_origin": "ast",
       "id": "main_documentation_timetable_refactor_data_timetable",
-      "community": 153,
-      "community_name": "Module 153",
+      "community": 102,
+      "community_name": "Module 102",
       "norm_label": "timetable refactor (`/data/timetable`)"
     },
     {
@@ -21798,8 +21963,8 @@
       "source_location": "L17",
       "_origin": "ast",
       "id": "main_documentation_timetable_exceptions_timetable_exception_new_table",
-      "community": 153,
-      "community_name": "Module 153",
+      "community": 102,
+      "community_name": "Module 102",
       "norm_label": "timetable exceptions (`timetable_exception`) \u2014 new table"
     },
     {
@@ -21809,8 +21974,8 @@
       "source_location": "L46",
       "_origin": "ast",
       "id": "main_documentation_weekly_plan_dates_topic_weekly_plan_week_date",
-      "community": 153,
-      "community_name": "Module 153",
+      "community": 102,
+      "community_name": "Module 102",
       "norm_label": "weekly plan dates \u2014 `topic_weekly_plan.week_date`"
     },
     {
@@ -21820,8 +21985,8 @@
       "source_location": "L54",
       "_origin": "ast",
       "id": "main_documentation_weekly_overview_data_weekly_overview_new_page",
-      "community": 153,
-      "community_name": "Module 153",
+      "community": 102,
+      "community_name": "Module 102",
       "norm_label": "weekly overview (`/data/weekly-overview`) \u2014 new page"
     },
     {
@@ -21831,8 +21996,8 @@
       "source_location": "L73",
       "_origin": "ast",
       "id": "main_documentation_weekly_overview_draft_table_new",
-      "community": 153,
-      "community_name": "Module 153",
+      "community": 102,
+      "community_name": "Module 102",
       "norm_label": "`weekly_overview_draft` table \u2014 new"
     },
     {
@@ -21842,8 +22007,8 @@
       "source_location": "L87",
       "_origin": "ast",
       "id": "main_documentation_topic_weekly_plan_complete_schema_reference",
-      "community": 153,
-      "community_name": "Module 153",
+      "community": 102,
+      "community_name": "Module 102",
       "norm_label": "`topic_weekly_plan` \u2014 complete schema reference"
     },
     {
@@ -21853,8 +22018,8 @@
       "source_location": "L103",
       "_origin": "ast",
       "id": "main_documentation_full_data_flow_timetable_weekly_overview",
-      "community": 153,
-      "community_name": "Module 153",
+      "community": 102,
+      "community_name": "Module 102",
       "norm_label": "full data flow: timetable \u2192 weekly overview"
     },
     {
@@ -22007,8 +22172,8 @@
       "source_location": "L287",
       "_origin": "ast",
       "id": "main_documentation_database_structure",
-      "community": 119,
-      "community_name": "Module 119",
+      "community": 193,
+      "community_name": "Module 193",
       "norm_label": "\ufffd\ud83c\udfd7\ufe0f **database structure**"
     },
     {
@@ -22018,8 +22183,8 @@
       "source_location": "L289",
       "_origin": "ast",
       "id": "main_documentation_core_tables",
-      "community": 119,
-      "community_name": "Module 119",
+      "community": 193,
+      "community_name": "Module 193",
       "norm_label": "**core tables:**"
     },
     {
@@ -22029,8 +22194,8 @@
       "source_location": "L524",
       "_origin": "ast",
       "id": "main_documentation_grades_nilai_table",
-      "community": 119,
-      "community_name": "Module 119",
+      "community": 193,
+      "community_name": "Module 193",
       "norm_label": "grades (nilai) table"
     },
     {
@@ -22040,8 +22205,8 @@
       "source_location": "L539",
       "_origin": "ast",
       "id": "main_documentation_attendance_qr_tables",
-      "community": 119,
-      "community_name": "Module 119",
+      "community": 193,
+      "community_name": "Module 193",
       "norm_label": "attendance (qr) tables"
     },
     {
@@ -22084,8 +22249,8 @@
       "source_location": "L618",
       "_origin": "ast",
       "id": "main_documentation_3_assessment_system",
-      "community": 82,
-      "community_name": "Module 82",
+      "community": 258,
+      "community_name": "page.jsx",
       "norm_label": "**3. assessment system**"
     },
     {
@@ -22095,8 +22260,8 @@
       "source_location": "L619",
       "_origin": "ast",
       "id": "main_documentation_teacher_workflow",
-      "community": 82,
-      "community_name": "Module 82",
+      "community": 258,
+      "community_name": "page.jsx",
       "norm_label": "**teacher workflow**:"
     },
     {
@@ -22106,8 +22271,8 @@
       "source_location": "L628",
       "_origin": "ast",
       "id": "main_documentation_admin_workflow",
-      "community": 82,
-      "community_name": "Module 82",
+      "community": 258,
+      "community_name": "page.jsx",
       "norm_label": "**admin workflow**:"
     },
     {
@@ -22238,8 +22403,8 @@
       "source_location": "L812",
       "_origin": "ast",
       "id": "main_documentation_technical_implementation",
-      "community": 119,
-      "community_name": "Module 119",
+      "community": 194,
+      "community_name": "Module 194",
       "norm_label": "\ud83d\udd27 **technical implementation**"
     },
     {
@@ -22249,8 +22414,8 @@
       "source_location": "L814",
       "_origin": "ast",
       "id": "main_documentation_frontend_stack",
-      "community": 119,
-      "community_name": "Module 119",
+      "community": 194,
+      "community_name": "Module 194",
       "norm_label": "**frontend stack:**"
     },
     {
@@ -22260,8 +22425,8 @@
       "source_location": "L821",
       "_origin": "ast",
       "id": "main_documentation_backend_database",
-      "community": 119,
-      "community_name": "Module 119",
+      "community": 194,
+      "community_name": "Module 194",
       "norm_label": "**backend & database:**"
     },
     {
@@ -22271,8 +22436,8 @@
       "source_location": "L827",
       "_origin": "ast",
       "id": "main_documentation_key_technical_notes",
-      "community": 119,
-      "community_name": "Module 119",
+      "community": 194,
+      "community_name": "Module 194",
       "norm_label": "**key technical notes:**"
     },
     {
@@ -22282,8 +22447,8 @@
       "source_location": "L881",
       "_origin": "ast",
       "id": "main_documentation_setup_deployment",
-      "community": 293,
-      "community_name": "SKILL.md",
+      "community": 119,
+      "community_name": "Module 119",
       "norm_label": "\ud83d\ude80 **setup & deployment**"
     },
     {
@@ -22293,8 +22458,8 @@
       "source_location": "L883",
       "_origin": "ast",
       "id": "main_documentation_database_migration_files_execute_in_order",
-      "community": 293,
-      "community_name": "SKILL.md",
+      "community": 119,
+      "community_name": "Module 119",
       "norm_label": "**database migration files (execute in order):**"
     },
     {
@@ -22304,8 +22469,8 @@
       "source_location": "L911",
       "_origin": "ast",
       "id": "main_documentation_development",
-      "community": 293,
-      "community_name": "SKILL.md",
+      "community": 119,
+      "community_name": "Module 119",
       "norm_label": "**development:**"
     },
     {
@@ -22315,8 +22480,8 @@
       "source_location": "L918",
       "_origin": "ast",
       "id": "main_documentation_key_environment",
-      "community": 293,
-      "community_name": "SKILL.md",
+      "community": 119,
+      "community_name": "Module 119",
       "norm_label": "**key environment:**"
     },
     {
@@ -22326,8 +22491,8 @@
       "source_location": "L928",
       "_origin": "ast",
       "id": "main_documentation_additional_files",
-      "community": 293,
-      "community_name": "SKILL.md",
+      "community": 119,
+      "community_name": "Module 119",
       "norm_label": "**additional files:**"
     },
     {
@@ -22590,8 +22755,8 @@
       "source_location": "L1119",
       "_origin": "ast",
       "id": "main_documentation_key_components",
-      "community": 105,
-      "community_name": "Module 105",
+      "community": 155,
+      "community_name": "Module 155",
       "norm_label": "**key components**"
     },
     {
@@ -22601,8 +22766,8 @@
       "source_location": "L1121",
       "_origin": "ast",
       "id": "main_documentation_1_myp_year_level_selection",
-      "community": 105,
-      "community_name": "Module 105",
+      "community": 155,
+      "community_name": "Module 155",
       "norm_label": "**1. myp year level selection**"
     },
     {
@@ -22612,8 +22777,8 @@
       "source_location": "L1128",
       "_origin": "ast",
       "id": "main_documentation_2_criterion_grades_a_b_c_d",
-      "community": 105,
-      "community_name": "Module 105",
+      "community": 155,
+      "community_name": "Module 155",
       "norm_label": "**2. criterion grades (a, b, c, d)**"
     },
     {
@@ -22623,8 +22788,8 @@
       "source_location": "L1138",
       "_origin": "ast",
       "id": "main_documentation_3_strand_grades",
-      "community": 105,
-      "community_name": "Module 105",
+      "community": 155,
+      "community_name": "Module 155",
       "norm_label": "**3. strand grades**"
     },
     {
@@ -22634,8 +22799,8 @@
       "source_location": "L1147",
       "_origin": "ast",
       "id": "main_documentation_4_final_grade_1_7",
-      "community": 105,
-      "community_name": "Module 105",
+      "community": 155,
+      "community_name": "Module 155",
       "norm_label": "**4. final grade (1-7)**"
     },
     {
@@ -22711,8 +22876,8 @@
       "source_location": "L1221",
       "_origin": "ast",
       "id": "main_documentation_project_structure",
-      "community": 119,
-      "community_name": "Module 119",
+      "community": 412,
+      "community_name": "\ud83d\udcc1 **Project Structure**",
       "norm_label": "\ud83d\udcc1 **project structure**"
     },
     {
@@ -22722,8 +22887,8 @@
       "source_location": "L1223",
       "_origin": "ast",
       "id": "main_documentation_key_directories",
-      "community": 119,
-      "community_name": "Module 119",
+      "community": 412,
+      "community_name": "\ud83d\udcc1 **Project Structure**",
       "norm_label": "**key directories:**"
     },
     {
@@ -22733,8 +22898,8 @@
       "source_location": "L1229",
       "_origin": "ast",
       "id": "main_documentation_important_files",
-      "community": 119,
-      "community_name": "Module 119",
+      "community": 412,
+      "community_name": "\ud83d\udcc1 **Project Structure**",
       "norm_label": "**important files:**"
     },
     {
@@ -32915,6 +33080,51 @@
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
+      "source_file": "src/app/api/classroom/courses/route.js",
+      "source_location": "L5",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_api_classroom_courses_route",
+      "target": "src_app_api_classroom_courses_route_get",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/classroom/coursework/route.js",
+      "source_location": "L5",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_api_classroom_coursework_route",
+      "target": "src_app_api_classroom_coursework_route_get",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/classroom/submissions/route.js",
+      "source_location": "L5",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_api_classroom_submissions_route",
+      "target": "src_app_api_classroom_submissions_route_get",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "indirect_call",
+      "context": "collection",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "src/app/api/classroom/submissions/route.js",
+      "source_location": "L73",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_api_classroom_submissions_route_get",
+      "target": "src_app_data_attendance_leave_page_fullname"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
       "source_file": "src/app/api/court-rental/[id]/approve/route.js",
       "source_location": "L11",
       "weight": 1.0,
@@ -34559,7 +34769,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/app/data/assessment_grading/[id]/page.jsx",
-      "source_location": "L10",
+      "source_location": "L33",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_assessment_grading_id_page",
@@ -38456,7 +38666,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "src/app/data/topic-new/components/WizardStepContent.jsx",
-      "source_location": "L11",
+      "source_location": "L17",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_topic_new_components_wizardstepcontent",
@@ -38540,7 +38750,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "src/app/data/topic-new/components/WizardStepContent.jsx",
-      "source_location": "L11",
+      "source_location": "L17",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_topic_new_components_wizardstepcontent",
@@ -38563,7 +38773,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "src/app/data/topic-new/page.jsx",
-      "source_location": "L28",
+      "source_location": "L30",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_topic_new_page",
@@ -38575,11 +38785,160 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "src/app/data/topic-new/page.jsx",
-      "source_location": "L28",
+      "source_location": "L30",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_topic_new_page",
       "target": "src_app_data_topic_new_components_communityprojecttab_communityprojecttab",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/topic-new/components/GoogleClassroomConnector.jsx",
+      "source_location": "L63",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_topic_new_components_googleclassroomconnector",
+      "target": "src_app_data_topic_new_components_googleclassroomconnector_clearstoredclassroomtoken",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/topic-new/components/GoogleClassroomConnector.jsx",
+      "source_location": "L70",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_topic_new_components_googleclassroomconnector",
+      "target": "src_app_data_topic_new_components_googleclassroomconnector_extractclassroomlinks",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/topic-new/components/GoogleClassroomConnector.jsx",
+      "source_location": "L48",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_topic_new_components_googleclassroomconnector",
+      "target": "src_app_data_topic_new_components_googleclassroomconnector_getstoredclassroomtoken",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/topic-new/components/GoogleClassroomConnector.jsx",
+      "source_location": "L39",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_topic_new_components_googleclassroomconnector",
+      "target": "src_app_data_topic_new_components_googleclassroomconnector_google_classroom_scopes",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/topic-new/components/GoogleClassroomConnector.jsx",
+      "source_location": "L81",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_topic_new_components_googleclassroomconnector",
+      "target": "src_app_data_topic_new_components_googleclassroomconnector_googleclassroomconnector",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/topic-new/components/GoogleClassroomConnector.jsx",
+      "source_location": "L22",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_topic_new_components_googleclassroomconnector",
+      "target": "src_app_data_topic_new_components_googleclassroomconnector_googleclassroomicon",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/topic-new/components/GoogleClassroomConnector.jsx",
+      "source_location": "L57",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_topic_new_components_googleclassroomconnector",
+      "target": "src_app_data_topic_new_components_googleclassroomconnector_setstoredclassroomtoken",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/topic-new/page.jsx",
+      "source_location": "L29",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_topic_new_page",
+      "target": "src_app_data_topic_new_components_googleclassroomconnector",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/topic-new/components/GoogleClassroomConnector.jsx",
+      "source_location": "L231",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_topic_new_components_googleclassroomconnector_googleclassroomconnector",
+      "target": "src_app_data_topic_new_components_googleclassroomconnector_getstoredclassroomtoken",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/topic-new/components/GoogleClassroomConnector.jsx",
+      "source_location": "L273",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_topic_new_components_googleclassroomconnector_googleclassroomconnector",
+      "target": "src_app_data_topic_new_components_googleclassroomconnector_setstoredclassroomtoken",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/topic-new/components/GoogleClassroomConnector.jsx",
+      "source_location": "L180",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_topic_new_components_googleclassroomconnector_googleclassroomconnector",
+      "target": "src_app_data_topic_new_components_googleclassroomconnector_clearstoredclassroomtoken",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/topic-new/components/GoogleClassroomConnector.jsx",
+      "source_location": "L128",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_topic_new_components_googleclassroomconnector_googleclassroomconnector",
+      "target": "src_app_data_topic_new_components_googleclassroomconnector_extractclassroomlinks",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/topic-new/page.jsx",
+      "source_location": "L29",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_topic_new_page",
+      "target": "src_app_data_topic_new_components_googleclassroomconnector_googleclassroomconnector",
       "confidence_score": 1.0
     },
     {
@@ -38633,7 +38992,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "src/app/data/topic-new/page.jsx",
-      "source_location": "L27",
+      "source_location": "L28",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_topic_new_page",
@@ -38646,7 +39005,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/app/data/topic-new/components/UnitPlannerDocumentEditor.jsx",
-      "source_location": "L1523",
+      "source_location": "L1542",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_topic_new_components_unitplannerdocumenteditor_unitplannerdocumenteditor",
@@ -38657,7 +39016,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "src/app/data/topic-new/page.jsx",
-      "source_location": "L27",
+      "source_location": "L28",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_topic_new_page",
@@ -38668,7 +39027,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/app/data/topic-new/components/WizardStepContent.jsx",
-      "source_location": "L14",
+      "source_location": "L20",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_topic_new_components_wizardstepcontent",
@@ -38680,7 +39039,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "src/app/data/topic-new/components/WizardStepContent.jsx",
-      "source_location": "L12",
+      "source_location": "L18",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_topic_new_components_wizardstepcontent",
@@ -38692,23 +39051,11 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "src/app/data/topic-new/components/WizardStepContent.jsx",
-      "source_location": "L12",
+      "source_location": "L18",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_topic_new_components_wizardstepcontent",
       "target": "src_app_data_topic_new_lib_instructiondocxhelper_ishtmlempty",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "imports_from",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "src/app/data/topic-new/page.jsx",
-      "source_location": "L26",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "src_app_data_topic_new_page",
-      "target": "src_app_data_topic_new_components_wizardstepcontent",
       "confidence_score": 1.0
     },
     {
@@ -38717,23 +39064,11 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/app/data/topic-new/components/WizardStepContent.jsx",
-      "source_location": "L1201",
+      "source_location": "L1207",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_topic_new_components_wizardstepcontent_wizardstepcontent",
       "target": "src_app_data_topic_new_lib_instructiondocxhelper_ishtmlempty"
-    },
-    {
-      "relation": "imports",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "src/app/data/topic-new/page.jsx",
-      "source_location": "L26",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "src_app_data_topic_new_page",
-      "target": "src_app_data_topic_new_components_wizardstepcontent_wizardstepcontent",
-      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -38841,7 +39176,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "src/app/data/topic-new/page.jsx",
-      "source_location": "L29",
+      "source_location": "L31",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_topic_new_page",
@@ -38949,7 +39284,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "src/app/data/topic-new/page.jsx",
-      "source_location": "L29",
+      "source_location": "L31",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_topic_new_page",
@@ -38962,7 +39297,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/app/data/topic-new/page.jsx",
-      "source_location": "L5171",
+      "source_location": "L5174",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_topic_new_page_topicnewpage",
@@ -39538,7 +39873,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/app/data/topic-new/page.jsx",
-      "source_location": "L6222",
+      "source_location": "L6226",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_topic_new_page_topicnewpage",
@@ -39562,7 +39897,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/app/data/topic-new/page.jsx",
-      "source_location": "L6223",
+      "source_location": "L6227",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_topic_new_page_topicnewpage",
@@ -39586,7 +39921,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/app/data/topic-new/page.jsx",
-      "source_location": "L5792",
+      "source_location": "L5796",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_topic_new_page_topicnewpage",
@@ -39814,7 +40149,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/app/data/topic-new/page.jsx",
-      "source_location": "L5801",
+      "source_location": "L5805",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_topic_new_page_topicnewpage",
@@ -39838,7 +40173,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/app/data/topic-new/page.jsx",
-      "source_location": "L5816",
+      "source_location": "L5820",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_topic_new_page_topicnewpage",
@@ -39862,7 +40197,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/app/data/topic-new/page.jsx",
-      "source_location": "L5832",
+      "source_location": "L5836",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_topic_new_page_topicnewpage",
@@ -39886,7 +40221,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/app/data/topic-new/page.jsx",
-      "source_location": "L5844",
+      "source_location": "L5848",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_topic_new_page_topicnewpage",
@@ -39934,7 +40269,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/app/data/topic-new/page.jsx",
-      "source_location": "L3380",
+      "source_location": "L3383",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_topic_new_page_topicnewpage",
@@ -39958,7 +40293,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/app/data/topic-new/page.jsx",
-      "source_location": "L3394",
+      "source_location": "L3397",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_topic_new_page_topicnewpage",
@@ -39982,7 +40317,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/app/data/topic-new/page.jsx",
-      "source_location": "L3410",
+      "source_location": "L3413",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_topic_new_page_topicnewpage",
@@ -40029,7 +40364,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/app/data/topic-new/page.jsx",
-      "source_location": "L5121",
+      "source_location": "L5124",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_topic_new_page_topicnewpage",
@@ -40039,11 +40374,22 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/app/data/topic-new/page.jsx",
-      "source_location": "L32",
+      "source_location": "L34",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_topic_new_page",
       "target": "src_app_data_topic_new_page_topicnewpage",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/topic-new/page.jsx",
+      "source_location": "L26",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_topic_new_page_rationale_26",
+      "target": "src_app_data_topic_new_page",
       "confidence_score": 1.0
     },
     {
@@ -55262,5 +55608,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "6ccfc65f081489ed53f0c1bc998f0b458570701b"
+  "built_at_commit": "c50d2075b532e4dc9355e70107444c886c395a0a"
 }

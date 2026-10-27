@@ -1,9 +1,15 @@
 'use client'
 
 /**
- * WizardStepContent – renders the form fields for each wizard step (0-9).
- *
- * Compact, sleek form layout with optimized padding, fonts, and space efficiency.
+ * @deprecated
+ * CATATAN PENTING / DEPRECATION NOTICE:
+ * Komponen WizardStepContent ini SUDAH TIDAK DIGUNAKAN LAGI dalam sistem.
+ * Sistem Unit Planner telah bermigrasi sepenuhnya ke konsep WYSIWYG seperti Toddle (Toodle)
+ * menggunakan komponen: UnitPlannerDocumentEditor.jsx.
+ * File ini dipertahankan hanya sebagai referensi historis / backward compatibility.
+ * Semua pengembangan fitur planner & assessment baru harus diarahkan ke UnitPlannerDocumentEditor.jsx.
+ * 
+ * WizardStepContent – (LEGACY) renders the form fields for each wizard step (0-9).
  */
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'

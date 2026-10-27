@@ -100,6 +100,7 @@ export default function UnitPlannerDocumentEditor({
   // Assessment state & setter
   wizardAssessment,
   setWizardAssessment,
+  topicAssessment,
   wizardCriteria = [],
   wizardStrands = [],
   wizardRubrics = [],
@@ -1340,10 +1341,28 @@ export default function UnitPlannerDocumentEditor({
                   <span>:</span>
                   <span className="font-semibold text-black">{kelasName}</span>
                 </div>
-                <div className="grid grid-cols-[70px_10px_1fr] items-baseline">
+                <div className="grid grid-cols-[70px_10px_1fr] items-center">
                   <span className="font-normal text-black">Day/Date</span>
                   <span>:</span>
-                  <span className="border-b border-dotted border-gray-400 min-h-[18px]"></span>
+                  <div className="flex items-center gap-2 min-h-[22px]">
+                    <input
+                      type="date"
+                      value={wizardAssessment?.assessment_tanggal || ''}
+                      onChange={(e) => setWizardAssessment(prev => ({ ...prev, assessment_tanggal: e.target.value }))}
+                      className="text-xs font-mono px-2 py-0.5 border border-gray-300 rounded bg-white hover:border-black focus:outline-none focus:border-black text-black cursor-pointer print:hidden"
+                      title="Set Assessment Date"
+                    />
+                    <span className="hidden print:inline font-semibold text-black text-[11pt]">
+                      {wizardAssessment?.assessment_tanggal
+                        ? new Date(wizardAssessment.assessment_tanggal).toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' })
+                        : '–'}
+                    </span>
+                    {wizardAssessment?.assessment_tanggal && (
+                      <span className="print:hidden text-xs text-gray-500 font-mono">
+                        ({new Date(wizardAssessment.assessment_tanggal).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })})
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
 
