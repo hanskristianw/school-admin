@@ -3538,8 +3538,8 @@
       "source_location": "L38",
       "_origin": "ast",
       "id": "package_dependencies_bcryptjs",
-      "community": 133,
-      "community_name": "Module 133",
+      "community": 412,
+      "community_name": "\ud83d\udcc1 **Project Structure**",
       "norm_label": "bcryptjs"
     },
     {
@@ -3549,8 +3549,8 @@
       "source_location": "L38",
       "_origin": "ast",
       "id": "bcryptjs",
-      "community": 133,
-      "community_name": "Module 133",
+      "community": 412,
+      "community_name": "\ud83d\udcc1 **Project Structure**",
       "norm_label": "bcryptjs"
     },
     {
@@ -3560,8 +3560,8 @@
       "source_location": "L39",
       "_origin": "ast",
       "id": "package_dependencies_browser_image_compression",
-      "community": 377,
-      "community_name": "dotenv",
+      "community": 133,
+      "community_name": "Module 133",
       "norm_label": "browser-image-compression"
     },
     {
@@ -3571,8 +3571,8 @@
       "source_location": "L39",
       "_origin": "ast",
       "id": "browser_image_compression",
-      "community": 377,
-      "community_name": "dotenv",
+      "community": 133,
+      "community_name": "Module 133",
       "norm_label": "browser-image-compression"
     },
     {
@@ -3582,8 +3582,8 @@
       "source_location": "L40",
       "_origin": "ast",
       "id": "package_dependencies_class_variance_authority",
-      "community": 313,
-      "community_name": "SKILL.md",
+      "community": 316,
+      "community_name": "**3. Assessment System**",
       "norm_label": "class-variance-authority"
     },
     {
@@ -3593,8 +3593,8 @@
       "source_location": "L40",
       "_origin": "ast",
       "id": "class_variance_authority",
-      "community": 313,
-      "community_name": "SKILL.md",
+      "community": 316,
+      "community_name": "**3. Assessment System**",
       "norm_label": "class-variance-authority"
     },
     {
@@ -3648,8 +3648,8 @@
       "source_location": "L43",
       "_origin": "ast",
       "id": "package_dependencies_dotenv",
-      "community": 293,
-      "community_name": "SKILL.md",
+      "community": 422,
+      "community_name": "dotenv",
       "norm_label": "dotenv"
     },
     {
@@ -3659,8 +3659,8 @@
       "source_location": "L43",
       "_origin": "ast",
       "id": "dotenv",
-      "community": 293,
-      "community_name": "SKILL.md",
+      "community": 422,
+      "community_name": "dotenv",
       "norm_label": "dotenv"
     },
     {
@@ -3670,8 +3670,8 @@
       "source_location": "L44",
       "_origin": "ast",
       "id": "package_dependencies_driver_js",
-      "community": 413,
-      "community_name": "bcryptjs",
+      "community": 293,
+      "community_name": "SKILL.md",
       "norm_label": "driver.js"
     },
     {
@@ -3681,8 +3681,8 @@
       "source_location": "L44",
       "_origin": "ast",
       "id": "driver_js",
-      "community": 413,
-      "community_name": "bcryptjs",
+      "community": 293,
+      "community_name": "SKILL.md",
       "norm_label": "driver.js"
     },
     {
@@ -3692,8 +3692,8 @@
       "source_location": "L45",
       "_origin": "ast",
       "id": "package_dependencies_exceljs",
-      "community": 316,
-      "community_name": "**3. Assessment System**",
+      "community": 413,
+      "community_name": "bcryptjs",
       "norm_label": "exceljs"
     },
     {
@@ -3703,8 +3703,8 @@
       "source_location": "L45",
       "_origin": "ast",
       "id": "exceljs",
-      "community": 316,
-      "community_name": "**3. Assessment System**",
+      "community": 413,
+      "community_name": "bcryptjs",
       "norm_label": "exceljs"
     },
     {
@@ -6790,6 +6790,149 @@
     {
       "label": "route.js",
       "file_type": "code",
+      "source_file": "src/app/api/osis-election/route.js",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "src_app_api_osis_election_route",
+      "community": 236,
+      "community_name": "Module 236",
+      "norm_label": "route.js"
+    },
+    {
+      "label": "supabaseAdmin",
+      "file_type": "code",
+      "source_file": "src/app/api/osis-election/route.js",
+      "source_location": "L4",
+      "_origin": "ast",
+      "id": "src_app_api_osis_election_route_supabaseadmin",
+      "community": 236,
+      "community_name": "Module 236",
+      "norm_label": "supabaseadmin"
+    },
+    {
+      "label": "checkTablesExist()",
+      "file_type": "code",
+      "source_file": "src/app/api/osis-election/route.js",
+      "source_location": "L12",
+      "_origin": "ast",
+      "id": "src_app_api_osis_election_route_checktablesexist",
+      "community": 236,
+      "community_name": "Module 236",
+      "norm_label": "checktablesexist()"
+    },
+    {
+      "label": "readFromSettings()",
+      "file_type": "code",
+      "source_file": "src/app/api/osis-election/route.js",
+      "source_location": "L25",
+      "_origin": "ast",
+      "id": "src_app_api_osis_election_route_readfromsettings",
+      "community": 236,
+      "community_name": "Module 236",
+      "norm_label": "readfromsettings()"
+    },
+    {
+      "label": "writeToSettings()",
+      "file_type": "code",
+      "source_file": "src/app/api/osis-election/route.js",
+      "source_location": "L44",
+      "_origin": "ast",
+      "id": "src_app_api_osis_election_route_writetosettings",
+      "community": 236,
+      "community_name": "Module 236",
+      "norm_label": "writetosettings()"
+    },
+    {
+      "label": "computeQuickCount()",
+      "file_type": "code",
+      "source_file": "src/app/api/osis-election/route.js",
+      "source_location": "L59",
+      "_origin": "ast",
+      "id": "src_app_api_osis_election_route_computequickcount",
+      "community": 236,
+      "community_name": "Module 236",
+      "norm_label": "computequickcount()"
+    },
+    {
+      "label": "GET()",
+      "file_type": "code",
+      "source_file": "src/app/api/osis-election/route.js",
+      "source_location": "L103",
+      "_origin": "ast",
+      "id": "src_app_api_osis_election_route_get",
+      "community": 236,
+      "community_name": "Module 236",
+      "norm_label": "get()"
+    },
+    {
+      "label": "POST()",
+      "file_type": "code",
+      "source_file": "src/app/api/osis-election/route.js",
+      "source_location": "L253",
+      "_origin": "ast",
+      "id": "src_app_api_osis_election_route_post",
+      "community": 236,
+      "community_name": "Module 236",
+      "norm_label": "post()"
+    },
+    {
+      "label": "route.js",
+      "file_type": "code",
+      "source_file": "src/app/api/osis-election/upload/route.js",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "src_app_api_osis_election_upload_route",
+      "community": 194,
+      "community_name": "Module 194",
+      "norm_label": "route.js"
+    },
+    {
+      "label": "supabaseAdmin",
+      "file_type": "code",
+      "source_file": "src/app/api/osis-election/upload/route.js",
+      "source_location": "L4",
+      "_origin": "ast",
+      "id": "src_app_api_osis_election_upload_route_supabaseadmin",
+      "community": 194,
+      "community_name": "Module 194",
+      "norm_label": "supabaseadmin"
+    },
+    {
+      "label": "ALLOWED_TYPES",
+      "file_type": "code",
+      "source_file": "src/app/api/osis-election/upload/route.js",
+      "source_location": "L10",
+      "_origin": "ast",
+      "id": "src_app_api_osis_election_upload_route_allowed_types",
+      "community": 194,
+      "community_name": "Module 194",
+      "norm_label": "allowed_types"
+    },
+    {
+      "label": "ensureBucket()",
+      "file_type": "code",
+      "source_file": "src/app/api/osis-election/upload/route.js",
+      "source_location": "L14",
+      "_origin": "ast",
+      "id": "src_app_api_osis_election_upload_route_ensurebucket",
+      "community": 194,
+      "community_name": "Module 194",
+      "norm_label": "ensurebucket()"
+    },
+    {
+      "label": "POST()",
+      "file_type": "code",
+      "source_file": "src/app/api/osis-election/upload/route.js",
+      "source_location": "L30",
+      "_origin": "ast",
+      "id": "src_app_api_osis_election_upload_route_post",
+      "community": 194,
+      "community_name": "Module 194",
+      "norm_label": "post()"
+    },
+    {
+      "label": "route.js",
+      "file_type": "code",
       "source_file": "src/app/api/profile/change-password/route.js",
       "source_location": "L1",
       "_origin": "ast",
@@ -9327,6 +9470,105 @@
       "community": 87,
       "community_name": "Module 87",
       "norm_label": "menutree()"
+    },
+    {
+      "label": "page.jsx",
+      "file_type": "code",
+      "source_file": "src/app/data/osis-election/live/page.jsx",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "src_app_data_osis_election_live_page",
+      "community": 418,
+      "community_name": "page.jsx",
+      "norm_label": "page.jsx"
+    },
+    {
+      "label": "PRESET_COLORS",
+      "file_type": "code",
+      "source_file": "src/app/data/osis-election/live/page.jsx",
+      "source_location": "L20",
+      "_origin": "ast",
+      "id": "src_app_data_osis_election_live_page_preset_colors",
+      "community": 418,
+      "community_name": "page.jsx",
+      "norm_label": "preset_colors"
+    },
+    {
+      "label": "getColorName()",
+      "file_type": "code",
+      "source_file": "src/app/data/osis-election/live/page.jsx",
+      "source_location": "L36",
+      "_origin": "ast",
+      "id": "src_app_data_osis_election_live_page_getcolorname",
+      "community": 418,
+      "community_name": "page.jsx",
+      "norm_label": "getcolorname()"
+    },
+    {
+      "label": "OsisElectionLiveQuickCountPage()",
+      "file_type": "code",
+      "source_file": "src/app/data/osis-election/live/page.jsx",
+      "source_location": "L43",
+      "_origin": "ast",
+      "id": "src_app_data_osis_election_live_page_osiselectionlivequickcountpage",
+      "community": 418,
+      "community_name": "page.jsx",
+      "norm_label": "osiselectionlivequickcountpage()"
+    },
+    {
+      "label": "page.jsx",
+      "file_type": "code",
+      "source_file": "src/app/data/osis-election/page.jsx",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "src_app_data_osis_election_page",
+      "community": 417,
+      "community_name": "page.jsx",
+      "norm_label": "page.jsx"
+    },
+    {
+      "label": "PRESET_COLORS",
+      "file_type": "code",
+      "source_file": "src/app/data/osis-election/page.jsx",
+      "source_location": "L35",
+      "_origin": "ast",
+      "id": "src_app_data_osis_election_page_preset_colors",
+      "community": 417,
+      "community_name": "page.jsx",
+      "norm_label": "preset_colors"
+    },
+    {
+      "label": "OsisElectionManagementPage()",
+      "file_type": "code",
+      "source_file": "src/app/data/osis-election/page.jsx",
+      "source_location": "L46",
+      "_origin": "ast",
+      "id": "src_app_data_osis_election_page_osiselectionmanagementpage",
+      "community": 417,
+      "community_name": "page.jsx",
+      "norm_label": "osiselectionmanagementpage()"
+    },
+    {
+      "label": "page.jsx",
+      "file_type": "code",
+      "source_file": "src/app/data/osis-election/vote/page.jsx",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "src_app_data_osis_election_vote_page",
+      "community": 419,
+      "community_name": "page.jsx",
+      "norm_label": "page.jsx"
+    },
+    {
+      "label": "OsisVotingKioskPage()",
+      "file_type": "code",
+      "source_file": "src/app/data/osis-election/vote/page.jsx",
+      "source_location": "L21",
+      "_origin": "ast",
+      "id": "src_app_data_osis_election_vote_page_osisvotingkioskpage",
+      "community": 419,
+      "community_name": "page.jsx",
+      "norm_label": "osisvotingkioskpage()"
     },
     {
       "label": "psikotestPdfGenerator.js",
@@ -12324,7 +12566,7 @@
       "label": "iconMap",
       "file_type": "code",
       "source_file": "src/components/sidebar.jsx",
-      "source_location": "L119",
+      "source_location": "L120",
       "_origin": "ast",
       "id": "src_components_sidebar_iconmap",
       "community": 89,
@@ -12335,7 +12577,7 @@
       "label": "Sidebar",
       "file_type": "code",
       "source_file": "src/components/sidebar.jsx",
-      "source_location": "L364",
+      "source_location": "L371",
       "_origin": "ast",
       "id": "src_components_sidebar_sidebar",
       "community": 89,
@@ -15033,8 +15275,8 @@
       "source_location": "L552",
       "_origin": "ast",
       "id": "agents_skills_design_taste_frontend_skill_7_dial_definitions_technical_reference",
-      "community": 236,
-      "community_name": "Module 236",
+      "community": 313,
+      "community_name": "SKILL.md",
       "norm_label": "7. dial definitions (technical reference)"
     },
     {
@@ -15044,8 +15286,8 @@
       "source_location": "L554",
       "_origin": "ast",
       "id": "agents_skills_design_taste_frontend_skill_design_variance_level_1_10",
-      "community": 236,
-      "community_name": "Module 236",
+      "community": 313,
+      "community_name": "SKILL.md",
       "norm_label": "design_variance (level 1-10)"
     },
     {
@@ -15055,8 +15297,8 @@
       "source_location": "L560",
       "_origin": "ast",
       "id": "agents_skills_design_taste_frontend_skill_motion_intensity_level_1_10",
-      "community": 236,
-      "community_name": "Module 236",
+      "community": 313,
+      "community_name": "SKILL.md",
       "norm_label": "motion_intensity (level 1-10)"
     },
     {
@@ -15066,8 +15308,8 @@
       "source_location": "L565",
       "_origin": "ast",
       "id": "agents_skills_design_taste_frontend_skill_visual_density_level_1_10",
-      "community": 236,
-      "community_name": "Module 236",
+      "community": 313,
+      "community_name": "SKILL.md",
       "norm_label": "visual_density (level 1-10)"
     },
     {
@@ -20357,8 +20599,8 @@
       "source_location": "L1027",
       "_origin": "ast",
       "id": "database_schema_6_assessment_grading_domain_data_topic_new_reports",
-      "community": 153,
-      "community_name": "Module 153",
+      "community": 139,
+      "community_name": "Module 139",
       "norm_label": "6. assessment & grading domain (`/data/topic-new` / reports)"
     },
     {
@@ -20368,8 +20610,8 @@
       "source_location": "L1031",
       "_origin": "ast",
       "id": "database_schema_6_1_tables",
-      "community": 153,
-      "community_name": "Module 153",
+      "community": 139,
+      "community_name": "Module 139",
       "norm_label": "6.1 tables"
     },
     {
@@ -20379,8 +20621,8 @@
       "source_location": "L1033",
       "_origin": "ast",
       "id": "database_schema_assessment_grades",
-      "community": 153,
-      "community_name": "Module 153",
+      "community": 139,
+      "community_name": "Module 139",
       "norm_label": "`assessment_grades`"
     },
     {
@@ -20390,8 +20632,8 @@
       "source_location": "L1055",
       "_origin": "ast",
       "id": "database_schema_assessment_grade_strands",
-      "community": 153,
-      "community_name": "Module 153",
+      "community": 139,
+      "community_name": "Module 139",
       "norm_label": "`assessment_grade_strands`"
     },
     {
@@ -20401,8 +20643,8 @@
       "source_location": "L1066",
       "_origin": "ast",
       "id": "database_schema_6_2_erd_relationships_assessment_grading",
-      "community": 153,
-      "community_name": "Module 153",
+      "community": 139,
+      "community_name": "Module 139",
       "norm_label": "6.2 erd / relationships (assessment & grading)"
     },
     {
@@ -20412,8 +20654,8 @@
       "source_location": "L1096",
       "_origin": "ast",
       "id": "database_schema_7_menu_role_permissions_domain_data_menu_management",
-      "community": 289,
-      "community_name": "bcryptjs",
+      "community": 193,
+      "community_name": "Module 193",
       "norm_label": "7. menu & role permissions domain (`/data/menu_management`)"
     },
     {
@@ -20423,8 +20665,8 @@
       "source_location": "L1100",
       "_origin": "ast",
       "id": "database_schema_7_1_tables",
-      "community": 289,
-      "community_name": "bcryptjs",
+      "community": 193,
+      "community_name": "Module 193",
       "norm_label": "7.1 tables"
     },
     {
@@ -20434,8 +20676,8 @@
       "source_location": "L1102",
       "_origin": "ast",
       "id": "database_schema_menus",
-      "community": 289,
-      "community_name": "bcryptjs",
+      "community": 193,
+      "community_name": "Module 193",
       "norm_label": "`menus`"
     },
     {
@@ -20445,8 +20687,8 @@
       "source_location": "L1115",
       "_origin": "ast",
       "id": "database_schema_menu_permissions",
-      "community": 289,
-      "community_name": "bcryptjs",
+      "community": 193,
+      "community_name": "Module 193",
       "norm_label": "`menu_permissions`"
     },
     {
@@ -20456,8 +20698,8 @@
       "source_location": "L1127",
       "_origin": "ast",
       "id": "database_schema_7_2_erd_relationships_menu_domain",
-      "community": 289,
-      "community_name": "bcryptjs",
+      "community": 193,
+      "community_name": "Module 193",
       "norm_label": "7.2 erd / relationships (menu domain)"
     },
     {
@@ -20610,8 +20852,8 @@
       "source_location": "L1370",
       "_origin": "ast",
       "id": "database_schema_10_duty_greeter_devotion_schedule_domain_data_door_greeter",
-      "community": 139,
-      "community_name": "Module 139",
+      "community": 153,
+      "community_name": "Module 153",
       "norm_label": "10. duty, greeter & devotion schedule domain (`/data/door_greeter`)"
     },
     {
@@ -20621,8 +20863,8 @@
       "source_location": "L1374",
       "_origin": "ast",
       "id": "database_schema_10_1_tables",
-      "community": 139,
-      "community_name": "Module 139",
+      "community": 153,
+      "community_name": "Module 153",
       "norm_label": "10.1 tables"
     },
     {
@@ -20632,8 +20874,8 @@
       "source_location": "L1376",
       "_origin": "ast",
       "id": "database_schema_duty_schedules",
-      "community": 139,
-      "community_name": "Module 139",
+      "community": 153,
+      "community_name": "Module 153",
       "norm_label": "`duty_schedules`"
     },
     {
@@ -20643,8 +20885,8 @@
       "source_location": "L1405",
       "_origin": "ast",
       "id": "database_schema_duty_settings",
-      "community": 139,
-      "community_name": "Module 139",
+      "community": 153,
+      "community_name": "Module 153",
       "norm_label": "`duty_settings`"
     },
     {
@@ -20654,8 +20896,8 @@
       "source_location": "L1419",
       "_origin": "ast",
       "id": "database_schema_10_2_erd_relationships_duty_devotion_schedule_domain",
-      "community": 139,
-      "community_name": "Module 139",
+      "community": 153,
+      "community_name": "Module 153",
       "norm_label": "10.2 erd / relationships (duty & devotion schedule domain)"
     },
     {
@@ -21262,6 +21504,94 @@
       "community": 140,
       "community_name": "Module 140",
       "norm_label": "17.2 erd / relationships (health report domain)"
+    },
+    {
+      "label": "18. OSIS Election & Live Quick Count Domain (`/data/osis-election`, `/data/osis-election/vote`, `/data/osis-election/live`)",
+      "file_type": "document",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L2738",
+      "_origin": "ast",
+      "id": "database_schema_18_osis_election_live_quick_count_domain_data_osis_election_data_osis_election_vote_data_osis_election_live",
+      "community": 258,
+      "community_name": "page.jsx",
+      "norm_label": "18. osis election & live quick count domain (`/data/osis-election`, `/data/osis-election/vote`, `/data/osis-election/live`)"
+    },
+    {
+      "label": "18.1 Key Features & Architecture",
+      "file_type": "document",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L2742",
+      "_origin": "ast",
+      "id": "database_schema_18_1_key_features_architecture",
+      "community": 258,
+      "community_name": "page.jsx",
+      "norm_label": "18.1 key features & architecture"
+    },
+    {
+      "label": "18.2 Tables",
+      "file_type": "document",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L2747",
+      "_origin": "ast",
+      "id": "database_schema_18_2_tables",
+      "community": 258,
+      "community_name": "page.jsx",
+      "norm_label": "18.2 tables"
+    },
+    {
+      "label": "`osis_elections`",
+      "file_type": "document",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L2749",
+      "_origin": "ast",
+      "id": "database_schema_osis_elections",
+      "community": 258,
+      "community_name": "page.jsx",
+      "norm_label": "`osis_elections`"
+    },
+    {
+      "label": "`osis_candidates`",
+      "file_type": "document",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L2763",
+      "_origin": "ast",
+      "id": "database_schema_osis_candidates",
+      "community": 258,
+      "community_name": "page.jsx",
+      "norm_label": "`osis_candidates`"
+    },
+    {
+      "label": "`osis_votes`",
+      "file_type": "document",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L2781",
+      "_origin": "ast",
+      "id": "database_schema_osis_votes",
+      "community": 258,
+      "community_name": "page.jsx",
+      "norm_label": "`osis_votes`"
+    },
+    {
+      "label": "18.3 Storage Buckets",
+      "file_type": "document",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L2791",
+      "_origin": "ast",
+      "id": "database_schema_18_3_storage_buckets",
+      "community": 258,
+      "community_name": "page.jsx",
+      "norm_label": "18.3 storage buckets"
+    },
+    {
+      "label": "`osis-assets` (Public)",
+      "file_type": "document",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L2793",
+      "_origin": "ast",
+      "id": "database_schema_osis_assets_public",
+      "community": 258,
+      "community_name": "page.jsx",
+      "norm_label": "`osis-assets` (public)"
     },
     {
       "label": "DELETE_VOID_IMPLEMENTATION.md",
@@ -21941,8 +22271,8 @@
       "source_location": "L5",
       "_origin": "ast",
       "id": "main_documentation_2026_07_16_timetable_refactor_weekly_plan_dates_weekly_overview",
-      "community": 102,
-      "community_name": "Module 102",
+      "community": 155,
+      "community_name": "Module 155",
       "norm_label": "2026-07-16 \u2014 timetable refactor + weekly plan dates + weekly overview"
     },
     {
@@ -21952,8 +22282,8 @@
       "source_location": "L7",
       "_origin": "ast",
       "id": "main_documentation_timetable_refactor_data_timetable",
-      "community": 102,
-      "community_name": "Module 102",
+      "community": 155,
+      "community_name": "Module 155",
       "norm_label": "timetable refactor (`/data/timetable`)"
     },
     {
@@ -21963,8 +22293,8 @@
       "source_location": "L17",
       "_origin": "ast",
       "id": "main_documentation_timetable_exceptions_timetable_exception_new_table",
-      "community": 102,
-      "community_name": "Module 102",
+      "community": 155,
+      "community_name": "Module 155",
       "norm_label": "timetable exceptions (`timetable_exception`) \u2014 new table"
     },
     {
@@ -21974,8 +22304,8 @@
       "source_location": "L46",
       "_origin": "ast",
       "id": "main_documentation_weekly_plan_dates_topic_weekly_plan_week_date",
-      "community": 102,
-      "community_name": "Module 102",
+      "community": 155,
+      "community_name": "Module 155",
       "norm_label": "weekly plan dates \u2014 `topic_weekly_plan.week_date`"
     },
     {
@@ -21985,8 +22315,8 @@
       "source_location": "L54",
       "_origin": "ast",
       "id": "main_documentation_weekly_overview_data_weekly_overview_new_page",
-      "community": 102,
-      "community_name": "Module 102",
+      "community": 155,
+      "community_name": "Module 155",
       "norm_label": "weekly overview (`/data/weekly-overview`) \u2014 new page"
     },
     {
@@ -21996,8 +22326,8 @@
       "source_location": "L73",
       "_origin": "ast",
       "id": "main_documentation_weekly_overview_draft_table_new",
-      "community": 102,
-      "community_name": "Module 102",
+      "community": 155,
+      "community_name": "Module 155",
       "norm_label": "`weekly_overview_draft` table \u2014 new"
     },
     {
@@ -22007,8 +22337,8 @@
       "source_location": "L87",
       "_origin": "ast",
       "id": "main_documentation_topic_weekly_plan_complete_schema_reference",
-      "community": 102,
-      "community_name": "Module 102",
+      "community": 155,
+      "community_name": "Module 155",
       "norm_label": "`topic_weekly_plan` \u2014 complete schema reference"
     },
     {
@@ -22018,8 +22348,8 @@
       "source_location": "L103",
       "_origin": "ast",
       "id": "main_documentation_full_data_flow_timetable_weekly_overview",
-      "community": 102,
-      "community_name": "Module 102",
+      "community": 155,
+      "community_name": "Module 155",
       "norm_label": "full data flow: timetable \u2192 weekly overview"
     },
     {
@@ -22172,8 +22502,8 @@
       "source_location": "L287",
       "_origin": "ast",
       "id": "main_documentation_database_structure",
-      "community": 193,
-      "community_name": "Module 193",
+      "community": 119,
+      "community_name": "Module 119",
       "norm_label": "\ufffd\ud83c\udfd7\ufe0f **database structure**"
     },
     {
@@ -22183,8 +22513,8 @@
       "source_location": "L289",
       "_origin": "ast",
       "id": "main_documentation_core_tables",
-      "community": 193,
-      "community_name": "Module 193",
+      "community": 119,
+      "community_name": "Module 119",
       "norm_label": "**core tables:**"
     },
     {
@@ -22194,8 +22524,8 @@
       "source_location": "L524",
       "_origin": "ast",
       "id": "main_documentation_grades_nilai_table",
-      "community": 193,
-      "community_name": "Module 193",
+      "community": 119,
+      "community_name": "Module 119",
       "norm_label": "grades (nilai) table"
     },
     {
@@ -22205,8 +22535,8 @@
       "source_location": "L539",
       "_origin": "ast",
       "id": "main_documentation_attendance_qr_tables",
-      "community": 193,
-      "community_name": "Module 193",
+      "community": 119,
+      "community_name": "Module 119",
       "norm_label": "attendance (qr) tables"
     },
     {
@@ -22249,8 +22579,8 @@
       "source_location": "L618",
       "_origin": "ast",
       "id": "main_documentation_3_assessment_system",
-      "community": 258,
-      "community_name": "page.jsx",
+      "community": 82,
+      "community_name": "Module 82",
       "norm_label": "**3. assessment system**"
     },
     {
@@ -22260,8 +22590,8 @@
       "source_location": "L619",
       "_origin": "ast",
       "id": "main_documentation_teacher_workflow",
-      "community": 258,
-      "community_name": "page.jsx",
+      "community": 82,
+      "community_name": "Module 82",
       "norm_label": "**teacher workflow**:"
     },
     {
@@ -22271,8 +22601,8 @@
       "source_location": "L628",
       "_origin": "ast",
       "id": "main_documentation_admin_workflow",
-      "community": 258,
-      "community_name": "page.jsx",
+      "community": 82,
+      "community_name": "Module 82",
       "norm_label": "**admin workflow**:"
     },
     {
@@ -22403,8 +22733,8 @@
       "source_location": "L812",
       "_origin": "ast",
       "id": "main_documentation_technical_implementation",
-      "community": 194,
-      "community_name": "Module 194",
+      "community": 119,
+      "community_name": "Module 119",
       "norm_label": "\ud83d\udd27 **technical implementation**"
     },
     {
@@ -22414,8 +22744,8 @@
       "source_location": "L814",
       "_origin": "ast",
       "id": "main_documentation_frontend_stack",
-      "community": 194,
-      "community_name": "Module 194",
+      "community": 119,
+      "community_name": "Module 119",
       "norm_label": "**frontend stack:**"
     },
     {
@@ -22425,8 +22755,8 @@
       "source_location": "L821",
       "_origin": "ast",
       "id": "main_documentation_backend_database",
-      "community": 194,
-      "community_name": "Module 194",
+      "community": 119,
+      "community_name": "Module 119",
       "norm_label": "**backend & database:**"
     },
     {
@@ -22436,8 +22766,8 @@
       "source_location": "L827",
       "_origin": "ast",
       "id": "main_documentation_key_technical_notes",
-      "community": 194,
-      "community_name": "Module 194",
+      "community": 119,
+      "community_name": "Module 119",
       "norm_label": "**key technical notes:**"
     },
     {
@@ -22447,8 +22777,8 @@
       "source_location": "L881",
       "_origin": "ast",
       "id": "main_documentation_setup_deployment",
-      "community": 119,
-      "community_name": "Module 119",
+      "community": 289,
+      "community_name": "bcryptjs",
       "norm_label": "\ud83d\ude80 **setup & deployment**"
     },
     {
@@ -22458,8 +22788,8 @@
       "source_location": "L883",
       "_origin": "ast",
       "id": "main_documentation_database_migration_files_execute_in_order",
-      "community": 119,
-      "community_name": "Module 119",
+      "community": 289,
+      "community_name": "bcryptjs",
       "norm_label": "**database migration files (execute in order):**"
     },
     {
@@ -22469,8 +22799,8 @@
       "source_location": "L911",
       "_origin": "ast",
       "id": "main_documentation_development",
-      "community": 119,
-      "community_name": "Module 119",
+      "community": 289,
+      "community_name": "bcryptjs",
       "norm_label": "**development:**"
     },
     {
@@ -22480,8 +22810,8 @@
       "source_location": "L918",
       "_origin": "ast",
       "id": "main_documentation_key_environment",
-      "community": 119,
-      "community_name": "Module 119",
+      "community": 289,
+      "community_name": "bcryptjs",
       "norm_label": "**key environment:**"
     },
     {
@@ -22491,8 +22821,8 @@
       "source_location": "L928",
       "_origin": "ast",
       "id": "main_documentation_additional_files",
-      "community": 119,
-      "community_name": "Module 119",
+      "community": 289,
+      "community_name": "bcryptjs",
       "norm_label": "**additional files:**"
     },
     {
@@ -22755,8 +23085,8 @@
       "source_location": "L1119",
       "_origin": "ast",
       "id": "main_documentation_key_components",
-      "community": 155,
-      "community_name": "Module 155",
+      "community": 105,
+      "community_name": "Module 105",
       "norm_label": "**key components**"
     },
     {
@@ -22766,8 +23096,8 @@
       "source_location": "L1121",
       "_origin": "ast",
       "id": "main_documentation_1_myp_year_level_selection",
-      "community": 155,
-      "community_name": "Module 155",
+      "community": 105,
+      "community_name": "Module 105",
       "norm_label": "**1. myp year level selection**"
     },
     {
@@ -22777,8 +23107,8 @@
       "source_location": "L1128",
       "_origin": "ast",
       "id": "main_documentation_2_criterion_grades_a_b_c_d",
-      "community": 155,
-      "community_name": "Module 155",
+      "community": 105,
+      "community_name": "Module 105",
       "norm_label": "**2. criterion grades (a, b, c, d)**"
     },
     {
@@ -22788,8 +23118,8 @@
       "source_location": "L1138",
       "_origin": "ast",
       "id": "main_documentation_3_strand_grades",
-      "community": 155,
-      "community_name": "Module 155",
+      "community": 105,
+      "community_name": "Module 105",
       "norm_label": "**3. strand grades**"
     },
     {
@@ -22799,8 +23129,8 @@
       "source_location": "L1147",
       "_origin": "ast",
       "id": "main_documentation_4_final_grade_1_7",
-      "community": 155,
-      "community_name": "Module 155",
+      "community": 105,
+      "community_name": "Module 105",
       "norm_label": "**4. final grade (1-7)**"
     },
     {
@@ -22876,8 +23206,8 @@
       "source_location": "L1221",
       "_origin": "ast",
       "id": "main_documentation_project_structure",
-      "community": 412,
-      "community_name": "\ud83d\udcc1 **Project Structure**",
+      "community": 119,
+      "community_name": "Module 119",
       "norm_label": "\ud83d\udcc1 **project structure**"
     },
     {
@@ -22887,8 +23217,8 @@
       "source_location": "L1223",
       "_origin": "ast",
       "id": "main_documentation_key_directories",
-      "community": 412,
-      "community_name": "\ud83d\udcc1 **Project Structure**",
+      "community": 119,
+      "community_name": "Module 119",
       "norm_label": "**key directories:**"
     },
     {
@@ -22898,8 +23228,8 @@
       "source_location": "L1229",
       "_origin": "ast",
       "id": "main_documentation_important_files",
-      "community": 412,
-      "community_name": "\ud83d\udcc1 **Project Structure**",
+      "community": 119,
+      "community_name": "Module 119",
       "norm_label": "**important files:**"
     },
     {
@@ -33784,6 +34114,211 @@
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
+      "source_file": "src/app/api/osis-election/route.js",
+      "source_location": "L12",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_api_osis_election_route",
+      "target": "src_app_api_osis_election_route_checktablesexist",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/osis-election/route.js",
+      "source_location": "L59",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_api_osis_election_route",
+      "target": "src_app_api_osis_election_route_computequickcount",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/osis-election/route.js",
+      "source_location": "L103",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_api_osis_election_route",
+      "target": "src_app_api_osis_election_route_get",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/osis-election/route.js",
+      "source_location": "L253",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_api_osis_election_route",
+      "target": "src_app_api_osis_election_route_post",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/osis-election/route.js",
+      "source_location": "L25",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_api_osis_election_route",
+      "target": "src_app_api_osis_election_route_readfromsettings",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/osis-election/route.js",
+      "source_location": "L4",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_api_osis_election_route",
+      "target": "src_app_api_osis_election_route_supabaseadmin",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/osis-election/route.js",
+      "source_location": "L44",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_api_osis_election_route",
+      "target": "src_app_api_osis_election_route_writetosettings",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/osis-election/route.js",
+      "source_location": "L141",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_api_osis_election_route_get",
+      "target": "src_app_api_osis_election_route_checktablesexist",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/osis-election/route.js",
+      "source_location": "L262",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_api_osis_election_route_post",
+      "target": "src_app_api_osis_election_route_checktablesexist",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/osis-election/route.js",
+      "source_location": "L206",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_api_osis_election_route_get",
+      "target": "src_app_api_osis_election_route_readfromsettings",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/osis-election/route.js",
+      "source_location": "L308",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_api_osis_election_route_post",
+      "target": "src_app_api_osis_election_route_readfromsettings",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/osis-election/route.js",
+      "source_location": "L342",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_api_osis_election_route_post",
+      "target": "src_app_api_osis_election_route_writetosettings",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/osis-election/route.js",
+      "source_location": "L187",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_api_osis_election_route_get",
+      "target": "src_app_api_osis_election_route_computequickcount",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/osis-election/upload/route.js",
+      "source_location": "L10",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_api_osis_election_upload_route",
+      "target": "src_app_api_osis_election_upload_route_allowed_types",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/osis-election/upload/route.js",
+      "source_location": "L14",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_api_osis_election_upload_route",
+      "target": "src_app_api_osis_election_upload_route_ensurebucket",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/osis-election/upload/route.js",
+      "source_location": "L30",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_api_osis_election_upload_route",
+      "target": "src_app_api_osis_election_upload_route_post",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/osis-election/upload/route.js",
+      "source_location": "L4",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_api_osis_election_upload_route",
+      "target": "src_app_api_osis_election_upload_route_supabaseadmin",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/osis-election/upload/route.js",
+      "source_location": "L56",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_api_osis_election_upload_route_post",
+      "target": "src_app_api_osis_election_upload_route_ensurebucket",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
       "source_file": "src/app/api/profile/change-password/route.js",
       "source_location": "L13",
       "weight": 1.0,
@@ -36792,6 +37327,72 @@
       "_origin": "ast",
       "source": "src_app_data_menu_management_page",
       "target": "src_app_data_menu_management_page_menutree",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/osis-election/live/page.jsx",
+      "source_location": "L36",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_osis_election_live_page",
+      "target": "src_app_data_osis_election_live_page_getcolorname",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/osis-election/live/page.jsx",
+      "source_location": "L43",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_osis_election_live_page",
+      "target": "src_app_data_osis_election_live_page_osiselectionlivequickcountpage",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/osis-election/live/page.jsx",
+      "source_location": "L20",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_osis_election_live_page",
+      "target": "src_app_data_osis_election_live_page_preset_colors",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/osis-election/page.jsx",
+      "source_location": "L46",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_osis_election_page",
+      "target": "src_app_data_osis_election_page_osiselectionmanagementpage",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/osis-election/page.jsx",
+      "source_location": "L35",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_osis_election_page",
+      "target": "src_app_data_osis_election_page_preset_colors",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/osis-election/vote/page.jsx",
+      "source_location": "L21",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_osis_election_vote_page",
+      "target": "src_app_data_osis_election_vote_page_osisvotingkioskpage",
       "confidence_score": 1.0
     },
     {
@@ -41684,7 +42285,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/components/sidebar.jsx",
-      "source_location": "L119",
+      "source_location": "L120",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_sidebar",
@@ -41695,7 +42296,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/components/sidebar.jsx",
-      "source_location": "L364",
+      "source_location": "L371",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_sidebar",
@@ -48926,6 +49527,17 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L2738",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "database_schema_database_schema_relationships",
+      "target": "database_schema_18_osis_election_live_quick_count_domain_data_osis_election_data_osis_election_vote_data_osis_election_live",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "DATABASE_SCHEMA.md",
       "source_location": "L3",
       "weight": 1.0,
       "_origin": "ast",
@@ -50405,6 +51017,83 @@
       "_origin": "ast",
       "source": "database_schema_17_1_tables",
       "target": "database_schema_health_report_card",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L2742",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "database_schema_18_osis_election_live_quick_count_domain_data_osis_election_data_osis_election_vote_data_osis_election_live",
+      "target": "database_schema_18_1_key_features_architecture",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L2747",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "database_schema_18_osis_election_live_quick_count_domain_data_osis_election_data_osis_election_vote_data_osis_election_live",
+      "target": "database_schema_18_2_tables",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L2791",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "database_schema_18_osis_election_live_quick_count_domain_data_osis_election_data_osis_election_vote_data_osis_election_live",
+      "target": "database_schema_18_3_storage_buckets",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L2763",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "database_schema_18_2_tables",
+      "target": "database_schema_osis_candidates",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L2749",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "database_schema_18_2_tables",
+      "target": "database_schema_osis_elections",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L2781",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "database_schema_18_2_tables",
+      "target": "database_schema_osis_votes",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L2793",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "database_schema_18_3_storage_buckets",
+      "target": "database_schema_osis_assets_public",
       "confidence_score": 1.0
     },
     {
@@ -55608,5 +56297,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "c50d2075b532e4dc9355e70107444c886c395a0a"
+  "built_at_commit": "7f4756ba1d4495fbc371333fda95738a5be354fe"
 }

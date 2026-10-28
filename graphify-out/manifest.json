@@ -1270,8 +1270,8 @@
     "semantic_hash": "104123e0baacb9dd57b2a1a1962da5d0"
   },
   "src/components/sidebar.jsx": {
-    "mtime": 1790222605.6089418,
-    "ast_hash": "83fcb2442da95888a80ceda5092a424e",
+    "mtime": 1793156115.298467,
+    "ast_hash": "a731dfac142192d8c66cc78617ffbf8d",
     "semantic_hash": ""
   },
   "src/components/ui/button.jsx": {
@@ -1545,9 +1545,9 @@
     "semantic_hash": ""
   },
   "public/favicon.png": {
-    "mtime": 1784179362.3978765,
-    "ast_hash": "79c200ec8a2038b682d90e3348b1e390",
-    "semantic_hash": "79c200ec8a2038b682d90e3348b1e390"
+    "mtime": 1793163313.021518,
+    "ast_hash": "c6464be7d6112d804b4f4741f1d9d88b",
+    "semantic_hash": ""
   },
   "public/file.svg": {
     "mtime": 1784179362.400198,
@@ -1560,9 +1560,9 @@
     "semantic_hash": "2aaafa6a49b6563925fe440891e32717"
   },
   "public/images/login-logo.png": {
-    "mtime": 1784179362.400198,
-    "ast_hash": "58d81a43d1cea029874ce6e71008e916",
-    "semantic_hash": "58d81a43d1cea029874ce6e71008e916"
+    "mtime": 1793163014.6119077,
+    "ast_hash": "e716f6c504e76bc2d4ffdd82034a60bc",
+    "semantic_hash": ""
   },
   "public/next.svg": {
     "mtime": 1784179362.4022028,
@@ -1640,8 +1640,8 @@
     "semantic_hash": ""
   },
   "DATABASE_SCHEMA.md": {
-    "mtime": 1791342980.3562894,
-    "ast_hash": "a829bce37c0310d6a844136a3a75b529",
+    "mtime": 1793158947.9204528,
+    "ast_hash": "2838f88a3a68f3eb031f316a7dce58cf",
     "semantic_hash": ""
   },
   "banner-220.png": {
@@ -2397,6 +2397,36 @@
   "src/app/api/classroom/submissions/route.js": {
     "mtime": 1793084498.554431,
     "ast_hash": "004a122c546086cfeb0958fae2b6d005",
+    "semantic_hash": ""
+  },
+  "migrations/create-osis-election-tables.sql": {
+    "mtime": 1793155829.6031718,
+    "ast_hash": "fddf7025c6901bcc46bae1a49cd574bd",
+    "semantic_hash": ""
+  },
+  "src/app/api/osis-election/route.js": {
+    "mtime": 1793155868.5455196,
+    "ast_hash": "3ede96e4cc62fb47c1c2a1b8955e663f",
+    "semantic_hash": ""
+  },
+  "src/app/data/osis-election/live/page.jsx": {
+    "mtime": 1793168831.8179684,
+    "ast_hash": "6bdf33b89e252de19242e32c99d16171",
+    "semantic_hash": ""
+  },
+  "src/app/data/osis-election/page.jsx": {
+    "mtime": 1793168971.0188262,
+    "ast_hash": "a64e692b1b25c942f5dd8959cc20c231",
+    "semantic_hash": ""
+  },
+  "src/app/data/osis-election/vote/page.jsx": {
+    "mtime": 1793165198.0445297,
+    "ast_hash": "462700aa239fc31381182247e6e7ba41",
+    "semantic_hash": ""
+  },
+  "src/app/api/osis-election/upload/route.js": {
+    "mtime": 1793158824.1592996,
+    "ast_hash": "8390ecac819f6a4df0a7ac2f7b1cdb64",
     "semantic_hash": ""
   }
 }

@@ -376,7 +376,6 @@
   "374": "cleanup-scan-log-columns.sql",
   "375": "jsonwebtoken",
   "376": "jspdf-autotable",
-  "377": "dotenv",
   "378": "driver.js",
   "379": "@sparticuz/chromium-min",
   "380": "@supabase/supabase-js",
@@ -415,6 +414,10 @@
   "413": "bcryptjs",
   "415": "route.js",
   "416": "route.js",
+  "417": "page.jsx",
+  "418": "page.jsx",
+  "419": "page.jsx",
+  "422": "dotenv",
   "453": "route.js",
   "457": "status.php"
 }

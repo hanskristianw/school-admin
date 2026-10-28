@@ -2731,3 +2731,68 @@ erDiagram
 
 
 
+
+
+---
+
+## 18. OSIS Election & Live Quick Count Domain (`/data/osis-election`, `/data/osis-election/vote`, `/data/osis-election/live`)
+
+This domain manages the Student Council (OSIS) Election lifecycle per academic year (`year_id`), candidate pair rosters, touchscreen/kiosk anonymous digital voting booths, and a live broadcast-grade quick count scoreboard.
+
+### 18.1 Key Features & Architecture
+1. **Secret Ballot & Kiosk Flow**: Voting is strictly anonymous; no individual user ID is linked to cast votes. The voting booth is controlled by TPS officers (one voter at a time, locked after submission, manual reset per voter).
+2. **Zero-Friction Fallback Architecture**: Automatically operates via dedicated tables (`osis_elections`, `osis_candidates`, `osis_votes`) or falls back safely to atomic JSON storage in `settings` (`key: 'osis_election_data'`).
+3. **Live Quick Count**: TV / Projector Fullscreen view with 3-second auto-polling, dynamic turnout percentage, and animated candidate podiums.
+
+### 18.2 Tables
+
+#### `osis_elections`
+Stores election events tied to an academic year.
+
+| Column Name | Type | Description / Constraint |
+| --- | --- | --- |
+| `id` | `SERIAL` | Primary Key |
+| `year_id` | `INTEGER` | Foreign Key to `year(year_id)` ON DELETE CASCADE |
+| `title` | `VARCHAR(200)` | Title of election event (e.g. "Pemilihan Ketua & Wakil Ketua OSIS 2026/2027") |
+| `description` | `TEXT` | Brief overview of the election |
+| `target_dpt` | `INTEGER` | Total registered voters (DPT) for turnout % calculation |
+| `status` | `VARCHAR(30)` | `draft` (closed/setup), `active` (booths open), `closed` (final locked) |
+| `created_at` | `TIMESTAMPTZ` | Record creation timestamp |
+| `updated_at` | `TIMESTAMPTZ` | Record update timestamp |
+
+#### `osis_candidates`
+Stores candidate pairs (Ketua & Wakil Ketua) registered for an election.
+
+| Column Name | Type | Description / Constraint |
+| --- | --- | --- |
+| `id` | `SERIAL` | Primary Key |
+| `election_id` | `INTEGER` | Foreign Key to `osis_elections(id)` ON DELETE CASCADE |
+| `candidate_number` | `INTEGER` | Ballot number (e.g. 1, 2, 3) |
+| `leader_name` | `VARCHAR(150)` | Full name of Chairperson candidate |
+| `vice_name` | `VARCHAR(150)` | Full name of Vice Chairperson candidate |
+| `photo_url` | `TEXT` | Photo URL / avatar |
+| `vision` | `TEXT` | Candidate vision statement |
+| `mission` | `TEXT` | Candidate mission and work programs |
+| `slogan` | `VARCHAR(255)` | Campaign tagline / slogan |
+| `color` | `VARCHAR(50)` | Theme branding hex color (e.g. `#3B82F6`) |
+| `created_at` | `TIMESTAMPTZ` | Record creation timestamp |
+| `updated_at` | `TIMESTAMPTZ` | Record update timestamp |
+
+#### `osis_votes`
+Anonymous voting transaction log.
+
+| Column Name | Type | Description / Constraint |
+| --- | --- | --- |
+| `id` | `SERIAL` | Primary Key |
+| `election_id` | `INTEGER` | Foreign Key to `osis_elections(id)` ON DELETE CASCADE |
+| `candidate_id` | `INTEGER` | Foreign Key to `osis_candidates(id)` ON DELETE CASCADE |
+| `created_at` | `TIMESTAMPTZ` | Timestamp when vote was cast |
+
+### 18.3 Storage Buckets
+
+#### `osis-assets` (Public)
+Stores candidate photos and campaign media uploaded via `/data/osis-election`.
+- **Bucket ID**: `osis-assets`
+- **Access Policy**: Public read
+- **Path format**: `candidates/cand_{timestamp}_{random}.{ext}`
+- **File size limit**: 10 MB

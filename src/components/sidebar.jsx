@@ -112,11 +112,18 @@ import {
   faWandMagicSparkles,
   faBoxesStacked,
   faBoxOpen,
-  faFutbol
+  faFutbol,
+  faCheckToSlot
 } from "@fortawesome/free-solid-svg-icons"
 
 // Complete icon mapping dictionary with all naming variations
 const iconMap = {
+  'fas fa-check-to-slot': faCheckToSlot,
+  'faCheckToSlot': faCheckToSlot,
+  'check-to-slot': faCheckToSlot,
+  'fas fa-vote-yea': faCheckToSlot,
+  'faVoteYea': faCheckToSlot,
+  'vote-yea': faCheckToSlot,
   'fas fa-futbol': faFutbol,
   'fas fa-brain': faBrain,
   'faBrain': faBrain,
