@@ -508,7 +508,9 @@ export async function GET(request) {
           checkin_time:       null,
           checkout_time:      null,
           late_minutes:       0,
+          late_seconds:       0,
           leave_early_minutes:0,
+          leave_early_seconds:0,
           status:             'ok',
           issues:             []
         }
@@ -550,6 +552,7 @@ export async function GET(request) {
                 summary.late_count++
                 summary.late_minutes_total += lateMins
                 dayRecord.late_minutes = lateMins
+                dayRecord.late_seconds = lateSecs
                 dayRecord.issues.push('late')
               }
             }
@@ -571,6 +574,7 @@ export async function GET(request) {
                 summary.leave_early_count++
                 summary.leave_early_minutes_total += earlyMins
                 dayRecord.leave_early_minutes = earlyMins
+                dayRecord.leave_early_seconds = earlySecs
                 dayRecord.issues.push('leave_early')
               }
             }

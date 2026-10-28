@@ -2390,8 +2390,8 @@
     "semantic_hash": ""
   },
   "src/app/data/topic-new/components/GoogleClassroomConnector.jsx": {
-    "mtime": 1793089325.5775788,
-    "ast_hash": "ec3f02f8004076318f0f05f6471a41a6",
+    "mtime": 1793171150.6323211,
+    "ast_hash": "74c445879c4d6d10c1444dfaea1ce139",
     "semantic_hash": ""
   },
   "src/app/api/classroom/submissions/route.js": {
@@ -2410,13 +2410,13 @@
     "semantic_hash": ""
   },
   "src/app/data/osis-election/live/page.jsx": {
-    "mtime": 1793167625.3055332,
-    "ast_hash": "34dc916b102bb40b5c60fc3f111a636d",
+    "mtime": 1793168831.8179684,
+    "ast_hash": "6bdf33b89e252de19242e32c99d16171",
     "semantic_hash": ""
   },
   "src/app/data/osis-election/page.jsx": {
-    "mtime": 1793158887.8175943,
-    "ast_hash": "18a32d6d1c641c8cb63403953b402b8f",
+    "mtime": 1793168971.0188262,
+    "ast_hash": "a64e692b1b25c942f5dd8959cc20c231",
     "semantic_hash": ""
   },
   "src/app/data/osis-election/vote/page.jsx": {

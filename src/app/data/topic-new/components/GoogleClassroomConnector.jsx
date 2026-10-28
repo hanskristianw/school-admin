@@ -378,7 +378,7 @@ export default function GoogleClassroomConnector({
     const ok = await persistLinks(nextLinks)
     if (ok) {
       setSelectedCourseworkId('')
-      setStatusMessage(`Linked "${cw.title}" successfully.`)
+      setStatusMessage(`Successfully linked "${cw.title}".`)
       setTimeout(() => setStatusMessage(''), 2500)
     }
   }
@@ -643,8 +643,8 @@ export default function GoogleClassroomConnector({
                     </div>
 
                     {linkedAssignments.length === 0 ? (
-                      <div className="p-3 rounded-[6px] border border-dashed border-[#EAEAEA] text-center text-xs text-[#787774] font-mono" style={{ backgroundColor: '#FCFCFB' }}>
-                        No Classroom assignments linked yet. Use the form below to link assignments.
+                      <div className="p-3 rounded-[6px] border border-dashed border-[#EAEAEA] text-center text-xs text-[#787774]" style={{ backgroundColor: '#FCFCFB' }}>
+                        No Classroom assignments linked yet. Choose a course and assignment below, then click <strong>"Save & Link This Assignment"</strong>.
                       </div>
                     ) : (
                       <div className="space-y-2">
@@ -803,18 +803,25 @@ export default function GoogleClassroomConnector({
                       </div>
                     )}
 
-                    {/* Add Assignment Button */}
+                    {/* Save & Link Assignment Button */}
                     {selectedCourseworkId && (
-                      <div className="pt-1">
+                      <div className="pt-2 space-y-1.5">
                         <button
                           type="button"
                           onClick={handleAddLink}
                           disabled={saving}
-                          className="w-full py-2 px-3 text-xs font-mono font-semibold rounded-[6px] transition-all cursor-pointer flex items-center justify-center gap-2 shadow-2xs disabled:opacity-50" style={{ background: isDark ? '#FFFFFF' : '#111111', color: isDark ? '#111111' : '#FFFFFF' }}
+                          className="w-full py-2.5 px-4 text-xs font-semibold rounded-[6px] transition-all cursor-pointer flex items-center justify-center gap-2 shadow-sm disabled:opacity-50"
+                          style={{
+                            background: isDark ? '#FFFFFF' : '#111111',
+                            color: isDark ? '#111111' : '#FFFFFF'
+                          }}
                         >
-                          <FontAwesomeIcon icon={saving ? faSpinner : faPlus} className={saving ? 'animate-spin text-xs' : 'text-xs'} />
-                          <span>{saving ? 'Linking Assignment...' : 'Link This Assignment'}</span>
+                          <FontAwesomeIcon icon={saving ? faSpinner : faLink} className={saving ? 'animate-spin text-xs' : 'text-xs'} />
+                          <span>{saving ? 'Saving & Linking...' : 'Save & Link This Assignment'}</span>
                         </button>
+                        <p className="text-[11px] text-[#787774] text-center">
+                          Save and link the selected Google Classroom assignment to this assessment
+                        </p>
                       </div>
                     )}
                   </div>

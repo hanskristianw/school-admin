@@ -20,11 +20,22 @@ function getMonthEnd(ym) {
   return `${ym}-${String(lastDay).padStart(2, '0')}`
 }
 
+function fmtDuration(secs, mins) {
+  const totalSecs = (secs != null && secs > 0) ? Math.round(secs) : (mins ? Math.round(mins * 60) : 0)
+  if (!totalSecs || totalSecs <= 0) return ''
+  const h = Math.floor(totalSecs / 3600)
+  const m = Math.floor((totalSecs % 3600) / 60)
+  const s = totalSecs % 60
+
+  const parts = []
+  if (h > 0) parts.push(`${h}h`)
+  if (m > 0 || h > 0) parts.push(`${m}m`)
+  parts.push(`${s}s`)
+  return parts.join(' ')
+}
+
 function fmtMins(mins) {
-  if (!mins) return ''
-  const h = Math.floor(mins / 60)
-  const m = mins % 60
-  return h > 0 ? `${h}h ${m}m` : `${m}m`
+  return fmtDuration(null, mins)
 }
 
 const CATEGORY_LABEL = {
@@ -166,10 +177,12 @@ export default function AttendanceCheckPage() {
                 role_name: user.role_name,
                 photo: user.photo || null,
                 date: day.date,
-                checkIn: day.checkin_time ? day.checkin_time.slice(0, 5) : '—',
-                checkOut: day.checkout_time ? day.checkout_time.slice(0, 5) : '—',
+                checkIn: day.checkin_time || '—',
+                checkOut: day.checkout_time || '—',
                 lateMins: day.late_minutes || 0,
+                lateSecs: day.late_seconds != null ? day.late_seconds : (day.late_minutes ? day.late_minutes * 60 : 0),
                 earlyMins: day.leave_early_minutes || 0,
+                earlySecs: day.leave_early_seconds != null ? day.leave_early_seconds : (day.leave_early_minutes ? day.leave_early_minutes * 60 : 0),
                 issueTypes,
                 excuse,
                 excuseStatus
@@ -599,8 +612,8 @@ export default function AttendanceCheckPage() {
                                     {item.issueTypes.map(t => {
                                       const meta = ISSUE_LABELS[t] || { name: t, bg: '#f3f4f6', color: '#374151', border: '#e5e7eb' }
                                       let extraInfo = ''
-                                      if (t === 'late' && item.lateMins) extraInfo = ` (${fmtMins(item.lateMins)})`
-                                      if (t === 'leave_early' && item.earlyMins) extraInfo = ` (${fmtMins(item.earlyMins)})`
+                                      if (t === 'late' && (item.lateSecs || item.lateMins)) extraInfo = ` (${fmtDuration(item.lateSecs, item.lateMins)})`
+                                      if (t === 'leave_early' && (item.earlySecs || item.earlyMins)) extraInfo = ` (${fmtDuration(item.earlySecs, item.earlyMins)})`
                                       return (
                                         <span
                                           key={t}

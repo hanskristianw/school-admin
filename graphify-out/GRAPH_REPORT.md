@@ -1,16 +1,16 @@
 # Graph Report - school-admin  (2026-10-28)
 
 ## Corpus Check
-- 439 files · ~755,810 words
+- 439 files · ~756,316 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 2459 nodes · 2614 edges · 421 communities (286 shown, 135 thin omitted)
+- 2460 nodes · 2616 edges · 422 communities (286 shown, 136 thin omitted)
 - Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 8 edges (avg confidence: 0.65)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `7f4756ba`
+- Built from commit: `7ac7726d`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -285,6 +285,7 @@
 - route.js
 - jsonwebtoken
 - jspdf-autotable
+- SKILL.md
 - driver.js
 - @sparticuz/chromium-min
 - @supabase/supabase-js
@@ -345,7 +346,7 @@
 ## Import Cycles
 - None detected.
 
-## Communities (421 total, 135 thin omitted)
+## Communities (422 total, 136 thin omitted)
 
 ### Community 0 - "Admission Management"
 Cohesion: 0.08
@@ -596,8 +597,8 @@ Cohesion: 0.11
 Nodes (17): aliases, components, hooks, lib, ui, utils, iconLibrary, rsc (+9 more)
 
 ### Community 80 - "Module 80"
-Cohesion: 0.12
-Nodes (16): 10. SECTION RHYTHM RULE, 12. DENSITY & SPACING DISCIPLINE, 14. IMAGE / MEDIA DIRECTION, 16. MULTI-IMAGE CONSISTENCY RULE, 17. CLARITY CHECK, 19. RESPONSE BEHAVIOR, 1. ACTIVE BASELINE CONFIGURATION, 21. FINAL GOAL (+8 more)
+Cohesion: 0.14
+Nodes (14): 10. SECTION RHYTHM RULE, 12. DENSITY & SPACING DISCIPLINE, 14. IMAGE / MEDIA DIRECTION, 16. MULTI-IMAGE CONSISTENCY RULE, 17. CLARITY CHECK, 19. RESPONSE BEHAVIOR, 1. ACTIVE BASELINE CONFIGURATION, 21. FINAL GOAL (+6 more)
 
 ### Community 81 - "Module 81"
 Cohesion: 0.12
@@ -644,8 +645,8 @@ Cohesion: 0.14
 Nodes (14): 2025-08-13, 2025-08-17, 2025-08-17 (Subsequent Updates), 2025-08-20, 2025-08-21, 2025-08-22, 2025-08-23, 2025-08-30 (+6 more)
 
 ### Community 103 - "Module 103"
-Cohesion: 0.15
-Nodes (13): 5.1 Tables, `attendance_excuses`, `attendance_notification_log`, `attendance_notify_run_log`, `attendances`, `kelas_attendance`, `leave_quotas`, `leave_types` (+5 more)
+Cohesion: 0.13
+Nodes (15): 5.1 Tables, 5.2 ERD / Relationships (Attendance Domain), 5. Attendance & Leave Management Domain (`/data/attendance-settings`, `/data/attendance-leave`, `/data/attendance-form`), `attendance_excuses`, `attendance_notification_log`, `attendance_notify_run_log`, `attendances`, `kelas_attendance` (+7 more)
 
 ### Community 104 - "Module 104"
 Cohesion: 0.17
@@ -765,7 +766,7 @@ Nodes (7): 33. CATEGORY-SPECIFIC BIAS, Commerce, Fintech, Health / Fitness, Prod
 
 ### Community 133 - "Module 133"
 Cohesion: 0.15
-Nodes (13): browser-image-compression, @googleapis/chat, @hookform/resolvers, lucide-react, dependencies, browser-image-compression, @googleapis/chat, @hookform/resolvers (+5 more)
+Nodes (13): bcryptjs, @googleapis/chat, @hookform/resolvers, lucide-react, dependencies, bcryptjs, @googleapis/chat, @hookform/resolvers (+5 more)
 
 ### Community 135 - "Module 135"
 Cohesion: 0.29
@@ -784,8 +785,8 @@ Cohesion: 0.29
 Nodes (5): public.admission_level, public.fee_discount, public.school_fee_definition, public.student_applications, public.udp_definition
 
 ### Community 139 - "Module 139"
-Cohesion: 0.15
-Nodes (12): 11.2 ERD / Relationships (Uniform & Stock Domain), 11.3 Initial Stock & Inventory Ledger Workflows (`/stock/uniform/initial`), 11.4 POS Uniform Sales Workflows (`/sales/uniform`), 11. Uniform & Stock Management Domain (`/sales/uniform`, `/stock/uniform/add`, `/stock/uniform/initial`, `/stock/uniform/po-settings`, `/data/uniform`, `/data/uniform-size`), 5.2 ERD / Relationships (Attendance Domain), 5. Attendance & Leave Management Domain (`/data/attendance-settings`, `/data/attendance-leave`, `/data/attendance-form`), 6.1 Tables, 6.2 ERD / Relationships (Assessment & Grading) (+4 more)
+Cohesion: 0.18
+Nodes (10): 10.1 Tables, 10.2 ERD / Relationships (Duty & Devotion Schedule Domain), 10. Duty, Greeter & Devotion Schedule Domain (`/data/door_greeter`), 11.2 ERD / Relationships (Uniform & Stock Domain), 11.3 Initial Stock & Inventory Ledger Workflows (`/stock/uniform/initial`), 11.4 POS Uniform Sales Workflows (`/sales/uniform`), 11. Uniform & Stock Management Domain (`/sales/uniform`, `/stock/uniform/add`, `/stock/uniform/initial`, `/stock/uniform/po-settings`, `/data/uniform`, `/data/uniform-size`), Database Schema & Relationships (+2 more)
 
 ### Community 140 - "Module 140"
 Cohesion: 0.25
@@ -837,7 +838,7 @@ Nodes (6): **1. Icons Not Showing:**, **2. Teacher Filter Not Working:**, **3. A
 
 ### Community 153 - "Module 153"
 Cohesion: 0.40
-Nodes (5): 10.1 Tables, 10.2 ERD / Relationships (Duty & Devotion Schedule Domain), 10. Duty, Greeter & Devotion Schedule Domain (`/data/door_greeter`), `duty_schedules`, `duty_settings`
+Nodes (5): 6.1 Tables, 6.2 ERD / Relationships (Assessment & Grading), 6. Assessment & Grading Domain (`/data/topic-new` / Reports), `assessment_grade_strands`, `assessment_grades`
 
 ### Community 155 - "Module 155"
 Cohesion: 0.25
@@ -972,8 +973,8 @@ Cohesion: 0.20
 Nodes (9): 1. Protocol Overview, 2. Absolute Negative Constraints (Banned Elements), 3. Typographic Architecture, 4. Color Palette (Warm Monochrome + Spot Pastels), 5. Component Specifications, 6. Iconography & Imagery Directives, 7. Subtle Motion & Micro-Animations, 8. Execution Protocol (+1 more)
 
 ### Community 280 - "🚀 **Setup & Deployment**"
-Cohesion: 0.39
-Nodes (7): AttendanceCheckPage(), CATEGORY_LABEL, fmtMins(), getApproverName(), getMonthEnd(), getMonthStart(), ISSUE_LABELS
+Cohesion: 0.36
+Nodes (8): AttendanceCheckPage(), CATEGORY_LABEL, fmtDuration(), fmtMins(), getApproverName(), getMonthEnd(), getMonthStart(), ISSUE_LABELS
 
 ### Community 282 - "GlobalActionCards.jsx"
 Cohesion: 0.48
@@ -1018,7 +1019,7 @@ Nodes (3): AthleticDayLivePage(), isLightColor(), normalizeTeamColor()
 ## Knowledge Gaps
 - **1213 isolated node(s):** `extends`, `next/core-web-vitals`, `$schema`, `style`, `rsc` (+1208 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **135 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **136 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
@@ -1027,7 +1028,7 @@ _Questions this graph is uniquely positioned to answer:_
   _High betweenness centrality (0.018) - this node is a cross-community bridge._
 - **Why does `jspdf` connect `Admission Management` to `Module 145`, `Module 115`, `Module 133`?**
   _High betweenness centrality (0.013) - this node is a cross-community bridge._
-- **Why does `Database Schema & Relationships` connect `Module 139` to `Module 193`, `page.jsx`, `Module 101`, `Module 104`, `Module 107`, `Module 108`, `Module 140`, `Module 235`, `Module 114`, `Module 148`, `Module 118`, `Module 151`, `Module 153`?**
+- **Why does `Database Schema & Relationships` connect `Module 139` to `Module 193`, `page.jsx`, `Module 101`, `Module 103`, `Module 104`, `Module 107`, `Module 140`, `Module 108`, `Module 235`, `Module 114`, `Module 148`, `Module 118`, `Module 151`, `Module 153`?**
   _High betweenness centrality (0.003) - this node is a cross-community bridge._
 - **What connects `extends`, `next/core-web-vitals`, `$schema` to the rest of the system?**
   _1213 weakly-connected nodes found - possible documentation gaps or missing edges._

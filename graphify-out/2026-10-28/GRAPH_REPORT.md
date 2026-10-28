@@ -1,11 +1,11 @@
 # Graph Report - school-admin  (2026-10-28)
 
 ## Corpus Check
-- 439 files · ~755,831 words
+- 439 files · ~755,810 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 2459 nodes · 2614 edges · 422 communities (287 shown, 135 thin omitted)
+- 2459 nodes · 2614 edges · 421 communities (286 shown, 135 thin omitted)
 - Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 8 edges (avg confidence: 0.65)
 - Token cost: 0 input · 0 output
 
@@ -285,7 +285,6 @@
 - route.js
 - jsonwebtoken
 - jspdf-autotable
-- dotenv
 - driver.js
 - @sparticuz/chromium-min
 - @supabase/supabase-js
@@ -346,7 +345,7 @@
 ## Import Cycles
 - None detected.
 
-## Communities (422 total, 135 thin omitted)
+## Communities (421 total, 135 thin omitted)
 
 ### Community 0 - "Admission Management"
 Cohesion: 0.08
@@ -709,8 +708,8 @@ Cohesion: 0.22
 Nodes (9): 1.1 Tables, 1.2 ERD / Relationships (User & Unit Domain), 1.3 Tables referencing `users`, 1. User, Role & Unit Management Domain (`/data/user`, `/data/role_management`, `/settings/unit`), `dashboard_type`, `report_settings`, `role`, `unit` (+1 more)
 
 ### Community 119 - "Module 119"
-Cohesion: 0.14
-Nodes (13): **Additional Files:**, **Completed Features:**, **Database Migration Files (Execute in Order):**, **Development:**, **Important Files:**, **Key Business Rules:**, **Key Directories:**, **Key Environment:** (+5 more)
+Cohesion: 0.12
+Nodes (16): Attendance (QR) Tables, **Backend & Database:**, **Completed Features:**, **Core Tables:**, �🏗️ **Database Structure**, **Frontend Stack:**, Grades (Nilai) Table, **Important Files:** (+8 more)
 
 ### Community 120 - "Module 120"
 Cohesion: 0.22
@@ -766,7 +765,7 @@ Nodes (7): 33. CATEGORY-SPECIFIC BIAS, Commerce, Fintech, Health / Fitness, Prod
 
 ### Community 133 - "Module 133"
 Cohesion: 0.15
-Nodes (13): class-variance-authority, @googleapis/chat, @hookform/resolvers, lucide-react, dependencies, class-variance-authority, @googleapis/chat, @hookform/resolvers (+5 more)
+Nodes (13): browser-image-compression, @googleapis/chat, @hookform/resolvers, lucide-react, dependencies, browser-image-compression, @googleapis/chat, @hookform/resolvers (+5 more)
 
 ### Community 135 - "Module 135"
 Cohesion: 0.29
@@ -786,7 +785,7 @@ Nodes (5): public.admission_level, public.fee_discount, public.school_fee_defini
 
 ### Community 139 - "Module 139"
 Cohesion: 0.15
-Nodes (12): 11.2 ERD / Relationships (Uniform & Stock Domain), 11.3 Initial Stock & Inventory Ledger Workflows (`/stock/uniform/initial`), 11.4 POS Uniform Sales Workflows (`/sales/uniform`), 11. Uniform & Stock Management Domain (`/sales/uniform`, `/stock/uniform/add`, `/stock/uniform/initial`, `/stock/uniform/po-settings`, `/data/uniform`, `/data/uniform-size`), 5.2 ERD / Relationships (Attendance Domain), 5. Attendance & Leave Management Domain (`/data/attendance-settings`, `/data/attendance-leave`, `/data/attendance-form`), 7.1 Tables, 7.2 ERD / Relationships (Menu Domain) (+4 more)
+Nodes (12): 11.2 ERD / Relationships (Uniform & Stock Domain), 11.3 Initial Stock & Inventory Ledger Workflows (`/stock/uniform/initial`), 11.4 POS Uniform Sales Workflows (`/sales/uniform`), 11. Uniform & Stock Management Domain (`/sales/uniform`, `/stock/uniform/add`, `/stock/uniform/initial`, `/stock/uniform/po-settings`, `/data/uniform`, `/data/uniform-size`), 5.2 ERD / Relationships (Attendance Domain), 5. Attendance & Leave Management Domain (`/data/attendance-settings`, `/data/attendance-leave`, `/data/attendance-form`), 6.1 Tables, 6.2 ERD / Relationships (Assessment & Grading) (+4 more)
 
 ### Community 140 - "Module 140"
 Cohesion: 0.25
@@ -853,8 +852,8 @@ Cohesion: 0.33
 Nodes (6): **Assessment Calendar (View + RPC)**, **Assessment with Relations:**, 📊 **Database Queries Reference**, **Get Teachers Only:**, **Subject with Teacher & Unit:**, **Topics (Units) Queries:**
 
 ### Community 193 - "Module 193"
-Cohesion: 0.50
-Nodes (4): Attendance (QR) Tables, **Core Tables:**, �🏗️ **Database Structure**, Grades (Nilai) Table
+Cohesion: 0.40
+Nodes (5): 7.1 Tables, 7.2 ERD / Relationships (Menu Domain), 7. Menu & Role Permissions Domain (`/data/menu_management`), `menu_permissions`, `menus`
 
 ### Community 194 - "Module 194"
 Cohesion: 0.50
@@ -986,7 +985,7 @@ Nodes (5): buildWeeklyOverviewDocx(), compositeStampAndSignature(), fitAspect(),
 
 ### Community 289 - "bcryptjs"
 Cohesion: 0.40
-Nodes (5): 6.1 Tables, 6.2 ERD / Relationships (Assessment & Grading), 6. Assessment & Grading Domain (`/data/topic-new` / Reports), `assessment_grade_strands`, `assessment_grades`
+Nodes (5): **Additional Files:**, **Database Migration Files (Execute in Order):**, **Development:**, **Key Environment:**, 🚀 **Setup & Deployment**
 
 ### Community 290 - "Panduan Pemasangan: Sistem Persewaan Lapangan CCS di cPanel / Hostinger"
 Cohesion: 0.22
@@ -1003,10 +1002,6 @@ Nodes (3): POST(), supabaseAdmin, verifyAuth()
 ### Community 313 - "SKILL.md"
 Cohesion: 0.50
 Nodes (4): 7. DIAL DEFINITIONS (Technical Reference), DESIGN_VARIANCE (Level 1-10), MOTION_INTENSITY (Level 1-10), VISUAL_DENSITY (Level 1-10)
-
-### Community 316 - "**3. Assessment System**"
-Cohesion: 0.50
-Nodes (4): **Backend & Database:**, **Frontend Stack:**, **Key Technical Notes:**, 🔧 **Technical Implementation**
 
 ### Community 368 - "route.js"
 Cohesion: 0.57
@@ -1028,11 +1023,11 @@ Nodes (3): AthleticDayLivePage(), isLightColor(), normalizeTeamColor()
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `dependencies` connect `Module 133` to `Admission Management`, `Package Dependencies & Config`, `next-auth`, `DDL`, `📁 **Project Structure**`, `react-dom`, `Module 134`, `clsx`, `pdf-lib`, `@radix-ui/react-select`, `react-hook-form`, `React UI Components`, `🎓 **IB MYP Assessment Grading System**`, `clsx`, `@fortawesome/react-fontawesome`, `class-variance-authority`, `@tiptap/extension-table-cell`, `@tiptap/extension-table-header`, `@tiptap/extension-table-row`, `@tiptap/extension-task-item`, `@tiptap/extension-task-list`, `docx`, `@tiptap/extension-text-align`, `@tiptap/extension-text-style`, `@tiptap/extension-underline`, `Module 154`, `@tiptap/pm`, `📁 **Project Structure**`, `bcryptjs`, `@tiptap/react`, `@tiptap/starter-kit`, `xlsx`, `SKILL.md`, `dotenv`, `dotenv`, `zod`, `@googleapis/chat`, `Appendix B - Canonical Sources (read these before reinventing)`, `Analysis & Synthesis Instructions`, `12. THE COMBINATORIAL VARIATION ENGINE`, `📁 **Project Structure**`, `html5-qrcode`, `11. REDESIGN PROTOCOL`, `33. CATEGORY-SPECIFIC BIAS`, `Module 239`, `Module 240`, `jsonwebtoken`, `jspdf-autotable`, `dotenv`, `@sparticuz/chromium-min`, `@supabase/supabase-js`, `react-easy-crop`?**
+- **Why does `dependencies` connect `Module 133` to `Admission Management`, `Package Dependencies & Config`, `next-auth`, `DDL`, `📁 **Project Structure**`, `react-dom`, `Module 134`, `clsx`, `pdf-lib`, `@radix-ui/react-select`, `react-hook-form`, `React UI Components`, `🎓 **IB MYP Assessment Grading System**`, `clsx`, `@fortawesome/react-fontawesome`, `class-variance-authority`, `@tiptap/extension-table-cell`, `@tiptap/extension-table-header`, `@tiptap/extension-table-row`, `@tiptap/extension-task-item`, `@tiptap/extension-task-list`, `docx`, `@tiptap/extension-text-align`, `@tiptap/extension-text-style`, `@tiptap/extension-underline`, `Module 154`, `@tiptap/pm`, `📁 **Project Structure**`, `bcryptjs`, `@tiptap/react`, `@tiptap/starter-kit`, `xlsx`, `SKILL.md`, `dotenv`, `dotenv`, `zod`, `@googleapis/chat`, `Appendix B - Canonical Sources (read these before reinventing)`, `Analysis & Synthesis Instructions`, `**3. Assessment System**`, `12. THE COMBINATORIAL VARIATION ENGINE`, `📁 **Project Structure**`, `html5-qrcode`, `11. REDESIGN PROTOCOL`, `33. CATEGORY-SPECIFIC BIAS`, `Module 239`, `Module 240`, `jsonwebtoken`, `jspdf-autotable`, `@sparticuz/chromium-min`, `@supabase/supabase-js`, `react-easy-crop`?**
   _High betweenness centrality (0.018) - this node is a cross-community bridge._
 - **Why does `jspdf` connect `Admission Management` to `Module 145`, `Module 115`, `Module 133`?**
   _High betweenness centrality (0.013) - this node is a cross-community bridge._
-- **Why does `Database Schema & Relationships` connect `Module 139` to `bcryptjs`, `page.jsx`, `Module 101`, `Module 104`, `Module 107`, `Module 108`, `Module 140`, `Module 235`, `Module 114`, `Module 148`, `Module 118`, `Module 151`, `Module 153`?**
+- **Why does `Database Schema & Relationships` connect `Module 139` to `Module 193`, `page.jsx`, `Module 101`, `Module 104`, `Module 107`, `Module 108`, `Module 140`, `Module 235`, `Module 114`, `Module 148`, `Module 118`, `Module 151`, `Module 153`?**
   _High betweenness centrality (0.003) - this node is a cross-community bridge._
 - **What connects `extends`, `next/core-web-vitals`, `$schema` to the rest of the system?**
   _1213 weakly-connected nodes found - possible documentation gaps or missing edges._

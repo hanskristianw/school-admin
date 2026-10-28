@@ -376,7 +376,6 @@
   "374": "cleanup-scan-log-columns.sql",
   "375": "jsonwebtoken",
   "376": "jspdf-autotable",
-  "377": "dotenv",
   "378": "driver.js",
   "379": "@sparticuz/chromium-min",
   "380": "@supabase/supabase-js",
