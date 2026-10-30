@@ -4102,12 +4102,42 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
     }
   }, [mentorKelas, attendanceDate, attendanceRecords, currentUserId])
 
-  // Mark all students as 'hadir' at once
+  // Mark all students as 'hadir' at once (via single batch API call)
   const markAllHadir = useCallback(async () => {
-    for (const s of attendanceStudents) {
-      await saveSingleAttendance(s.detail_siswa_id, 'hadir', '')
+    if (!mentorKelas || !attendanceDate || attendanceStudents.length === 0) return
+    setLoadingAttendance(true)
+    try {
+      const recordsToSave = attendanceStudents.map(s => ({
+        detail_siswa_id: s.detail_siswa_id,
+        status: 'hadir',
+        keterangan: attendanceRecords[s.detail_siswa_id]?.keterangan || ''
+      }))
+      const res = await fetch('/api/kelas-attendance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          kelas_id: parseInt(mentorKelas),
+          tanggal: attendanceDate,
+          records: recordsToSave,
+          created_by: currentUserId || null,
+        }),
+      })
+      if (!res.ok) throw new Error(await res.text())
+      const savedResult = await res.json()
+      const newRecords = { ...attendanceRecords }
+      for (const item of (savedResult.saved || [])) {
+        newRecords[item.detail_siswa_id] = { id: item.id, status: item.status, keterangan: item.keterangan || '' }
+      }
+      setAttendanceRecords(newRecords)
+      if (savedResult.summary) {
+        setAttendanceStats(savedResult.summary)
+      }
+    } catch (err) {
+      console.error('[attendance] markAllHadir error:', err)
+    } finally {
+      setLoadingAttendance(false)
     }
-  }, [attendanceStudents, saveSingleAttendance])
+  }, [mentorKelas, attendanceDate, attendanceStudents, attendanceRecords, currentUserId])
 
   // Clear all attendance for selected kelas + date
   const clearAttendance = useCallback(async () => {

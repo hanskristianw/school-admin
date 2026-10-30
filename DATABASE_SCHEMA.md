@@ -927,6 +927,10 @@ Stores daily student attendance recorded by teachers/homeroom mentors per class 
 | `created_at` | `TIMESTAMPTZ`| Record creation timestamp |
 | `CONSTRAINT` | `UNIQUE` | `(detail_siswa_id, tanggal)` |
 
+> [!IMPORTANT]
+> **Supabase 1,000-Row Query Limit Warning**:
+> `kelas_attendance` accumulates thousands of rows per academic year (e.g., 20 students × 180 days = 3,600 rows per class). PostgREST enforces a hard cap of 1,000 rows per query response (`max-rows = 1000`). Calling `.range(0, 99999)` **DOES NOT** bypass this cap! All cumulative calculations, full-year exports, and history aggregations MUST use chunked range pagination (`range(from, from + 999)`) in a loop. Batch saves should always be used instead of loop-based individual upserts.
+
 ### 5.2 ERD / Relationships (Attendance Domain)
 
 ```mermaid

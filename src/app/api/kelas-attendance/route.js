@@ -9,6 +9,30 @@ const supabaseAdmin = createClient(
 )
 
 /**
+ * Helper to fetch all rows across PostgREST's default 1,000 row cap using chunked range pagination.
+ */
+async function fetchAllAttendanceRows(queryFn, chunkSize = 1000) {
+  let allRows = []
+  let from = 0
+  let hasMore = true
+
+  while (hasMore) {
+    const { data, error } = await queryFn(from, from + chunkSize - 1)
+    if (error) throw error
+    if (!data || data.length === 0) break
+
+    allRows = allRows.concat(data)
+    if (data.length < chunkSize) {
+      hasMore = false
+    } else {
+      from += chunkSize
+    }
+  }
+
+  return allRows
+}
+
+/**
  * Helper to compute cumulative attendance statistics per student for a given class.
  * Respects student's resign_date so days after resignation are not counted against the student.
  */
@@ -30,12 +54,16 @@ async function computeClassAttendanceSummary(kelasId, studentsList = []) {
     }))
   }
 
-  const { data: allClassAtt, error } = await supabaseAdmin
-    .from('kelas_attendance')
-    .select('detail_siswa_id, tanggal, status')
-    .eq('kelas_id', kelasId)
-
-  if (error) {
+  let allClassAtt = []
+  try {
+    allClassAtt = await fetchAllAttendanceRows((from, to) =>
+      supabaseAdmin
+        .from('kelas_attendance')
+        .select('detail_siswa_id, tanggal, status')
+        .eq('kelas_id', kelasId)
+        .range(from, to)
+    )
+  } catch (error) {
     console.error('[kelas-attendance] computeSummary error:', error)
     return { summary: {}, totalDays: 0 }
   }
@@ -125,16 +153,14 @@ export async function GET(request) {
         resign_date: d.users?.resign_date || null
       })).sort((a, b) => a.nama.localeCompare(b.nama))
 
-      const { data: attData, error: attError } = await supabaseAdmin
-        .from('kelas_attendance')
-        .select('id, detail_siswa_id, tanggal, status, keterangan')
-        .eq('kelas_id', kelasId)
-        .order('tanggal', { ascending: true })
-        .range(0, 99999)
-
-      if (attError) throw attError
-
-      const records = attData || []
+      const records = await fetchAllAttendanceRows((from, to) =>
+        supabaseAdmin
+          .from('kelas_attendance')
+          .select('id, detail_siswa_id, tanggal, status, keterangan')
+          .eq('kelas_id', kelasId)
+          .order('tanggal', { ascending: true })
+          .range(from, to)
+      )
       const distinctDates = Array.from(new Set(records.map(r => r.tanggal))).sort()
       const distinctMonths = Array.from(new Set(records.map(r => r.tanggal.slice(0, 7)))).sort()
 
@@ -200,18 +226,48 @@ export async function GET(request) {
 
 /**
  * POST /api/kelas-attendance
- * Body: { kelas_id, detail_siswa_id, tanggal, status, keterangan, created_by, existing_id? }
+ * Body (single): { kelas_id, detail_siswa_id, tanggal, status, keterangan, created_by, existing_id? }
+ * Body (batch):  { kelas_id, tanggal, records: [{ detail_siswa_id, status, keterangan? }], created_by }
  */
 export async function POST(request) {
   try {
     const body = await request.json()
-    const { kelas_id, detail_siswa_id, tanggal, status, keterangan, created_by, existing_id } = body
+    const { kelas_id, detail_siswa_id, tanggal, status, keterangan, created_by, existing_id, records } = body
 
-    if (!kelas_id || !detail_siswa_id || !tanggal || !status) {
-      return NextResponse.json({ error: 'kelas_id, detail_siswa_id, tanggal, status required' }, { status: 400 })
+    if (!kelas_id || !tanggal) {
+      return NextResponse.json({ error: 'kelas_id and tanggal required' }, { status: 400 })
     }
 
     const validStatuses = ['hadir', 'tidak_hadir', 'ijin', 'sakit', 'terlambat', 'pulang_cepat']
+
+    // Batch mode: records is an array of { detail_siswa_id, status, keterangan? }
+    if (Array.isArray(records) && records.length > 0) {
+      const recordsToUpsert = records
+        .filter(r => r.detail_siswa_id && validStatuses.includes(r.status))
+        .map(r => ({
+          kelas_id: parseInt(kelas_id),
+          detail_siswa_id: parseInt(r.detail_siswa_id),
+          tanggal,
+          status: r.status,
+          keterangan: r.keterangan || null,
+          created_by: created_by || null,
+        }))
+
+      const { data, error } = await supabaseAdmin
+        .from('kelas_attendance')
+        .upsert(recordsToUpsert, { onConflict: 'detail_siswa_id,tanggal' })
+        .select('id, detail_siswa_id, status, keterangan')
+
+      if (error) throw error
+
+      const { summary, totalDays } = await computeClassAttendanceSummary(parseInt(kelas_id))
+      return NextResponse.json({ success: true, saved: data || [], summary, totalDays })
+    }
+
+    if (!detail_siswa_id || !status) {
+      return NextResponse.json({ error: 'kelas_id, detail_siswa_id, tanggal, status required' }, { status: 400 })
+    }
+
     if (!validStatuses.includes(status)) {
       return NextResponse.json({ error: 'Invalid status' }, { status: 400 })
     }
