@@ -27,6 +27,9 @@ import GoogleClassroomConnector, {
   getStoredClassroomToken, 
   setStoredClassroomToken, 
   clearStoredClassroomToken,
+  refreshClassroomToken,
+  getValidClassroomToken,
+  authorizeGoogleClassroom,
   extractClassroomLinks 
 } from '@/app/data/topic-new/components/GoogleClassroomConnector'
 
@@ -171,13 +174,14 @@ export default function AssessmentGradingPage() {
 
       setStudents(studentList)
 
-      // Auto-fetch classroom submissions if assessment is linked
+      // Auto-fetch classroom submissions if assessment is linked (with automatic token validity check)
       const cLinks = extractClassroomLinks(assessmentData.assessment_tsc)
       if (cLinks.length > 0) {
-        const token = getStoredClassroomToken()
-        if (token) {
-          fetchClassroomSubmissions(cLinks, token)
-        }
+        getValidClassroomToken().then(token => {
+          if (token) {
+            fetchClassroomSubmissions(cLinks, token)
+          }
+        })
       }
 
       // 4. Fetch criteria for this assessment
@@ -562,12 +566,12 @@ export default function AssessmentGradingPage() {
     }
   }, [classroomLinks, activeCourseworkId])
 
-  // Fetch submissions from Google Classroom API proxy for all linked coursework
+  // Fetch submissions from Google Classroom API proxy for all linked coursework (with automatic silent refresh)
   const fetchClassroomSubmissions = async (linksParam, tokenParam) => {
     const links = linksParam || classroomLinks
     if (!links || links.length === 0) return
 
-    const token = tokenParam || getStoredClassroomToken()
+    let token = tokenParam || await getValidClassroomToken()
     if (!token) return
 
     setLoadingSubmissions(true)
@@ -575,9 +579,21 @@ export default function AssessmentGradingPage() {
     try {
       const results = {}
       for (const link of links) {
-        const res = await fetch(`/api/classroom/submissions?courseId=${encodeURIComponent(link.courseId)}&courseworkId=${encodeURIComponent(link.courseworkId)}`, {
+        let res = await fetch(`/api/classroom/submissions?courseId=${encodeURIComponent(link.courseId)}&courseworkId=${encodeURIComponent(link.courseworkId)}`, {
           headers: { Authorization: `Bearer ${token}` }
         })
+
+        // If token expired, attempt silent background refresh first before giving error
+        if (res.status === 401 || res.status === 403) {
+          const refreshedToken = await refreshClassroomToken()
+          if (refreshedToken) {
+            token = refreshedToken
+            res = await fetch(`/api/classroom/submissions?courseId=${encodeURIComponent(link.courseId)}&courseworkId=${encodeURIComponent(link.courseworkId)}`, {
+              headers: { Authorization: `Bearer ${refreshedToken}` }
+            })
+          }
+        }
+
         const data = await res.json()
         if (!res.ok) {
           if (res.status === 401 || res.status === 403 || data.error === 'insufficient_roster_scope') {
@@ -598,46 +614,31 @@ export default function AssessmentGradingPage() {
     }
   }
 
-  // Connect Google account if token is missing or permissions changed
+  // Connect Google account using OAuth2 Code Flow (stores refresh_token for permanent silent refresh)
   const handleConnectGoogle = () => {
-    if (typeof window === 'undefined' || !window.google?.accounts?.oauth2) {
-      setClassroomError('Google Identity Services SDK is still loading. Please try again.')
-      return
-    }
-
     const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID
     if (!clientId) {
       setClassroomError('NEXT_PUBLIC_GOOGLE_CLIENT_ID is not configured.')
       return
     }
 
-    setIsAuthenticating(true)
-    setClassroomError('')
-
-    try {
-      const client = window.google.accounts.oauth2.initTokenClient({
-        client_id: clientId,
-        scope: GOOGLE_CLASSROOM_SCOPES,
-        callback: async (tokenResponse) => {
-          setIsAuthenticating(false)
-          if (tokenResponse.error) {
-            setClassroomError(`Google authorization error: ${tokenResponse.error_description || tokenResponse.error}`)
-            return
-          }
-          if (tokenResponse.access_token) {
-            setStoredClassroomToken(tokenResponse.access_token)
-            if (classroomLinks.length > 0) {
-              fetchClassroomSubmissions(classroomLinks, tokenResponse.access_token)
-            }
-          }
+    authorizeGoogleClassroom({
+      clientId,
+      onStart: () => {
+        setIsAuthenticating(true)
+        setClassroomError('')
+      },
+      onSuccess: async (newToken) => {
+        setIsAuthenticating(false)
+        if (classroomLinks.length > 0) {
+          await fetchClassroomSubmissions(classroomLinks, newToken)
         }
-      })
-
-      client.requestAccessToken({ prompt: 'consent' })
-    } catch (err) {
-      setIsAuthenticating(false)
-      setClassroomError(err.message)
-    }
+      },
+      onError: (err) => {
+        setIsAuthenticating(false)
+        setClassroomError(err.message)
+      }
+    })
   }
 
   // Handle classroom links update from connector

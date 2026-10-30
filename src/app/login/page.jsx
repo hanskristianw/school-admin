@@ -229,10 +229,10 @@ function LoginContent() {
     }
     
     // Use Code Client (authorization code flow) - provides refresh_token
-    // Include calendar scope for Google Calendar integration
+    // Include calendar, classroom, and drive scopes for seamless integration
     window.googleCodeClient = window.google.accounts.oauth2.initCodeClient({
       client_id: googleClientId,
-      scope: 'email profile https://www.googleapis.com/auth/calendar.readonly',
+      scope: 'email profile https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/classroom.courses.readonly https://www.googleapis.com/auth/classroom.coursework.students https://www.googleapis.com/auth/classroom.student-submissions.students.readonly https://www.googleapis.com/auth/classroom.rosters.readonly https://www.googleapis.com/auth/classroom.profile.emails https://www.googleapis.com/auth/drive.readonly',
       ux_mode: 'popup',
       callback: async (codeResponse) => {
         console.log('🔐 Google OAuth code callback:', codeResponse.code ? 'Code received' : 'No code')

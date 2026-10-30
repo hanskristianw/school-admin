@@ -6612,10 +6612,21 @@
       "norm_label": "supabaseadmin"
     },
     {
+      "label": "fetchAllAttendanceRows()",
+      "file_type": "code",
+      "source_file": "src/app/api/kelas-attendance/route.js",
+      "source_location": "L14",
+      "_origin": "ast",
+      "id": "src_app_api_kelas_attendance_route_fetchallattendancerows",
+      "community": 44,
+      "community_name": "Module 44",
+      "norm_label": "fetchallattendancerows()"
+    },
+    {
       "label": "computeClassAttendanceSummary()",
       "file_type": "code",
       "source_file": "src/app/api/kelas-attendance/route.js",
-      "source_location": "L15",
+      "source_location": "L39",
       "_origin": "ast",
       "id": "src_app_api_kelas_attendance_route_computeclassattendancesummary",
       "community": 44,
@@ -6626,7 +6637,7 @@
       "label": "GET()",
       "file_type": "code",
       "source_file": "src/app/api/kelas-attendance/route.js",
-      "source_location": "L93",
+      "source_location": "L121",
       "_origin": "ast",
       "id": "src_app_api_kelas_attendance_route_get",
       "community": 44,
@@ -6637,7 +6648,7 @@
       "label": "POST()",
       "file_type": "code",
       "source_file": "src/app/api/kelas-attendance/route.js",
-      "source_location": "L205",
+      "source_location": "L232",
       "_origin": "ast",
       "id": "src_app_api_kelas_attendance_route_post",
       "community": 44,
@@ -6648,7 +6659,7 @@
       "label": "DELETE()",
       "file_type": "code",
       "source_file": "src/app/api/kelas-attendance/route.js",
-      "source_location": "L260",
+      "source_location": "L316",
       "_origin": "ast",
       "id": "src_app_api_kelas_attendance_route_delete",
       "community": 44,
@@ -22282,8 +22293,8 @@
       "source_location": "L5",
       "_origin": "ast",
       "id": "main_documentation_2026_07_16_timetable_refactor_weekly_plan_dates_weekly_overview",
-      "community": 155,
-      "community_name": "Module 155",
+      "community": 102,
+      "community_name": "Module 102",
       "norm_label": "2026-07-16 \u2014 timetable refactor + weekly plan dates + weekly overview"
     },
     {
@@ -22293,8 +22304,8 @@
       "source_location": "L7",
       "_origin": "ast",
       "id": "main_documentation_timetable_refactor_data_timetable",
-      "community": 155,
-      "community_name": "Module 155",
+      "community": 102,
+      "community_name": "Module 102",
       "norm_label": "timetable refactor (`/data/timetable`)"
     },
     {
@@ -22304,8 +22315,8 @@
       "source_location": "L17",
       "_origin": "ast",
       "id": "main_documentation_timetable_exceptions_timetable_exception_new_table",
-      "community": 155,
-      "community_name": "Module 155",
+      "community": 102,
+      "community_name": "Module 102",
       "norm_label": "timetable exceptions (`timetable_exception`) \u2014 new table"
     },
     {
@@ -22315,8 +22326,8 @@
       "source_location": "L46",
       "_origin": "ast",
       "id": "main_documentation_weekly_plan_dates_topic_weekly_plan_week_date",
-      "community": 155,
-      "community_name": "Module 155",
+      "community": 102,
+      "community_name": "Module 102",
       "norm_label": "weekly plan dates \u2014 `topic_weekly_plan.week_date`"
     },
     {
@@ -22326,8 +22337,8 @@
       "source_location": "L54",
       "_origin": "ast",
       "id": "main_documentation_weekly_overview_data_weekly_overview_new_page",
-      "community": 155,
-      "community_name": "Module 155",
+      "community": 102,
+      "community_name": "Module 102",
       "norm_label": "weekly overview (`/data/weekly-overview`) \u2014 new page"
     },
     {
@@ -22337,8 +22348,8 @@
       "source_location": "L73",
       "_origin": "ast",
       "id": "main_documentation_weekly_overview_draft_table_new",
-      "community": 155,
-      "community_name": "Module 155",
+      "community": 102,
+      "community_name": "Module 102",
       "norm_label": "`weekly_overview_draft` table \u2014 new"
     },
     {
@@ -22348,8 +22359,8 @@
       "source_location": "L87",
       "_origin": "ast",
       "id": "main_documentation_topic_weekly_plan_complete_schema_reference",
-      "community": 155,
-      "community_name": "Module 155",
+      "community": 102,
+      "community_name": "Module 102",
       "norm_label": "`topic_weekly_plan` \u2014 complete schema reference"
     },
     {
@@ -22359,8 +22370,8 @@
       "source_location": "L103",
       "_origin": "ast",
       "id": "main_documentation_full_data_flow_timetable_weekly_overview",
-      "community": 155,
-      "community_name": "Module 155",
+      "community": 102,
+      "community_name": "Module 102",
       "norm_label": "full data flow: timetable \u2192 weekly overview"
     },
     {
@@ -22513,8 +22524,8 @@
       "source_location": "L287",
       "_origin": "ast",
       "id": "main_documentation_database_structure",
-      "community": 119,
-      "community_name": "Module 119",
+      "community": 289,
+      "community_name": "bcryptjs",
       "norm_label": "\ufffd\ud83c\udfd7\ufe0f **database structure**"
     },
     {
@@ -22524,8 +22535,8 @@
       "source_location": "L289",
       "_origin": "ast",
       "id": "main_documentation_core_tables",
-      "community": 119,
-      "community_name": "Module 119",
+      "community": 289,
+      "community_name": "bcryptjs",
       "norm_label": "**core tables:**"
     },
     {
@@ -22535,8 +22546,8 @@
       "source_location": "L524",
       "_origin": "ast",
       "id": "main_documentation_grades_nilai_table",
-      "community": 119,
-      "community_name": "Module 119",
+      "community": 289,
+      "community_name": "bcryptjs",
       "norm_label": "grades (nilai) table"
     },
     {
@@ -22546,8 +22557,8 @@
       "source_location": "L539",
       "_origin": "ast",
       "id": "main_documentation_attendance_qr_tables",
-      "community": 119,
-      "community_name": "Module 119",
+      "community": 289,
+      "community_name": "bcryptjs",
       "norm_label": "attendance (qr) tables"
     },
     {
@@ -22590,8 +22601,8 @@
       "source_location": "L618",
       "_origin": "ast",
       "id": "main_documentation_3_assessment_system",
-      "community": 82,
-      "community_name": "Module 82",
+      "community": 420,
+      "community_name": "**3. Assessment System**",
       "norm_label": "**3. assessment system**"
     },
     {
@@ -22601,8 +22612,8 @@
       "source_location": "L619",
       "_origin": "ast",
       "id": "main_documentation_teacher_workflow",
-      "community": 82,
-      "community_name": "Module 82",
+      "community": 420,
+      "community_name": "**3. Assessment System**",
       "norm_label": "**teacher workflow**:"
     },
     {
@@ -22612,8 +22623,8 @@
       "source_location": "L628",
       "_origin": "ast",
       "id": "main_documentation_admin_workflow",
-      "community": 82,
-      "community_name": "Module 82",
+      "community": 420,
+      "community_name": "**3. Assessment System**",
       "norm_label": "**admin workflow**:"
     },
     {
@@ -22744,8 +22755,8 @@
       "source_location": "L812",
       "_origin": "ast",
       "id": "main_documentation_technical_implementation",
-      "community": 119,
-      "community_name": "Module 119",
+      "community": 414,
+      "community_name": "\ud83d\udd27 **Technical Implementation**",
       "norm_label": "\ud83d\udd27 **technical implementation**"
     },
     {
@@ -22755,8 +22766,8 @@
       "source_location": "L814",
       "_origin": "ast",
       "id": "main_documentation_frontend_stack",
-      "community": 119,
-      "community_name": "Module 119",
+      "community": 414,
+      "community_name": "\ud83d\udd27 **Technical Implementation**",
       "norm_label": "**frontend stack:**"
     },
     {
@@ -22766,8 +22777,8 @@
       "source_location": "L821",
       "_origin": "ast",
       "id": "main_documentation_backend_database",
-      "community": 119,
-      "community_name": "Module 119",
+      "community": 414,
+      "community_name": "\ud83d\udd27 **Technical Implementation**",
       "norm_label": "**backend & database:**"
     },
     {
@@ -22777,8 +22788,8 @@
       "source_location": "L827",
       "_origin": "ast",
       "id": "main_documentation_key_technical_notes",
-      "community": 119,
-      "community_name": "Module 119",
+      "community": 414,
+      "community_name": "\ud83d\udd27 **Technical Implementation**",
       "norm_label": "**key technical notes:**"
     },
     {
@@ -22788,8 +22799,8 @@
       "source_location": "L881",
       "_origin": "ast",
       "id": "main_documentation_setup_deployment",
-      "community": 289,
-      "community_name": "bcryptjs",
+      "community": 119,
+      "community_name": "Module 119",
       "norm_label": "\ud83d\ude80 **setup & deployment**"
     },
     {
@@ -22799,8 +22810,8 @@
       "source_location": "L883",
       "_origin": "ast",
       "id": "main_documentation_database_migration_files_execute_in_order",
-      "community": 289,
-      "community_name": "bcryptjs",
+      "community": 119,
+      "community_name": "Module 119",
       "norm_label": "**database migration files (execute in order):**"
     },
     {
@@ -22810,8 +22821,8 @@
       "source_location": "L911",
       "_origin": "ast",
       "id": "main_documentation_development",
-      "community": 289,
-      "community_name": "bcryptjs",
+      "community": 119,
+      "community_name": "Module 119",
       "norm_label": "**development:**"
     },
     {
@@ -22821,8 +22832,8 @@
       "source_location": "L918",
       "_origin": "ast",
       "id": "main_documentation_key_environment",
-      "community": 289,
-      "community_name": "bcryptjs",
+      "community": 119,
+      "community_name": "Module 119",
       "norm_label": "**key environment:**"
     },
     {
@@ -22832,8 +22843,8 @@
       "source_location": "L928",
       "_origin": "ast",
       "id": "main_documentation_additional_files",
-      "community": 289,
-      "community_name": "bcryptjs",
+      "community": 119,
+      "community_name": "Module 119",
       "norm_label": "**additional files:**"
     },
     {
@@ -23096,8 +23107,8 @@
       "source_location": "L1119",
       "_origin": "ast",
       "id": "main_documentation_key_components",
-      "community": 105,
-      "community_name": "Module 105",
+      "community": 155,
+      "community_name": "Module 155",
       "norm_label": "**key components**"
     },
     {
@@ -23107,8 +23118,8 @@
       "source_location": "L1121",
       "_origin": "ast",
       "id": "main_documentation_1_myp_year_level_selection",
-      "community": 105,
-      "community_name": "Module 105",
+      "community": 155,
+      "community_name": "Module 155",
       "norm_label": "**1. myp year level selection**"
     },
     {
@@ -23118,8 +23129,8 @@
       "source_location": "L1128",
       "_origin": "ast",
       "id": "main_documentation_2_criterion_grades_a_b_c_d",
-      "community": 105,
-      "community_name": "Module 105",
+      "community": 155,
+      "community_name": "Module 155",
       "norm_label": "**2. criterion grades (a, b, c, d)**"
     },
     {
@@ -23129,8 +23140,8 @@
       "source_location": "L1138",
       "_origin": "ast",
       "id": "main_documentation_3_strand_grades",
-      "community": 105,
-      "community_name": "Module 105",
+      "community": 155,
+      "community_name": "Module 155",
       "norm_label": "**3. strand grades**"
     },
     {
@@ -23140,8 +23151,8 @@
       "source_location": "L1147",
       "_origin": "ast",
       "id": "main_documentation_4_final_grade_1_7",
-      "community": 105,
-      "community_name": "Module 105",
+      "community": 155,
+      "community_name": "Module 155",
       "norm_label": "**4. final grade (1-7)**"
     },
     {
@@ -23217,8 +23228,8 @@
       "source_location": "L1221",
       "_origin": "ast",
       "id": "main_documentation_project_structure",
-      "community": 119,
-      "community_name": "Module 119",
+      "community": 421,
+      "community_name": "\ud83d\udcc1 **Project Structure**",
       "norm_label": "\ud83d\udcc1 **project structure**"
     },
     {
@@ -23228,8 +23239,8 @@
       "source_location": "L1223",
       "_origin": "ast",
       "id": "main_documentation_key_directories",
-      "community": 119,
-      "community_name": "Module 119",
+      "community": 421,
+      "community_name": "\ud83d\udcc1 **Project Structure**",
       "norm_label": "**key directories:**"
     },
     {
@@ -23239,8 +23250,8 @@
       "source_location": "L1229",
       "_origin": "ast",
       "id": "main_documentation_important_files",
-      "community": 119,
-      "community_name": "Module 119",
+      "community": 421,
+      "community_name": "\ud83d\udcc1 **Project Structure**",
       "norm_label": "**important files:**"
     },
     {
@@ -33911,7 +33922,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/app/api/kelas-attendance/route.js",
-      "source_location": "L15",
+      "source_location": "L39",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_api_kelas_attendance_route",
@@ -33922,7 +33933,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/app/api/kelas-attendance/route.js",
-      "source_location": "L260",
+      "source_location": "L316",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_api_kelas_attendance_route",
@@ -33933,7 +33944,18 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/app/api/kelas-attendance/route.js",
-      "source_location": "L93",
+      "source_location": "L14",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_api_kelas_attendance_route",
+      "target": "src_app_api_kelas_attendance_route_fetchallattendancerows",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/kelas-attendance/route.js",
+      "source_location": "L121",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_api_kelas_attendance_route",
@@ -33944,7 +33966,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/app/api/kelas-attendance/route.js",
-      "source_location": "L205",
+      "source_location": "L232",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_api_kelas_attendance_route",
@@ -33967,7 +33989,31 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/app/api/kelas-attendance/route.js",
-      "source_location": "L278",
+      "source_location": "L59",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_api_kelas_attendance_route_computeclassattendancesummary",
+      "target": "src_app_api_kelas_attendance_route_fetchallattendancerows",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/kelas-attendance/route.js",
+      "source_location": "L156",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_api_kelas_attendance_route_get",
+      "target": "src_app_api_kelas_attendance_route_fetchallattendancerows",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/kelas-attendance/route.js",
+      "source_location": "L334",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_api_kelas_attendance_route_delete",
@@ -33979,7 +34025,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/app/api/kelas-attendance/route.js",
-      "source_location": "L141",
+      "source_location": "L167",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_api_kelas_attendance_route_get",
@@ -33991,7 +34037,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/app/api/kelas-attendance/route.js",
-      "source_location": "L247",
+      "source_location": "L263",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_api_kelas_attendance_route_post",
@@ -39932,7 +39978,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/app/data/topic-new/page.jsx",
-      "source_location": "L5174",
+      "source_location": "L5204",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_topic_new_page_topicnewpage",
@@ -40508,7 +40554,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/app/data/topic-new/page.jsx",
-      "source_location": "L6226",
+      "source_location": "L6256",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_topic_new_page_topicnewpage",
@@ -40532,7 +40578,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/app/data/topic-new/page.jsx",
-      "source_location": "L6227",
+      "source_location": "L6257",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_topic_new_page_topicnewpage",
@@ -40556,7 +40602,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/app/data/topic-new/page.jsx",
-      "source_location": "L5796",
+      "source_location": "L5826",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_topic_new_page_topicnewpage",
@@ -40784,7 +40830,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/app/data/topic-new/page.jsx",
-      "source_location": "L5805",
+      "source_location": "L5835",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_topic_new_page_topicnewpage",
@@ -40808,7 +40854,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/app/data/topic-new/page.jsx",
-      "source_location": "L5820",
+      "source_location": "L5850",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_topic_new_page_topicnewpage",
@@ -40832,7 +40878,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/app/data/topic-new/page.jsx",
-      "source_location": "L5836",
+      "source_location": "L5866",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_topic_new_page_topicnewpage",
@@ -40856,7 +40902,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/app/data/topic-new/page.jsx",
-      "source_location": "L5848",
+      "source_location": "L5878",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_topic_new_page_topicnewpage",
@@ -40999,7 +41045,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/app/data/topic-new/page.jsx",
-      "source_location": "L5124",
+      "source_location": "L5154",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_topic_new_page_topicnewpage",
@@ -56331,5 +56377,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "7ac7726d6ec0487060c57190786884a25b16e628"
+  "built_at_commit": "2e5efc232499d75a8a70bd08579bd1e3b345658a"
 }

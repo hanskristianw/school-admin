@@ -48,7 +48,9 @@ export const GOOGLE_CLASSROOM_SCOPES = [
 export const getStoredClassroomToken = () => {
   if (typeof window === 'undefined') return null
   try {
-    return localStorage.getItem('gclass_access_token') || sessionStorage.getItem('gclass_access_token')
+    return localStorage.getItem('gclass_access_token') || 
+           sessionStorage.getItem('gclass_access_token') ||
+           localStorage.getItem('google_access_token')
   } catch (e) {
     return null
   }
@@ -58,12 +60,143 @@ export const setStoredClassroomToken = (token) => {
   if (typeof window === 'undefined' || !token) return
   try { localStorage.setItem('gclass_access_token', token) } catch (e) {}
   try { sessionStorage.setItem('gclass_access_token', token) } catch (e) {}
+  try { localStorage.setItem('google_access_token', token) } catch (e) {}
 }
 
 export const clearStoredClassroomToken = () => {
   if (typeof window === 'undefined') return
   try { localStorage.removeItem('gclass_access_token') } catch (e) {}
   try { sessionStorage.removeItem('gclass_access_token') } catch (e) {}
+}
+
+/**
+ * Silently refresh Google access token in the background using stored refresh_token.
+ * Does not require any popup or user interaction.
+ */
+export const refreshClassroomToken = async () => {
+  if (typeof window === 'undefined') return null
+  const refreshToken = localStorage.getItem('google_refresh_token')
+  if (!refreshToken) return null
+
+  try {
+    const res = await fetch('/api/auth/google/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refresh_token: refreshToken })
+    })
+    const data = await res.json()
+    if (res.ok && data.access_token) {
+      setStoredClassroomToken(data.access_token)
+      const expiresAt = Date.now() + ((data.expires_in || 3600) - 300) * 1000
+      localStorage.setItem('google_token_expires_at', expiresAt.toString())
+      return data.access_token
+    }
+  } catch (err) {
+    console.warn('[ClassroomAuth] silent refresh error:', err)
+  }
+  return null
+}
+
+/**
+ * Get a valid classroom token, automatically refreshing it if expired and refresh_token exists.
+ */
+export const getValidClassroomToken = async () => {
+  if (typeof window === 'undefined') return null
+  const token = getStoredClassroomToken()
+  const expiresAt = localStorage.getItem('google_token_expires_at')
+  const refreshToken = localStorage.getItem('google_refresh_token')
+
+  if (refreshToken && (!token || (expiresAt && Date.now() > parseInt(expiresAt, 10)))) {
+    const refreshed = await refreshClassroomToken()
+    if (refreshed) return refreshed
+  }
+  return token
+}
+
+/**
+ * Authorize Google Classroom with OAuth2 Authorization Code flow.
+ * Obtains and saves long-term refresh_token so user NEVER has to re-authorize again.
+ */
+export const authorizeGoogleClassroom = ({ clientId, onSuccess, onError, onStart }) => {
+  if (typeof window === 'undefined' || !window.google?.accounts?.oauth2) {
+    if (onError) onError(new Error('Google Identity Services SDK is still loading. Please retry in a few seconds.'))
+    return
+  }
+
+  if (onStart) onStart()
+
+  const combinedScopes = [
+    'email',
+    'profile',
+    'https://www.googleapis.com/auth/calendar.readonly',
+    GOOGLE_CLASSROOM_SCOPES
+  ].join(' ')
+
+  // Prefer Code Client to obtain long-term refresh_token
+  try {
+    const codeClient = window.google.accounts.oauth2.initCodeClient({
+      client_id: clientId,
+      scope: combinedScopes,
+      ux_mode: 'popup',
+      callback: async (codeResponse) => {
+        if (codeResponse.error) {
+          if (onError) onError(new Error(`Google authorization error: ${codeResponse.error_description || codeResponse.error}`))
+          return
+        }
+        if (codeResponse.code) {
+          try {
+            const res = await fetch('/api/auth/google/token', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                code: codeResponse.code,
+                redirect_uri: window.location.origin
+              })
+            })
+            const data = await res.json()
+            if (res.ok && data.access_token) {
+              setStoredClassroomToken(data.access_token)
+              if (data.refresh_token) {
+                localStorage.setItem('google_refresh_token', data.refresh_token)
+              }
+              const expiresAt = Date.now() + ((data.expires_in || 3600) - 300) * 1000
+              localStorage.setItem('google_token_expires_at', expiresAt.toString())
+              if (onSuccess) onSuccess(data.access_token)
+              return
+            } else {
+              throw new Error(data.details || data.error || 'Failed to exchange code for tokens')
+            }
+          } catch (exchangeErr) {
+            console.error('[ClassroomAuth] Code exchange error:', exchangeErr)
+            if (onError) onError(exchangeErr)
+            return
+          }
+        }
+      }
+    })
+    codeClient.requestCode()
+  } catch (err) {
+    console.warn('[ClassroomAuth] initCodeClient fallback to initTokenClient:', err)
+    try {
+      const tokenClient = window.google.accounts.oauth2.initTokenClient({
+        client_id: clientId,
+        scope: GOOGLE_CLASSROOM_SCOPES,
+        callback: async (tokenResponse) => {
+          if (tokenResponse.error) {
+            if (onError) onError(new Error(`Google authentication error: ${tokenResponse.error_description || tokenResponse.error}`))
+            return
+          }
+          if (tokenResponse.access_token) {
+            setStoredClassroomToken(tokenResponse.access_token)
+            if (onSuccess) onSuccess(tokenResponse.access_token)
+          }
+        }
+      })
+      tokenClient.requestAccessToken({ prompt: '' })
+    } catch (fallbackErr) {
+      if (onError) onError(fallbackErr)
+    }
+  }
 }
 
 // Helper to extract links array safely from assessment_tsc
@@ -166,14 +299,28 @@ export default function GoogleClassroomConnector({
     }
   }, [])
 
-  // Fetch courses with token
-  const fetchCourses = useCallback(async (token) => {
+  // Fetch courses with token (with automatic token refresh)
+  const fetchCourses = useCallback(async (tokenParam) => {
+    let token = tokenParam || await getValidClassroomToken()
+    if (!token) return []
+
     setCoursesLoading(true)
     setAuthError('')
     try {
-      const res = await fetch('/api/classroom/courses', {
+      let res = await fetch('/api/classroom/courses', {
         headers: { Authorization: `Bearer ${token}` }
       })
+
+      if (res.status === 401 || res.status === 403) {
+        const refreshedToken = await refreshClassroomToken()
+        if (refreshedToken) {
+          token = refreshedToken
+          res = await fetch('/api/classroom/courses', {
+            headers: { Authorization: `Bearer ${refreshedToken}` }
+          })
+        }
+      }
+
       const data = await res.json()
       if (!res.ok) {
         if (res.status === 401) {
@@ -192,18 +339,32 @@ export default function GoogleClassroomConnector({
     }
   }, [])
 
-  // Fetch coursework when course is selected
-  const fetchCoursework = useCallback(async (token, courseId) => {
+  // Fetch coursework when course is selected (with automatic token refresh)
+  const fetchCoursework = useCallback(async (tokenParam, courseId) => {
     if (!courseId) {
       setCoursework([])
       return
     }
+    let token = tokenParam || await getValidClassroomToken()
+    if (!token) return
+
     setCourseworkLoading(true)
     setAuthError('')
     try {
-      const res = await fetch(`/api/classroom/coursework?courseId=${encodeURIComponent(courseId)}`, {
+      let res = await fetch(`/api/classroom/coursework?courseId=${encodeURIComponent(courseId)}`, {
         headers: { Authorization: `Bearer ${token}` }
       })
+
+      if (res.status === 401 || res.status === 403) {
+        const refreshedToken = await refreshClassroomToken()
+        if (refreshedToken) {
+          token = refreshedToken
+          res = await fetch(`/api/classroom/coursework?courseId=${encodeURIComponent(courseId)}`, {
+            headers: { Authorization: `Bearer ${refreshedToken}` }
+          })
+        }
+      }
+
       const data = await res.json()
       if (!res.ok) {
         if (res.status === 401) {
@@ -223,12 +384,12 @@ export default function GoogleClassroomConnector({
   }, [])
 
   // Open modal and load courses if token exists
-  const handleOpenModal = () => {
+  const handleOpenModal = async () => {
     setModalOpen(true)
     setAuthError('')
     setStatusMessage('')
 
-    const token = getStoredClassroomToken()
+    const token = await getValidClassroomToken()
     if (token) {
       fetchCourses(token).then(loadedCourses => {
         // If we already have linked assignments, default to first course
@@ -243,44 +404,29 @@ export default function GoogleClassroomConnector({
     }
   }
 
-  // Google OAuth flow
+  // Google OAuth flow (Code Client flow with persistent refresh_token)
   const handleConnectGoogle = () => {
-    if (typeof window === 'undefined' || !window.google?.accounts?.oauth2) {
-      setAuthError('Google Identity Services SDK is still loading. Please retry in a few seconds.')
-      return
-    }
-
     const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID
     if (!clientId) {
       setAuthError('NEXT_PUBLIC_GOOGLE_CLIENT_ID is not configured in environment.')
       return
     }
 
-    setIsAuthenticating(true)
-    setAuthError('')
-
-    try {
-      const client = window.google.accounts.oauth2.initTokenClient({
-        client_id: clientId,
-        scope: GOOGLE_CLASSROOM_SCOPES,
-        callback: async (tokenResponse) => {
-          setIsAuthenticating(false)
-          if (tokenResponse.error) {
-            setAuthError(`Google authentication error: ${tokenResponse.error_description || tokenResponse.error}`)
-            return
-          }
-          if (tokenResponse.access_token) {
-            setStoredClassroomToken(tokenResponse.access_token)
-            await fetchCourses(tokenResponse.access_token)
-          }
-        }
-      })
-
-      client.requestAccessToken({ prompt: 'consent' })
-    } catch (err) {
-      setIsAuthenticating(false)
-      setAuthError(err.message)
-    }
+    authorizeGoogleClassroom({
+      clientId,
+      onStart: () => {
+        setIsAuthenticating(true)
+        setAuthError('')
+      },
+      onSuccess: async (newToken) => {
+        setIsAuthenticating(false)
+        await fetchCourses(newToken)
+      },
+      onError: (err) => {
+        setIsAuthenticating(false)
+        setAuthError(err.message)
+      }
+    })
   }
 
   // When course dropdown changes
