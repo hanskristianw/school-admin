@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useMemo, Fragment } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef, Fragment } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useTheme } from '@/lib/theme'
 import { Button } from '@/components/ui/button'
@@ -8,6 +8,8 @@ import ExcelJS from 'exceljs'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import {
   faFileExcel,
+  faChevronLeft,
+  faChevronRight,
   faBuilding,
   faDownload,
   faCheck,
@@ -143,7 +145,9 @@ export default function AttendanceReportPage() {
   // Data
   const [report, setReport] = useState(null)
   const [loading, setLoading] = useState(false)
+  const [exporting, setExporting] = useState(false)
   const [error, setError] = useState('')
+  const requestSeqRef = useRef(0)
 
   // UI
   const [expandedUser, setExpandedUser] = useState(null)
@@ -164,27 +168,55 @@ export default function AttendanceReportPage() {
     if (sData?.[0]) setGraceMin(parseInt(sData[0].value || '0', 10))
   }
 
-  // ── Fetch Report ───────────────────────────────────────────────────────────
-  const fetchReport = useCallback(async () => {
+  // ── Month Navigation Helpers ──────────────────────────────────────────────
+  const handlePrevMonth = () => {
+    const [y, m] = selectedMonth.split('-').map(Number)
+    const prev = new Date(y, m - 2, 1)
+    setSelectedMonth(`${prev.getFullYear()}-${String(prev.getMonth() + 1).padStart(2, '0')}`)
+  }
+
+  const handleNextMonth = () => {
+    const [y, m] = selectedMonth.split('-').map(Number)
+    const next = new Date(y, m, 1)
+    setSelectedMonth(`${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, '0')}`)
+  }
+
+  // ── Fetch Report with Race-Condition Protection ───────────────────────────
+  const fetchReport = useCallback(async (targetMonth) => {
+    const activeMonth = targetMonth || selectedMonth
+    const [y, m] = activeMonth.split('-').map(Number)
+    const lastDay = new Date(y, m, 0).getDate()
+    const start = `${activeMonth}-01`
+    const end = `${activeMonth}-${String(lastDay).padStart(2, '0')}`
+
+    const seq = ++requestSeqRef.current
     setLoading(true)
     setError('')
     setExpandedUser(null)
     try {
       const params = new URLSearchParams({
-        start: dateStart,
-        end:   dateEnd,
+        start,
+        end,
         grace: String(graceMin)
       })
       const res = await fetch(`/api/attendance/report?${params}`)
       const json = await res.json()
       if (!json.success) throw new Error(json.message)
-      setReport(json)
+      if (seq === requestSeqRef.current) {
+        setReport(json)
+      }
+      return json
     } catch (e) {
-      setError(e.message)
+      if (seq === requestSeqRef.current) {
+        setError(e.message)
+      }
+      throw e
     } finally {
-      setLoading(false)
+      if (seq === requestSeqRef.current) {
+        setLoading(false)
+      }
     }
-  }, [dateStart, dateEnd, graceMin])
+  }, [selectedMonth, graceMin])
 
   useEffect(() => {
     fetchReport()
@@ -245,9 +277,33 @@ export default function AttendanceReportPage() {
 
   // ── Export Excel for Non-Vendor (Official Template) ───────────────────────
   const exportExcel = async () => {
-    if (!report?.data?.length) return
+    if (loading || exporting) return
+    setExporting(true)
+    try {
+      let activeReport = report
+      const currentStart = activeReport?.range?.start
+      if (!activeReport?.data?.length || !currentStart || !currentStart.startsWith(selectedMonth)) {
+        activeReport = await fetchReport(selectedMonth)
+      }
 
-    const wb = new ExcelJS.Workbook()
+      if (!activeReport?.data?.length) {
+        alert('Tidak ada data presensi untuk periode ini.')
+        return
+      }
+
+      const activeNonVendorRows = (activeReport.data || []).filter(r => !r.is_vendor)
+      if (!activeNonVendorRows.length) {
+        alert('Tidak ada data presensi staf non-vendor untuk periode ini.')
+        return
+      }
+
+      // STRICT DATE SYNC: Determine month label and days directly from actual data
+      const reportStart = activeReport.range?.start || activeReport.dates?.[0] || `${selectedMonth}-01`
+      const [rYear, rMonth] = reportStart.split('-').map(Number)
+      const exportMonthLabel = `${MONTHS_ID[rMonth - 1]} ${rYear}`
+      const exportDaysInMonth = new Date(rYear, rMonth, 0).getDate()
+
+      const wb = new ExcelJS.Workbook()
     wb.creator = 'School Admin System'
     wb.created = new Date()
 
@@ -296,7 +352,7 @@ export default function AttendanceReportPage() {
     const PEND_FILL  = { type:'pattern', pattern:'solid', fgColor:{ argb:'FFFEF9C3' } }
     const REJ_FILL   = { type:'pattern', pattern:'solid', fgColor:{ argb:'FFFEE2E2' } }
 
-    const presentUnitIds = new Set(nonVendorRows.map(r => r.unit_id))
+    const presentUnitIds = new Set(activeNonVendorRows.map(r => r.unit_id))
     const sheetDefs = [
       { uid: 'all', name: 'ALL' },
       ...units
@@ -352,7 +408,7 @@ export default function AttendanceReportPage() {
     }
 
     for (const { uid, name } of sheetDefs) {
-      const rows = uid === 'all' ? nonVendorRows : nonVendorRows.filter(r => r.unit_id === uid)
+      const rows = uid === 'all' ? activeNonVendorRows : activeNonVendorRows.filter(r => r.unit_id === uid)
       if (!rows.length) continue
 
       const ws = wb.addWorksheet(name.slice(0, 31))
@@ -368,10 +424,10 @@ export default function AttendanceReportPage() {
       titleCell.alignment = { horizontal: 'center', vertical: 'middle' }
       ws.getRow(2).height = 28
 
-      ws.addRow([`Presensi ${monthLabel}`])
+      ws.addRow([`Presensi ${exportMonthLabel}`])
       ws.mergeCells('A3:M3')
       const subCell = ws.getCell('A3')
-      subCell.value = `Presensi ${monthLabel}`
+      subCell.value = `Presensi ${exportMonthLabel}`
       subCell.font = { bold: true, size: 13, color: { argb: 'FF374151' } }
       subCell.alignment = { horizontal: 'center', vertical: 'middle' }
       ws.getRow(3).height = 22
@@ -494,10 +550,10 @@ export default function AttendanceReportPage() {
     rkTitle.alignment = { horizontal: 'center', vertical: 'middle' }
     wsRekap.getRow(2).height = 24
 
-    wsRekap.addRow([`Periode: ${monthLabel}`])
+    wsRekap.addRow([`Periode: ${exportMonthLabel}`])
     wsRekap.mergeCells('A3:K3')
     const rkSub = wsRekap.getCell('A3')
-    rkSub.value = `Periode: ${monthLabel}`
+    rkSub.value = `Periode: ${exportMonthLabel}`
     rkSub.font = { italic: true, size: 11, color: { argb: 'FF374151' } }
     rkSub.alignment = { horizontal: 'center', vertical: 'middle' }
     wsRekap.getRow(3).height = 18
@@ -520,12 +576,11 @@ export default function AttendanceReportPage() {
     })
     wsRekap.views = [{ state: 'frozen', ySplit: 5 }]
 
-    const [curYear, curMonth] = selectedMonth.split('-').map(Number)
-    const daysInMonth = new Date(curYear, curMonth, 0).getDate()
+    const daysInMonth = exportDaysInMonth
 
     let rkIdx = 1
     let maxRemarksLen = 40
-    for (const u of nonVendorRows) {
+    for (const u of activeNonVendorRows) {
       const isPartTime = !!u.is_part_time_staff
       const isFlexible = !!u.is_flexible_hours
       const isOnCall = !!u.is_on_call_staff
@@ -621,16 +676,40 @@ export default function AttendanceReportPage() {
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `Presensi_${monthLabel.replace(/\s+/g, '_')}.xlsx`
+    a.download = `Presensi_${exportMonthLabel.replace(/\s+/g, '_')}.xlsx`
     a.click()
     URL.revokeObjectURL(url)
+    } catch (err) {
+      console.error('[exportExcel] error:', err)
+      alert('Gagal mengekspor Excel: ' + (err.message || 'Terjadi kesalahan'))
+    } finally {
+      setExporting(false)
+    }
   }
 
   // ── Export Excel for Vendor ───────────────────────────────────────────────
   const exportVendorExcel = async () => {
-    if (!vendorRows.length) return
+    if (loading || exporting) return
+    setExporting(true)
+    try {
+      let activeReport = report
+      const currentStart = activeReport?.range?.start
+      if (!activeReport?.data?.length || !currentStart || !currentStart.startsWith(selectedMonth)) {
+        activeReport = await fetchReport(selectedMonth)
+      }
 
-    const wb = new ExcelJS.Workbook()
+      const activeVendorRows = (activeReport?.data || []).filter(r => r.is_vendor)
+      if (!activeVendorRows.length) {
+        alert('Tidak ada data karyawan vendor untuk periode ini.')
+        return
+      }
+
+      const reportStart = activeReport.range?.start || activeReport.dates?.[0] || `${selectedMonth}-01`
+      const reportEnd   = activeReport.range?.end   || activeReport.dates?.[activeReport.dates.length - 1] || `${selectedMonth}-28`
+      const [rYear, rMonth] = reportStart.split('-').map(Number)
+      const exportMonthLabel = `${MONTHS_ID[rMonth - 1]} ${rYear}`
+
+      const wb = new ExcelJS.Workbook()
     wb.creator = 'School Admin System'
     wb.created = new Date()
 
@@ -663,10 +742,10 @@ export default function AttendanceReportPage() {
     tCell.alignment = { horizontal: 'center', vertical: 'middle' }
     ws.getRow(2).height = 26
 
-    ws.addRow([`Presensi Karyawan Vendor — ${monthLabel}`])
+    ws.addRow([`Presensi Karyawan Vendor — ${exportMonthLabel}`])
     ws.mergeCells('A3:F3')
     const sCell = ws.getCell('A3')
-    sCell.value = `Presensi Karyawan Vendor — ${monthLabel}`
+    sCell.value = `Presensi Karyawan Vendor — ${exportMonthLabel}`
     sCell.font  = { bold: true, size: 12, color: { argb: 'FF374151' } }
     sCell.alignment = { horizontal: 'center', vertical: 'middle' }
     ws.getRow(3).height = 20
@@ -686,7 +765,7 @@ export default function AttendanceReportPage() {
 
     const HARI_ID = ['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu']
     const allVendorDays = []
-    for (const user of vendorRows) {
+    for (const user of activeVendorRows) {
       const scanByDate = new Map()
       for (const d of (user.daily || [])) {
         scanByDate.set(d.date, {
@@ -694,8 +773,8 @@ export default function AttendanceReportPage() {
           scanPulang: d.checkout_time ? d.checkout_time.slice(0, 8) : '',
         })
       }
-      const [sY, sM, sD] = dateStart.split('-').map(Number)
-      const [eY, eM, eD] = dateEnd.split('-').map(Number)
+      const [sY, sM, sD] = reportStart.split('-').map(Number)
+      const [eY, eM, eD] = reportEnd.split('-').map(Number)
       const cur = new Date(sY, sM - 1, sD)
       const end = new Date(eY, eM - 1, eD)
 
@@ -751,9 +830,15 @@ export default function AttendanceReportPage() {
     const url  = URL.createObjectURL(blob)
     const a    = document.createElement('a')
     a.href     = url
-    a.download = `Presensi_Vendor_${monthLabel.replace(/\s+/g, '_')}.xlsx`
+    a.download = `Presensi_Vendor_${exportMonthLabel.replace(/\s+/g, '_')}.xlsx`
     a.click()
     URL.revokeObjectURL(url)
+    } catch (err) {
+      console.error('[exportVendorExcel] error:', err)
+      alert('Gagal mengekspor Excel Vendor: ' + (err.message || 'Terjadi kesalahan'))
+    } finally {
+      setExporting(false)
+    }
   }
 
   return (
@@ -796,34 +881,34 @@ export default function AttendanceReportPage() {
           {vendorRows.length > 0 && (
             <button
               onClick={exportVendorExcel}
-              disabled={!report?.data?.length}
-              className="px-3.5 py-2 text-xs font-semibold rounded-md border transition-all cursor-pointer flex items-center gap-2 hover:brightness-110 active:scale-95"
+              disabled={loading || exporting || !report?.data?.length}
+              className="px-3.5 py-2 text-xs font-semibold rounded-md border transition-all flex items-center gap-2 hover:brightness-110 active:scale-95"
               style={{
                 background: isDark ? 'rgba(234, 88, 12, 0.15)' : '#FFF7ED',
                 borderColor: isDark ? '#EA580C' : '#FDBA74',
                 color: isDark ? '#FB923C' : '#EA580C',
-                opacity: report?.data?.length ? 1 : 0.5,
-                cursor: report?.data?.length ? 'pointer' : 'not-allowed'
+                opacity: (loading || exporting || !report?.data?.length) ? 0.5 : 1,
+                cursor: (loading || exporting || !report?.data?.length) ? 'not-allowed' : 'pointer'
               }}
             >
-              <FontAwesomeIcon icon={faBuilding} className="text-xs" />
-              <span>Export Vendor</span>
+              <FontAwesomeIcon icon={exporting ? faSpinner : faBuilding} className={exporting ? 'animate-spin text-xs' : 'text-xs'} />
+              <span>{exporting ? 'Mengekspor...' : `Export Vendor (${monthLabel})`}</span>
             </button>
           )}
 
           <button
             onClick={exportExcel}
-            disabled={!report?.data?.length}
-            className="px-4 py-2 text-xs font-semibold rounded-md transition-all cursor-pointer flex items-center gap-2 shadow-xs hover:brightness-110 active:scale-95 text-white"
+            disabled={loading || exporting || !report?.data?.length}
+            className="px-4 py-2 text-xs font-semibold rounded-md transition-all flex items-center gap-2 shadow-xs hover:brightness-110 active:scale-95 text-white"
             style={{
               background: '#16A34A',
               border: '1px solid #15803D',
-              opacity: report?.data?.length ? 1 : 0.5,
-              cursor: report?.data?.length ? 'pointer' : 'not-allowed'
+              opacity: (loading || exporting || !report?.data?.length) ? 0.5 : 1,
+              cursor: (loading || exporting || !report?.data?.length) ? 'not-allowed' : 'pointer'
             }}
           >
-            <FontAwesomeIcon icon={faFileExcel} />
-            <span>Export Excel</span>
+            <FontAwesomeIcon icon={loading || exporting ? faSpinner : faFileExcel} className={loading || exporting ? 'animate-spin' : ''} />
+            <span>{loading ? 'Memuat Data...' : exporting ? 'Mengekspor...' : `Export Excel (${monthLabel})`}</span>
           </button>
         </div>
       </div>
@@ -834,18 +919,40 @@ export default function AttendanceReportPage() {
         style={{ background: cardBg, borderColor, borderRadius: '8px' }}
       >
         <div className="flex items-center gap-4 flex-wrap flex-1">
-          {/* Month Selector */}
-          <div style={{ minWidth: '180px' }}>
+          {/* Month Selector with Prev / Next Buttons */}
+          <div style={{ minWidth: '240px' }}>
             <label className="text-[10px] font-mono uppercase block mb-1 font-bold" style={{ color: isDark ? '#60A5FA' : '#0284C7' }}>
               1. Periode Bulan *
             </label>
-            <input
-              type="month"
-              value={selectedMonth}
-              onChange={e => setSelectedMonth(e.target.value)}
-              className="w-full px-2.5 py-1.5 text-xs font-mono rounded border outline-none cursor-pointer font-bold"
-              style={{ background: isDark ? '#18181B' : '#FFFFFF', borderColor, color: textPrimary, borderRadius: '4px' }}
-            />
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={handlePrevMonth}
+                disabled={loading}
+                title="Bulan Sebelumnya"
+                className="px-2.5 py-1.5 text-xs font-mono rounded border transition-colors cursor-pointer disabled:opacity-40"
+                style={{ background: isDark ? '#18181B' : '#FFFFFF', borderColor, color: textPrimary, borderRadius: '4px' }}
+              >
+                <FontAwesomeIcon icon={faChevronLeft} className="text-[10px]" />
+              </button>
+              <input
+                type="month"
+                value={selectedMonth}
+                onChange={e => setSelectedMonth(e.target.value)}
+                className="flex-1 px-2.5 py-1.5 text-xs font-mono rounded border outline-none cursor-pointer font-bold"
+                style={{ background: isDark ? '#18181B' : '#FFFFFF', borderColor, color: textPrimary, borderRadius: '4px' }}
+              />
+              <button
+                type="button"
+                onClick={handleNextMonth}
+                disabled={loading}
+                title="Bulan Berikutnya"
+                className="px-2.5 py-1.5 text-xs font-mono rounded border transition-colors cursor-pointer disabled:opacity-40"
+                style={{ background: isDark ? '#18181B' : '#FFFFFF', borderColor, color: textPrimary, borderRadius: '4px' }}
+              >
+                <FontAwesomeIcon icon={faChevronRight} className="text-[10px]" />
+              </button>
+            </div>
           </div>
 
           {/* Grace Minutes */}

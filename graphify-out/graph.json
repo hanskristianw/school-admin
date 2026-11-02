@@ -3538,8 +3538,8 @@
       "source_location": "L38",
       "_origin": "ast",
       "id": "package_dependencies_bcryptjs",
-      "community": 420,
-      "community_name": "**3. Assessment System**",
+      "community": 133,
+      "community_name": "Module 133",
       "norm_label": "bcryptjs"
     },
     {
@@ -3549,8 +3549,8 @@
       "source_location": "L38",
       "_origin": "ast",
       "id": "bcryptjs",
-      "community": 420,
-      "community_name": "**3. Assessment System**",
+      "community": 133,
+      "community_name": "Module 133",
       "norm_label": "bcryptjs"
     },
     {
@@ -3560,8 +3560,8 @@
       "source_location": "L39",
       "_origin": "ast",
       "id": "package_dependencies_browser_image_compression",
-      "community": 133,
-      "community_name": "Module 133",
+      "community": 421,
+      "community_name": "browser-image-compression",
       "norm_label": "browser-image-compression"
     },
     {
@@ -3571,8 +3571,8 @@
       "source_location": "L39",
       "_origin": "ast",
       "id": "browser_image_compression",
-      "community": 133,
-      "community_name": "Module 133",
+      "community": 421,
+      "community_name": "browser-image-compression",
       "norm_label": "browser-image-compression"
     },
     {
@@ -8727,7 +8727,7 @@
       "label": "fmtMins()",
       "file_type": "code",
       "source_file": "src/app/data/attendance-report/page.jsx",
-      "source_location": "L32",
+      "source_location": "L34",
       "_origin": "ast",
       "id": "src_app_data_attendance_report_page_fmtmins",
       "community": 35,
@@ -8738,7 +8738,7 @@
       "label": "STATUS_META",
       "file_type": "code",
       "source_file": "src/app/data/attendance-report/page.jsx",
-      "source_location": "L40",
+      "source_location": "L42",
       "_origin": "ast",
       "id": "src_app_data_attendance_report_page_status_meta",
       "community": 35,
@@ -8749,7 +8749,7 @@
       "label": "EXCUSE_CATEGORY_MAP",
       "file_type": "code",
       "source_file": "src/app/data/attendance-report/page.jsx",
-      "source_location": "L53",
+      "source_location": "L55",
       "_origin": "ast",
       "id": "src_app_data_attendance_report_page_excuse_category_map",
       "community": 35,
@@ -8760,7 +8760,7 @@
       "label": "formatExcuseDetail()",
       "file_type": "code",
       "source_file": "src/app/data/attendance-report/page.jsx",
-      "source_location": "L82",
+      "source_location": "L84",
       "_origin": "ast",
       "id": "src_app_data_attendance_report_page_formatexcusedetail",
       "community": 35,
@@ -8771,7 +8771,7 @@
       "label": "AttendanceReportPage()",
       "file_type": "code",
       "source_file": "src/app/data/attendance-report/page.jsx",
-      "source_location": "L108",
+      "source_location": "L110",
       "_origin": "ast",
       "id": "src_app_data_attendance_report_page_attendancereportpage",
       "community": 35,
@@ -17838,8 +17838,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "agents_skills_imagegen_frontend_web_skill",
-      "community": 80,
-      "community_name": "Module 80",
+      "community": 420,
+      "community_name": "**3. Assessment System**",
       "norm_label": "skill.md"
     },
     {
@@ -17849,8 +17849,8 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "agents_skills_imagegen_frontend_web_skill_hard_output_rule_read_first",
-      "community": 80,
-      "community_name": "Module 80",
+      "community": 420,
+      "community_name": "**3. Assessment System**",
       "norm_label": "hard output rule \u2014 read first"
     },
     {
@@ -17860,8 +17860,8 @@
       "source_location": "L25",
       "_origin": "ast",
       "id": "agents_skills_imagegen_frontend_web_skill_hero_composition_bias_read_first",
-      "community": 80,
-      "community_name": "Module 80",
+      "community": 420,
+      "community_name": "**3. Assessment System**",
       "norm_label": "hero composition bias \u2014 read first"
     },
     {
@@ -36573,7 +36573,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/app/data/attendance-report/page.jsx",
-      "source_location": "L108",
+      "source_location": "L110",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_attendance_report_page",
@@ -36584,7 +36584,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/app/data/attendance-report/page.jsx",
-      "source_location": "L53",
+      "source_location": "L55",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_attendance_report_page",
@@ -36595,7 +36595,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/app/data/attendance-report/page.jsx",
-      "source_location": "L32",
+      "source_location": "L34",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_attendance_report_page",
@@ -36606,7 +36606,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/app/data/attendance-report/page.jsx",
-      "source_location": "L82",
+      "source_location": "L84",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_attendance_report_page",
@@ -36617,7 +36617,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/app/data/attendance-report/page.jsx",
-      "source_location": "L40",
+      "source_location": "L42",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_attendance_report_page",
@@ -36629,7 +36629,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/app/data/attendance-report/page.jsx",
-      "source_location": "L929",
+      "source_location": "L1036",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_attendance_report_page_attendancereportpage",
@@ -36641,7 +36641,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/app/data/attendance-report/page.jsx",
-      "source_location": "L336",
+      "source_location": "L392",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_attendance_report_page_attendancereportpage",
@@ -56614,5 +56614,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "894cab9257af0fdd363ae6947e0af61c41314cb6"
+  "built_at_commit": "cedfc6df97891418d32f2e2fe0b64eef5aae5591"
 }
