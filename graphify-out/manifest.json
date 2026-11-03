@@ -990,8 +990,8 @@
     "semantic_hash": ""
   },
   "src/app/data/health_report/page.jsx": {
-    "mtime": 1793677695.3142548,
-    "ast_hash": "ced22696f610e6d8a80562450c305c6d",
+    "mtime": 1793695131.2789073,
+    "ast_hash": "cdefe5eeaf3b4218ba542a0de2a56faa",
     "semantic_hash": ""
   },
   "src/app/data/layout.jsx": {
@@ -1095,8 +1095,8 @@
     "semantic_hash": "bce3c75e8857dcb89848e4614700e6e8"
   },
   "src/app/data/user/page.jsx": {
-    "mtime": 1791169167.2585235,
-    "ast_hash": "ddc939dc90792a8a50ab92478178be06",
+    "mtime": 1793696402.5610757,
+    "ast_hash": "621aa61d446c0c66457aeef6e26e21e8",
     "semantic_hash": ""
   },
   "src/app/data/year/page.jsx": {
@@ -1640,8 +1640,8 @@
     "semantic_hash": ""
   },
   "DATABASE_SCHEMA.md": {
-    "mtime": 1793686305.3969207,
-    "ast_hash": "2493d0b03582ef28cef8adb76dcbd4a5",
+    "mtime": 1793695855.0527415,
+    "ast_hash": "93159a7f5cef83566cad74ea7d158696",
     "semantic_hash": ""
   },
   "banner-220.png": {
@@ -2442,6 +2442,11 @@
   "migrations/add-allergy-to-users.sql": {
     "mtime": 1793686213.7893515,
     "ast_hash": "9a6fe17741bfcb1b249231dc50d4e0ab",
+    "semantic_hash": ""
+  },
+  "migrations/add-nik-to-users.sql": {
+    "mtime": 1793695829.1596901,
+    "ast_hash": "e860b27ee971cfaf3b735a513753669a",
     "semantic_hash": ""
   }
 }

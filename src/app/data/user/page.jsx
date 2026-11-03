@@ -87,6 +87,7 @@ export default function UserManagement() {
     user_nama_depan: '',
     user_nama_belakang: '',
     user_email: '',
+    nik: '',
     user_tanggal_lahir: '',
     user_manual_picture: '',
     user_role_id: '',
@@ -152,6 +153,7 @@ export default function UserManagement() {
   const ALL_COLUMNS = [
     { key: 'id', label: 'ID' },
     { key: 'nama', label: 'Full Name' },
+    { key: 'nik', label: 'NIK' },
     { key: 'email', label: 'Email' },
     { key: 'tanggal_lahir', label: 'Birth Date' },
     { key: 'role', label: 'Role' },
@@ -159,12 +161,19 @@ export default function UserManagement() {
     { key: 'status', label: 'Status' },
     { key: 'pin', label: 'Machine PIN' },
   ];
-  const DEFAULT_COLUMNS = new Set(['id', 'nama', 'email', 'role', 'unit', 'status']);
+  const DEFAULT_COLUMNS = new Set(['id', 'nama', 'nik', 'email', 'role', 'unit', 'status']);
 
   const [visibleColumns, setVisibleColumns] = useState(() => {
     try {
-      const saved = localStorage.getItem('user_table_columns');
-      if (saved) return new Set(JSON.parse(saved));
+      const saved = localStorage.getItem('user_table_columns_v2') || localStorage.getItem('user_table_columns');
+      if (saved) {
+        const parsed = new Set(JSON.parse(saved));
+        if (!localStorage.getItem('user_table_columns_v2')) {
+          parsed.add('nik');
+          localStorage.setItem('user_table_columns_v2', JSON.stringify([...parsed]));
+        }
+        return parsed;
+      }
     } catch (e) {}
     return DEFAULT_COLUMNS;
   });
@@ -176,7 +185,10 @@ export default function UserManagement() {
       const next = new Set(prev);
       if (next.has(key)) next.delete(key);
       else next.add(key);
-      try { localStorage.setItem('user_table_columns', JSON.stringify([...next])); } catch (e) {}
+      try {
+        localStorage.setItem('user_table_columns', JSON.stringify([...next]));
+        localStorage.setItem('user_table_columns_v2', JSON.stringify([...next]));
+      } catch (e) {}
       return next;
     });
   };
@@ -348,14 +360,14 @@ export default function UserManagement() {
       let usersData = null;
       const { data: uData1, error: uErr1 } = await supabase
         .from('users')
-        .select('user_id, user_nama_depan, user_nama_belakang, user_email, user_profile_picture, user_manual_picture, user_role_id, user_unit_id, is_active, signature_url, user_tanggal_lahir, user_pin, expected_check_in, expected_check_out, join_date, resign_date');
+        .select('user_id, user_nama_depan, user_nama_belakang, user_email, user_profile_picture, user_manual_picture, user_role_id, user_unit_id, is_active, signature_url, user_tanggal_lahir, user_pin, expected_check_in, expected_check_out, join_date, resign_date, nik');
 
       if (!uErr1) {
         usersData = uData1;
       } else {
         const { data: uData2, error: uErr2 } = await supabase
           .from('users')
-          .select('user_id, user_nama_depan, user_nama_belakang, user_email, user_profile_picture, user_manual_picture, user_role_id, user_unit_id, is_active, signature_url, user_tanggal_lahir, user_pin, expected_check_in, expected_check_out, join_date');
+          .select('user_id, user_nama_depan, user_nama_belakang, user_email, user_profile_picture, user_manual_picture, user_role_id, user_unit_id, is_active, signature_url, user_tanggal_lahir, user_pin, expected_check_in, expected_check_out, join_date, nik');
         if (uErr2) throw new Error(uErr2.message);
         usersData = uData2;
       }
@@ -384,6 +396,7 @@ export default function UserManagement() {
           user_role_id: user.user_role_id,
           user_unit_id: user.user_unit_id,
           user_tanggal_lahir: user.user_tanggal_lahir || null,
+          nik: user.nik || null,
           user_pin: user.user_pin || null,
           expected_check_in: user.expected_check_in || null,
           expected_check_out: user.expected_check_out || null,
@@ -443,10 +456,12 @@ export default function UserManagement() {
       const q = (filters.search || '').toLowerCase().trim();
       const fullName = `${user.user_nama_depan || ''} ${user.user_nama_belakang || ''}`.toLowerCase();
       const pinStr = (user.user_pin ? String(user.user_pin) : '').toLowerCase();
+      const nikStr = (user.nik ? String(user.nik) : '').toLowerCase();
       const searchMatch = !q ||
         fullName.includes(q) ||
         (user.user_email || '').toLowerCase().includes(q) ||
         (user.role_name || '').toLowerCase().includes(q) ||
+        nikStr.includes(q) ||
         pinStr.includes(q);
       const roleMatch = !filters.role || user.role_name === filters.role;
       const statusMatch = !filters.status ||
@@ -506,7 +521,7 @@ export default function UserManagement() {
     const validData = [];
     data.forEach((row, index) => {
       const rowErrors = [];
-      const validRow = { user_nama_depan: '', user_nama_belakang: '', user_email: '', user_role_id: '', user_unit_id: '', is_active: true };
+      const validRow = { user_nama_depan: '', user_nama_belakang: '', user_email: '', nik: '', user_role_id: '', user_unit_id: '', is_active: true };
 
       if (!row.nama_depan && !row.user_nama_depan && !row.first_name) {
         rowErrors.push('First name is required');
@@ -518,6 +533,11 @@ export default function UserManagement() {
         rowErrors.push('Last name is required');
       } else {
         validRow.user_nama_belakang = (row.nama_belakang || row.user_nama_belakang || row.last_name || '').trim();
+      }
+
+      const nikVal = (row.nik || row.no_nik || row.nomor_nik || '').trim();
+      if (nikVal) {
+        validRow.nik = nikVal;
       }
 
       const emailValue = (row.email || row.user_email || '').trim();
@@ -601,6 +621,7 @@ export default function UserManagement() {
           user_nama_depan: String(userData.user_nama_depan || '').trim(),
           user_nama_belakang: String(userData.user_nama_belakang || '').trim(),
           user_email: String(userData.user_email || '').trim(),
+          nik: userData.nik ? String(userData.nik).trim() : null,
           user_role_id: Number(userData.user_role_id),
           user_unit_id: userData.user_unit_id ? Number(userData.user_unit_id) : null,
           is_active: Boolean(userData.is_active)
@@ -616,6 +637,7 @@ export default function UserManagement() {
             user_nama_depan: cleanedUserData.user_nama_depan,
             user_nama_belakang: cleanedUserData.user_nama_belakang,
             user_email: cleanedUserData.user_email || null,
+            nik: cleanedUserData.nik || null,
             user_role_id: cleanedUserData.user_role_id,
             user_unit_id: cleanedUserData.user_unit_id,
             is_active: cleanedUserData.is_active
@@ -731,7 +753,10 @@ export default function UserManagement() {
       submitData.user_email = submitData.user_email ? submitData.user_email.trim() : null;
 
       const baseData = { ...submitData };
-      baseData.user_tanggal_lahir = baseData.user_tanggal_lahir ? toIsoDate(baseData.user_tanggal_lahir) : null;
+      baseData.nik = baseData.nik ? baseData.nik.trim() : null;
+      const parsedIso = baseData.user_tanggal_lahir ? toIsoDate(baseData.user_tanggal_lahir) : null;
+      baseData.user_tanggal_lahir = parsedIso;
+      baseData.user_birth_date = parsedIso;
       if (!baseData.expected_check_in) baseData.expected_check_in = null;
       if (!baseData.expected_check_out) baseData.expected_check_out = null;
       if (!baseData.join_date) baseData.join_date = null;
@@ -788,6 +813,7 @@ export default function UserManagement() {
       user_nama_depan: user.user_nama_depan,
       user_nama_belakang: user.user_nama_belakang,
       user_email: user.user_email || '',
+      nik: user.nik || '',
       user_tanggal_lahir: toDisplayDate(user.user_tanggal_lahir || ''),
       user_manual_picture: user.user_manual_picture || '',
       user_role_id: user.user_role_id,
@@ -869,6 +895,7 @@ export default function UserManagement() {
       user_nama_depan: '',
       user_nama_belakang: '',
       user_email: '',
+      nik: '',
       user_tanggal_lahir: '',
       user_manual_picture: '',
       user_role_id: '',
@@ -1099,7 +1126,10 @@ export default function UserManagement() {
                     <button
                       onClick={() => {
                         setVisibleColumns(DEFAULT_COLUMNS);
-                        try { localStorage.removeItem('user_table_columns'); } catch(e) {}
+                        try {
+                          localStorage.removeItem('user_table_columns');
+                          localStorage.removeItem('user_table_columns_v2');
+                        } catch(e) {}
                       }}
                       className="text-[11px] hover:underline cursor-pointer"
                       style={{ color: isDark ? '#60A5FA' : '#0284C7' }}
@@ -1179,6 +1209,7 @@ export default function UserManagement() {
               <tr className="border-b font-mono text-[10px] uppercase tracking-wider" style={{ background: subtleBg, borderColor, color: textSecondary }}>
                 {visibleColumns.has('id') && <th className="px-4 py-2.5 w-14">ID</th>}
                 {visibleColumns.has('nama') && <th className="px-4 py-2.5">Nama Pengguna</th>}
+                {visibleColumns.has('nik') && <th className="px-4 py-2.5 w-36 font-mono">NIK</th>}
                 {visibleColumns.has('email') && <th className="px-4 py-2.5">Email</th>}
                 {visibleColumns.has('tanggal_lahir') && <th className="px-4 py-2.5">Tgl Lahir</th>}
                 {visibleColumns.has('role') && <th className="px-4 py-2.5">Peran</th>}
@@ -1216,6 +1247,18 @@ export default function UserManagement() {
                             {user.user_nama_depan} {user.user_nama_belakang}
                           </span>
                         </div>
+                      </td>
+                    )}
+
+                    {visibleColumns.has('nik') && (
+                      <td className="px-4 py-3 font-mono text-[11px]">
+                        {user.nik ? (
+                          <span className="font-medium tracking-wide" style={{ color: textPrimary }}>
+                            {user.nik}
+                          </span>
+                        ) : (
+                          <span className="italic opacity-60" style={{ color: textSecondary }}>—</span>
+                        )}
                       </td>
                     )}
 
@@ -1328,6 +1371,11 @@ export default function UserManagement() {
                         {user.user_nama_depan} {user.user_nama_belakang}
                       </h3>
                       <p className="text-xs font-mono" style={{ color: textSecondary }}>{user.user_email || '-'}</p>
+                      {user.nik && (
+                        <p className="text-[11px] font-mono mt-0.5" style={{ color: textSecondary }}>
+                          NIK: <span className="font-medium" style={{ color: textPrimary }}>{user.nik}</span>
+                        </p>
+                      )}
                     </div>
                   </div>
                   <span className="text-[10px] font-mono opacity-60">#{user.user_id}</span>
@@ -1481,6 +1529,27 @@ export default function UserManagement() {
                 {formErrors.user_email && (
                   <p className="text-[11px] mt-1" style={{ color: theme.redText }}>{formErrors.user_email}</p>
                 )}
+              </div>
+
+              <div>
+                <Label htmlFor="nik" style={{ color: theme.textPrimary }} className="font-medium">
+                  NIK <span className="font-normal" style={{ color: theme.textSecondary }}>(16 digit Dukcapil / Paspor)</span>
+                </Label>
+                <Input
+                  id="nik"
+                  name="nik"
+                  type="text"
+                  value={formData.nik || ''}
+                  onChange={(e) => {
+                    const v = e.target.value.replace(/\s+/g, '');
+                    handleInputChange({ target: { name: 'nik', value: v } });
+                  }}
+                  disabled={submitting}
+                  placeholder="Contoh: 3578090111110002"
+                  maxLength={20}
+                  style={inputStyle}
+                  className="mt-1 font-mono text-xs"
+                />
               </div>
 
               <div>

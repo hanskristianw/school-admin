@@ -520,7 +520,7 @@ export default function HealthReportPage() {
       }
       const { data: us } = await supabase
         .from('users')
-        .select('user_id, user_nama_depan, user_nama_belakang, user_tanggal_lahir')
+        .select('user_id, user_nama_depan, user_nama_belakang, user_tanggal_lahir, allergy, special_health_conditions')
         .in('user_id', ids)
 
       const sortedStudents = (us || [])
@@ -528,7 +528,9 @@ export default function HealthReportPage() {
           user_id: u.user_id,
           detail_siswa_id: idMap[u.user_id] || null,
           nama: `${u.user_nama_depan || ''} ${u.user_nama_belakang || ''}`.trim(),
-          dob: u.user_tanggal_lahir
+          dob: u.user_tanggal_lahir,
+          allergy: u.allergy || '',
+          special_health_conditions: u.special_health_conditions || ''
         }))
         .sort((a, b) => a.nama.localeCompare(b.nama))
 
@@ -603,8 +605,15 @@ export default function HealthReportPage() {
           .eq('id', report.id)
       }
 
-      setHealthReport(report)
-      setReportForm({ allergy: report.allergy || '', notes: report.notes || '' })
+      const resolvedAllergy = report.allergy || stu?.allergy || ''
+      setHealthReport({ ...report, allergy: resolvedAllergy })
+      setReportForm({ allergy: resolvedAllergy, notes: report.notes || '' })
+      if (!report.allergy && stu?.allergy) {
+        await supabase
+          .from('health_report_card')
+          .update({ allergy: stu.allergy })
+          .eq('id', report.id)
+      }
       await fetchSections(report.id)
     } catch (e) {
       showToast(e.message, 'error')
@@ -629,15 +638,33 @@ export default function HealthReportPage() {
     if (!healthReport) return
     setSavingAllergy(true)
     try {
-      const { error } = await supabase
-        .from('health_report_card')
-        .update({
-          allergy: reportForm.allergy || null,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', healthReport.id)
-      if (error) throw error
+      const updates = [
+        supabase
+          .from('health_report_card')
+          .update({
+            allergy: reportForm.allergy || null,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', healthReport.id)
+      ]
+      if (selStudent) {
+        updates.push(
+          supabase
+            .from('users')
+            .update({
+              allergy: reportForm.allergy || null
+            })
+            .eq('user_id', +selStudent)
+        )
+      }
+      const results = await Promise.all(updates)
+      for (const res of results) {
+        if (res.error) throw res.error
+      }
       setHealthReport((p) => ({ ...p, allergy: reportForm.allergy }))
+      setStudents((prev) =>
+        prev.map((s) => (String(s.user_id) === String(selStudent) ? { ...s, allergy: reportForm.allergy } : s))
+      )
       setEditingAllergy(false)
       showToast('Alergi diperbarui.')
     } catch (e) {

@@ -31,6 +31,7 @@ The main table storing user accounts (staff, teachers, admin, students, etc).
 | `signature_url` | `TEXT` | Public URL to user/teacher signature image (Storage: `report-assets/user-signatures/{user_id}/signature.png`) |
 | `allergy` | `TEXT` | Permanent medical allergy warnings (e.g. seafood, peanuts, dust, fur, drugs) |
 | `special_health_conditions` | `TEXT` | Permanent chronic or notable health conditions (e.g. Asthma, Sinus, Eczema) |
+| `nik` | `VARCHAR(20)` | Official National Identification Number (Nomor Induk Kependudukan / NIK) |
 | `user_theme` | `VARCHAR` | User UI theme preference |
 | `user_password_hash`| `VARCHAR` | Bcrypt password hash |
 | `user_created_at` | `TIMESTAMP` | Record creation date |
