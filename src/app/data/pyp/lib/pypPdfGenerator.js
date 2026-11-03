@@ -1905,6 +1905,8 @@ export const renderPypHealthReportPage = async (doc, {
   className = '',
   yearName = '',
   semesterLabel = '',
+  semester = '',
+  isNursery = false,
   preparedDate = '',
   healthData = null,
   nurseName = '',
@@ -2004,46 +2006,125 @@ export const renderPypHealthReportPage = async (doc, {
     drawSectionHdr(ml + hHalfW + 4, hy, hHalfW, 'GROWTH DEVELOPMENT')
     hy += 6
 
-    // Left: Physical Check (Month, Mata, Telinga, Gigi, TD)
-    const pcRows = healthData?.physicalChecks && healthData.physicalChecks.length > 0
-      ? healthData.physicalChecks.map(r => [
-          r.month || '',
-          r.eye || '',
-          r.ear || '',
-          r.dental || '',
-          r.blood_pressure || ''
-        ])
-      : [['', '', '', '', '']]
+    // Left: Physical Check (Nursery: Sem 1 = Telinga, Rambut, Kuku, Gigi; Sem 2 = None. Non-Nursery: Sem 1 = Mata, Telinga, Gigi, TD; Sem 2 = Telinga)
+    const isSemester2 = String(semester) === '2' || semesterLabel?.includes('2')
+    let pcHead
+    let pcRows
+    let pcColStyles
+
+    if (isNursery) {
+      if (isSemester2) {
+        // Nursery Semester 2: Tidak ada pemeriksaan fisik
+        pcHead = [['STATUS']]
+        pcRows = [['Tidak ada pemeriksaan fisik pada Semester 2']]
+        pcColStyles = { 0: { halign: 'center', textColor: [107, 114, 128], fontStyle: 'italic' } }
+      } else {
+        // Nursery Semester 1: Telinga, Rambut, Kuku, Gigi
+        pcHead = [['MONTH', 'TELINGA', 'RAMBUT', 'KUKU', 'GIGI']]
+        pcRows = healthData?.physicalChecks && healthData.physicalChecks.length > 0
+          ? healthData.physicalChecks.map(r => [
+              r.month || '',
+              r.ear || '',
+              r.hair || '',
+              r.nails || '',
+              r.dental || ''
+            ])
+          : [['', '', '', '', '']]
+        pcColStyles = {
+          0: { halign: 'center' },
+          1: { halign: 'center' },
+          2: { halign: 'center' },
+          3: { halign: 'center' },
+          4: { halign: 'center' }
+        }
+      }
+    } else {
+      // PYP Non-Nursery (Primary / SD)
+      if (isSemester2) {
+        pcHead = [['MONTH', 'TELINGA']]
+        pcRows = healthData?.physicalChecks && healthData.physicalChecks.length > 0
+          ? healthData.physicalChecks.map(r => [r.month || '', r.ear || ''])
+          : [['', '']]
+        pcColStyles = {
+          0: { cellWidth: 24, halign: 'center' },
+          1: { halign: 'center' }
+        }
+      } else {
+        pcHead = [['MONTH', 'MATA', 'TELINGA', 'GIGI', 'TD']]
+        pcRows = healthData?.physicalChecks && healthData.physicalChecks.length > 0
+          ? healthData.physicalChecks.map(r => [
+              r.month || '',
+              r.eye || '',
+              r.ear || '',
+              r.dental || '',
+              r.blood_pressure || ''
+            ])
+          : [['', '', '', '', '']]
+        pcColStyles = {
+          0: { halign: 'center' },
+          1: { halign: 'center' },
+          2: { halign: 'center' },
+          3: { halign: 'center' },
+          4: { halign: 'center' }
+        }
+      }
+    }
 
     autoTable(doc, {
       startY: hy,
-      head: [['MONTH', 'MATA', 'TELINGA', 'GIGI', 'TD']],
+      head: pcHead,
       body: pcRows,
       theme: 'grid',
       styles: { fontSize: 7, cellPadding: 1.8, textColor: [31, 41, 55], lineColor: [209, 213, 219], lineWidth: 0.25 },
       headStyles: { fillColor: H_HEAD_BG, textColor: H_HEAD_TX, fontStyle: 'bold', fontSize: 6.5, halign: 'center' },
+      columnStyles: pcColStyles,
       tableWidth: hHalfW,
       margin: { left: ml, right: pw - ml - hHalfW },
       pageBreak: 'avoid'
     })
     const hPcY = doc.lastAutoTable.finalY
 
-    // Right: Growth Development (Month, Weight, Height)
+    // Right: Growth Development (Month, Weight, Height, and HC for Nursery)
+    const gdHead = isNursery
+      ? [['MONTH', 'WEIGHT (kg)', 'HEIGHT (cm)', 'HC (cm)']]
+      : [['MONTH', 'WEIGHT (kg)', 'HEIGHT (cm)']]
+
     const gdRows = healthData?.growthRecords && healthData.growthRecords.length > 0
-      ? healthData.growthRecords.map(r => [
-          r.month || '',
-          r.weight != null ? String(r.weight) : '',
-          r.height != null ? String(r.height) : ''
-        ])
-      : [['', '', '']]
+      ? healthData.growthRecords.map(r => (
+          isNursery
+            ? [
+                r.month || '',
+                r.weight != null ? String(r.weight) : '',
+                r.height != null ? String(r.height) : '',
+                r.head_circumference != null ? String(r.head_circumference) : (r.hc != null ? String(r.hc) : '')
+              ]
+            : [
+                r.month || '',
+                r.weight != null ? String(r.weight) : '',
+                r.height != null ? String(r.height) : ''
+              ]
+        ))
+      : [isNursery ? ['', '', '', ''] : ['', '', '']]
 
     autoTable(doc, {
       startY: hy,
-      head: [['MONTH', 'WEIGHT (kg)', 'HEIGHT (cm)']],
+      head: gdHead,
       body: gdRows,
       theme: 'grid',
       styles: { fontSize: 7, cellPadding: 1.8, textColor: [31, 41, 55], lineColor: [209, 213, 219], lineWidth: 0.25 },
       headStyles: { fillColor: H_HEAD_BG, textColor: H_HEAD_TX, fontStyle: 'bold', fontSize: 6.5, halign: 'center' },
+      columnStyles: isNursery
+        ? {
+            0: { halign: 'center' },
+            1: { halign: 'center' },
+            2: { halign: 'center' },
+            3: { halign: 'center' }
+          }
+        : {
+            0: { halign: 'center' },
+            1: { halign: 'center' },
+            2: { halign: 'center' }
+          },
       tableWidth: hHalfW,
       margin: { left: ml + hHalfW + 4, right: mr },
       pageBreak: 'avoid'
@@ -2199,14 +2280,14 @@ export const generatePypClassReportPDF = async ({
     let classData = null
     const resClass = await supabase
       .from('kelas')
-      .select('kelas_id, kelas_nama, kelas_user_id, kelas_user_id_2, kelas_unit_id, kelas_year_id')
+      .select('kelas_id, kelas_nama, kelas_user_id, kelas_user_id_2, kelas_unit_id, kelas_year_id, is_nursery')
       .eq('kelas_id', Number(classId))
       .single()
 
     if (resClass.error && resClass.error.message?.includes('kelas_user_id_2')) {
       const resFallback = await supabase
         .from('kelas')
-        .select('kelas_id, kelas_nama, kelas_user_id, kelas_unit_id, kelas_year_id')
+        .select('kelas_id, kelas_nama, kelas_user_id, kelas_unit_id, kelas_year_id, is_nursery')
         .eq('kelas_id', Number(classId))
         .single()
       classData = resFallback.data
@@ -2214,6 +2295,7 @@ export const generatePypClassReportPDF = async ({
       classData = resClass.data
     }
 
+    const isNurseryClass = Boolean(classData?.is_nursery)
     const activeClassName = className || classData?.kelas_nama || 'PYP Class'
 
     let homeroomTeachers = []
@@ -2912,6 +2994,8 @@ export const generatePypClassReportPDF = async ({
         className: activeClassName,
         yearName: yearName || '2025/2026',
         semesterLabel: semester === '1' ? 'Semester 1' : 'Semester 2',
+        semester: semester,
+        isNursery: isNurseryClass,
         preparedDate: preparedDate,
         healthData: studentHealthData,
         nurseName: nurseName,

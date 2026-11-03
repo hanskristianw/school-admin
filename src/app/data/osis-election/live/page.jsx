@@ -42,8 +42,8 @@ function getColorName(hex) {
 
 export default function OsisElectionLiveQuickCountPage() {
   const searchParams = useSearchParams()
-  const urlElectionId = searchParams.get('election_id')
-  const urlYearId = searchParams.get('year_id')
+  const urlElectionId = searchParams.get('election') || searchParams.get('election_id')
+  const urlYearId = searchParams.get('year') || searchParams.get('year_id')
 
   // States
   const [loading, setLoading] = useState(true)
@@ -343,17 +343,22 @@ export default function OsisElectionLiveQuickCountPage() {
 
   const totalVotes = quickCount?.total_votes || 0
 
-  // Attach vote data and rank to candidates
+  // Attach vote data and rank to candidates with guaranteed accurate percentage
   const candidateStats = candidates.map(cand => {
     const res = quickCount?.results?.find(r => r.id === cand.id)
+    const voteCount = res?.vote_count ?? 0
+    const votePct = totalVotes > 0 ? Number(((voteCount / totalVotes) * 100).toFixed(1)) : (res?.percentage || 0)
     return {
       ...cand,
-      voteCount: res?.vote_count || 0,
-      votePct: res?.percentage || 0
+      voteCount,
+      votePct
     }
   })
 
-  // Sorted strictly by vote rank descending (1st place, 2nd place, 3rd place...)
+  // Sorted strictly by vote rank descending:
+  // Rank 1 (suara terbanyak / paling besar) is ALWAYS on the LEFT (Slot 1)
+  // Rank 2 is placed in the CENTER (Slot 2)
+  // Rank 3 is placed on the RIGHT (Slot 3)
   const rankedCandidates = [...candidateStats]
     .sort((a, b) => {
       if (b.voteCount !== a.voteCount) return b.voteCount - a.voteCount
@@ -362,7 +367,8 @@ export default function OsisElectionLiveQuickCountPage() {
     .map((cand, idx) => ({
       ...cand,
       rank: idx + 1,
-      isWinner: idx === 0
+      isWinner: idx === 0,
+      podiumPos: idx === 0 ? 'left' : idx === 1 ? 'center' : 'right'
     }))
 
   // Winning candidate calculation for announcement banner (highest vote)
@@ -372,40 +378,10 @@ export default function OsisElectionLiveQuickCountPage() {
     : 'Paslon Terpilih'
 
   // Display ordering:
-  // When NOT revealed: sort neutrally by candidate_number so no one knows who is leading
-  // When REVEALED: arrange in podium order with Winner (Rank 1) in the CENTER!
-  const displayCandidates = (() => {
-    if (!revealed) {
-      return [...candidateStats].sort((a, b) => (a.candidate_number || 0) - (b.candidate_number || 0))
-    }
-
-    if (rankedCandidates.length === 3) {
-      // 3 Candidates: [Rank 2 (Left), Rank 1 (Center Winner), Rank 3 (Right)]
-      return [
-        { ...rankedCandidates[1], podiumPos: 'left' },
-        { ...rankedCandidates[0], podiumPos: 'center' },
-        { ...rankedCandidates[2], podiumPos: 'right' }
-      ]
-    }
-
-    if (rankedCandidates.length === 2) {
-      // 2 Candidates: [Rank 1 (Winner in Center), Rank 2]
-      return [
-        { ...rankedCandidates[0], podiumPos: 'center' },
-        { ...rankedCandidates[1], podiumPos: 'right' }
-      ]
-    }
-
-    // Generic podium ordering for 4+ candidates:
-    // Left: [Rank 4, Rank 2], Center: Rank 1, Right: [Rank 3, Rank 5]
-    const left = []
-    const right = []
-    for (let i = 1; i < rankedCandidates.length; i++) {
-      if (i % 2 === 1) left.unshift({ ...rankedCandidates[i], podiumPos: 'left' })
-      else right.push({ ...rankedCandidates[i], podiumPos: 'right' })
-    }
-    return [...left, { ...rankedCandidates[0], podiumPos: 'center' }, ...right]
-  })()
+  // Calon dengan suara paling besar SELALU diletakkan di KIRI (Slot 1), baik sebelum
+  // maupun sesudah pengumuman dibuka. Hal ini menjaga konsistensi posisi dan angka,
+  // serta mencegah penonton menebak paslon nomor berapa berdasarkan urutan kolom.
+  const displayCandidates = rankedCandidates
 
   return (
     <div
@@ -599,24 +575,22 @@ export default function OsisElectionLiveQuickCountPage() {
           </div>
         ) : revealed ? (
           /* ─────────────────────────────────────────────────────────────
-              REVEALED PODIUM PRESENTATION:
-              Winner in the center, enlarged, foreground (higher z-index)
-              Flanking runners-up on left & right, smaller, background layer
+              REVEALED WINNER & RANK PRESENTATION:
+              Calon dengan suara paling besar (Rank 1 / Pemenang) berada di KIRI,
+              diikuti Rank 2 di tengah, dan Rank 3 di kanan.
+              Grid konsisten sehingga kartu dan angka tidak melompat-lompat!
           ───────────────────────────────────────────────────────────── */
-          <div className="flex flex-col md:flex-row items-center justify-center space-y-4 md:space-y-0 md:-space-x-4 lg:-space-x-6 xl:-space-x-8 w-full max-w-6xl mx-auto py-1 sm:py-2 transition-all duration-700">
+          <div className={`grid grid-cols-1 ${candidates.length === 2 ? 'md:grid-cols-2 max-w-3xl' : 'md:grid-cols-3 max-w-6xl'} gap-4 sm:gap-6 lg:gap-8 w-full mx-auto py-2 transition-all duration-700`}>
             {displayCandidates.map((cand) => {
               const isWinner = cand.isWinner
-              const isLeft = cand.podiumPos === 'left'
 
               return (
                 <div
                   key={cand.id}
                   className={`rounded-2xl sm:rounded-3xl border bg-white overflow-hidden flex flex-col transition-all duration-700 relative ${
                     isWinner
-                      ? 'w-full max-w-[340px] sm:max-w-[370px] md:w-[36%] lg:w-[35%] lg:max-w-[400px] xl:max-w-[420px] flex-shrink-0 z-30 shadow-2xl border-2 border-amber-400 ring-2 sm:ring-4 ring-amber-400/40 md:scale-[1.03] lg:scale-[1.05] order-1 md:order-2'
-                      : isLeft
-                      ? 'w-full max-w-[280px] sm:max-w-[310px] md:w-[31%] lg:w-[30%] lg:max-w-[330px] xl:max-w-[350px] flex-shrink-0 z-10 shadow-md border-slate-200/90 md:scale-[0.96] lg:scale-[0.95] opacity-95 hover:opacity-100 order-2 md:order-1'
-                      : 'w-full max-w-[280px] sm:max-w-[310px] md:w-[31%] lg:w-[30%] lg:max-w-[330px] xl:max-w-[350px] flex-shrink-0 z-10 shadow-md border-slate-200/90 md:scale-[0.96] lg:scale-[0.95] opacity-95 hover:opacity-100 order-3 md:order-3'
+                      ? 'w-full z-20 shadow-2xl border-2 border-amber-400 ring-2 sm:ring-4 ring-amber-400/40 md:scale-[1.02]'
+                      : 'w-full z-10 shadow-md border-slate-200/90 opacity-95 hover:opacity-100'
                   }`}
                   style={{
                     borderTop: isWinner ? `6px solid ${cand.color || '#F59E0B'}` : `4px solid ${cand.color || '#3B82F6'}`,
@@ -625,15 +599,27 @@ export default function OsisElectionLiveQuickCountPage() {
                       : undefined
                   }}
                 >
-                  {/* Top Bar with Rank Badge & Winner Badge */}
+                  {/* Top Bar with Rank Badge, Paslon Number & Winner Badge */}
                   <div className="px-4 sm:px-5 pt-3 sm:pt-4 pb-1.5 flex items-center justify-between">
-                    <span className={`text-[10px] sm:text-xs font-black uppercase tracking-wider px-2.5 py-1 rounded-lg border ${
-                      isWinner
-                        ? 'text-amber-800 bg-amber-100 border-amber-300 ring-1 ring-amber-400/30'
-                        : 'text-slate-500 bg-slate-100 border-slate-200'
-                    }`}>
-                      Peringkat #{cand.rank}
-                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <span className={`text-[10px] sm:text-xs font-black uppercase tracking-wider px-2.5 py-1 rounded-lg border ${
+                        isWinner
+                          ? 'text-amber-800 bg-amber-100 border-amber-300 ring-1 ring-amber-400/30'
+                          : 'text-slate-500 bg-slate-100 border-slate-200'
+                      }`}>
+                        Peringkat #{cand.rank}
+                      </span>
+                      <span
+                        className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider"
+                        style={{
+                          backgroundColor: `${cand.color || '#3B82F6'}18`,
+                          color: cand.color || '#3B82F6',
+                          border: `1px solid ${cand.color || '#3B82F6'}40`
+                        }}
+                      >
+                        Paslon #{cand.candidate_number}
+                      </span>
+                    </div>
 
                     {isWinner && (
                       <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] sm:text-xs font-black uppercase tracking-wider shadow-xs animate-pulse bg-amber-100 border border-amber-400 text-amber-900 ring-1 ring-amber-400/30">
@@ -644,12 +630,12 @@ export default function OsisElectionLiveQuickCountPage() {
                   </div>
 
                   {/* Photo & Candidate Identity */}
-                  <div className={`px-4 sm:px-5 pt-1 pb-2 flex flex-col items-center text-center space-y-1.5 sm:space-y-2`}>
+                  <div className="px-4 sm:px-5 pt-1 pb-2 flex flex-col items-center text-center space-y-1.5 sm:space-y-2">
                     <div
                       className={`w-full aspect-square ${
                         isWinner
-                          ? 'max-h-[180px] sm:max-h-[210px] md:max-h-[230px] lg:max-h-[250px] xl:max-h-[280px] max-w-[240px] sm:max-w-[270px] md:max-w-[300px] rounded-2xl sm:rounded-3xl border-2 border-amber-300 shadow-md'
-                          : 'max-h-[140px] sm:max-h-[165px] md:max-h-[180px] lg:max-h-[195px] xl:max-h-[210px] max-w-[190px] sm:max-w-[210px] md:max-w-[240px] rounded-xl sm:rounded-2xl border border-slate-200 shadow-xs'
+                          ? 'max-h-[180px] sm:max-h-[210px] md:max-h-[230px] lg:max-h-[250px] max-w-[250px] rounded-2xl sm:rounded-3xl border-2 border-amber-300 shadow-md'
+                          : 'max-h-[150px] sm:max-h-[175px] md:max-h-[195px] lg:max-h-[215px] max-w-[220px] rounded-xl sm:rounded-2xl border border-slate-200 shadow-xs'
                       } overflow-hidden bg-slate-100 flex items-center justify-center relative group mx-auto`}
                       style={{
                         boxShadow: isWinner ? `0 0 25px ${cand.color || '#F59E0B'}35` : undefined
@@ -730,10 +716,11 @@ export default function OsisElectionLiveQuickCountPage() {
         ) : (
           /* ─────────────────────────────────────────────────────────────
               SECRET MYSTERY COLOR DISPLAY (BEFORE REVEAL):
-              Equal sizes, neutral grid by candidate number, shields
+              Equal sizes, neutral grid sorted by vote count (highest on LEFT),
+              shields hiding identity
           ───────────────────────────────────────────────────────────── */
           <div className={`grid grid-cols-1 ${candidates.length === 2 ? 'md:grid-cols-2 max-w-3xl' : 'md:grid-cols-3 max-w-6xl'} gap-4 sm:gap-6 lg:gap-8 w-full mx-auto py-2 transition-all duration-700`}>
-            {displayCandidates.map((cand) => (
+            {displayCandidates.map((cand, idx) => (
               <div
                 key={cand.id}
                 className="rounded-2xl sm:rounded-3xl border border-slate-200/90 bg-white overflow-hidden flex flex-col shadow-md hover:shadow-xl transition-all duration-500 relative"
@@ -741,8 +728,15 @@ export default function OsisElectionLiveQuickCountPage() {
                   borderTop: `6px solid ${cand.color || '#3B82F6'}`
                 }}
               >
-                {/* Clean Top Spacer */}
-                <div className="px-4 py-2 h-8 sm:h-10" />
+                {/* Top Badge: Indicating slot / rank leader without revealing identity */}
+                <div className="px-4 py-2.5 h-10 flex items-center justify-between">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                    {idx === 0 ? 'Peringkat Teratas' : `Posisi #${idx + 1}`}
+                  </span>
+                  <span className="text-[10px] font-mono text-slate-400">
+                    Mode Rahasia
+                  </span>
+                </div>
 
                 {/* Secret Color Display Shield */}
                 <div className="px-4 pb-2 pt-1 flex flex-col items-center text-center">

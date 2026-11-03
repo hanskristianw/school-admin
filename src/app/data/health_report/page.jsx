@@ -477,7 +477,7 @@ export default function HealthReportPage() {
     }
     supabase
       .from('kelas')
-      .select('kelas_id, kelas_nama, kelas_unit_id')
+      .select('kelas_id, kelas_nama, kelas_unit_id, is_nursery')
       .eq('kelas_year_id', selYear)
       .order('kelas_nama')
       .then(({ data }) => {
@@ -681,7 +681,11 @@ export default function HealthReportPage() {
       setter((p) => [...p, row])
       showToast('Data ditambahkan.')
     } catch (e) {
-      showToast(e.message, 'error')
+      if (e.message?.includes('head_circumference')) {
+        showToast('Kolom head_circumference belum ada di database. Silakan jalankan script migrasi di Supabase SQL Editor.', 'error')
+      } else {
+        showToast(e.message, 'error')
+      }
       throw e
     }
   }
@@ -693,7 +697,11 @@ export default function HealthReportPage() {
       setter((p) => p.map((r) => (r.id === id ? { ...r, ...data } : r)))
       showToast('Data diperbarui.')
     } catch (e) {
-      showToast(e.message, 'error')
+      if (e.message?.includes('head_circumference')) {
+        showToast('Kolom head_circumference belum ada di database. Silakan jalankan script migrasi di Supabase SQL Editor.', 'error')
+      } else {
+        showToast(e.message, 'error')
+      }
       throw e
     }
   }
@@ -798,9 +806,24 @@ export default function HealthReportPage() {
     year: 'numeric'
   })
 
-  // ─── Define Columns based on PYP vs MYP ────────────────────────────
+  const currentClassObj = useMemo(() => {
+    return kelasOptions.find((k) => String(k.kelas_id) === String(selKelas)) || null
+  }, [kelasOptions, selKelas])
+
+  const isNursery = Boolean(currentClassObj?.is_nursery)
+
+  // ─── Define Columns based on PYP vs MYP & Nursery ───────────────────
   const growthColumns = useMemo(() => {
     if (reportType === 'PYP') {
+      if (isNursery) {
+        // Nursery: BB, TB, dan HC (Head Circumference / Lingkar Kepala) untuk Sem 1 & Sem 2
+        return [
+          { key: 'month', label: 'MONTH', type: 'select', width: '75px' },
+          { key: 'weight', label: 'BB (kg)', type: 'number', width: '85px' },
+          { key: 'height', label: 'TB (cm)', type: 'number', width: '85px' },
+          { key: 'head_circumference', label: 'HC (cm)', type: 'number', width: '85px' }
+        ]
+      }
       return [
         { key: 'month', label: 'MONTH', type: 'select', width: '75px' },
         { key: 'weight', label: 'BB (kg)', type: 'number', width: '110px' },
@@ -812,10 +835,32 @@ export default function HealthReportPage() {
       { key: 'height', label: 'TB (cm)', type: 'number', width: '110px' },
       { key: 'weight', label: 'BB (kg)', type: 'number', width: '110px' }
     ]
-  }, [reportType])
+  }, [reportType, isNursery])
 
   const physicalColumns = useMemo(() => {
     if (reportType === 'PYP') {
+      if (isNursery) {
+        // Nursery: Semester 1 = Telinga, Rambut, Kuku, Gigi. Semester 2 = Tidak ada pemeriksaan fisik
+        if (String(selSem) === '2') {
+          return []
+        }
+        return [
+          { key: 'month', label: 'MONTH', type: 'select', width: '75px' },
+          { key: 'ear', label: 'TELINGA' },
+          { key: 'hair', label: 'RAMBUT' },
+          { key: 'nails', label: 'KUKU' },
+          { key: 'dental', label: 'GIGI' }
+        ]
+      }
+
+      // PYP Non-Nursery (Primary / SD)
+      // Semester 2 PYP tidak ada pemeriksaan Mata, Gigi, dan Tensi (TD) - hanya Telinga
+      if (String(selSem) === '2') {
+        return [
+          { key: 'month', label: 'MONTH', type: 'select', width: '75px' },
+          { key: 'ear', label: 'TELINGA' }
+        ]
+      }
       return [
         { key: 'month', label: 'MONTH', type: 'select', width: '75px' },
         { key: 'eye', label: 'MATA (Ka/Ki)' },
@@ -836,7 +881,7 @@ export default function HealthReportPage() {
       { key: 'nails', label: 'NAILS' },
       { key: 'hair', label: 'HAIR' }
     ]
-  }, [reportType])
+  }, [reportType, selSem, isNursery])
 
   return (
     <div
@@ -854,7 +899,7 @@ export default function HealthReportPage() {
           <span>[HEALTH]</span>
           <span>/</span>
           <span className="font-semibold" style={{ color: tokens.accentColor }}>
-            [{reportType} HEALTH REPORT CARD]
+            [{isNursery ? 'PYP NURSERY' : reportType} HEALTH REPORT CARD]
           </span>
         </div>
 
@@ -1018,7 +1063,7 @@ export default function HealthReportPage() {
                 <optgroup label="PYP">
                   {groupedKelas.pyp.map((k) => (
                     <option key={k.kelas_id} value={k.kelas_id}>
-                      {k.kelas_nama}
+                      {k.kelas_nama}{k.is_nursery ? ' (Nursery)' : ''}
                     </option>
                   ))}
                 </optgroup>
@@ -1265,24 +1310,56 @@ export default function HealthReportPage() {
           {/* 3. PHYSICAL CHECK & GROWTH DEVELOPMENT (PYP or MYP formatted) */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
             {/* PHYSICAL CHECK TABLE */}
-            <DocumentTable
-              title={reportType === 'PYP' ? 'PHYSICAL CHECK' : 'CLINICAL & PHYSICAL CHECK'}
-              columns={physicalColumns}
-              rows={physicalChecks}
-              onAdd={(d) => addRow('health_physical_check', d, setPhysicalChecks)}
-              onUpdate={(id, d) => updateRow('health_physical_check', id, d, setPhysicalChecks)}
-              onRequestDelete={(id) =>
-                setDeleteModal({
-                  isOpen: true,
-                  table: 'health_physical_check',
-                  id,
-                  title: 'Physical Check',
-                  setter: setPhysicalChecks
-                })
-              }
-              isDark={isDark}
-              tokens={tokens}
-            />
+            {isNursery && String(selSem) === '2' ? (
+              <div
+                className="border overflow-hidden flex flex-col"
+                style={{
+                  borderColor: tokens.docBorder,
+                  borderRadius: '4px',
+                  background: tokens.cardBg
+                }}
+              >
+                <div
+                  className="px-3 py-1.5 text-center font-bold text-white text-xs tracking-wider"
+                  style={{ background: '#2563EB' }}
+                >
+                  <span className="uppercase text-xs">PHYSICAL CHECK</span>
+                </div>
+                <div className="p-8 text-center flex flex-col items-center justify-center flex-1">
+                  <div
+                    className="w-10 h-10 rounded-full flex items-center justify-center mb-2"
+                    style={{ background: isDark ? '#27272A' : '#F3F4F6' }}
+                  >
+                    <FontAwesomeIcon icon={faInbox} className="text-gray-400 text-sm" />
+                  </div>
+                  <p className="text-xs font-semibold" style={{ color: tokens.textPrimary }}>
+                    Tidak Ada Pemeriksaan Fisik
+                  </p>
+                  <p className="text-[11px] mt-1 max-w-xs" style={{ color: tokens.textSecondary }}>
+                    Khusus kelas Nursery, pemeriksaan fisik (telinga, rambut, kuku, gigi) hanya diadakan pada Semester 1.
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <DocumentTable
+                title={reportType === 'PYP' ? (isNursery ? 'PHYSICAL CHECK (NURSERY)' : 'PHYSICAL CHECK') : 'CLINICAL & PHYSICAL CHECK'}
+                columns={physicalColumns}
+                rows={physicalChecks}
+                onAdd={(d) => addRow('health_physical_check', d, setPhysicalChecks)}
+                onUpdate={(id, d) => updateRow('health_physical_check', id, d, setPhysicalChecks)}
+                onRequestDelete={(id) =>
+                  setDeleteModal({
+                    isOpen: true,
+                    table: 'health_physical_check',
+                    id,
+                    title: 'Physical Check',
+                    setter: setPhysicalChecks
+                  })
+                }
+                isDark={isDark}
+                tokens={tokens}
+              />
+            )}
 
             {/* GROWTH DEVELOPMENT TABLE */}
             <DocumentTable

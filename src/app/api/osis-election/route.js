@@ -103,8 +103,8 @@ function computeQuickCount(candidates = [], votes = [], targetDpt = 0) {
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url)
-    const yearIdParam = searchParams.get('year_id')
-    const electionIdParam = searchParams.get('election_id')
+    const yearIdParam = searchParams.get('year_id') || searchParams.get('year')
+    const electionIdParam = searchParams.get('election_id') || searchParams.get('election')
 
     // Fetch Academic Years from year table
     const { data: yearsData, error: yearsError } = await supabaseAdmin

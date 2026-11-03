@@ -3859,36 +3859,74 @@ if (healthData) {
       margin: { left: ml, right: pw - ml - hHalfW },
     });
   } else {
+    // PYP Health Report (Nursery: Sem 1 = Telinga, Rambut, Kuku, Gigi; Sem 2 = None. Non-Nursery: Sem 1 = Mata, Telinga, Gigi, TD; Sem 2 = Telinga)
+    const isSemester2 = semesterLabel?.includes('2') || String(healthData?.semester) === '2' || String(reportFilters?.semester) === '2';
+    const isNursery = Boolean(healthData?.isNursery || healthData?.is_nursery);
+    let pcHead, pcRows, pcColStyles;
+
+    if (isNursery) {
+      if (isSemester2) {
+        pcHead = [['STATUS']];
+        pcRows = [['Tidak ada pemeriksaan fisik pada Semester 2']];
+        pcColStyles = { 0: { halign: 'center', textColor: [107, 114, 128], fontStyle: 'italic' } };
+      } else {
+        pcHead = [['MONTH', 'TELINGA', 'RAMBUT', 'KUKU', 'GIGI']];
+        pcRows = healthData.physicalChecks.length > 0 ? healthData.physicalChecks.map(r => [
+          r.month || '',
+          r.ear || '',
+          r.hair || '',
+          r.nails || '',
+          r.dental || ''
+        ]) : [['', '', '', '', '']];
+        pcColStyles = { 0: { halign: 'center' }, 1: { halign: 'center' }, 2: { halign: 'center' }, 3: { halign: 'center' }, 4: { halign: 'center' } };
+      }
+    } else {
+      pcHead = isSemester2 ? [['MONTH', 'TELINGA']] : [['MONTH', 'MATA', 'TELINGA', 'GIGI', 'TD']];
+      pcRows = healthData.physicalChecks.length > 0 ? healthData.physicalChecks.map(r => (
+        isSemester2
+          ? [r.month || '', r.ear || '']
+          : [r.month || '', r.eye || '', r.ear || '', r.dental || '', r.blood_pressure || '']
+      )) : [isSemester2 ? ['', ''] : ['','','','','']];
+      pcColStyles = isSemester2
+        ? { 0: { cellWidth: 24, halign: 'center' }, 1: { halign: 'center' } }
+        : { 0: { halign: 'center' }, 1: { halign: 'center' }, 2: { halign: 'center' }, 3: { halign: 'center' }, 4: { halign: 'center' } };
+    }
+
     autoTable(doc, {
       startY: hy,
-      head: [['MONTH', 'MATA', 'TELINGA', 'GIGI', 'TD']],
-      body: healthData.physicalChecks.length > 0 ? healthData.physicalChecks.map(r => [
-        r.month || '',
-        r.eye || '',
-        r.ear || '',
-        r.dental || '',
-        r.blood_pressure || ''
-      ]) : [['','','','','']],
+      head: pcHead,
+      body: pcRows,
       theme: 'grid',
       styles: { fontSize: 7, cellPadding: 2, textColor: [31,41,55], lineColor: [209,213,219], lineWidth: 0.3 },
       headStyles: { fillColor: H_HEAD_BG, textColor: H_HEAD_TX, fontStyle: 'bold', fontSize: 6.5 },
+      columnStyles: pcColStyles,
       tableWidth: hHalfW,
       margin: { left: ml, right: pw - ml - hHalfW },
     });
   }
   const hPcY = doc.lastAutoTable.finalY;
 
+  const isNurseryClass = Boolean(healthData?.isNursery || healthData?.is_nursery);
   autoTable(doc, {
     startY: hy,
-    head: isMypReport ? [['MONTH', 'HEIGHT (cm)', 'WEIGHT (kg)']] : [['MONTH', 'WEIGHT (kg)', 'HEIGHT (cm)']],
-    body: healthData.growthRecords.length > 0 ? healthData.growthRecords.map(r => [
-      r.month || '',
-      isMypReport ? (r.height != null ? r.height : '') : (r.weight != null ? r.weight : ''),
-      isMypReport ? (r.weight != null ? r.weight : '') : (r.height != null ? r.height : '')
-    ]) : [['','','']],
+    head: isMypReport
+      ? [['MONTH', 'HEIGHT (cm)', 'WEIGHT (kg)']]
+      : (isNurseryClass
+          ? [['MONTH', 'WEIGHT (kg)', 'HEIGHT (cm)', 'HC (cm)']]
+          : [['MONTH', 'WEIGHT (kg)', 'HEIGHT (cm)']]),
+    body: healthData.growthRecords.length > 0 ? healthData.growthRecords.map(r => (
+      isMypReport
+        ? [r.month || '', r.height != null ? String(r.height) : '', r.weight != null ? String(r.weight) : '']
+        : (isNurseryClass
+            ? [r.month || '', r.weight != null ? String(r.weight) : '', r.height != null ? String(r.height) : '', r.head_circumference != null ? String(r.head_circumference) : (r.hc != null ? String(r.hc) : '')]
+            : [r.month || '', r.weight != null ? String(r.weight) : '', r.height != null ? String(r.height) : ''])
+    )) : [isNurseryClass ? ['','','',''] : ['','','']],
     theme: 'grid',
-    styles: { fontSize: 7.5, cellPadding: 2, textColor: [31,41,55], lineColor: [209,213,219], lineWidth: 0.3 },
-    headStyles: { fillColor: H_HEAD_BG, textColor: H_HEAD_TX, fontStyle: 'bold', fontSize: 7 },
+    styles: { fontSize: 7, cellPadding: 2, textColor: [31,41,55], lineColor: [209,213,219], lineWidth: 0.3 },
+    headStyles: { fillColor: H_HEAD_BG, textColor: H_HEAD_TX, fontStyle: 'bold', fontSize: 6.5 },
+    columnStyles: isNurseryClass
+      ? { 0: { halign: 'center' }, 1: { halign: 'center' }, 2: { halign: 'center' }, 3: { halign: 'center' } }
+      : {},
     tableWidth: hHalfW,
     margin: { left: ml + hHalfW + 4, right: mr },
   });

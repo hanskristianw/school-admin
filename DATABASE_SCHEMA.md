@@ -29,6 +29,8 @@ The main table storing user accounts (staff, teachers, admin, students, etc).
 | `join_date` | `DATE` | Date joined |
 | `resign_date` | `DATE` | Effective resignation date. Days after this date are excluded from attendance tracking and reports. |
 | `signature_url` | `TEXT` | Public URL to user/teacher signature image (Storage: `report-assets/user-signatures/{user_id}/signature.png`) |
+| `allergy` | `TEXT` | Permanent medical allergy warnings (e.g. seafood, peanuts, dust, fur, drugs) |
+| `special_health_conditions` | `TEXT` | Permanent chronic or notable health conditions (e.g. Asthma, Sinus, Eczema) |
 | `user_theme` | `VARCHAR` | User UI theme preference |
 | `user_password_hash`| `VARCHAR` | Bcrypt password hash |
 | `user_created_at` | `TIMESTAMP` | Record creation date |
@@ -2588,6 +2590,8 @@ The API `/api/athletic-day` implements automatic dual-mode persistence:
 
 This domain manages student periodic health evaluations, physical growth monitoring, medical check-ups (Growth Checks), immunization tracking, and clinic incident records. The module caters to two distinct school curricula:
 1. **PYP Health Report (Early Years & Elementary):** Focuses on physical development (Height, Weight, Eyes/Visus, Ears, Dental, Blood Pressure), immunizations, and clinic incidents without invasive blood tests.
+   - **Ketentuan Khusus Kelas Nursery (`is_nursery = true`)**: Pemeriksaan fisik (*Physical Check*) hanya diadakan pada **Semester 1**, dengan parameter: **Telinga**, **Rambut**, **Kuku**, dan **Gigi** (`ear`, `hair`, `nails`, `dental`). Pada **Semester 2**, pemeriksaan fisik ditiadakan (*tidak ada*).
+   - **Ketentuan Khusus Kelas PYP Non-Nursery (SD / Primary)**: Pada **Semester 1**, pemeriksaan fisik lengkap (Mata, Telinga, Gigi, TD). Pada **Semester 2**, hanya berfokus pada **Telinga** (`ear`), sedangkan Mata, Gigi, dan TD ditiadakan.
 2. **MYP Health Report (Middle Years / Secondary):** Extends the evaluation to adolescent laboratory screenings including Random Blood Glucose (GDA), Hemoglobin (HB), Color Blindness, Blood Pressure, Personal Hygiene (Hair, Nails), and Dental health.
 
 ### 17.1 Tables
@@ -2697,6 +2701,7 @@ erDiagram
         string month
         numeric height
         numeric weight
+        numeric head_circumference
     }
 
     health_physical_check {
