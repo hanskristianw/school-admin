@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { syncUserLeaveQuota } from '@/lib/leaveQuotaSync'
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -28,6 +29,19 @@ export async function GET(request) {
 
     if (yearId)        q = q.eq('year_id', parseInt(yearId))
     if (leaveTypeCode) q = q.eq('leave_type_code', leaveTypeCode)
+
+    // Auto-reconcile user's leave quota with approved attendance excuses before querying
+    if (userId) {
+      try {
+        await syncUserLeaveQuota(supabaseAdmin, {
+          userId: parseInt(userId, 10),
+          yearId: yearId ? parseInt(yearId, 10) : undefined,
+          leaveTypeCode: leaveTypeCode || undefined
+        })
+      } catch (syncErr) {
+        console.error('Auto sync leave quota error in GET:', syncErr)
+      }
+    }
 
     // Jika user_id diberikan: ambil record individual user TERSEBUT + semua global
     if (userId) {
@@ -131,6 +145,20 @@ export async function POST(request) {
     }
 
     if (error) throw error
+
+    // Sync used_days with actual approved excuses for this user & year
+    if (uid !== null) {
+      try {
+        await syncUserLeaveQuota(supabaseAdmin, {
+          userId: uid,
+          yearId: parseInt(year_id, 10),
+          leaveTypeCode: leave_type_code
+        })
+      } catch (syncErr) {
+        console.error('Leave quota sync error in POST:', syncErr)
+      }
+    }
+
     return NextResponse.json({ success: true, data })
   } catch (err) {
     return NextResponse.json({ success: false, message: err.message }, { status: 500 })

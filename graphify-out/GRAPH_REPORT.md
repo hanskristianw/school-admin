@@ -1,16 +1,16 @@
 # Graph Report - school-admin  (2026-11-04)
 
 ## Corpus Check
-- 445 files · ~762,039 words
+- 447 files · ~766,491 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 2474 nodes · 2638 edges · 427 communities (293 shown, 134 thin omitted)
+- 2478 nodes · 2642 edges · 428 communities (294 shown, 134 thin omitted)
 - Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 9 edges (avg confidence: 0.67)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `ad68dec7`
+- Built from commit: `8faeeb85`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -295,6 +295,7 @@
 - page.jsx
 - react-dom
 - page.jsx
+- bcryptjs
 - pdf-lib
 - @radix-ui/react-select
 - react-hook-form
@@ -312,16 +313,15 @@
 - @tiptap/react
 - @tiptap/starter-kit
 - xlsx
+- **3. Assessment System**
 - 📁 **Project Structure**
-- bcryptjs
 - 🔧 **Technical Implementation**
 - page.jsx
 - page.jsx
 - **3. Assessment System**
 - browser-image-compression
 - exceljs
-- **3. Assessment System**
-- 📁 **Project Structure**
+- class-variance-authority
 - clsx
 
 ## God Nodes (most connected - your core abstractions)
@@ -351,7 +351,7 @@
 ## Import Cycles
 - None detected.
 
-## Communities (427 total, 134 thin omitted)
+## Communities (428 total, 134 thin omitted)
 
 ### Community 0 - "Admission Management"
 Cohesion: 0.09
@@ -771,7 +771,7 @@ Nodes (7): 33. CATEGORY-SPECIFIC BIAS, Commerce, Fintech, Health / Fitness, Prod
 
 ### Community 133 - "Module 133"
 Cohesion: 0.15
-Nodes (13): class-variance-authority, @googleapis/chat, @hookform/resolvers, lucide-react, dependencies, class-variance-authority, @googleapis/chat, @hookform/resolvers (+5 more)
+Nodes (13): bcryptjs, @googleapis/chat, @hookform/resolvers, lucide-react, dependencies, bcryptjs, @googleapis/chat, @hookform/resolvers (+5 more)
 
 ### Community 135 - "Module 135"
 Cohesion: 0.29
@@ -811,7 +811,7 @@ Nodes (6): 5. IMAGE COUNT & PAGE SLICING, Continuity Rule, Counting rule, Format
 
 ### Community 145 - "Module 145"
 Cohesion: 0.10
-Nodes (45): AssessmentInstructionEditor(), FONT_FAMILIES, FONT_SIZES, FontSize, HIGHLIGHT_COLORS, Indent, plainTextToHtml(), TEXT_COLORS (+37 more)
+Nodes (46): AssessmentInstructionEditor(), FONT_FAMILIES, FONT_SIZES, FontSize, HIGHLIGHT_COLORS, Indent, plainTextToHtml(), TEXT_COLORS (+38 more)
 
 ### Community 146 - "Module 146"
 Cohesion: 0.33
@@ -990,8 +990,8 @@ Cohesion: 0.67
 Nodes (5): buildWeeklyOverviewDocx(), compositeStampAndSignature(), fitAspect(), getImageDimensions(), POST()
 
 ### Community 289 - "bcryptjs"
-Cohesion: 0.50
-Nodes (4): Attendance (QR) Tables, **Core Tables:**, �🏗️ **Database Structure**, Grades (Nilai) Table
+Cohesion: 0.40
+Nodes (5): **1. MYP Year Level Selection**, **2. Criterion Grades (A, B, C, D)**, **3. Strand Grades**, **4. Final Grade (1-7)**, **Key Components**
 
 ### Community 290 - "Panduan Pemasangan: Sistem Persewaan Lapangan CCS di cPanel / Hostinger"
 Cohesion: 0.22
@@ -1013,6 +1013,10 @@ Nodes (3): Git Push Rule, Project Agent Rules, Supabase Query Limit & Batch Oper
 Cohesion: 0.50
 Nodes (4): 7. DIAL DEFINITIONS (Technical Reference), DESIGN_VARIANCE (Level 1-10), MOTION_INTENSITY (Level 1-10), VISUAL_DENSITY (Level 1-10)
 
+### Community 330 - "📁 **Project Structure**"
+Cohesion: 0.50
+Nodes (4): Attendance (QR) Tables, **Core Tables:**, �🏗️ **Database Structure**, Grades (Nilai) Table
+
 ### Community 368 - "route.js"
 Cohesion: 0.57
 Nodes (6): extractScheduleMeta(), GET(), POST(), resolveCurrentFormFee(), supabaseAdmin, verifyAuth()
@@ -1029,25 +1033,21 @@ Nodes (6): ALLOWED_POINTS, AthleticDayManagementPage(), isLightColor(), normaliz
 Cohesion: 0.83
 Nodes (3): AthleticDayLivePage(), isLightColor(), normalizeTeamColor()
 
-### Community 412 - "📁 **Project Structure**"
+### Community 391 - "bcryptjs"
 Cohesion: 0.50
 Nodes (4): **Backend & Database:**, **Frontend Stack:**, **Key Technical Notes:**, 🔧 **Technical Implementation**
 
-### Community 413 - "bcryptjs"
-Cohesion: 0.40
-Nodes (5): **1. MYP Year Level Selection**, **2. Criterion Grades (A, B, C, D)**, **3. Strand Grades**, **4. Final Grade (1-7)**, **Key Components**
+### Community 412 - "**3. Assessment System**"
+Cohesion: 0.67
+Nodes (3): **3. Assessment System**, **Admin Workflow**:, **Teacher Workflow**:
+
+### Community 413 - "📁 **Project Structure**"
+Cohesion: 0.67
+Nodes (3): **Important Files:**, **Key Directories:**, 📁 **Project Structure**
 
 ### Community 414 - "🔧 **Technical Implementation**"
 Cohesion: 0.50
 Nodes (3): 1. PostgREST Hard Limit of 1,000 Rows per Query, 2. Bulk/Batch Writes vs N+1 Loops, Supabase Query Limits & Bulk Operations Rules
-
-### Community 423 - "**3. Assessment System**"
-Cohesion: 0.67
-Nodes (3): **3. Assessment System**, **Admin Workflow**:, **Teacher Workflow**:
-
-### Community 424 - "📁 **Project Structure**"
-Cohesion: 0.67
-Nodes (3): **Important Files:**, **Key Directories:**, 📁 **Project Structure**
 
 ## Knowledge Gaps
 - **1218 isolated node(s):** `extends`, `next/core-web-vitals`, `$schema`, `style`, `rsc` (+1213 more)
@@ -1057,7 +1057,7 @@ Nodes (3): **Important Files:**, **Key Directories:**, 📁 **Project Structure*
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `dependencies` connect `Module 133` to `Admission Management`, `Package Dependencies & Config`, `next-auth`, `DDL`, `📁 **Project Structure**`, `react-dom`, `Module 134`, `pdf-lib`, `@radix-ui/react-select`, `react-hook-form`, `React UI Components`, `🎓 **IB MYP Assessment Grading System**`, `clsx`, `@fortawesome/react-fontawesome`, `class-variance-authority`, `@tiptap/extension-table-cell`, `@tiptap/extension-table-header`, `@tiptap/extension-table-row`, `@tiptap/extension-task-item`, `@tiptap/extension-task-list`, `docx`, `@tiptap/extension-text-align`, `@tiptap/extension-text-style`, `@tiptap/extension-underline`, `Module 154`, `@tiptap/pm`, `@tiptap/react`, `@tiptap/starter-kit`, `xlsx`, `**3. Assessment System**`, `browser-image-compression`, `SKILL.md`, `exceljs`, `clsx`, `dotenv`, `zod`, `@googleapis/chat`, `Appendix B - Canonical Sources (read these before reinventing)`, `Analysis & Synthesis Instructions`, `**3. Assessment System**`, `12. THE COMBINATORIAL VARIATION ENGINE`, `📁 **Project Structure**`, `html5-qrcode`, `11. REDESIGN PROTOCOL`, `33. CATEGORY-SPECIFIC BIAS`, `Module 239`, `Module 240`, `jsonwebtoken`, `jspdf-autotable`, `@sparticuz/chromium-min`, `@supabase/supabase-js`, `react-easy-crop`?**
+- **Why does `dependencies` connect `Module 133` to `Admission Management`, `Package Dependencies & Config`, `next-auth`, `DDL`, `📁 **Project Structure**`, `react-dom`, `Module 134`, `pdf-lib`, `@radix-ui/react-select`, `react-hook-form`, `React UI Components`, `🎓 **IB MYP Assessment Grading System**`, `clsx`, `@fortawesome/react-fontawesome`, `class-variance-authority`, `@tiptap/extension-table-cell`, `@tiptap/extension-table-header`, `@tiptap/extension-table-row`, `@tiptap/extension-task-item`, `@tiptap/extension-task-list`, `docx`, `@tiptap/extension-text-align`, `@tiptap/extension-text-style`, `@tiptap/extension-underline`, `Module 154`, `@tiptap/pm`, `@tiptap/react`, `@tiptap/starter-kit`, `xlsx`, `**3. Assessment System**`, `browser-image-compression`, `SKILL.md`, `class-variance-authority`, `exceljs`, `clsx`, `dotenv`, `zod`, `@googleapis/chat`, `Appendix B - Canonical Sources (read these before reinventing)`, `Analysis & Synthesis Instructions`, `**3. Assessment System**`, `12. THE COMBINATORIAL VARIATION ENGINE`, `html5-qrcode`, `11. REDESIGN PROTOCOL`, `33. CATEGORY-SPECIFIC BIAS`, `Module 239`, `Module 240`, `jsonwebtoken`, `jspdf-autotable`, `@sparticuz/chromium-min`, `@supabase/supabase-js`, `react-easy-crop`?**
   _High betweenness centrality (0.018) - this node is a cross-community bridge._
 - **Why does `jspdf` connect `Admission Management` to `Module 145`, `Module 115`, `Module 155`, `Module 133`?**
   _High betweenness centrality (0.014) - this node is a cross-community bridge._

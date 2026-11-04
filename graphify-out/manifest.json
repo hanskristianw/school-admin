@@ -705,8 +705,8 @@
     "semantic_hash": "411a091d8c017f00da65a675cd776588"
   },
   "src/app/api/attendance/excuses/[id]/route.js": {
-    "mtime": 1784179362.408196,
-    "ast_hash": "974dacdce9d11e7f98c4e4bf86f4f904",
+    "mtime": 1793773191.235885,
+    "ast_hash": "de29c4d986b6f763a71b76e98462194f",
     "semantic_hash": ""
   },
   "src/app/api/attendance/excuses/route.js": {
@@ -720,8 +720,8 @@
     "semantic_hash": ""
   },
   "src/app/api/attendance/leave-quotas/route.js": {
-    "mtime": 1784179362.4092813,
-    "ast_hash": "315962553f5c31c876de509490acaf08",
+    "mtime": 1793773218.3169358,
+    "ast_hash": "20646162f01a39933495b3045c4c5e22",
     "semantic_hash": ""
   },
   "src/app/api/attendance/notify/route.js": {
@@ -1060,8 +1060,8 @@
     "semantic_hash": ""
   },
   "src/app/data/topic-new/page.jsx": {
-    "mtime": 1793336559.7128036,
-    "ast_hash": "307cb3bceb04bb5ae92efb6665cb9ccb",
+    "mtime": 1793770147.827294,
+    "ast_hash": "f77d0a99873f5833e85eaa1966cc54d0",
     "semantic_hash": ""
   },
   "src/app/data/topic/page.jsx": {
@@ -1640,8 +1640,8 @@
     "semantic_hash": ""
   },
   "DATABASE_SCHEMA.md": {
-    "mtime": 1793766862.738725,
-    "ast_hash": "c49dae4b305206baa3f042a4e85c3f2c",
+    "mtime": 1793770682.8809047,
+    "ast_hash": "2d11f3a1b289947cc7550738c536655f",
     "semantic_hash": ""
   },
   "banner-220.png": {
@@ -2457,6 +2457,16 @@
   "migrations/add-is-permanent-to-users.sql": {
     "mtime": 1793766866.0590422,
     "ast_hash": "ad98578c1e5834916d1c369c09bcaccf",
+    "semantic_hash": ""
+  },
+  "src/app/data/topic-new/components/UnitGradeRecap.jsx": {
+    "mtime": 1793771668.56839,
+    "ast_hash": "7c6fafcb500888c8dc1bbfeb3c726f6d",
+    "semantic_hash": ""
+  },
+  "src/lib/leaveQuotaSync.js": {
+    "mtime": 1793773119.354338,
+    "ast_hash": "baf654a1dabe506aaf88a2c6bac4850a",
     "semantic_hash": ""
   }
 }

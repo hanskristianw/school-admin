@@ -1059,6 +1059,7 @@ Stores the final summarized grades for a student per assessment, including crite
 > **Calculation Rules:**
 > - **Criterion Grade:** Uses "best-fit" approach, calculated as the **highest** strand grade within that criterion (`Math.max(...strand_grades)`).
 > - **Final Grade:** Sum of all 4 criteria (max 32). Converted to 1-7 scale: 1-5 (1), 6-9 (2), 10-14 (3), 15-18 (4), 19-23 (5), 24-27 (6), 28-32 (7).
+> - **Unit Grade Recap (Broadsheet Matrix):** In /data/topic-new (Tab Report -> Mode unit_recap), student grades across all subjects in a class are consolidated by Unit Sequence (`topic.topic_urutan`, max 4 units: Unit 1 to Unit 4), generating an interactive cross-subject matrix with class averages, completion rates, and Excel broadsheet export.
 
 #### `assessment_grade_strands`
 Stores the detailed score (0-8) for each specific strand (i, ii, iii, iv) for a student in an assessment.

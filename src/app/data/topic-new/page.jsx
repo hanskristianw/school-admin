@@ -5,7 +5,7 @@ import { flushSync } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faSpinner, faPlus, faTimes, faClipboardList, faBook, faInfoCircle, faPaperPlane, faTrash, faPrint, faFileAlt, faFileWord, faFileExcel, faSave, faLightbulb, faCalendar, faCalendarCheck, faCheck, faTableCells, faListUl, faMap, faClipboardCheck, faComments, faHouseUser, faChartBar, faWandMagicSparkles, faSliders, faEllipsisV, faClock, faEye, faSearch, faChevronDown, faChevronRight } from '@fortawesome/free-solid-svg-icons'
+import { faSpinner, faPlus, faTimes, faClipboardList, faBook, faInfoCircle, faPaperPlane, faTrash, faPrint, faFileAlt, faFileWord, faFileExcel, faSave, faLightbulb, faCalendar, faCalendarCheck, faCheck, faTableCells, faTableList, faListUl, faMap, faClipboardCheck, faComments, faHouseUser, faChartBar, faWandMagicSparkles, faSliders, faEllipsisV, faClock, faEye, faSearch, faChevronDown, faChevronRight } from '@fortawesome/free-solid-svg-icons'
 import { useTheme } from '@/lib/theme'
 import SlideOver from '@/components/ui/slide-over'
 import Modal from '@/components/ui/modal'
@@ -28,6 +28,7 @@ import useAiHelp from './lib/useAiHelp'
 import UnitPlannerDocumentEditor from './components/UnitPlannerDocumentEditor'
 import GoogleClassroomConnector from './components/GoogleClassroomConnector'
 import CommunityProjectTab from './components/CommunityProjectTab'
+import UnitGradeRecap from './components/UnitGradeRecap'
 import { isHtmlEmpty } from './lib/instructionDocxHelper'
 import 'driver.js/dist/driver.css'
 
@@ -3233,8 +3234,11 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
       if (reportYears.length === 0) {
         fetchReportYears()
       }
+      if (reportFilters.year) {
+        fetchReportKelasOptions(reportFilters.year)
+      }
     }
-  }, [activeTab])
+  }, [activeTab, reportFilters.year])
   
   // Fetch years for report filter
   const fetchReportYears = async () => {
@@ -3251,7 +3255,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
     }
   }
   
-  // Fetch kelas options for report (only kelas that the teacher teaches AND belongs to selected year)
+  // Fetch kelas options for report
   const fetchReportKelasOptions = async (yearId) => {
     if (!yearId) {
       setReportKelasOptions([])
@@ -3259,42 +3263,104 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
     }
     
     try {
-      // Get user's subjects
-      const userSubjectIds = subjects.map(s => s.subject_id)
-      if (userSubjectIds.length === 0) {
-        setReportKelasOptions([])
-        return
-      }
-      
-      // Get kelas from detail_kelas that teacher teaches
-      const { data: detailKelasData, error: dkError } = await supabase
-        .from('detail_kelas')
-        .select('detail_kelas_kelas_id')
-        .in('detail_kelas_subject_id', userSubjectIds)
-      
-      if (dkError) throw dkError
-      
-      const kelasIds = [...new Set((detailKelasData || []).map(dk => dk.detail_kelas_kelas_id).filter(Boolean))]
-      
-      if (kelasIds.length > 0) {
+      const parsedYearId = parseInt(yearId, 10)
+
+      // 1. Identify MYP unit IDs
+      const { data: unitsData } = await supabase
+        .from('unit')
+        .select('unit_id, unit_name, is_myp')
+
+      const mypIds = new Set(
+        (unitsData || [])
+          .filter(u => u.is_myp || (u.unit_name && u.unit_name.toUpperCase().includes('MYP')))
+          .map(u => u.unit_id)
+      )
+
+      const isPrivileged = isAdmin || userIsAdmin || userIsCurriculum || userIsPrincipal || isAdminLike(userRole)
+
+      // If privileged (Admin / Curriculum / Principal), fetch all MYP classes for this year
+      if (isPrivileged) {
         const { data: kelasData, error: kelasError } = await supabase
           .from('kelas')
           .select('kelas_id, kelas_nama, kelas_unit_id')
-          .in('kelas_id', kelasIds)
-          .eq('kelas_year_id', yearId)
+          .eq('kelas_year_id', parsedYearId)
           .order('kelas_nama')
-        
-        if (!kelasError && kelasData) {
-          const { data: unitsData } = await supabase.from('unit').select('unit_id, unit_name, is_myp')
-          const mypIds = new Set((unitsData || []).filter(u => u.is_myp || (u.unit_name && u.unit_name.toUpperCase().includes('MYP'))).map(u => u.unit_id))
-          const filteredSorted = (kelasData || [])
-            .filter(k => mypIds.has(k.kelas_unit_id))
-            .sort((a, b) => (a.kelas_nama || '').localeCompare(b.kelas_nama || '', undefined, { numeric: true, sensitivity: 'base' }))
-          setReportKelasOptions(filteredSorted)
-        }
-      } else {
-        setReportKelasOptions([])
+
+        if (kelasError) throw kelasError
+
+        const filteredSorted = (kelasData || [])
+          .filter(k => mypIds.has(k.kelas_unit_id))
+          .sort((a, b) => (a.kelas_nama || '').localeCompare(b.kelas_nama || '', undefined, { numeric: true, sensitivity: 'base' }))
+
+        setReportKelasOptions(filteredSorted)
+        return
       }
+
+      // 2. For regular teachers: check owned subjects, detail_kelas assignments, or homeroom (kelas_user_id)
+      const userSubjectIds = (subjects || []).map(s => s.subject_id)
+      let assignedKelasIds = []
+
+      if (userSubjectIds.length > 0) {
+        const { data: detailKelasData } = await supabase
+          .from('detail_kelas')
+          .select('detail_kelas_kelas_id')
+          .in('detail_kelas_subject_id', userSubjectIds)
+        if (detailKelasData) {
+          assignedKelasIds.push(...detailKelasData.map(dk => dk.detail_kelas_kelas_id))
+        }
+      }
+
+      if (currentUserId) {
+        const { data: overrideData } = await supabase
+          .from('detail_kelas')
+          .select('detail_kelas_kelas_id')
+          .eq('teacher_user_id', currentUserId)
+        if (overrideData) {
+          assignedKelasIds.push(...overrideData.map(dk => dk.detail_kelas_kelas_id))
+        }
+
+        const { data: homeroomData } = await supabase
+          .from('kelas')
+          .select('kelas_id')
+          .or(`kelas_user_id.eq.${currentUserId},kelas_user_id_2.eq.${currentUserId}`)
+          .eq('kelas_year_id', parsedYearId)
+        if (homeroomData) {
+          assignedKelasIds.push(...homeroomData.map(k => k.kelas_id))
+        }
+      }
+
+      const uniqueKelasIds = [...new Set(assignedKelasIds.filter(Boolean))]
+
+      let kelasQuery = supabase
+        .from('kelas')
+        .select('kelas_id, kelas_nama, kelas_unit_id')
+        .eq('kelas_year_id', parsedYearId)
+        .order('kelas_nama')
+
+      if (uniqueKelasIds.length > 0) {
+        kelasQuery = kelasQuery.in('kelas_id', uniqueKelasIds)
+      }
+
+      const { data: kelasData, error: kelasError } = await kelasQuery
+      if (kelasError) throw kelasError
+
+      let filteredSorted = (kelasData || [])
+        .filter(k => mypIds.has(k.kelas_unit_id))
+        .sort((a, b) => (a.kelas_nama || '').localeCompare(b.kelas_nama || '', undefined, { numeric: true, sensitivity: 'base' }))
+
+      // Fallback: If no classes matched for teacher, show all MYP classes in that year
+      if (filteredSorted.length === 0) {
+        const { data: fallbackKelas } = await supabase
+          .from('kelas')
+          .select('kelas_id, kelas_nama, kelas_unit_id')
+          .eq('kelas_year_id', parsedYearId)
+          .order('kelas_nama')
+        filteredSorted = (fallbackKelas || [])
+          .filter(k => mypIds.has(k.kelas_unit_id))
+          .sort((a, b) => (a.kelas_nama || '').localeCompare(b.kelas_nama || '', undefined, { numeric: true, sensitivity: 'base' }))
+      }
+
+      setReportKelasOptions(filteredSorted)
     } catch (err) {
       console.error('Error fetching report kelas:', err)
       setReportKelasOptions([])
@@ -9008,26 +9074,63 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
               <p className="text-sm" style={{ color: theme.textSecondary }}>{t('topicNew.report.subtitle')}</p>
             </div>
             
-            {/* Filters */}
-            <div className="p-4 mb-5" style={{ background: theme.cardBg, border: `1px solid ${theme.border}`, borderRadius: '8px' }}>
-              {/* Mode selector */}
-              <div className="flex items-center gap-2 mb-4">
-                <span className="text-sm font-medium mr-2" style={{ color: theme.textSecondary }}>{t('topicNew.report.modeLabel')}</span>
-                <button
-                  onClick={() => setReportMode('single')}
-                  className="px-3 py-1.5 text-sm font-medium"
-                  style={{ borderRadius: '6px', background: reportMode === 'single' ? theme.textPrimary : theme.subtleBg, color: reportMode === 'single' ? theme.cardBg : theme.textSecondary, border: `1px solid ${theme.border}` }}
-                >
-                  {t('topicNew.report.modeSingle')}
-                </button>
-                <button
-                  onClick={() => setReportMode('class')}
-                  className="px-3 py-1.5 text-sm font-medium"
-                  style={{ borderRadius: '6px', background: reportMode === 'class' ? theme.textPrimary : theme.subtleBg, color: reportMode === 'class' ? theme.cardBg : theme.textSecondary, border: `1px solid ${theme.border}` }}
-                >
-                  {t('topicNew.report.modeClass')}
-                </button>
-              </div>
+            {/* Mode selector */}
+            <div className="flex items-center gap-2 mb-5 flex-wrap">
+              <span className="text-xs font-mono font-medium uppercase tracking-wider mr-2" style={{ color: theme.textSecondary }}>{t('topicNew.report.modeLabel')}</span>
+              <button
+                type="button"
+                onClick={() => setReportMode('single')}
+                className="px-3.5 py-1.5 text-xs font-medium rounded-md transition-all cursor-pointer"
+                style={{
+                  background: reportMode === 'single' ? theme.textPrimary : theme.subtleBg,
+                  color: reportMode === 'single' ? theme.cardBg : theme.textSecondary,
+                  border: `1px solid ${theme.border}`
+                }}
+              >
+                {t('topicNew.report.modeSingle')}
+              </button>
+              <button
+                type="button"
+                onClick={() => setReportMode('class')}
+                className="px-3.5 py-1.5 text-xs font-medium rounded-md transition-all cursor-pointer"
+                style={{
+                  background: reportMode === 'class' ? theme.textPrimary : theme.subtleBg,
+                  color: reportMode === 'class' ? theme.cardBg : theme.textSecondary,
+                  border: `1px solid ${theme.border}`
+                }}
+              >
+                {t('topicNew.report.modeClass')}
+              </button>
+              <button
+                type="button"
+                onClick={() => setReportMode('unit_recap')}
+                className="px-3.5 py-1.5 text-xs font-medium rounded-md transition-all cursor-pointer flex items-center gap-1.5"
+                style={{
+                  background: reportMode === 'unit_recap' ? theme.textPrimary : theme.subtleBg,
+                  color: reportMode === 'unit_recap' ? theme.cardBg : theme.textSecondary,
+                  border: `1px solid ${theme.border}`
+                }}
+              >
+                <FontAwesomeIcon icon={faTableList} className="text-xs" />
+                <span>Unit Grade Recap</span>
+              </button>
+            </div>
+
+            {reportMode === 'unit_recap' ? (
+              <UnitGradeRecap
+                theme={theme}
+                isDark={isDark}
+                reportYears={reportYears}
+                reportFilters={reportFilters}
+                handleReportFilterChange={handleReportFilterChange}
+                reportKelasOptions={reportKelasOptions}
+                supabase={supabase}
+                isAdmin={isAdmin}
+              />
+            ) : (
+              <>
+                {/* Filters */}
+                <div className="p-4 mb-5" style={{ background: theme.cardBg, border: `1px solid ${theme.border}`, borderRadius: '8px' }}>
 
               <div className={`grid grid-cols-1 gap-4 ${reportMode === 'single' ? 'md:grid-cols-4' : 'md:grid-cols-3'}`}>
                 {/* Year Filter */}
@@ -9183,6 +9286,8 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                 <p className="text-xs" style={{ color: theme.blueText }}>{t('topicNew.report.infoText')}</p>
               </div>
             </div>
+              </>
+            )}
           </div>
         )}
       </div>
