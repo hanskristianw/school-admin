@@ -841,6 +841,220 @@ export default function AttendanceReportPage() {
     }
   }
 
+  // ── Export Excel for Operational Leave (Annual Format) ────────────────────
+  const exportOperationalLeaveExcel = async () => {
+    if (loading || exporting) return
+    setExporting(true)
+    try {
+      const res = await fetch(`/api/attendance/operational-leave?month=${selectedMonth}`)
+      const json = await res.json()
+      if (!json.success || !json.data) {
+        throw new Error(json.error || 'Gagal memuat data cuti operational.')
+      }
+
+      const activeYear = json.year || { year_name: '2026/2027' }
+      const rows = json.data
+
+      const wb = new ExcelJS.Workbook()
+      wb.creator = 'School Admin System'
+      wb.created = new Date()
+
+      const ws = wb.addWorksheet('Operational Leave')
+
+      ws.columns = [
+        { key: 'no', width: 6 },
+        { key: 'name', width: 28 },
+        { key: 'position', width: 36 },
+        { key: 'department', width: 14 },
+        { key: 'is_permanent', width: 10 },
+        { key: 'since', width: 13 },
+        { key: 'cuti_1', width: 11 },
+        { key: 'cuti_2', width: 11 },
+        { key: 'cuti_3', width: 11 },
+        { key: 'cuti_4', width: 11 },
+        { key: 'cuti_5', width: 11 },
+        { key: 'cuti_6', width: 11 },
+        { key: 'cuti_7', width: 11 },
+        { key: 'cuti_8', width: 11 },
+        { key: 'cuti_9', width: 11 },
+        { key: 'cuti_10', width: 11 },
+        { key: 'cuti_11', width: 11 },
+        { key: 'cuti_12', width: 11 },
+        { key: 'total_used', width: 12 },
+        { key: 'remaining', width: 12 }
+      ]
+
+      const thinBorder = {
+        top: { style: 'thin', color: { argb: 'FFB0B0B0' } },
+        bottom: { style: 'thin', color: { argb: 'FFB0B0B0' } },
+        left: { style: 'thin', color: { argb: 'FFB0B0B0' } },
+        right: { style: 'thin', color: { argb: 'FFB0B0B0' } }
+      }
+
+      const GREEN_FILL  = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD9EAD3' } }
+      const PINK_FILL   = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEAD1DC' } }
+      const YELLOW_FILL = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFF2CC' } }
+      const BLUE_FILL   = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFCFE2F3' } }
+
+      // Header Rows 1 & 2
+      const row1 = ws.getRow(1)
+      const row2 = ws.getRow(2)
+      row1.height = 22
+      row2.height = 20
+
+      row1.getCell(1).value = 'No'
+      row1.getCell(2).value = "Employee's Name"
+      row1.getCell(3).value = 'Position'
+      row1.getCell(4).value = 'Department'
+      row1.getCell(5).value = 'Permanent Employee'
+      row1.getCell(7).value = 'Cuti 1'
+      row1.getCell(8).value = 'Cuti 2'
+      row1.getCell(9).value = 'Cuti 3'
+      row1.getCell(10).value = 'Cuti 4'
+      row1.getCell(11).value = 'Cuti 5'
+      row1.getCell(12).value = 'Cuti 6'
+      row1.getCell(13).value = 'Cuti 7'
+      row1.getCell(14).value = 'Cuti 8'
+      row1.getCell(15).value = 'Cuti 9'
+      row1.getCell(16).value = 'Cuti 10'
+      row1.getCell(17).value = 'Cuti 11'
+      row1.getCell(18).value = 'Cuti 12'
+      row1.getCell(19).value = 'Total Cuti'
+      row1.getCell(20).value = 'Sisa Cuti'
+
+      row2.getCell(5).value = 'Yes/No'
+      row2.getCell(6).value = 'Since'
+
+      ws.mergeCells('A1:A2')
+      ws.mergeCells('B1:B2')
+      ws.mergeCells('C1:C2')
+      ws.mergeCells('D1:D2')
+      ws.mergeCells('E1:F1')
+      ws.mergeCells('G1:G2')
+      ws.mergeCells('H1:H2')
+      ws.mergeCells('I1:I2')
+      ws.mergeCells('J1:J2')
+      ws.mergeCells('K1:K2')
+      ws.mergeCells('L1:L2')
+      ws.mergeCells('M1:M2')
+      ws.mergeCells('N1:N2')
+      ws.mergeCells('O1:O2')
+      ws.mergeCells('P1:P2')
+      ws.mergeCells('Q1:Q2')
+      ws.mergeCells('R1:R2')
+      ws.mergeCells('S1:S2')
+      ws.mergeCells('T1:T2')
+
+      for (let r = 1; r <= 2; r++) {
+        const row = ws.getRow(r)
+        for (let c = 1; c <= 20; c++) {
+          const cell = row.getCell(c)
+          cell.border = thinBorder
+          cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }
+          cell.font = { name: 'Arial', size: 10, bold: true, color: { argb: 'FF000000' } }
+
+          if (c >= 1 && c <= 4) cell.fill = GREEN_FILL
+          else if (c === 5 || c === 6) cell.fill = PINK_FILL
+          else if (c >= 7 && c <= 18) cell.fill = YELLOW_FILL
+          else if (c >= 19 && c <= 20) cell.fill = BLUE_FILL
+        }
+      }
+
+      // Section Header: Operational Support Staffs
+      const row3 = ws.getRow(3)
+      row3.height = 22
+      row3.getCell(1).value = ''
+      row3.getCell(2).value = 'Operational Support Staffs'
+      row3.getCell(2).font = { name: 'Arial', size: 10.5, bold: true, color: { argb: 'FF000000' } }
+      ws.mergeCells('B3:T3')
+      for (let c = 1; c <= 20; c++) {
+        row3.getCell(c).border = thinBorder
+        row3.getCell(c).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF3F4F6' } }
+      }
+
+      let currentRow = 4
+      rows.forEach((item, idx) => {
+        const row = ws.getRow(currentRow++)
+        row.height = 20
+
+        row.getCell(1).value = idx + 1
+        row.getCell(2).value = item.name
+        row.getCell(3).value = item.position
+        row.getCell(4).value = item.department
+        row.getCell(5).value = item.is_permanent
+        row.getCell(6).value = item.since
+
+        for (let c = 0; c < 12; c++) {
+          const colIdx = 7 + c
+          const cell = row.getCell(colIdx)
+          const leaveItem = item.leaves ? item.leaves[c] : null
+          const dateVal = leaveItem ? leaveItem.date : (item.dates && item.dates[c])
+
+          if (dateVal) {
+            cell.value = dateVal
+            cell.font = { name: 'Arial', size: 9.5, bold: true, color: { argb: 'FF002060' } }
+
+            // Warna kuning jika belum diapprove (misal status pending atau approved_1)
+            const isApproved = leaveItem ? leaveItem.is_approved : true
+            if (!isApproved) {
+              cell.fill = {
+                type: 'pattern',
+                pattern: 'solid',
+                fgColor: { argb: 'FFFFF08A' }
+              }
+            }
+          } else {
+            cell.value = ''
+          }
+        }
+
+        row.getCell(19).value = item.total_used
+        row.getCell(20).value = item.remaining
+
+        for (let c = 1; c <= 20; c++) {
+          const cell = row.getCell(c)
+          cell.border = thinBorder
+          cell.font = cell.font || { name: 'Arial', size: 9.5 }
+
+          if (c === 1 || c === 4 || c === 5 || c === 6 || (c >= 7 && c <= 20)) {
+            cell.alignment = { horizontal: 'center', vertical: 'middle' }
+          } else {
+            cell.alignment = { horizontal: 'left', vertical: 'middle', indent: 0.5 }
+          }
+        }
+      })
+
+      // Catatan keterangan warna di bawah tabel
+      const legendRow = ws.getRow(currentRow + 1)
+      legendRow.height = 18
+      legendRow.getCell(2).value = '* Keterangan:'
+      legendRow.getCell(2).font = { name: 'Arial', size: 9, bold: true, italic: true, color: { argb: 'FF4B5563' } }
+
+      const legendCell = legendRow.getCell(3)
+      legendCell.value = 'Warna Kuning = Pengajuan cuti belum diapprove (Pending / Menunggu Approval 2)'
+      legendCell.font = { name: 'Arial', size: 9, bold: true, color: { argb: 'FF002060' } }
+      legendCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFF08A' } }
+      legendCell.border = thinBorder
+      legendCell.alignment = { horizontal: 'center', vertical: 'middle' }
+      ws.mergeCells(`C${currentRow + 1}:H${currentRow + 1}`)
+
+      const buf = await wb.xlsx.writeBuffer()
+      const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      const yearLabel = (activeYear.year_name || '2026-2027').replace(/[\/\s]/g, '-')
+      a.download = `Laporan_Cuti_Operational_TA_${yearLabel}.xlsx`
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      console.error('[exportOperationalLeaveExcel] error:', err)
+      alert('Gagal mengekspor Cuti Operational: ' + (err.message || 'Terjadi kesalahan'))
+    } finally {
+      setExporting(false)
+    }
+  }
+
   return (
     <div style={{ background: pageBg, minHeight: '100vh', padding: '24px 32px', color: textPrimary, fontFamily: "'Geist Sans', 'SF Pro Display', system-ui, -apple-system, sans-serif" }}>
       
@@ -878,6 +1092,22 @@ export default function AttendanceReportPage() {
 
         {/* Export Buttons */}
         <div className="flex items-center gap-2.5 flex-wrap">
+          <button
+            onClick={exportOperationalLeaveExcel}
+            disabled={loading || exporting}
+            className="px-3.5 py-2 text-xs font-semibold rounded-md border transition-all flex items-center gap-2 hover:brightness-110 active:scale-95 cursor-pointer"
+            style={{
+              background: isDark ? 'rgba(124, 58, 237, 0.15)' : '#F5F3FF',
+              borderColor: isDark ? '#7C3AED' : '#DDD6FE',
+              color: isDark ? '#A78BFA' : '#6D28D9',
+              opacity: (loading || exporting) ? 0.5 : 1,
+              cursor: (loading || exporting) ? 'not-allowed' : 'pointer'
+            }}
+            title="Ekspor Laporan Sisa Cuti Staf Operasional Format Tahunan"
+          >
+            <FontAwesomeIcon icon={exporting ? faSpinner : faCalendarCheck} className={exporting ? 'animate-spin text-xs' : 'text-xs'} />
+            <span>{exporting ? 'Mengekspor...' : 'Cuti Operational'}</span>
+          </button>
           {vendorRows.length > 0 && (
             <button
               onClick={exportVendorExcel}

@@ -945,8 +945,8 @@
     "semantic_hash": "fee042896577f2bc15a31be6e82b849c"
   },
   "src/app/data/attendance-report/page.jsx": {
-    "mtime": 1793586477.2053716,
-    "ast_hash": "3dd995d09844645e742d29476c81973f",
+    "mtime": 1793768490.0805738,
+    "ast_hash": "5c7c10a262daee17e6d4607761475d70",
     "semantic_hash": ""
   },
   "src/app/data/attendance-settings/page.jsx": {
@@ -1095,8 +1095,8 @@
     "semantic_hash": "bce3c75e8857dcb89848e4614700e6e8"
   },
   "src/app/data/user/page.jsx": {
-    "mtime": 1793696402.5610757,
-    "ast_hash": "621aa61d446c0c66457aeef6e26e21e8",
+    "mtime": 1793766987.3855934,
+    "ast_hash": "2afbaf9aeaa153b7d7e1b8cae11fd7d0",
     "semantic_hash": ""
   },
   "src/app/data/year/page.jsx": {
@@ -1640,8 +1640,8 @@
     "semantic_hash": ""
   },
   "DATABASE_SCHEMA.md": {
-    "mtime": 1793695855.0527415,
-    "ast_hash": "93159a7f5cef83566cad74ea7d158696",
+    "mtime": 1793766862.738725,
+    "ast_hash": "c49dae4b305206baa3f042a4e85c3f2c",
     "semantic_hash": ""
   },
   "banner-220.png": {
@@ -2447,6 +2447,16 @@
   "migrations/add-nik-to-users.sql": {
     "mtime": 1793695829.1596901,
     "ast_hash": "e860b27ee971cfaf3b735a513753669a",
+    "semantic_hash": ""
+  },
+  "src/app/api/attendance/operational-leave/route.js": {
+    "mtime": 1793768442.0745728,
+    "ast_hash": "c1f9ac68710824eb050afdbb89c6d277",
+    "semantic_hash": ""
+  },
+  "migrations/add-is-permanent-to-users.sql": {
+    "mtime": 1793766866.0590422,
+    "ast_hash": "ad98578c1e5834916d1c369c09bcaccf",
     "semantic_hash": ""
   }
 }

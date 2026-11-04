@@ -88,6 +88,7 @@ export default function UserManagement() {
     user_nama_belakang: '',
     user_email: '',
     nik: '',
+    is_permanent: true,
     user_tanggal_lahir: '',
     user_manual_picture: '',
     user_role_id: '',
@@ -146,7 +147,8 @@ export default function UserManagement() {
     search: '',
     role: '',
     status: '',
-    unit: ''
+    unit: '',
+    employment: ''
   });
 
   // Column visibility
@@ -155,22 +157,23 @@ export default function UserManagement() {
     { key: 'nama', label: 'Full Name' },
     { key: 'nik', label: 'NIK' },
     { key: 'email', label: 'Email' },
+    { key: 'is_permanent', label: 'Employment Status' },
     { key: 'tanggal_lahir', label: 'Birth Date' },
     { key: 'role', label: 'Role' },
     { key: 'unit', label: 'Unit' },
     { key: 'status', label: 'Status' },
     { key: 'pin', label: 'Machine PIN' },
   ];
-  const DEFAULT_COLUMNS = new Set(['id', 'nama', 'nik', 'email', 'role', 'unit', 'status']);
+  const DEFAULT_COLUMNS = new Set(['id', 'nama', 'nik', 'email', 'is_permanent', 'role', 'unit', 'status']);
 
   const [visibleColumns, setVisibleColumns] = useState(() => {
     try {
-      const saved = localStorage.getItem('user_table_columns_v2') || localStorage.getItem('user_table_columns');
+      const saved = localStorage.getItem('user_table_columns_v3') || localStorage.getItem('user_table_columns_v2') || localStorage.getItem('user_table_columns');
       if (saved) {
         const parsed = new Set(JSON.parse(saved));
-        if (!localStorage.getItem('user_table_columns_v2')) {
-          parsed.add('nik');
-          localStorage.setItem('user_table_columns_v2', JSON.stringify([...parsed]));
+        if (!localStorage.getItem('user_table_columns_v3')) {
+          parsed.add('is_permanent');
+          localStorage.setItem('user_table_columns_v3', JSON.stringify([...parsed]));
         }
         return parsed;
       }
@@ -188,6 +191,7 @@ export default function UserManagement() {
       try {
         localStorage.setItem('user_table_columns', JSON.stringify([...next]));
         localStorage.setItem('user_table_columns_v2', JSON.stringify([...next]));
+        localStorage.setItem('user_table_columns_v3', JSON.stringify([...next]));
       } catch (e) {}
       return next;
     });
@@ -360,7 +364,7 @@ export default function UserManagement() {
       let usersData = null;
       const { data: uData1, error: uErr1 } = await supabase
         .from('users')
-        .select('user_id, user_nama_depan, user_nama_belakang, user_email, user_profile_picture, user_manual_picture, user_role_id, user_unit_id, is_active, signature_url, user_tanggal_lahir, user_pin, expected_check_in, expected_check_out, join_date, resign_date, nik');
+        .select('user_id, user_nama_depan, user_nama_belakang, user_email, user_profile_picture, user_manual_picture, user_role_id, user_unit_id, is_active, signature_url, user_tanggal_lahir, user_pin, expected_check_in, expected_check_out, join_date, resign_date, nik, is_permanent');
 
       if (!uErr1) {
         usersData = uData1;
@@ -397,6 +401,7 @@ export default function UserManagement() {
           user_unit_id: user.user_unit_id,
           user_tanggal_lahir: user.user_tanggal_lahir || null,
           nik: user.nik || null,
+          is_permanent: user.is_permanent !== undefined && user.is_permanent !== null ? Boolean(user.is_permanent) : true,
           user_pin: user.user_pin || null,
           expected_check_in: user.expected_check_in || null,
           expected_check_out: user.expected_check_out || null,
@@ -468,7 +473,10 @@ export default function UserManagement() {
         (filters.status === 'active' && user.is_active) ||
         (filters.status === 'inactive' && !user.is_active);
       const unitMatch = !filters.unit || user.unit_name === filters.unit;
-      return searchMatch && roleMatch && statusMatch && unitMatch;
+      const empMatch = !filters.employment ||
+        (filters.employment === 'permanent' && user.is_permanent !== false) ||
+        (filters.employment === 'contract' && user.is_permanent === false);
+      return searchMatch && roleMatch && statusMatch && unitMatch && empMatch;
     });
   };
 
@@ -487,7 +495,7 @@ export default function UserManagement() {
   };
 
   const clearFilters = () => {
-    setFilters({ search: '', role: '', status: '', unit: '' });
+    setFilters({ search: '', role: '', status: '', unit: '', employment: '' });
   };
 
   // CSV Parsing & Validation
@@ -521,7 +529,7 @@ export default function UserManagement() {
     const validData = [];
     data.forEach((row, index) => {
       const rowErrors = [];
-      const validRow = { user_nama_depan: '', user_nama_belakang: '', user_email: '', nik: '', user_role_id: '', user_unit_id: '', is_active: true };
+      const validRow = { user_nama_depan: '', user_nama_belakang: '', user_email: '', nik: '', is_permanent: true, user_role_id: '', user_unit_id: '', is_active: true };
 
       if (!row.nama_depan && !row.user_nama_depan && !row.first_name) {
         rowErrors.push('First name is required');
@@ -579,6 +587,11 @@ export default function UserManagement() {
         validRow.is_active = status === 'true' || status === 'active' || status === '1';
       }
 
+      const permStr = (row.is_permanent || row.permanent || row.status_karyawan || row.status_pegawai || '').trim().toLowerCase();
+      if (permStr) {
+        validRow.is_permanent = !(permStr === 'false' || permStr === 'no' || permStr === '0' || permStr === 'kontrak' || permStr === 'contract' || permStr === 'probation');
+      }
+
       if (rowErrors.length > 0) {
         errors.push({ row: index + 2, errors: rowErrors, data: row });
       } else {
@@ -622,6 +635,7 @@ export default function UserManagement() {
           user_nama_belakang: String(userData.user_nama_belakang || '').trim(),
           user_email: String(userData.user_email || '').trim(),
           nik: userData.nik ? String(userData.nik).trim() : null,
+          is_permanent: userData.is_permanent !== undefined ? Boolean(userData.is_permanent) : true,
           user_role_id: Number(userData.user_role_id),
           user_unit_id: userData.user_unit_id ? Number(userData.user_unit_id) : null,
           is_active: Boolean(userData.is_active)
@@ -631,19 +645,21 @@ export default function UserManagement() {
           throw new Error('Missing required fields after cleaning');
         }
 
-        const result = await supabase
-          .from('users')
-          .insert([{
-            user_nama_depan: cleanedUserData.user_nama_depan,
-            user_nama_belakang: cleanedUserData.user_nama_belakang,
-            user_email: cleanedUserData.user_email || null,
-            nik: cleanedUserData.nik || null,
-            user_role_id: cleanedUserData.user_role_id,
-            user_unit_id: cleanedUserData.user_unit_id,
-            is_active: cleanedUserData.is_active
-          }])
-          .select('user_id')
-          .single();
+        const insertPayload = {
+          user_nama_depan: cleanedUserData.user_nama_depan,
+          user_nama_belakang: cleanedUserData.user_nama_belakang,
+          user_email: cleanedUserData.user_email || null,
+          nik: cleanedUserData.nik || null,
+          is_permanent: cleanedUserData.is_permanent,
+          user_role_id: cleanedUserData.user_role_id,
+          user_unit_id: cleanedUserData.user_unit_id,
+          is_active: cleanedUserData.is_active
+        };
+        let result = await supabase.from('users').insert([insertPayload]).select('user_id').single();
+        if (result.error && result.error.message.includes('is_permanent')) {
+          delete insertPayload.is_permanent;
+          result = await supabase.from('users').insert([insertPayload]).select('user_id').single();
+        }
 
         if (result.error) throw new Error(result.error.message);
         results.success++;
@@ -754,6 +770,7 @@ export default function UserManagement() {
 
       const baseData = { ...submitData };
       baseData.nik = baseData.nik ? baseData.nik.trim() : null;
+      baseData.is_permanent = Boolean(submitData.is_permanent);
       const parsedIso = baseData.user_tanggal_lahir ? toIsoDate(baseData.user_tanggal_lahir) : null;
       baseData.user_tanggal_lahir = parsedIso;
       baseData.user_birth_date = parsedIso;
@@ -776,10 +793,18 @@ export default function UserManagement() {
             setSignaturePreview(sigUrl);
           } finally { setUploadingSignature(false); }
         }
-        const result = await supabase.from('users').update(baseData).eq('user_id', editingUser.user_id);
+        let result = await supabase.from('users').update(baseData).eq('user_id', editingUser.user_id);
+        if (result.error && result.error.message.includes('is_permanent')) {
+          delete baseData.is_permanent;
+          result = await supabase.from('users').update(baseData).eq('user_id', editingUser.user_id);
+        }
         if (result.error) throw new Error(result.error.message);
       } else {
-        const insertRes = await supabase.from('users').insert([baseData]).select('user_id').single();
+        let insertRes = await supabase.from('users').insert([baseData]).select('user_id').single();
+        if (insertRes.error && insertRes.error.message.includes('is_permanent')) {
+          delete baseData.is_permanent;
+          insertRes = await supabase.from('users').insert([baseData]).select('user_id').single();
+        }
         if (insertRes.error) throw new Error(insertRes.error.message);
 
         if (imageFile && insertRes.data) {
@@ -814,6 +839,7 @@ export default function UserManagement() {
       user_nama_belakang: user.user_nama_belakang,
       user_email: user.user_email || '',
       nik: user.nik || '',
+      is_permanent: user.is_permanent !== undefined && user.is_permanent !== null ? Boolean(user.is_permanent) : true,
       user_tanggal_lahir: toDisplayDate(user.user_tanggal_lahir || ''),
       user_manual_picture: user.user_manual_picture || '',
       user_role_id: user.user_role_id,
@@ -896,6 +922,7 @@ export default function UserManagement() {
       user_nama_belakang: '',
       user_email: '',
       nik: '',
+      is_permanent: true,
       user_tanggal_lahir: '',
       user_manual_picture: '',
       user_role_id: '',
@@ -1095,6 +1122,19 @@ export default function UserManagement() {
               </select>
             </div>
 
+            <div className="w-40">
+              <select
+                value={filters.employment}
+                onChange={(e) => handleFilterChange('employment', e.target.value)}
+                className="w-full px-2.5 py-1.5 text-xs rounded outline-none"
+                style={selectStyle}
+              >
+                <option value="">Semua Status Pegawai</option>
+                <option value="permanent">Tetap (Permanent)</option>
+                <option value="contract">Kontrak / Part-time</option>
+              </select>
+            </div>
+
             {/* Column Selector */}
             <div className="relative" ref={columnSelectorRef}>
               <button
@@ -1129,6 +1169,7 @@ export default function UserManagement() {
                         try {
                           localStorage.removeItem('user_table_columns');
                           localStorage.removeItem('user_table_columns_v2');
+                          localStorage.removeItem('user_table_columns_v3');
                         } catch(e) {}
                       }}
                       className="text-[11px] hover:underline cursor-pointer"
@@ -1142,7 +1183,7 @@ export default function UserManagement() {
             </div>
 
             {/* Reset Filters */}
-            {(filters.search || filters.role || filters.status || filters.unit) && (
+            {(filters.search || filters.role || filters.status || filters.unit || filters.employment) && (
               <button
                 onClick={clearFilters}
                 className="px-2.5 py-1.5 text-xs font-medium border rounded transition-colors cursor-pointer"
@@ -1211,6 +1252,7 @@ export default function UserManagement() {
                 {visibleColumns.has('nama') && <th className="px-4 py-2.5">Nama Pengguna</th>}
                 {visibleColumns.has('nik') && <th className="px-4 py-2.5 w-36 font-mono">NIK</th>}
                 {visibleColumns.has('email') && <th className="px-4 py-2.5">Email</th>}
+                {visibleColumns.has('is_permanent') && <th className="px-4 py-2.5 w-32">Status Pegawai</th>}
                 {visibleColumns.has('tanggal_lahir') && <th className="px-4 py-2.5">Tgl Lahir</th>}
                 {visibleColumns.has('role') && <th className="px-4 py-2.5">Peran</th>}
                 {visibleColumns.has('unit') && <th className="px-4 py-2.5">Unit</th>}
@@ -1265,6 +1307,29 @@ export default function UserManagement() {
                     {visibleColumns.has('email') && (
                       <td className="px-4 py-3 font-mono text-[11px]" style={{ color: textSecondary }}>
                         {user.user_email || <span className="italic opacity-60">—</span>}
+                      </td>
+                    )}
+
+                    {visibleColumns.has('is_permanent') && (
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <span
+                          className="inline-block px-2 py-0.5 rounded text-[10.5px] font-medium"
+                          style={
+                            user.is_permanent !== false
+                              ? {
+                                  background: isDark ? 'rgba(5, 150, 105, 0.2)' : '#D1FAE5',
+                                  color: isDark ? '#34D399' : '#065F46',
+                                  border: isDark ? '1px solid rgba(5, 150, 105, 0.3)' : '1px solid #A7F3D0'
+                                }
+                              : {
+                                  background: isDark ? 'rgba(217, 119, 6, 0.2)' : '#FEF3C7',
+                                  color: isDark ? '#FBBF24' : '#92400E',
+                                  border: isDark ? '1px solid rgba(217, 119, 6, 0.3)' : '1px solid #FDE68A'
+                                }
+                          }
+                        >
+                          {user.is_permanent !== false ? 'Tetap' : 'Kontrak'}
+                        </span>
                       </td>
                     )}
 
@@ -1408,6 +1473,16 @@ export default function UserManagement() {
                     }
                   >
                     {user.is_active ? 'Aktif' : 'Nonaktif'}
+                  </span>
+                  <span
+                    className="px-2 py-0.5 rounded text-[10px] font-semibold uppercase"
+                    style={
+                      user.is_permanent !== false
+                        ? { background: '#D1FAE5', color: '#065F46' }
+                        : { background: '#FEF3C7', color: '#92400E' }
+                    }
+                  >
+                    {user.is_permanent !== false ? 'Tetap' : 'Kontrak'}
                   </span>
                 </div>
 
@@ -1619,20 +1694,47 @@ export default function UserManagement() {
                 )}
               </div>
 
-              {editingUser && (
-                <div className="flex items-center space-x-2 md:col-span-2 pt-1">
-                  <input
-                    id="is_active"
-                    name="is_active"
-                    type="checkbox"
-                    checked={formData.is_active}
-                    onChange={handleInputChange}
+              <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
+                <div>
+                  <Label htmlFor="is_permanent" style={{ color: theme.textPrimary }} className="font-medium">
+                    Status Kepegawaian (Employment Status)
+                  </Label>
+                  <select
+                    id="is_permanent"
+                    name="is_permanent"
+                    value={formData.is_permanent ? 'true' : 'false'}
+                    onChange={(e) => {
+                      handleInputChange({
+                        target: {
+                          name: 'is_permanent',
+                          value: e.target.value === 'true'
+                        }
+                      });
+                    }}
                     disabled={submitting}
-                    className="rounded"
-                  />
-                  <Label htmlFor="is_active" className="text-xs font-medium" style={{ color: theme.textPrimary }}>Active Account Status</Label>
+                    className="w-full mt-1 px-3 py-2 text-xs"
+                    style={selectStyle}
+                  >
+                    <option value="true">Tetap (Permanent)</option>
+                    <option value="false">Kontrak / Part-time / Probation</option>
+                  </select>
                 </div>
-              )}
+
+                {editingUser && (
+                  <div className="flex items-center space-x-2 pt-6">
+                    <input
+                      id="is_active"
+                      name="is_active"
+                      type="checkbox"
+                      checked={formData.is_active}
+                      onChange={handleInputChange}
+                      disabled={submitting}
+                      className="rounded"
+                    />
+                    <Label htmlFor="is_active" className="text-xs font-medium" style={{ color: theme.textPrimary }}>Active Account Status</Label>
+                  </div>
+                )}
+              </div>
             </div>
           )}
 

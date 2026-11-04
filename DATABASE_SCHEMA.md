@@ -32,6 +32,7 @@ The main table storing user accounts (staff, teachers, admin, students, etc).
 | `allergy` | `TEXT` | Permanent medical allergy warnings (e.g. seafood, peanuts, dust, fur, drugs) |
 | `special_health_conditions` | `TEXT` | Permanent chronic or notable health conditions (e.g. Asthma, Sinus, Eczema) |
 | `nik` | `VARCHAR(20)` | Official National Identification Number (Nomor Induk Kependudukan / NIK) |
+| `is_permanent` | `BOOLEAN` | Default `true`. Employee status: `true` for permanent employees (karyawan tetap), `false` for contract / probation / part-time staff |
 | `user_theme` | `VARCHAR` | User UI theme preference |
 | `user_password_hash`| `VARCHAR` | Bcrypt password hash |
 | `user_created_at` | `TIMESTAMP` | Record creation date |
