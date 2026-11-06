@@ -2808,3 +2808,53 @@ Stores candidate photos and campaign media uploaded via `/data/osis-election`.
 - **Access Policy**: Public read
 - **Path format**: `candidates/cand_{timestamp}_{random}.{ext}`
 - **File size limit**: 10 MB
+
+
+---
+
+## 19. System Changelog, Bug Reporting & Feature Roadmap Domain (`/data/feedback`, `/data/changelog`)
+
+This domain powers the official public system changelog (Keep a Changelog 1.1.0 standard) along with quick-access bug reporting modal and community roadmap. All staff members can access quick bug reporting via the top navbar, report issues with screenshot attachments directly to Supabase storage, monitor support ticket lifecycle under "Tiket Saya", and view version release histories over time.
+
+### 19.1 Tables
+
+#### `system_feedback`
+Stores all submitted bug reports and feature requests.
+
+| Column Name | Type | Description / Constraint |
+| --- | --- | --- |
+| `id` | `SERIAL` | Primary Key |
+| `user_id` | `INTEGER` | Foreign Key to `users(user_id)` ON DELETE SET NULL |
+| `type` | `VARCHAR(50)` | Type of submission: `'bug'` or `'feature_request'` |
+| `title` | `TEXT` | Brief summary of the bug or feature request |
+| `description` | `TEXT` | Detailed explanation / steps to reproduce / expected behavior |
+| `page_url` | `TEXT` | Optional URL or module path where bug occurred |
+| `priority` | `VARCHAR(20)` | Urgency: `'low'`, `'medium'`, `'high'`, `'critical'` |
+| `status` | `VARCHAR(50)` | Lifecycle: `'submitted'`, `'under_review'`, `'in_progress'`, `'planned'`, `'resolved'`, `'declined'` |
+| `attachment_url` | `TEXT` | Optional URL to uploaded screenshot or evidence |
+| `admin_notes` | `TEXT` | Developer / administrator resolution notes |
+| `created_at` | `TIMESTAMPTZ` | Submission creation timestamp |
+| `updated_at` | `TIMESTAMPTZ` | Last update timestamp |
+| `resolved_at` | `TIMESTAMPTZ` | Timestamp when ticket was marked `'resolved'` |
+
+#### `system_feedback_recipients`
+Configures administrators and staff members who receive automated Google Chat bot notifications whenever new feedback or bug reports are submitted.
+
+| Column Name | Type | Description / Constraint |
+| --- | --- | --- |
+| `id` | `SERIAL` | Primary Key |
+| `user_id` | `INTEGER` | Foreign Key to `users(user_id)` ON DELETE CASCADE, Unique |
+| `is_active` | `BOOLEAN` | Whether this recipient actively receives bot notifications (default `true`) |
+| `notify_on_new_ticket` | `BOOLEAN` | Whether to send DM on new ticket submission (default `true`) |
+| `created_at` | `TIMESTAMPTZ` | Registration timestamp |
+
+### 19.2 Storage Buckets
+
+#### `attachments` (Public)
+Stores document and screenshot attachments across the school system, including bug report evidence uploaded via `/data/feedback`.
+- **Bucket ID**: `attachments`
+- **Access Policy**: Public read
+- **Upload Route**: `/api/system-feedback/upload`
+- **Path format for feedback**: `feedback/{user_<id>|general}/{timestamp}_{random}.{ext}`
+- **File size limit**: 10 MB
+- **Allowed MIME types**: `image/png`, `image/jpeg`, `image/webp`, `image/gif`

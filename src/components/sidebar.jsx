@@ -45,6 +45,7 @@ import {
   faSackDollar,
   faFlag,
   faLightbulb,
+  faBug,
   faHashtag,
   faCalculator,
   faLayerGroup,
@@ -128,6 +129,9 @@ const iconMap = {
   'fas fa-brain': faBrain,
   'faBrain': faBrain,
   'brain': faBrain,
+  'fas fa-bug': faBug,
+  'faBug': faBug,
+  'bug': faBug,
   // Operational & Maintenance
   'fas fa-screwdriver-wrench': faScrewdriverWrench,
   'faScrewdriverWrench': faScrewdriverWrench,
@@ -720,7 +724,7 @@ const Sidebar = memo(({ isOpen, setIsOpen }) => {
                         {renderIcon(menu.icon)}
                       </span>
                       {!isCollapsed && (
-                        <span className="truncate text-xs">{menu.name}</span>
+                        <span className="truncate text-xs">{translateMenu ? translateMenu(menu.name, menu.name) : menu.name}</span>
                       )}
                     </div>
 
@@ -766,7 +770,7 @@ const Sidebar = memo(({ isOpen, setIsOpen }) => {
                               <span className="w-3.5 h-3.5 flex items-center justify-center flex-shrink-0" style={{ color: isSubActive ? theme.blueText : 'inherit' }}>
                                 {renderIcon(child.icon)}
                               </span>
-                              <span className="truncate text-xs">{child.name}</span>
+                              <span className="truncate text-xs">{translateMenu ? translateMenu(child.name, child.name) : child.name}</span>
                             </div>
                             {isSubActive && (
                               <div className="w-1 h-1 rounded-full bg-blue-500 flex-shrink-0" />
@@ -798,7 +802,7 @@ const Sidebar = memo(({ isOpen, setIsOpen }) => {
                           borderColor: theme.border
                         }}
                       >
-                        <span>{menu.name}</span>
+                        <span>{translateMenu ? translateMenu(menu.name, menu.name) : menu.name}</span>
                         <span className="text-[10px] text-gray-400 font-mono">[{menu.children.length}]</span>
                       </div>
                       <div className="overflow-y-auto space-y-0.5" style={{ maxHeight: 'calc(100vh - 100px)' }}>
@@ -818,7 +822,7 @@ const Sidebar = memo(({ isOpen, setIsOpen }) => {
                             <span className="w-3.5 h-3.5 flex items-center justify-center flex-shrink-0">
                               {renderIcon(child.icon)}
                             </span>
-                            <span className="truncate">{child.name}</span>
+                            <span className="truncate">{translateMenu ? translateMenu(child.name, child.name) : child.name}</span>
                           </Link>
                         ))}
                       </div>
@@ -850,13 +854,13 @@ const Sidebar = memo(({ isOpen, setIsOpen }) => {
                       e.currentTarget.style.color = theme.textBody
                     }
                   }}
-                  title={isCollapsed ? menu.name : ''}
+                  title={isCollapsed ? (translateMenu ? translateMenu(menu.name, menu.name) : menu.name) : ''}
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
                     <span className="w-4 h-4 flex items-center justify-center flex-shrink-0" style={{ color: isDirectActive ? theme.blueText : 'inherit' }}>
                       {renderIcon(menu.icon)}
                     </span>
-                    {!isCollapsed && <span className="truncate text-xs">{menu.name}</span>}
+                    {!isCollapsed && <span className="truncate text-xs">{translateMenu ? translateMenu(menu.name, menu.name) : menu.name}</span>}
                   </div>
 
                   {!isCollapsed && isDirectActive && (
