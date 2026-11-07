@@ -38,7 +38,51 @@ export async function GET(request) {
     const { searchParams } = new URL(request.url)
     const action = searchParams.get('action')
 
-    // 0. Ambil daftar petugas kebersihan (role_id 14: Cleaning, is_active: true)
+    // 0a. Ambil daftar komplain fasilitas aktif untuk pihak cleaning
+    if (action === 'get_active_reports') {
+      const { data: reports, error: rErr } = await supabaseAdmin
+        .from('room_facility_reports')
+        .select(`
+          id,
+          room_id,
+          reporter_name,
+          reporter_contact,
+          issue_description,
+          photo_file,
+          hosting_url,
+          status,
+          created_at,
+          room:room_id (room_id, room_name, qr_code_token)
+        `)
+        .in('status', ['pending', 'in_progress'])
+        .order('created_at', { ascending: false })
+        .limit(30)
+
+      if (rErr) {
+        if (rErr.code === '42P01') {
+          return NextResponse.json({ success: true, reports: [] })
+        }
+        return NextResponse.json({ success: false, message: rErr.message }, { status: 500 })
+      }
+
+      const formatted = (reports || []).map(r => ({
+        id: r.id,
+        room_id: r.room_id,
+        room_name: r.room?.room_name || `Ruangan #${r.room_id}`,
+        room_token: r.room?.qr_code_token || '',
+        reporter_name: r.reporter_name,
+        reporter_contact: r.reporter_contact,
+        issue_description: r.issue_description,
+        photo_file: r.photo_file,
+        hosting_url: r.hosting_url,
+        status: r.status,
+        created_at: r.created_at
+      }))
+
+      return NextResponse.json({ success: true, reports: formatted })
+    }
+
+    // 0b. Ambil daftar petugas kebersihan (role_id 14: Cleaning, is_active: true)
     if (action === 'get_cleaners') {
       const { data: cleaners, error: cErr } = await supabaseAdmin
         .from('users')
@@ -106,6 +150,23 @@ export async function GET(request) {
       console.error('[VendorChecklist API] Error fetching checklist:', checkErr)
     }
 
+    // 3. Ambil data komplain aktif untuk ruangan ini jika ada
+    let activeReports = []
+    try {
+      const { data: repData, error: repErr } = await supabaseAdmin
+        .from('room_facility_reports')
+        .select('id, reporter_name, reporter_contact, issue_description, photo_file, hosting_url, status, created_at')
+        .eq('room_id', room.room_id)
+        .in('status', ['pending', 'in_progress'])
+        .order('created_at', { ascending: false })
+
+      if (!repErr && repData) {
+        activeReports = repData
+      }
+    } catch (e) {
+      console.warn('[VendorChecklist API] Error fetching active room reports:', e)
+    }
+
     return NextResponse.json({
       success: true,
       room: {
@@ -114,7 +175,8 @@ export async function GET(request) {
         token: room.qr_code_token
       },
       todayDate: today,
-      checklist: checklist || null
+      checklist: checklist || null,
+      activeReports: activeReports
     })
 
   } catch (err) {
@@ -150,9 +212,61 @@ export async function POST(request) {
       )
     }
 
-    if (!room_token || !action) {
+    if (!action) {
       return NextResponse.json(
-        { success: false, message: 'Parameter room_token dan action wajib diisi' },
+        { success: false, message: 'Parameter action wajib diisi' },
+        { status: 400 }
+      )
+    }
+
+    // ── AKSI 5: RESOLVE REPORT / COMPLAINT OLEH PIHAK CLEANING ────────────
+    if (action === 'resolve_report') {
+      const reportId = body.report_id
+      const workerName = (body.worker_name || '').trim()
+      const resNotes = (body.resolution_notes || '').trim()
+      const imageFile = body.image_file
+
+      if (!reportId) {
+        return NextResponse.json({ success: false, message: 'ID laporan wajib disertakan' }, { status: 400 })
+      }
+      if (!workerName) {
+        return NextResponse.json({ success: false, message: 'Nama petugas wajib diisi' }, { status: 400 })
+      }
+      if (!imageFile) {
+        return NextResponse.json({ success: false, message: 'Foto bukti penanganan komplain wajib diunggah' }, { status: 400 })
+      }
+
+      const nowISO = new Date().toISOString()
+      const { data: updData, error: updErr } = await supabaseAdmin
+        .from('room_facility_reports')
+        .update({
+          status: 'resolved',
+          resolved_at: nowISO,
+          resolved_by_name: workerName,
+          resolution_photo_file: imageFile,
+          resolution_notes: resNotes || null,
+          hosting_url: body.hosting_url || null,
+          updated_at: nowISO
+        })
+        .eq('id', reportId)
+        .select()
+        .maybeSingle()
+
+      if (updErr) {
+        console.error('[VendorChecklist API] Error resolving report:', updErr)
+        return NextResponse.json({ success: false, message: updErr.message }, { status: 500 })
+      }
+
+      return NextResponse.json({
+        success: true,
+        message: 'Komplain fasilitas berhasil ditandai selesai (resolved)',
+        data: updData
+      })
+    }
+
+    if (!room_token) {
+      return NextResponse.json(
+        { success: false, message: 'Parameter room_token wajib diisi' },
         { status: 400 }
       )
     }

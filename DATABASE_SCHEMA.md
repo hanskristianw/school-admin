@@ -1251,6 +1251,9 @@ Stores reports of damaged or problematic room facilities submitted by room repor
 | `status` | `VARCHAR(50)` | Default `'pending'`. Status: `'pending'`, `'in_progress'`, `'resolved'`, `'cancelled'` |
 | `resolved_at` | `TIMESTAMPTZ` | Timestamp when issue was resolved |
 | `resolved_by` | `INTEGER` | FK to `users(user_id)` |
+| `resolved_by_name` | `VARCHAR(150)` | Full name of the cleaning staff who resolved the complaint |
+| `resolution_photo_file` | `TEXT` | Filename of the compressed photo evidence after complaint was resolved |
+| `resolution_notes` | `TEXT` | Cleaning staff resolution notes / description of action taken |
 | `notes` | `TEXT` | Operational follow-up notes |
 | `created_at` | `TIMESTAMPTZ` | Report timestamp |
 | `updated_at` | `TIMESTAMPTZ` | Last update timestamp |

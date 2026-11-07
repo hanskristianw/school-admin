@@ -9,9 +9,72 @@
 
 export const SYSTEM_RELEASES = [
   {
-    version: '0.7.1',
+    version: '0.7.2',
     date: '2026-11-07',
     isLatest: true,
+    summary: {
+      id: 'Integrasi pelaporan dan penanganan komplain fasilitas ruangan pada portal kebersihan: daftar komplain aktif di halaman scanner, peringatan komplain di ruangan terkait, dan dialog penyelesaian dengan unggah bukti foto.',
+      en: 'Integration of room facility complaint tracking and resolution into the cleaning portal: active complaints list on the scanner page, room-specific warning alerts, and resolution modal with photo proof upload.',
+      zh: '清洁门户深度集成教室设施报修与处理闭环：扫码主页展示活跃报修清单、目标教室专属报修告警提醒，以及支持上传现场整改照片的完成处理弹窗。'
+    },
+    sections: {
+      added: [
+        {
+          id: 'Daftar komplain fasilitas aktif di halaman utama scanner cleaning dengan indikator ruangan ("Terdapat komplain untuk ruangan [Nama Ruangan]"), deskripsi kendala, waktu pelaporan, tombol tinjau foto, dan tombol aksi tangani komplain.',
+          en: 'Active facility complaints list on the cleaner scanner screen explicitly identifying rooms ("Complaint for room [Room Name]"), issue description, reporter info, timestamp, photo preview, and resolve action button.',
+          zh: '在保洁扫码主页新增活跃报修列表，清晰提示“某教室存在报修问题”，包含问题描述、报修人、提交时间、照片查看及直接处理按钮。'
+        },
+        {
+          id: 'Modal penyelesaian komplain (Resolve Modal) interaktif bagi petugas kebersihan untuk mengambil foto bukti penanganan/perbaikan langsung lewat kamera (dengan kompresi Canvas otomatis) dan input catatan tindakan.',
+          en: 'Interactive complaint resolution modal allowing cleaning staff to take resolution proof photos directly via camera (with automated Canvas compression) and submit action notes.',
+          zh: '新增保洁员处理报修交互弹窗，支持调用手机摄像头即时拍摄整改后照片（Canvas 自动压缩），并填写处理备注。'
+        },
+        {
+          id: 'Banner peringatan merah otomatis di dalam tampilan checklist ruangan apabila ruangan yang sedang dibuka memiliki komplain fasilitas yang belum terselesaikan.',
+          en: 'Automated red warning alert banner inside the room checklist screen whenever the opened room has unresolved facility complaints.',
+          zh: '若保洁员进入的教室内存在未处理报修，页面顶部自动弹出红色警示横幅，提示保洁员重点处理并附有一键解决按钮。'
+        },
+        {
+          id: 'Endpoint backend Next.js dan cPanel PHP (action: get_active_reports & resolve_report) untuk sinkronisasi data komplain aktif dan update status resolved beserta bukti foto ke Supabase.',
+          en: 'Next.js and cPanel PHP backend endpoints (action: get_active_reports & resolve_report) synchronizing active complaints and recording resolved status with photo proof to Supabase.',
+          zh: '在 Next.js 及 cPanel PHP 网关中新增 get_active_reports 与 resolve_report 接口，实现报修数据双向同步与整改记录落库 Supabase。'
+        }
+      ]
+    }
+  },
+  {
+    version: '0.6.4',
+    date: '2026-11-07',
+    isLatest: false,
+    summary: {
+      id: 'Penambahan tombol aksi lanjut scan ruangan lain pada status selesai menunggu review, popup sukses, dan header ruangan.',
+      en: 'Added continue to next room scan button across pending review status, success dialog, and room headers.',
+      zh: '在等待审核状态卡片、提交成功弹窗及教室头部新增“继续扫描下一间教室”按钮，实现连续作业全流程闭环。'
+    },
+    sections: {
+      added: [
+        {
+          id: 'Tombol aksi utama "Lanjut ke Ruangan Lain (Scan QR)" pada tampilan checklist status Menunggu Review (pending_review) dan Disetujui (approved) untuk langsung mengaktifkan kamera scanner berikutnya.',
+          en: 'Primary action button "Continue to Next Room (Scan QR)" on Pending Review and Approved checklist screens to immediately activate the camera scanner for the next room.',
+          zh: '在“等待审核”与“已审核”状态页面底部新增“继续扫描下一间教室（扫码）”主操作按钮，点击后立即无缝唤起摄像头进入下一间教室扫码。'
+        },
+        {
+          id: 'Opsi instan pada notifikasi sukses selesai membersihkan: tombol utama "Lanjut Scan Ruangan Lain" untuk langsung berpindah ke kamera scanner tanpa jeda.',
+          en: 'Instant option on cleaning completion dialog: primary "Scan Next Room" button allowing cleaners to switch directly to the scanner.',
+          zh: '打扫完成弹窗新增“继续扫描下一间教室”主按钮，支持保洁员一键直达扫码界面。'
+        },
+        {
+          id: 'Tombol sekunder "Scan Ruangan Lain" pada header kartu ruangan sehingga petugas/pelapor dapat berpindah ruangan kapan saja.',
+          en: 'Secondary "Scan Another Room" button on the room header box allowing staff/reporters to switch rooms at any point.',
+          zh: '在教室信息头部新增“扫描其他教室”便捷入口，方便保洁员或报修人随时切换目标教室。'
+        }
+      ]
+    }
+  },
+  {
+    version: '0.7.1',
+    date: '2026-11-07',
+    isLatest: false,
     summary: {
       id: 'Perapian antarmuka Step 1 (Registrasi Awal): menghapus tombol cetak bukti registrasi agar alur tetap ringkas, bersih, dan konsisten dengan kaidah minimalist design.',
       en: 'Interface refinement on Step 1 (Initial Registration): removed the print registration proof button to keep the workflow clean, uncluttered, and strictly compliant with minimalist design standards.',
