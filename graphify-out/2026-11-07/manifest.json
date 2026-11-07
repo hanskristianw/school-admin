@@ -660,8 +660,8 @@
     "semantic_hash": "655ff4969401f85d067a205512767404"
   },
   "package.json": {
-    "mtime": 1794052208.4963498,
-    "ast_hash": "c2894b51db13f197831c737f305a7b28",
+    "mtime": 1794058610.0247307,
+    "ast_hash": "f886e2e920f8d5b52123041f64e02d9e",
     "semantic_hash": ""
   },
   "postcss.config.mjs": {
@@ -1640,8 +1640,8 @@
     "semantic_hash": ""
   },
   "DATABASE_SCHEMA.md": {
-    "mtime": 1794031318.4341333,
-    "ast_hash": "2ad2e1cf0de7488cc223d3a0f36d2e30",
+    "mtime": 1794052983.1352303,
+    "ast_hash": "2109ccaf160d2245cbfe1ef33a3a7358",
     "semantic_hash": ""
   },
   "banner-220.png": {
@@ -2325,8 +2325,8 @@
     "semantic_hash": ""
   },
   "cpanel-vendor-checklist/index.php": {
-    "mtime": 1794052042.1204593,
-    "ast_hash": "cf61e804ab0d8e1cb9dddb18bcce06ad",
+    "mtime": 1794058543.399245,
+    "ast_hash": "166ddab88c0ec4458a4bc3aaa2e2587e",
     "semantic_hash": ""
   },
   "migrations/create-vendor-checklist-tables.sql": {
@@ -2335,8 +2335,8 @@
     "semantic_hash": ""
   },
   "src/app/api/public/vendor-checklist/route.js": {
-    "mtime": 1794030423.7408829,
-    "ast_hash": "94a1cc1d9776bf81fd915931f99e4aeb",
+    "mtime": 1794053057.5165858,
+    "ast_hash": "e73bf04c0f1fd8df275f5768ba57a9ab",
     "semantic_hash": ""
   },
   "src/app/api/vendor-checklist/[id]/photo/route.js": {
@@ -2490,13 +2490,13 @@
     "semantic_hash": ""
   },
   "src/app/data/feedback/page.jsx": {
-    "mtime": 1794029275.9368267,
-    "ast_hash": "30a6de0b62d3b0ecaa98d956162fc163",
+    "mtime": 1794057843.614208,
+    "ast_hash": "e7e12542a4e2ba514acb1a1f458f596d",
     "semantic_hash": ""
   },
   "src/data/changelog.js": {
-    "mtime": 1794052208.5009048,
-    "ast_hash": "12d0ec3c9f55ce54020b8fcb2e77f4c4",
+    "mtime": 1794058625.187701,
+    "ast_hash": "a9cbe0ed77e7069e5571c20906256fb3",
     "semantic_hash": ""
   },
   "src/app/api/system-feedback/upload/route.js": {
@@ -2547,6 +2547,11 @@
   "migrations/create-room-facility-reports-table.sql": {
     "mtime": 1794031678.5826905,
     "ast_hash": "c68e2059f8d7cb495c85a9098198c038",
+    "semantic_hash": ""
+  },
+  "migrations/add-resolution-to-room-facility-reports.sql": {
+    "mtime": 1794052937.8221025,
+    "ast_hash": "4e944f31e72bf77c65d34b5c4bae9794",
     "semantic_hash": ""
   }
 }

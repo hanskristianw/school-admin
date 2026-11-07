@@ -9728,7 +9728,7 @@
       "label": "POST()",
       "file_type": "code",
       "source_file": "src/app/api/public/vendor-checklist/route.js",
-      "source_location": "L192",
+      "source_location": "L206",
       "_origin": "ast",
       "id": "src_app_api_public_vendor_checklist_route_post",
       "community": 142,
@@ -10031,6 +10031,83 @@
       "community": 333,
       "community_name": "3. DEFAULT ARCHITECTURE & CONVENTIONS",
       "norm_label": "get()"
+    },
+    {
+      "label": "route.js",
+      "file_type": "code",
+      "source_file": "src/app/api/vendor-checklist/facility-reports/[id]/photo/route.js",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "src_app_api_vendor_checklist_facility_reports_id_photo_route",
+      "community": 538,
+      "community_name": "route.js",
+      "norm_label": "route.js"
+    },
+    {
+      "label": "supabaseAdmin",
+      "file_type": "code",
+      "source_file": "src/app/api/vendor-checklist/facility-reports/[id]/photo/route.js",
+      "source_location": "L6",
+      "_origin": "ast",
+      "id": "src_app_api_vendor_checklist_facility_reports_id_photo_route_supabaseadmin",
+      "community": 538,
+      "community_name": "route.js",
+      "norm_label": "supabaseadmin"
+    },
+    {
+      "label": "GET()",
+      "file_type": "code",
+      "source_file": "src/app/api/vendor-checklist/facility-reports/[id]/photo/route.js",
+      "source_location": "L13",
+      "_origin": "ast",
+      "id": "src_app_api_vendor_checklist_facility_reports_id_photo_route_get",
+      "community": 538,
+      "community_name": "route.js",
+      "norm_label": "get()"
+    },
+    {
+      "label": "route.js",
+      "file_type": "code",
+      "source_file": "src/app/api/vendor-checklist/facility-reports/route.js",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "src_app_api_vendor_checklist_facility_reports_route",
+      "community": 537,
+      "community_name": "route.js",
+      "norm_label": "route.js"
+    },
+    {
+      "label": "supabaseAdmin",
+      "file_type": "code",
+      "source_file": "src/app/api/vendor-checklist/facility-reports/route.js",
+      "source_location": "L6",
+      "_origin": "ast",
+      "id": "src_app_api_vendor_checklist_facility_reports_route_supabaseadmin",
+      "community": 537,
+      "community_name": "route.js",
+      "norm_label": "supabaseadmin"
+    },
+    {
+      "label": "GET()",
+      "file_type": "code",
+      "source_file": "src/app/api/vendor-checklist/facility-reports/route.js",
+      "source_location": "L11",
+      "_origin": "ast",
+      "id": "src_app_api_vendor_checklist_facility_reports_route_get",
+      "community": 537,
+      "community_name": "route.js",
+      "norm_label": "get()"
+    },
+    {
+      "label": "PATCH()",
+      "file_type": "code",
+      "source_file": "src/app/api/vendor-checklist/facility-reports/route.js",
+      "source_location": "L76",
+      "_origin": "ast",
+      "id": "src_app_api_vendor_checklist_facility_reports_route_patch",
+      "community": 537,
+      "community_name": "route.js",
+      "norm_label": "patch()"
     },
     {
       "label": "route.js",
@@ -13405,8 +13482,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_app_data_topic_new_components_googleclassroomconnector",
-      "community": 145,
-      "community_name": "Module 145",
+      "community": 536,
+      "community_name": "GoogleClassroomConnector.jsx",
       "norm_label": "googleclassroomconnector.jsx"
     },
     {
@@ -13416,8 +13493,8 @@
       "source_location": "L22",
       "_origin": "ast",
       "id": "src_app_data_topic_new_components_googleclassroomconnector_googleclassroomicon",
-      "community": 145,
-      "community_name": "Module 145",
+      "community": 536,
+      "community_name": "GoogleClassroomConnector.jsx",
       "norm_label": "googleclassroomicon()"
     },
     {
@@ -13427,8 +13504,8 @@
       "source_location": "L39",
       "_origin": "ast",
       "id": "src_app_data_topic_new_components_googleclassroomconnector_google_classroom_scopes",
-      "community": 145,
-      "community_name": "Module 145",
+      "community": 536,
+      "community_name": "GoogleClassroomConnector.jsx",
       "norm_label": "google_classroom_scopes"
     },
     {
@@ -13438,8 +13515,8 @@
       "source_location": "L48",
       "_origin": "ast",
       "id": "src_app_data_topic_new_components_googleclassroomconnector_getstoredclassroomtoken",
-      "community": 145,
-      "community_name": "Module 145",
+      "community": 536,
+      "community_name": "GoogleClassroomConnector.jsx",
       "norm_label": "getstoredclassroomtoken()"
     },
     {
@@ -13449,8 +13526,8 @@
       "source_location": "L59",
       "_origin": "ast",
       "id": "src_app_data_topic_new_components_googleclassroomconnector_setstoredclassroomtoken",
-      "community": 145,
-      "community_name": "Module 145",
+      "community": 536,
+      "community_name": "GoogleClassroomConnector.jsx",
       "norm_label": "setstoredclassroomtoken()"
     },
     {
@@ -13460,8 +13537,8 @@
       "source_location": "L66",
       "_origin": "ast",
       "id": "src_app_data_topic_new_components_googleclassroomconnector_clearstoredclassroomtoken",
-      "community": 145,
-      "community_name": "Module 145",
+      "community": 536,
+      "community_name": "GoogleClassroomConnector.jsx",
       "norm_label": "clearstoredclassroomtoken()"
     },
     {
@@ -13471,8 +13548,8 @@
       "source_location": "L76",
       "_origin": "ast",
       "id": "src_app_data_topic_new_components_googleclassroomconnector_refreshclassroomtoken",
-      "community": 145,
-      "community_name": "Module 145",
+      "community": 536,
+      "community_name": "GoogleClassroomConnector.jsx",
       "norm_label": "refreshclassroomtoken()"
     },
     {
@@ -13482,8 +13559,8 @@
       "source_location": "L103",
       "_origin": "ast",
       "id": "src_app_data_topic_new_components_googleclassroomconnector_getvalidclassroomtoken",
-      "community": 145,
-      "community_name": "Module 145",
+      "community": 536,
+      "community_name": "GoogleClassroomConnector.jsx",
       "norm_label": "getvalidclassroomtoken()"
     },
     {
@@ -13493,8 +13570,8 @@
       "source_location": "L120",
       "_origin": "ast",
       "id": "src_app_data_topic_new_components_googleclassroomconnector_authorizegoogleclassroom",
-      "community": 145,
-      "community_name": "Module 145",
+      "community": 536,
+      "community_name": "GoogleClassroomConnector.jsx",
       "norm_label": "authorizegoogleclassroom()"
     },
     {
@@ -13504,8 +13581,8 @@
       "source_location": "L203",
       "_origin": "ast",
       "id": "src_app_data_topic_new_components_googleclassroomconnector_extractclassroomlinks",
-      "community": 145,
-      "community_name": "Module 145",
+      "community": 536,
+      "community_name": "GoogleClassroomConnector.jsx",
       "norm_label": "extractclassroomlinks()"
     },
     {
@@ -13515,8 +13592,8 @@
       "source_location": "L214",
       "_origin": "ast",
       "id": "src_app_data_topic_new_components_googleclassroomconnector_googleclassroomconnector",
-      "community": 145,
-      "community_name": "Module 145",
+      "community": 536,
+      "community_name": "GoogleClassroomConnector.jsx",
       "norm_label": "googleclassroomconnector()"
     },
     {
@@ -14216,7 +14293,7 @@
       "label": "getWibDate()",
       "file_type": "code",
       "source_file": "src/app/data/vendor-checklist/page.jsx",
-      "source_location": "L76",
+      "source_location": "L80",
       "_origin": "ast",
       "id": "src_app_data_vendor_checklist_page_getwibdate",
       "community": 241,
@@ -14227,7 +14304,7 @@
       "label": "formatWibTime()",
       "file_type": "code",
       "source_file": "src/app/data/vendor-checklist/page.jsx",
-      "source_location": "L81",
+      "source_location": "L85",
       "_origin": "ast",
       "id": "src_app_data_vendor_checklist_page_formatwibtime",
       "community": 241,
@@ -14238,7 +14315,7 @@
       "label": "calculateDuration()",
       "file_type": "code",
       "source_file": "src/app/data/vendor-checklist/page.jsx",
-      "source_location": "L91",
+      "source_location": "L95",
       "_origin": "ast",
       "id": "src_app_data_vendor_checklist_page_calculateduration",
       "community": 241,
@@ -14249,7 +14326,7 @@
       "label": "VendorChecklistDashboardPage()",
       "file_type": "code",
       "source_file": "src/app/data/vendor-checklist/page.jsx",
-      "source_location": "L109",
+      "source_location": "L113",
       "_origin": "ast",
       "id": "src_app_data_vendor_checklist_page_vendorchecklistdashboardpage",
       "community": 241,
@@ -39435,7 +39512,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/app/api/public/vendor-checklist/route.js",
-      "source_location": "L192",
+      "source_location": "L206",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_api_public_vendor_checklist_route",
@@ -39492,7 +39569,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/app/api/public/vendor-checklist/route.js",
-      "source_location": "L208",
+      "source_location": "L222",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_api_public_vendor_checklist_route_post",
@@ -39504,7 +39581,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/app/api/public/vendor-checklist/route.js",
-      "source_location": "L141",
+      "source_location": "L155",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_api_public_vendor_checklist_route_get",
@@ -39516,7 +39593,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/app/api/public/vendor-checklist/route.js",
-      "source_location": "L288",
+      "source_location": "L302",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_api_public_vendor_checklist_route_post",
@@ -39741,6 +39818,61 @@
       "_origin": "ast",
       "source": "src_app_api_vendor_checklist_id_photo_route",
       "target": "src_app_api_vendor_checklist_id_photo_route_supabaseadmin",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/vendor-checklist/facility-reports/[id]/photo/route.js",
+      "source_location": "L13",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_api_vendor_checklist_facility_reports_id_photo_route",
+      "target": "src_app_api_vendor_checklist_facility_reports_id_photo_route_get",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/vendor-checklist/facility-reports/[id]/photo/route.js",
+      "source_location": "L6",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_api_vendor_checklist_facility_reports_id_photo_route",
+      "target": "src_app_api_vendor_checklist_facility_reports_id_photo_route_supabaseadmin",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/vendor-checklist/facility-reports/route.js",
+      "source_location": "L11",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_api_vendor_checklist_facility_reports_route",
+      "target": "src_app_api_vendor_checklist_facility_reports_route_get",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/vendor-checklist/facility-reports/route.js",
+      "source_location": "L76",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_api_vendor_checklist_facility_reports_route",
+      "target": "src_app_api_vendor_checklist_facility_reports_route_patch",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/vendor-checklist/facility-reports/route.js",
+      "source_location": "L6",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_api_vendor_checklist_facility_reports_route",
+      "target": "src_app_api_vendor_checklist_facility_reports_route_supabaseadmin",
       "confidence_score": 1.0
     },
     {
@@ -46301,7 +46433,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/app/data/vendor-checklist/page.jsx",
-      "source_location": "L91",
+      "source_location": "L95",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_vendor_checklist_page",
@@ -46312,7 +46444,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/app/data/vendor-checklist/page.jsx",
-      "source_location": "L81",
+      "source_location": "L85",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_vendor_checklist_page",
@@ -46323,7 +46455,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/app/data/vendor-checklist/page.jsx",
-      "source_location": "L76",
+      "source_location": "L80",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_vendor_checklist_page",
@@ -46334,7 +46466,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/app/data/vendor-checklist/page.jsx",
-      "source_location": "L109",
+      "source_location": "L113",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_vendor_checklist_page",
@@ -46346,7 +46478,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/app/data/vendor-checklist/page.jsx",
-      "source_location": "L121",
+      "source_location": "L125",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_vendor_checklist_page_vendorchecklistdashboardpage",
@@ -46358,7 +46490,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/app/data/vendor-checklist/page.jsx",
-      "source_location": "L897",
+      "source_location": "L1053",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_vendor_checklist_page_vendorchecklistdashboardpage",
@@ -46370,7 +46502,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/app/data/vendor-checklist/page.jsx",
-      "source_location": "L875",
+      "source_location": "L1031",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_vendor_checklist_page_vendorchecklistdashboardpage",
@@ -61733,5 +61865,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "5ff52ecdda39cf5ce175c9aa8532635160d5819c"
+  "built_at_commit": "c055e234118803e1db9dba68ed344791addbef35"
 }

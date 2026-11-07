@@ -189,6 +189,28 @@ if (isset($_GET['action']) && $_GET['action'] === 'view_uploaded_photo') {
     exit;
 }
 
+// ─── 2e. AJAX ENDPOINT: FETCH RIWAYAT KOMPLAIN SELESAI (RESOLVED) ───────────
+if (isset($_GET['action']) && $_GET['action'] === 'fetch_resolved_reports') {
+    header('Content-Type: application/json');
+
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, NEXTJS_API_URL . '?action=get_resolved_reports');
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 15);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    if ($response === false || $httpCode >= 500) {
+        echo json_encode(['success' => false, 'message' => 'Gagal mengambil riwayat komplain dari server']);
+        exit;
+    }
+
+    echo $response;
+    exit;
+}
+
 // ─── 3. AJAX ENDPOINT: PROSES UPLOAD FOTO & SINKRONISASI CLEANER ──────────
 if (isset($_POST['action']) && $_POST['action'] === 'submit_step') {
     header('Content-Type: application/json');
@@ -433,7 +455,7 @@ if (isset($_POST['action']) && $_POST['action'] === 'resolve_report') {
 
     $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? "https" : "http";
     $host = $_SERVER['HTTP_HOST'];
-    $dir = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/\');
+    $dir = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/\\');
     $hostingBaseUrl = "{$protocol}://{$host}{$dir}";
 
     $payload = [
@@ -666,14 +688,29 @@ $roomParam = htmlspecialchars(trim($_GET['room'] ?? ''));
           onerror="this.src='https://ccs.sch.id/assets/images/logo.png';"
         />
       </a>
-      <nav class="flex items-center gap-3 sm:gap-6 text-xs sm:text-[15px] font-medium">
-        <a href="https://ccs.sch.id/" class="text-gray-800 hover:text-ccsOrange transition-colors hidden sm:inline-block">
-          Home
-        </a>
-        <a href="index.php" class="text-ccsOrange font-semibold border-b-2 border-ccsOrange pb-1 transition-colors">
-          <span data-i18n="portal_title">Portal Ruangan</span>
-        </a>
-      </nav>
+      <div class="flex items-center gap-2 sm:gap-4">
+        <nav class="flex items-center gap-3 sm:gap-6 text-xs sm:text-[15px] font-medium">
+          <a href="https://ccs.sch.id/" class="text-gray-800 hover:text-ccsOrange transition-colors hidden sm:inline-block">
+            Home
+          </a>
+          <a href="index.php" class="text-ccsOrange font-semibold border-b-2 border-ccsOrange pb-1 transition-colors">
+            <span data-i18n="portal_title">Portal Ruangan</span>
+          </a>
+        </nav>
+        
+        <!-- Hamburger Menu Button -->
+        <button 
+          id="btnHamburger"
+          type="button" 
+          onclick="openMobileNavDrawer()" 
+          class="relative p-2 sm:px-3 sm:py-1.5 rounded-xl border border-gray-200 text-gray-700 hover:text-ccsOrange hover:border-ccsOrange hover:bg-orange-50/50 transition flex items-center gap-1.5 shadow-2xs active:scale-95"
+          aria-label="Menu"
+        >
+          <i class="fas fa-bars text-sm"></i>
+          <span class="hidden sm:inline text-xs font-bold" data-i18n="menu_btn">Menu</span>
+          <span id="navActiveBadgeDot" class="hidden absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white animate-pulse"></span>
+        </button>
+      </div>
     </div>
 
     <!-- PITA 3 WARNA IKONIK CCS -->
@@ -683,6 +720,124 @@ $roomParam = htmlspecialchars(trim($_GET['room'] ?? ''));
       <div class="flex-1 bg-ccsPurple"></div>
     </div>
   </header>
+
+  <!-- SLIDE-OVER NAVIGATION DRAWER (HAMBURGER MENU) -->
+  <div id="mobileNavDrawer" class="fixed inset-0 z-50 hidden">
+    <!-- Backdrop -->
+    <div class="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity" onclick="closeMobileNavDrawer()"></div>
+    
+    <!-- Drawer Panel -->
+    <div class="fixed inset-y-0 right-0 max-w-xs w-full bg-white shadow-2xl flex flex-col justify-between z-10">
+      <!-- Drawer Header -->
+      <div class="p-4 sm:p-5 border-b border-gray-100 flex items-center justify-between bg-gradient-to-r from-gray-50 to-white">
+        <div class="flex items-center gap-2.5">
+          <img src="https://ccs.sch.id/assets/images/logo-cccs.png" alt="CCS" class="h-7 w-auto" onerror="this.src='https://ccs.sch.id/assets/images/logo.png';">
+          <span class="text-xs font-bold text-ccsHeading" data-i18n="portal_menu">Menu Navigasi</span>
+        </div>
+        <button onclick="closeMobileNavDrawer()" class="w-8 h-8 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-600 flex items-center justify-center transition active:scale-95" aria-label="Tutup">
+          <i class="fas fa-times text-sm"></i>
+        </button>
+      </div>
+
+      <!-- Drawer Content -->
+      <div class="p-4 sm:p-5 space-y-4 flex-1 overflow-y-auto">
+        <!-- Active User Profile Card -->
+        <div class="bg-gray-50 border border-gray-200/80 rounded-2xl p-3.5 space-y-2">
+          <div class="text-[10px] font-bold uppercase tracking-wider text-gray-400" data-i18n="active_role_label">Peran Saat Ini</div>
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <div id="drawerRoleIcon" class="w-7 h-7 rounded-lg bg-orange-100 text-ccsOrange flex items-center justify-center text-xs font-bold">
+                <i class="fas fa-broom"></i>
+              </div>
+              <div class="text-xs font-extrabold text-ccsHeading truncate" id="drawerWorkerName">Darul Cleaning</div>
+            </div>
+            <button onclick="closeMobileNavDrawer(); promptSwitchCleanerModal();" class="text-[11px] font-bold text-ccsOrange hover:underline" data-i18n="change_worker">
+              Ganti
+            </button>
+          </div>
+        </div>
+
+        <!-- Navigation Menu List -->
+        <div class="space-y-1.5 pt-1">
+          <button 
+            type="button" 
+            onclick="closeMobileNavDrawer(); showScannerSection();"
+            class="w-full text-left px-3.5 py-3 rounded-xl font-bold text-xs text-gray-700 hover:bg-orange-50 hover:text-ccsOrange transition flex items-center justify-between group active:scale-98"
+          >
+            <div class="flex items-center gap-3">
+              <div class="w-8 h-8 rounded-lg bg-orange-100 text-ccsOrange flex items-center justify-center text-xs font-bold group-hover:scale-105 transition">
+                <i class="fas fa-qrcode"></i>
+              </div>
+              <div>
+                <div data-i18n="nav_scan_room">Scan Ruangan & Checklist</div>
+                <div class="text-[10px] font-normal text-gray-400" data-i18n="nav_scan_room_sub">Buka kamera scan QR pintu</div>
+              </div>
+            </div>
+            <i class="fas fa-chevron-right text-[10px] text-gray-300 group-hover:text-ccsOrange"></i>
+          </button>
+
+          <button 
+            type="button" 
+            onclick="closeMobileNavDrawer(); navToActiveComplaints();"
+            class="w-full text-left px-3.5 py-3 rounded-xl font-bold text-xs text-gray-700 hover:bg-red-50 hover:text-red-700 transition flex items-center justify-between group active:scale-98"
+          >
+            <div class="flex items-center gap-3">
+              <div class="w-8 h-8 rounded-lg bg-red-100 text-red-600 flex items-center justify-center text-xs font-bold group-hover:scale-105 transition">
+                <i class="fas fa-exclamation-triangle"></i>
+              </div>
+              <div>
+                <div class="flex items-center gap-1.5">
+                  <span data-i18n="nav_active_complaints">Komplain Aktif</span>
+                  <span id="drawerComplaintsCountBadge" class="hidden px-1.5 py-0.5 rounded-full text-[10px] font-extrabold bg-red-500 text-white">0</span>
+                </div>
+                <div class="text-[10px] font-normal text-gray-400" data-i18n="nav_active_complaints_sub">Perlu perbaikan / kebersihan</div>
+              </div>
+            </div>
+            <i class="fas fa-chevron-right text-[10px] text-gray-300 group-hover:text-red-600"></i>
+          </button>
+
+          <button 
+            type="button" 
+            onclick="closeMobileNavDrawer(); showHistorySection();"
+            class="w-full text-left px-3.5 py-3 rounded-xl font-bold text-xs text-gray-700 hover:bg-emerald-50 hover:text-emerald-700 transition flex items-center justify-between group active:scale-98"
+          >
+            <div class="flex items-center gap-3">
+              <div class="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center text-xs font-bold group-hover:scale-105 transition">
+                <i class="fas fa-history"></i>
+              </div>
+              <div>
+                <div data-i18n="nav_history_complaints">Riwayat Komplain Selesai</div>
+                <div class="text-[10px] font-normal text-gray-400" data-i18n="nav_history_complaints_sub">Arsip komplain yang ditangani</div>
+              </div>
+            </div>
+            <i class="fas fa-chevron-right text-[10px] text-gray-300 group-hover:text-emerald-600"></i>
+          </button>
+
+          <button 
+            type="button" 
+            onclick="closeMobileNavDrawer(); resetRole();"
+            class="w-full text-left px-3.5 py-3 rounded-xl font-bold text-xs text-gray-700 hover:bg-gray-100 transition flex items-center justify-between group active:scale-98"
+          >
+            <div class="flex items-center gap-3">
+              <div class="w-8 h-8 rounded-lg bg-gray-100 text-gray-600 flex items-center justify-center text-xs font-bold group-hover:scale-105 transition">
+                <i class="fas fa-exchange-alt"></i>
+              </div>
+              <div>
+                <div data-i18n="switch_role">Ganti Peran</div>
+                <div class="text-[10px] font-normal text-gray-400" data-i18n="switch_role_sub">Cleaner atau Pelapor</div>
+              </div>
+            </div>
+            <i class="fas fa-chevron-right text-[10px] text-gray-300"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Drawer Footer -->
+      <div class="p-4 bg-gray-50 border-t border-gray-100 text-center">
+        <p class="text-[11px] text-gray-400">&copy; <?= date('Y') ?> CCS Room & Facility Portal</p>
+      </div>
+    </div>
+  </div>
 
   <!-- ═══════════════════════════════════════════════════════════════════════ -->
   <!-- 3. KONTEN UTAMA                                                         -->
@@ -920,6 +1075,19 @@ $roomParam = htmlspecialchars(trim($_GET['room'] ?? ''));
           <div id="cleanerComplaintsList" class="space-y-3">
             <!-- Dynamic Complaints Cards -->
           </div>
+
+          <!-- Tombol Akses Riwayat Komplain Selesai -->
+          <div class="pt-2 text-center">
+            <button 
+              type="button" 
+              onclick="showHistorySection()" 
+              class="w-full py-2.5 px-3 bg-emerald-50 hover:bg-emerald-100/80 border border-emerald-200 text-emerald-800 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 shadow-2xs active:scale-98"
+            >
+              <i class="fas fa-history text-emerald-600"></i>
+              <span data-i18n="view_resolved_history">Lihat Riwayat Komplain yang Sudah Selesai</span>
+              <i class="fas fa-arrow-right text-[10px] text-emerald-500"></i>
+            </button>
+          </div>
         </div>
 
       </div>
@@ -1063,19 +1231,7 @@ $roomParam = htmlspecialchars(trim($_GET['room'] ?? ''));
           >
         </div>
 
-        <!-- Kontak WhatsApp / Email (Opsional) -->
-        <div>
-          <label class="block text-xs font-semibold uppercase tracking-wider text-gray-700 mb-1.5">
-            <span data-i18n="reporter_contact_label">No. WhatsApp / Email</span> <span class="text-gray-400 font-normal text-[11px]" data-i18n="optional_tag">(Opsional)</span>
-          </label>
-          <input 
-            type="text" 
-            id="reporterContactInput" 
-            placeholder="Untuk konfirmasi status tindak lanjut"
-            data-i18n-ph="reporter_contact_placeholder"
-            class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:border-ccsTeal focus:ring-2 focus:ring-ccsTeal/10 text-sm outline-none transition"
-          >
-        </div>
+
 
         <!-- Foto Bukti Kondisi / Kerusakan (Wajib) -->
         <div>
@@ -1147,6 +1303,44 @@ $roomParam = htmlspecialchars(trim($_GET['room'] ?? ''));
 
       </div>
 
+    </div>
+
+    <!-- ─── SECTION 5: RIWAYAT KOMPLAIN SELESAI (RESOLVED HISTORY) ───────── -->
+    <div id="cleanerHistorySection" class="hidden space-y-4">
+      <!-- Header Riwayat -->
+      <div class="bg-white rounded-2xl p-5 sm:p-6 border border-gray-100 shadow-sm flex items-start justify-between gap-3">
+        <div>
+          <div class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 mb-1.5">
+            <i class="fas fa-check-double text-xs"></i>
+            <span data-i18n="history_badge">Arsip Selesai</span>
+          </div>
+          <h2 class="text-base sm:text-lg font-bold text-ccsHeading" data-i18n="history_title">Riwayat Komplain Fasilitas Selesai</h2>
+          <p class="text-xs text-gray-500 mt-0.5" data-i18n="history_subtitle">Daftar keluhan fasilitas yang telah ditangani dan diverifikasi dengan foto bukti penyelesaian.</p>
+        </div>
+        <button 
+          type="button" 
+          onclick="loadResolvedComplaints(true)" 
+          class="p-2 text-gray-400 hover:text-ccsOrange transition rounded-xl hover:bg-gray-50 shrink-0" 
+          title="Muat Ulang"
+        >
+          <i class="fas fa-sync-alt text-sm" id="refreshHistoryIcon"></i>
+        </button>
+      </div>
+
+      <!-- Quick Back to Scanner Button -->
+      <button 
+        type="button" 
+        onclick="showScannerSection()" 
+        class="thm-btn thm-btn--outline w-full py-2.5 text-xs font-bold rounded-xl flex items-center justify-center gap-2 shadow-2xs active:scale-95 transition"
+      >
+        <i class="fas fa-qrcode"></i>
+        <span data-i18n="back_to_scanner">Kembali ke Scan Ruangan</span>
+      </button>
+
+      <!-- History List Container -->
+      <div id="cleanerHistoryList" class="space-y-3">
+        <!-- Injected via JavaScript -->
+      </div>
     </div>
 
   </main>
@@ -1350,7 +1544,26 @@ $roomParam = htmlspecialchars(trim($_GET['room'] ?? ''));
         resolution_photo_label: 'Foto Bukti Penyelesaian',
         submit_resolution_btn: 'Kirim Bukti & Selesaikan',
         cancel_btn: 'Batal',
-        view_photo_btn: 'Lihat Foto'
+        view_photo_btn: 'Lihat Foto',
+        menu_btn: 'Menu',
+        portal_menu: 'Menu Navigasi',
+        nav_scan_room: 'Scan Ruangan & Checklist',
+        nav_scan_room_sub: 'Buka kamera scan QR pintu',
+        nav_active_complaints: 'Komplain Aktif',
+        nav_active_complaints_sub: 'Perlu perbaikan / kebersihan',
+        nav_history_complaints: 'Riwayat Komplain Selesai',
+        nav_history_complaints_sub: 'Arsip komplain yang ditangani',
+        switch_role_sub: 'Cleaner atau Pelapor',
+        view_resolved_history: 'Lihat Riwayat Komplain yang Sudah Selesai',
+        history_badge: 'Arsip Selesai',
+        history_title: 'Riwayat Komplain Fasilitas Selesai',
+        history_subtitle: 'Daftar keluhan fasilitas yang telah ditangani dan diverifikasi dengan foto bukti penyelesaian.',
+        back_to_scanner: 'Kembali ke Scan Ruangan',
+        no_resolved_history: 'Belum ada riwayat komplain yang diselesaikan.',
+        resolved_by_label: 'Diselesaikan oleh:',
+        resolution_notes_text: 'Catatan Penanganan:',
+        view_problem_photo: 'Foto Kendala',
+        view_solution_photo: 'Foto Hasil Selesai'
       },
       en: {
         portal_title: 'Room Portal',
@@ -1427,7 +1640,26 @@ $roomParam = htmlspecialchars(trim($_GET['room'] ?? ''));
         resolution_photo_label: 'Resolution Photo Evidence',
         submit_resolution_btn: 'Submit Proof & Resolve',
         cancel_btn: 'Cancel',
-        view_photo_btn: 'View Photo'
+        view_photo_btn: 'View Photo',
+        menu_btn: 'Menu',
+        portal_menu: 'Navigation Menu',
+        nav_scan_room: 'Scan Room & Checklist',
+        nav_scan_room_sub: 'Open camera to scan door QR',
+        nav_active_complaints: 'Active Complaints',
+        nav_active_complaints_sub: 'Needs repair or cleaning',
+        nav_history_complaints: 'Resolved Complaints History',
+        nav_history_complaints_sub: 'Archive of handled issues',
+        switch_role_sub: 'Cleaner or Reporter',
+        view_resolved_history: 'View Resolved Complaints History',
+        history_badge: 'Resolved Archive',
+        history_title: 'Resolved Facility Complaints History',
+        history_subtitle: 'List of facility issues that have been addressed with resolution photo proof.',
+        back_to_scanner: 'Back to Room Scanner',
+        no_resolved_history: 'No resolved complaints recorded yet.',
+        resolved_by_label: 'Resolved by:',
+        resolution_notes_text: 'Resolution Notes:',
+        view_problem_photo: 'Problem Photo',
+        view_solution_photo: 'Resolution Photo'
       }
     };
 
@@ -1737,6 +1969,7 @@ $roomParam = htmlspecialchars(trim($_GET['room'] ?? ''));
       document.getElementById('loadingCard').classList.add('hidden');
       document.getElementById('scannerSection').classList.add('hidden');
       document.getElementById('cleanerFormSection').classList.add('hidden');
+      document.getElementById('cleanerHistorySection')?.classList.add('hidden');
       document.getElementById('reporterFormSection').classList.add('hidden');
       document.getElementById('activeRoleBar').classList.add('hidden');
       document.getElementById('roleSelectionSection').classList.remove('hidden');
@@ -1791,6 +2024,7 @@ $roomParam = htmlspecialchars(trim($_GET['room'] ?? ''));
     function showScannerSection() {
       document.getElementById('loadingCard').classList.add('hidden');
       document.getElementById('cleanerFormSection').classList.add('hidden');
+      document.getElementById('cleanerHistorySection')?.classList.add('hidden');
       document.getElementById('reporterFormSection').classList.add('hidden');
       document.getElementById('roleSelectionSection').classList.add('hidden');
       document.getElementById('scannerSection').classList.remove('hidden');
@@ -1885,6 +2119,7 @@ $roomParam = htmlspecialchars(trim($_GET['room'] ?? ''));
       document.getElementById('scannerSection').classList.add('hidden');
       document.getElementById('reporterFormSection').classList.add('hidden');
       document.getElementById('cleanerFormSection').classList.add('hidden');
+      document.getElementById('cleanerHistorySection')?.classList.add('hidden');
 
       try {
         const res = await fetch(`index.php?action=fetch_room&room_token=${encodeURIComponent(token)}`);
@@ -2310,6 +2545,7 @@ $roomParam = htmlspecialchars(trim($_GET['room'] ?? ''));
       document.getElementById('loadingCard').classList.remove('hidden');
       document.getElementById('scannerSection').classList.add('hidden');
       document.getElementById('cleanerFormSection').classList.add('hidden');
+      document.getElementById('cleanerHistorySection')?.classList.add('hidden');
       document.getElementById('reporterFormSection').classList.add('hidden');
 
       try {
@@ -2335,9 +2571,7 @@ $roomParam = htmlspecialchars(trim($_GET['room'] ?? ''));
 
         // Restore saved reporter info
         const savedRepName = localStorage.getItem('ccs_reporter_name');
-        const savedRepContact = localStorage.getItem('ccs_reporter_contact');
         if (savedRepName) document.getElementById('reporterNameInput').value = savedRepName;
-        if (savedRepContact) document.getElementById('reporterContactInput').value = savedRepContact;
 
         document.getElementById('loadingCard').classList.add('hidden');
         document.getElementById('reporterFormSection').classList.remove('hidden');
@@ -2372,11 +2606,9 @@ $roomParam = htmlspecialchars(trim($_GET['room'] ?? ''));
     async function submitReporterReport() {
       const isEN = currentLang === 'en';
       const nameInput = document.getElementById('reporterNameInput');
-      const contactInput = document.getElementById('reporterContactInput');
       const descInput = document.getElementById('reporterIssueDesc');
 
       const repName = nameInput ? nameInput.value.trim() : '';
-      const repContact = contactInput ? contactInput.value.trim() : '';
       const repDesc = descInput ? descInput.value.trim() : '';
 
       if (!repName) {
@@ -2410,7 +2642,6 @@ $roomParam = htmlspecialchars(trim($_GET['room'] ?? ''));
 
       // Save to localStorage for convenience
       localStorage.setItem('ccs_reporter_name', repName);
-      if (repContact) localStorage.setItem('ccs_reporter_contact', repContact);
 
       const btn = document.getElementById('btnSubmitReport');
       const origText = btn.innerHTML;
@@ -2422,7 +2653,7 @@ $roomParam = htmlspecialchars(trim($_GET['room'] ?? ''));
         formData.append('action', 'submit_report');
         formData.append('room_token', currentRoomToken);
         formData.append('reporter_name', repName);
-        formData.append('reporter_contact', repContact);
+        formData.append('reporter_contact', '');
         formData.append('issue_description', repDesc);
         formData.append('photo_file', selectedReporterBlob, 'report.jpg');
 
@@ -2458,6 +2689,176 @@ $roomParam = htmlspecialchars(trim($_GET['room'] ?? ''));
       }
     }
 
+    // ─── SLIDE-OVER NAVIGATION DRAWER (HAMBURGER) ─────────────────────────
+    function openMobileNavDrawer() {
+      const drawer = document.getElementById('mobileNavDrawer');
+      const drawerWorker = document.getElementById('drawerWorkerName');
+      const drawerRoleIcon = document.getElementById('drawerRoleIcon');
+      const activeWorker = localStorage.getItem('ccs_vendor_worker_name');
+      const isEN = currentLang === 'en';
+
+      if (drawerWorker) {
+        if (currentRole === 'cleaner') {
+          drawerWorker.textContent = activeWorker || (isEN ? 'Staff Not Selected' : 'Belum Pilih Nama');
+        } else if (currentRole === 'reporter') {
+          drawerWorker.textContent = isEN ? 'Facility Reporter' : 'Pelapor Fasilitas';
+        } else {
+          drawerWorker.textContent = isEN ? 'Role Not Selected' : 'Belum Pilih Peran';
+        }
+      }
+
+      if (drawerRoleIcon) {
+        if (currentRole === 'cleaner') {
+          drawerRoleIcon.className = 'w-7 h-7 rounded-lg bg-orange-100 text-ccsOrange flex items-center justify-center text-xs font-bold';
+          drawerRoleIcon.innerHTML = '<i class="fas fa-broom"></i>';
+        } else {
+          drawerRoleIcon.className = 'w-7 h-7 rounded-lg bg-teal-100 text-ccsTeal flex items-center justify-center text-xs font-bold';
+          drawerRoleIcon.innerHTML = '<i class="fas fa-bullhorn"></i>';
+        }
+      }
+
+      if (drawer) drawer.classList.remove('hidden');
+    }
+
+    function closeMobileNavDrawer() {
+      const drawer = document.getElementById('mobileNavDrawer');
+      if (drawer) drawer.classList.add('hidden');
+    }
+
+    function showHistorySection() {
+      stopScanner();
+      document.getElementById('loadingCard')?.classList.add('hidden');
+      document.getElementById('scannerSection')?.classList.add('hidden');
+      document.getElementById('cleanerFormSection')?.classList.add('hidden');
+      document.getElementById('reporterFormSection')?.classList.add('hidden');
+      document.getElementById('roleSelectionSection')?.classList.add('hidden');
+      document.getElementById('cleanerHistorySection')?.classList.remove('hidden');
+
+      loadResolvedComplaints();
+    }
+
+    function navToActiveComplaints() {
+      showScannerSection();
+      setTimeout(() => {
+        document.getElementById('cleanerComplaintsSection')?.scrollIntoView({ behavior: 'smooth' });
+      }, 150);
+    }
+
+    let resolvedComplaintsList = [];
+
+    async function loadResolvedComplaints(showSpin = false) {
+      const icon = document.getElementById('refreshHistoryIcon');
+      if (showSpin && icon) icon.classList.add('fa-spin');
+      const container = document.getElementById('cleanerHistoryList');
+      const isEN = currentLang === 'en';
+
+      try {
+        const res = await fetch('index.php?action=fetch_resolved_reports');
+        const data = await res.json();
+        if (showSpin && icon) icon.classList.remove('fa-spin');
+
+        if (!data.success) {
+          if (container) {
+            container.innerHTML = `
+              <div class="p-4 text-center text-xs text-gray-400 bg-white rounded-2xl border border-gray-100">
+                ${isEN ? 'Failed to load complaint history' : 'Gagal memuat riwayat komplain'}
+              </div>
+            `;
+          }
+          return;
+        }
+
+        resolvedComplaintsList = data.reports || [];
+        renderResolvedHistoryList(resolvedComplaintsList);
+      } catch (err) {
+        if (showSpin && icon) icon.classList.remove('fa-spin');
+        console.warn('Error fetching resolved complaints:', err);
+      }
+    }
+
+    function renderResolvedHistoryList(reports) {
+      const container = document.getElementById('cleanerHistoryList');
+      if (!container) return;
+      const isEN = currentLang === 'en';
+
+      if (!reports || reports.length === 0) {
+        container.innerHTML = `
+          <div class="p-6 text-center bg-white border border-gray-100 rounded-2xl shadow-xs">
+            <div class="w-12 h-12 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center text-xl mx-auto mb-2">
+              <i class="fas fa-clipboard-check"></i>
+            </div>
+            <p class="text-xs font-semibold text-gray-700">
+              ${isEN ? 'No resolved complaints recorded yet.' : 'Belum ada riwayat komplain yang diselesaikan.'}
+            </p>
+            <p class="text-[11px] text-gray-400 mt-1">
+              ${isEN ? 'Resolved complaints will appear here after cleaning staff resolves them.' : 'Komplain yang selesai ditangani oleh tim kebersihan akan terarsip di sini.'}
+            </p>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = reports.map(r => `
+        <div class="bg-white border border-gray-200/80 rounded-2xl p-4 sm:p-5 space-y-3 shadow-2xs hover:shadow-xs transition">
+          <div class="flex items-start justify-between gap-2">
+            <div>
+              <div class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 mb-1 border border-emerald-200">
+                <i class="fas fa-check-circle text-emerald-600"></i>
+                <span>${escapeHtml(r.room_name)}</span>
+              </div>
+              <h4 class="text-xs font-bold text-gray-800 leading-snug mt-1">${escapeHtml(r.issue_description)}</h4>
+              <div class="text-[11px] text-gray-400 mt-0.5">
+                ${isEN ? 'Reported by:' : 'Pelapor:'} <span class="font-semibold text-gray-600">${escapeHtml(r.reporter_name || 'Pengguna Ruangan')}</span>
+                <span class="mx-1">•</span>
+                <span>${formatTimeAgo(r.created_at)}</span>
+              </div>
+            </div>
+            <span class="shrink-0 text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200">
+              ${isEN ? 'Resolved' : 'Selesai'}
+            </span>
+          </div>
+
+          <!-- Resolution Summary Box -->
+          <div class="bg-emerald-50/50 border border-emerald-100 rounded-xl p-3 text-xs space-y-1">
+            <div class="flex items-center gap-2 text-[11px]">
+              <span class="text-gray-500">${isEN ? 'Resolved by:' : 'Diselesaikan oleh:'}</span>
+              <span class="font-bold text-ccsHeading">${escapeHtml(r.resolved_by_name || 'Petugas Kebersihan')}</span>
+              ${r.resolved_at ? `<span class="text-gray-400 text-[10px]">(${formatTimeAgo(r.resolved_at)})</span>` : ''}
+            </div>
+            ${r.resolution_notes ? `
+              <div class="text-[11px] text-gray-600 italic mt-0.5">
+                "${escapeHtml(r.resolution_notes)}"
+              </div>
+            ` : ''}
+          </div>
+
+          <!-- Photo Verification Buttons -->
+          <div class="flex flex-wrap items-center gap-2 pt-1 border-t border-gray-100">
+            ${r.photo_file ? `
+              <button 
+                type="button" 
+                onclick="previewComplaintPhoto('${r.photo_file}', '${isEN ? 'Problem Photo - ' : 'Foto Kendala - '}${escapeHtml(r.room_name)}')"
+                class="px-3 py-1.5 text-xs font-semibold text-gray-700 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-xl transition flex items-center gap-1.5 shadow-2xs active:scale-95"
+              >
+                <i class="fas fa-image text-amber-500"></i>
+                <span>${isEN ? 'Problem Photo' : 'Foto Kendala'}</span>
+              </button>
+            ` : ''}
+            ${r.resolution_photo_file ? `
+              <button 
+                type="button" 
+                onclick="previewComplaintPhoto('${r.resolution_photo_file}', '${isEN ? 'Resolution Proof - ' : 'Bukti Selesai - '}${escapeHtml(r.room_name)}')"
+                class="px-3 py-1.5 text-xs font-bold text-emerald-800 bg-emerald-100 hover:bg-emerald-200 border border-emerald-300 rounded-xl transition flex items-center gap-1.5 shadow-2xs active:scale-95"
+              >
+                <i class="fas fa-check-circle text-emerald-600"></i>
+                <span>${isEN ? 'Resolution Photo' : 'Bukti Selesai'}</span>
+              </button>
+            ` : ''}
+          </div>
+        </div>
+      `).join('');
+    }
+
     // ─── NAVIGASI LANJUT SCAN RUANGAN BERIKUTNYA ───────────────────────────
     function goToNextRoomScan() {
       stopScanner();
@@ -2474,6 +2875,7 @@ $roomParam = htmlspecialchars(trim($_GET['room'] ?? ''));
       }
 
       document.getElementById('cleanerFormSection').classList.add('hidden');
+      document.getElementById('cleanerHistorySection')?.classList.add('hidden');
       document.getElementById('reporterFormSection').classList.add('hidden');
       document.getElementById('loadingCard').classList.add('hidden');
 
@@ -2534,6 +2936,20 @@ $roomParam = htmlspecialchars(trim($_GET['room'] ?? ''));
 
         activeComplaintsList = data.reports || [];
         renderComplaintsList(activeComplaintsList);
+
+        // Update badge on navbar and drawer
+        const countBadge = document.getElementById('drawerComplaintsCountBadge');
+        const dotBadge = document.getElementById('navActiveBadgeDot');
+        if (activeComplaintsList.length > 0) {
+          if (countBadge) {
+            countBadge.textContent = activeComplaintsList.length;
+            countBadge.classList.remove('hidden');
+          }
+          if (dotBadge) dotBadge.classList.remove('hidden');
+        } else {
+          if (countBadge) countBadge.classList.add('hidden');
+          if (dotBadge) dotBadge.classList.add('hidden');
+        }
       } catch (err) {
         if (showSpin && icon) icon.classList.remove('fa-spin');
         console.warn('Error loading active complaints:', err);

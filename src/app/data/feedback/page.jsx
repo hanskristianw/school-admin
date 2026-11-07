@@ -382,7 +382,7 @@ export default function SystemFeedbackPage() {
           </div>
         ) : (
           <div className="space-y-6">
-            {filteredReleases.map((release) => {
+            {filteredReleases.map((release, relIdx) => {
               const formattedDate = new Date(release.date).toLocaleDateString(dateLocale, {
                 year: 'numeric',
                 month: 'long',
@@ -397,7 +397,7 @@ export default function SystemFeedbackPage() {
 
               return (
                 <article
-                  key={release.version}
+                  key={release.version ? `${release.version}-${relIdx}` : relIdx}
                   className="rounded border p-6 transition-all shadow-xs"
                   style={{ background: cardBg, borderColor, borderRadius: '8px' }}
                 >

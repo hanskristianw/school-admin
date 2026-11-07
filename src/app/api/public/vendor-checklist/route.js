@@ -38,9 +38,10 @@ export async function GET(request) {
     const { searchParams } = new URL(request.url)
     const action = searchParams.get('action')
 
-    // 0a. Ambil daftar komplain fasilitas aktif untuk pihak cleaning
-    if (action === 'get_active_reports') {
-      const { data: reports, error: rErr } = await supabaseAdmin
+    // 0a. Ambil daftar komplain fasilitas (aktif ATAU riwayat resolved) untuk pihak cleaning
+    if (action === 'get_active_reports' || action === 'get_resolved_reports') {
+      const isResolved = action === 'get_resolved_reports'
+      let query = supabaseAdmin
         .from('room_facility_reports')
         .select(`
           id,
@@ -52,11 +53,20 @@ export async function GET(request) {
           hosting_url,
           status,
           created_at,
+          resolved_at,
+          resolved_by_name,
+          resolution_photo_file,
+          resolution_notes,
           room:room_id (room_id, room_name, qr_code_token)
         `)
-        .in('status', ['pending', 'in_progress'])
-        .order('created_at', { ascending: false })
-        .limit(30)
+
+      if (isResolved) {
+        query = query.eq('status', 'resolved').order('resolved_at', { ascending: false }).limit(50)
+      } else {
+        query = query.in('status', ['pending', 'in_progress']).order('created_at', { ascending: false }).limit(30)
+      }
+
+      const { data: reports, error: rErr } = await query
 
       if (rErr) {
         if (rErr.code === '42P01') {
@@ -76,7 +86,11 @@ export async function GET(request) {
         photo_file: r.photo_file,
         hosting_url: r.hosting_url,
         status: r.status,
-        created_at: r.created_at
+        created_at: r.created_at,
+        resolved_at: r.resolved_at,
+        resolved_by_name: r.resolved_by_name,
+        resolution_photo_file: r.resolution_photo_file,
+        resolution_notes: r.resolution_notes
       }))
 
       return NextResponse.json({ success: true, reports: formatted })

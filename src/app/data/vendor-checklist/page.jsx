@@ -25,7 +25,11 @@ import {
   faQrcode,
   faList,
   faThLarge,
-  faCommentDots
+  faCommentDots,
+  faTools,
+  faHistory,
+  faCheckDouble,
+  faExternalLinkAlt
 } from '@fortawesome/free-solid-svg-icons'
 
 const SQL_MIGRATION_TEXT = `-- 1. Tambah kolom qr_code_token dan is_active ke tabel room
@@ -127,6 +131,19 @@ export default function VendorChecklistDashboardPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [activeTab, setActiveTab] = useState('all') // 'all' | 'pending_review' | 'in_progress' | 'revision' | 'approved' | 'not_started'
   const [viewMode, setViewMode] = useState('table') // 'table' | 'grid'
+
+  // Main Tab Navigation: 'checklists' | 'complaints'
+  const [mainTab, setMainTab] = useState('checklists')
+
+  // Facility Complaints state
+  const [complaints, setComplaints] = useState([])
+  const [complaintsLoading, setComplaintsLoading] = useState(false)
+  const [complaintFilter, setComplaintFilter] = useState('all') // 'all' | 'pending' | 'in_progress' | 'resolved'
+  const [complaintSearch, setComplaintSearch] = useState('')
+  const [selectedComplaint, setSelectedComplaint] = useState(null)
+  const [complaintModalOpen, setComplaintModalOpen] = useState(false)
+  const [complaintActionLoading, setComplaintActionLoading] = useState(false)
+  const [supervisorNoteInput, setSupervisorNoteInput] = useState('')
 
   // User auth state
   const [currentUser, setCurrentUser] = useState(null)
@@ -241,6 +258,85 @@ export default function VendorChecklistDashboardPage() {
   useEffect(() => {
     fetchData(true)
   }, [fetchData])
+
+  const fetchComplaints = useCallback(async () => {
+    setComplaintsLoading(true)
+    try {
+      const res = await fetch('/api/vendor-checklist/facility-reports?limit=200')
+      const json = await res.json()
+      if (json.success && Array.isArray(json.reports)) {
+        setComplaints(json.reports)
+      }
+    } catch (e) {
+      console.warn('Error fetching facility complaints:', e)
+    } finally {
+      setComplaintsLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    fetchComplaints()
+  }, [fetchComplaints])
+
+  const unresolvedComplaintsCount = useMemo(() => {
+    return complaints.filter(c => c.status !== 'resolved').length
+  }, [complaints])
+
+  const complaintStats = useMemo(() => {
+    const total = complaints.length
+    let pending = 0
+    let inProgress = 0
+    let resolved = 0
+    complaints.forEach(c => {
+      if (c.status === 'pending') pending++
+      else if (c.status === 'in_progress') inProgress++
+      else if (c.status === 'resolved') resolved++
+    })
+    return { total, pending, inProgress, resolved }
+  }, [complaints])
+
+  const filteredComplaints = useMemo(() => {
+    return complaints.filter(c => {
+      if (complaintFilter !== 'all' && c.status !== complaintFilter) return false
+      if (complaintSearch.trim()) {
+        const q = complaintSearch.toLowerCase()
+        const roomMatch = (c.room_name || '').toLowerCase().includes(q)
+        const reporterMatch = (c.reporter_name || '').toLowerCase().includes(q)
+        const descMatch = (c.issue_description || '').toLowerCase().includes(q)
+        const workerMatch = (c.resolved_by_name || '').toLowerCase().includes(q)
+        if (!roomMatch && !reporterMatch && !descMatch && !workerMatch) return false
+      }
+      return true
+    })
+  }, [complaints, complaintFilter, complaintSearch])
+
+  const handleUpdateComplaintStatus = async (reportId, newStatus, notes) => {
+    setComplaintActionLoading(true)
+    try {
+      const res = await fetch('/api/vendor-checklist/facility-reports', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: reportId,
+          status: newStatus,
+          resolution_notes: notes !== undefined ? notes : undefined
+        })
+      })
+      const json = await res.json()
+      if (json.success) {
+        setComplaintModalOpen(false)
+        fetchComplaints()
+      } else {
+        alert(json.message || 'Gagal memperbarui status komplain')
+      }
+    } catch (e) {
+      alert('Terjadi kesalahan koneksi')
+    } finally {
+      setComplaintActionLoading(false)
+    }
+  }
+
+
 
   // 3. Combine Rooms and Checklist data
   const mergedItems = useMemo(() => {
@@ -627,6 +723,66 @@ export default function VendorChecklistDashboardPage() {
         </div>
       </div>
 
+      {/* ── TOP-LEVEL NAVIGATION TABS: CHECKLIST vs KOMPLAIN FASILITAS ── */}
+      <div className="flex items-center gap-2 border-b mb-6" style={{ borderColor }}>
+        <button
+          onClick={() => setMainTab('checklists')}
+          style={{
+            padding: '12px 18px',
+            fontSize: '13px',
+            fontWeight: 600,
+            cursor: 'pointer',
+            background: 'none',
+            border: 'none',
+            borderBottom: mainTab === 'checklists' ? `2px solid #F16101` : '2px solid transparent',
+            color: mainTab === 'checklists' ? textPrimary : textSecondary,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}
+        >
+          <FontAwesomeIcon icon={faBroom} className="text-xs text-orange-500" />
+          <span>Checklist Harian Ruangan</span>
+        </button>
+
+        <button
+          onClick={() => setMainTab('complaints')}
+          style={{
+            padding: '12px 18px',
+            fontSize: '13px',
+            fontWeight: 600,
+            cursor: 'pointer',
+            background: 'none',
+            border: 'none',
+            borderBottom: mainTab === 'complaints' ? `2px solid #EF4444` : '2px solid transparent',
+            color: mainTab === 'complaints' ? textPrimary : textSecondary,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}
+        >
+          <FontAwesomeIcon icon={faExclamationTriangle} className={unresolvedComplaintsCount > 0 ? "text-rose-500 text-xs" : "text-amber-500 text-xs"} />
+          <span>Laporan & Komplain Fasilitas</span>
+          {unresolvedComplaintsCount > 0 && (
+            <span
+              style={{
+                fontSize: '10px',
+                fontWeight: 700,
+                background: '#EF4444',
+                color: '#FFFFFF',
+                borderRadius: '9999px',
+                padding: '1px 7px',
+                lineHeight: '14px'
+              }}
+            >
+              {unresolvedComplaintsCount}
+            </span>
+          )}
+        </button>
+      </div>
+
+      {mainTab === 'checklists' && (
+        <div>
       {/* ── BANNER JIKA TABEL BELUM DIBUAT (EXACT MATCHING /data/court-rental) ── */}
       {!tableExists && (
         <div style={{ background: cardBg, border: `1px solid #F59E0B`, borderRadius: '8px', padding: '16px 20px', marginBottom: '24px' }}>
@@ -1120,6 +1276,338 @@ export default function VendorChecklistDashboardPage() {
         </div>
       )}
 
+        </div>
+      )}
+
+      {/* ── TAB CONTENT 2: LAPORAN & KOMPLAIN FASILITAS RUANGAN ── */}
+      {mainTab === 'complaints' && (
+        <div className="space-y-6">
+          {/* Bento Metric Cards for Complaints */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div
+              onClick={() => setComplaintFilter('all')}
+              style={{
+                background: cardBg,
+                border: `1px solid ${complaintFilter === 'all' ? '#022C46' : borderColor}`,
+                borderRadius: '8px',
+                padding: '14px 18px',
+                cursor: 'pointer'
+              }}
+              className="hover:border-neutral-400 transition"
+            >
+              <div className="text-[11px] font-mono uppercase tracking-wider" style={{ color: textSecondary }}>
+                TOTAL LAPORAN
+              </div>
+              <div className="text-2xl font-bold font-mono mt-1" style={{ color: textPrimary }}>
+                {complaintStats.total}
+              </div>
+            </div>
+
+            <div
+              onClick={() => setComplaintFilter('pending')}
+              style={{
+                background: complaintFilter === 'pending' ? (isDark ? 'rgba(245, 158, 11, 0.1)' : '#FEF8EE') : cardBg,
+                border: `1px solid ${complaintFilter === 'pending' ? '#F59E0B' : borderColor}`,
+                borderRadius: '8px',
+                padding: '14px 18px',
+                cursor: 'pointer'
+              }}
+              className="hover:border-amber-400 transition"
+            >
+              <div className="text-[11px] font-mono uppercase tracking-wider text-amber-500">
+                MENUNGGU PENANGANAN
+              </div>
+              <div className="text-2xl font-bold font-mono mt-1 text-amber-600 dark:text-amber-400">
+                {complaintStats.pending}
+              </div>
+            </div>
+
+            <div
+              onClick={() => setComplaintFilter('in_progress')}
+              style={{
+                background: complaintFilter === 'in_progress' ? (isDark ? 'rgba(59, 130, 246, 0.1)' : '#EFF6FF') : cardBg,
+                border: `1px solid ${complaintFilter === 'in_progress' ? '#3B82F6' : borderColor}`,
+                borderRadius: '8px',
+                padding: '14px 18px',
+                cursor: 'pointer'
+              }}
+              className="hover:border-blue-400 transition"
+            >
+              <div className="text-[11px] font-mono uppercase tracking-wider text-blue-500">
+                SEDANG DITANGANI
+              </div>
+              <div className="text-2xl font-bold font-mono mt-1 text-blue-600 dark:text-blue-400">
+                {complaintStats.inProgress}
+              </div>
+            </div>
+
+            <div
+              onClick={() => setComplaintFilter('resolved')}
+              style={{
+                background: complaintFilter === 'resolved' ? (isDark ? 'rgba(16, 185, 129, 0.1)' : '#ECFDF5') : cardBg,
+                border: `1px solid ${complaintFilter === 'resolved' ? '#10B981' : borderColor}`,
+                borderRadius: '8px',
+                padding: '14px 18px',
+                cursor: 'pointer'
+              }}
+              className="hover:border-emerald-400 transition"
+            >
+              <div className="text-[11px] font-mono uppercase tracking-wider text-emerald-500">
+                SELESAI (RESOLVED)
+              </div>
+              <div className="text-2xl font-bold font-mono mt-1 text-emerald-600 dark:text-emerald-400">
+                {complaintStats.resolved}
+              </div>
+            </div>
+          </div>
+
+          {/* Filter & Search Bar */}
+          <div
+            style={{ background: cardBg, border: `1px solid ${borderColor}`, borderRadius: '8px' }}
+            className="p-3.5 flex flex-col md:flex-row items-center justify-between gap-3"
+          >
+            {/* Filter Pills */}
+            <div className="flex items-center gap-1.5 flex-wrap w-full md:w-auto">
+              {[
+                { id: 'all', label: 'Semua Laporan' },
+                { id: 'pending', label: 'Menunggu' },
+                { id: 'in_progress', label: 'Sedang Ditangani' },
+                { id: 'resolved', label: 'Selesai' }
+              ].map(f => (
+                <button
+                  key={f.id}
+                  onClick={() => setComplaintFilter(f.id)}
+                  style={{
+                    background: complaintFilter === f.id ? textPrimary : 'transparent',
+                    color: complaintFilter === f.id ? (isDark ? '#111111' : '#FFFFFF') : textSecondary,
+                    border: `1px solid ${complaintFilter === f.id ? textPrimary : borderColor}`,
+                    borderRadius: '6px',
+                    fontSize: '11px',
+                    fontWeight: 600,
+                    padding: '5px 12px',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Search Input & Refresh */}
+            <div className="flex items-center gap-2 w-full md:w-auto">
+              <div className="relative flex-1 md:w-64">
+                <FontAwesomeIcon icon={faSearch} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 text-xs" />
+                <input
+                  type="text"
+                  placeholder="Cari ruangan, pelapor, kendala..."
+                  value={complaintSearch}
+                  onChange={(e) => setComplaintSearch(e.target.value)}
+                  style={{
+                    background: isDark ? '#111111' : '#F9F9F8',
+                    border: `1px solid ${borderColor}`,
+                    color: textPrimary,
+                    borderRadius: '6px',
+                    fontSize: '12px',
+                    padding: '6px 12px 6px 30px',
+                    width: '100%',
+                    outline: 'none'
+                  }}
+                />
+              </div>
+
+              <button
+                onClick={fetchComplaints}
+                disabled={complaintsLoading}
+                style={{
+                  background: 'transparent',
+                  color: textPrimary,
+                  border: `1px solid ${borderColor}`,
+                  borderRadius: '6px',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  padding: '6px 12px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
+                title="Muat Ulang Data Komplain"
+              >
+                <FontAwesomeIcon icon={faRotateRight} className={`text-xs ${complaintsLoading ? 'animate-spin' : ''}`} />
+                <span className="hidden sm:inline">Refresh</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Table / List Container */}
+          <div
+            style={{ background: cardBg, border: `1px solid ${borderColor}`, borderRadius: '8px' }}
+            className="overflow-hidden shadow-2xs"
+          >
+            {filteredComplaints.length === 0 ? (
+              <div className="p-12 text-center">
+                <FontAwesomeIcon icon={faCheckDouble} className="text-neutral-300 dark:text-neutral-700 text-3xl mb-3" />
+                <div className="font-semibold text-sm" style={{ color: textPrimary }}>
+                  Tidak Ada Laporan Komplain
+                </div>
+                <div className="text-xs mt-1" style={{ color: textSecondary }}>
+                  {complaintSearch.trim() || complaintFilter !== 'all'
+                    ? 'Tidak ditemukan laporan yang cocok dengan filter atau kata kunci pencarian.'
+                    : 'Semua ruangan dalam keadaan bersih dan berfungsi dengan baik.'}
+                </div>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead>
+                    <tr style={{ background: isDark ? '#121214' : '#FAFAFA', borderBottom: `1px solid ${borderColor}` }} className="font-mono text-[11px] text-neutral-400 uppercase">
+                      <th className="py-3 px-4 font-semibold">RUANGAN</th>
+                      <th className="py-3 px-4 font-semibold">KENDALA / LAPORAN</th>
+                      <th className="py-3 px-4 font-semibold">PELAPOR</th>
+                      <th className="py-3 px-4 font-semibold">STATUS</th>
+                      <th className="py-3 px-4 font-semibold">PENANGANAN CLEANER</th>
+                      <th className="py-3 px-4 font-semibold text-center">BUKTI FOTO</th>
+                      <th className="py-3 px-4 font-semibold text-right">AKSI</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800">
+                    {filteredComplaints.map(item => {
+                      const isResolved = item.status === 'resolved'
+                      const isInProgress = item.status === 'in_progress'
+
+                      return (
+                        <tr key={item.id} className="hover:bg-neutral-50/50 dark:hover:bg-neutral-800/20 transition">
+                          <td className="py-3.5 px-4">
+                            <div className="font-bold" style={{ color: textPrimary }}>{item.room_name}</div>
+                            <div className="text-[10px] font-mono text-neutral-400 mt-0.5">{item.room_token || '—'}</div>
+                          </td>
+
+                          <td className="py-3.5 px-4 max-w-xs">
+                            <div className="font-medium text-xs leading-relaxed" style={{ color: textPrimary }}>
+                              {item.issue_description}
+                            </div>
+                            <div className="text-[10px] text-neutral-400 mt-1">
+                              ID: #{item.id} • {formatWibTime(item.created_at)}
+                            </div>
+                          </td>
+
+                          <td className="py-3.5 px-4">
+                            <div className="font-semibold" style={{ color: textPrimary }}>{item.reporter_name || 'Pengguna'}</div>
+                            {item.reporter_contact && (
+                              <div className="text-[10px] text-neutral-400 font-mono mt-0.5">{item.reporter_contact}</div>
+                            )}
+                          </td>
+
+                          <td className="py-3.5 px-4">
+                            {isResolved ? (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
+                                <FontAwesomeIcon icon={faCheckCircle} className="text-[9px]" />
+                                Selesai
+                              </span>
+                            ) : isInProgress ? (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 border border-blue-300 dark:border-blue-800">
+                                <FontAwesomeIcon icon={faClock} className="text-[9px]" />
+                                Ditangani
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border border-amber-300 dark:border-amber-800">
+                                <FontAwesomeIcon icon={faExclamationTriangle} className="text-[9px]" />
+                                Menunggu
+                              </span>
+                            )}
+                          </td>
+
+                          <td className="py-3.5 px-4">
+                            {isResolved ? (
+                              <div>
+                                <div className="font-semibold text-emerald-700 dark:text-emerald-400">
+                                  {item.resolved_by_name || 'Petugas Cleaning'}
+                                </div>
+                                {item.resolution_notes && (
+                                  <div className="text-[11px] text-neutral-500 italic mt-0.5 line-clamp-1">
+                                    "{item.resolution_notes}"
+                                  </div>
+                                )}
+                                {item.resolved_at && (
+                                  <div className="text-[10px] text-neutral-400 mt-0.5 font-mono">
+                                    {formatWibTime(item.resolved_at)}
+                                  </div>
+                                )}
+                              </div>
+                            ) : (
+                              <span className="text-[11px] text-neutral-400 italic">Belum ditangani</span>
+                            )}
+                          </td>
+
+                          <td className="py-3.5 px-4 text-center">
+                            <div className="flex items-center justify-center gap-1.5">
+                              {item.photo_file && (
+                                <button
+                                  type="button"
+                                  onClick={() => setZoomImage({
+                                    url: `/api/vendor-checklist/facility-reports/${item.id}/photo?type=issue`,
+                                    title: `Foto Kendala: ${item.room_name}`
+                                  })}
+                                  className="px-2 py-1 rounded bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 text-neutral-700 dark:text-neutral-300 font-mono text-[10px] font-semibold transition"
+                                  title="Lihat Foto Kendala"
+                                >
+                                  Kendala
+                                </button>
+                              )}
+                              {item.resolution_photo_file && (
+                                <button
+                                  type="button"
+                                  onClick={() => setZoomImage({
+                                    url: `/api/vendor-checklist/facility-reports/${item.id}/photo?type=resolution`,
+                                    title: `Bukti Penyelesaian: ${item.room_name}`
+                                  })}
+                                  className="px-2 py-1 rounded bg-emerald-100 dark:bg-emerald-950 hover:bg-emerald-200 text-emerald-800 dark:text-emerald-300 font-mono text-[10px] font-bold transition"
+                                  title="Lihat Bukti Selesai"
+                                >
+                                  Selesai
+                                </button>
+                              )}
+                            </div>
+                          </td>
+
+                          <td className="py-3.5 px-4 text-right">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelectedComplaint(item)
+                                setSupervisorNoteInput(item.resolution_notes || '')
+                                setComplaintModalOpen(true)
+                              }}
+                              style={{
+                                background: textPrimary,
+                                color: isDark ? '#111111' : '#FFFFFF',
+                                border: 'none',
+                                borderRadius: '6px',
+                                fontSize: '11px',
+                                fontWeight: 600,
+                                padding: '5px 12px',
+                                cursor: 'pointer',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '5px'
+                              }}
+                            >
+                              <FontAwesomeIcon icon={faEye} className="text-[10px]" />
+                              Detail
+                            </button>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* ── MODAL: INSPEKSI CHECKLIST (MATCHING COURT-RENTAL MODAL) ── */}
       <Modal
         isOpen={inspectionModalOpen}
@@ -1457,6 +1945,178 @@ export default function VendorChecklistDashboardPage() {
             </button>
           </div>
         </div>
+      </Modal>
+
+      {/* ── MODAL: DETAIL & INSPEKSI KOMPLAIN FASILITAS ── */}
+      <Modal
+        isOpen={complaintModalOpen}
+        onClose={() => setComplaintModalOpen(false)}
+        title={`Inspeksi Komplain: ${selectedComplaint?.room_name || ''}`}
+        size="lg"
+      >
+        {selectedComplaint && (
+          <div className="space-y-4 text-xs">
+            {/* Meta Strip */}
+            <div
+              style={{ background: isDark ? '#141416' : '#F9F9F8', border: `1px solid ${borderColor}`, borderRadius: '6px' }}
+              className="p-3 grid grid-cols-2 sm:grid-cols-4 gap-3 font-mono text-[11px]"
+            >
+              <div>
+                <span className="text-neutral-400 block text-[10px]">PELAPOR:</span>
+                <span className="font-bold">{selectedComplaint.reporter_name || 'Pengguna Ruangan'}</span>
+              </div>
+              <div>
+                <span className="text-neutral-400 block text-[10px]">WAKTU LAPOR:</span>
+                <span>{formatWibTime(selectedComplaint.created_at)}</span>
+              </div>
+              <div>
+                <span className="text-neutral-400 block text-[10px]">STATUS:</span>
+                <span className="font-bold uppercase tracking-wider">
+                  {selectedComplaint.status === 'resolved' ? 'SELESAI' : selectedComplaint.status === 'in_progress' ? 'SEDANG DITANGANI' : 'MENUNGGU'}
+                </span>
+              </div>
+              <div>
+                <span className="text-neutral-400 block text-[10px]">PETUGAS CLEANING:</span>
+                <span className="font-bold text-emerald-600 dark:text-emerald-400">
+                  {selectedComplaint.resolved_by_name || '—'}
+                </span>
+              </div>
+            </div>
+
+            {/* Issue Description Box */}
+            <div style={{ background: isDark ? '#141416' : '#FEF8EE', border: `1px solid ${borderColor}`, borderRadius: '6px' }} className="p-3">
+              <span className="font-bold text-amber-600 font-mono text-[10px]">DESKRIPSI KELUHAN / KERUSAKAN:</span>
+              <p className="mt-1 text-sm leading-relaxed" style={{ color: textPrimary }}>
+                {selectedComplaint.issue_description}
+              </p>
+            </div>
+
+            {/* SIDE-BY-SIDE PHOTO COMPARISON */}
+            <div>
+              <div className="font-mono text-[10px] font-bold uppercase tracking-wider text-neutral-400 mb-2">
+                HASIL PEMERIKSAAN FOTO (BEFORE vs RESOLUTION)
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {/* 1. Foto Kendala */}
+                <div className="space-y-1">
+                  <div className="font-mono text-[11px] font-bold text-neutral-600 dark:text-neutral-300 flex items-center justify-between">
+                    <span>1. FOTO KENDALA (PELAPOR)</span>
+                    <span className="text-[10px] text-neutral-400">Klik zoom</span>
+                  </div>
+                  <div
+                    onClick={() => {
+                      if (selectedComplaint.photo_file) {
+                        setZoomImage({
+                          url: `/api/vendor-checklist/facility-reports/${selectedComplaint.id}/photo?type=issue`,
+                          title: `Foto Kendala Pelapor — ${selectedComplaint.room_name}`
+                        })
+                      }
+                    }}
+                    className="rounded overflow-hidden bg-black aspect-4/3 cursor-pointer border border-neutral-700 relative group"
+                  >
+                    {selectedComplaint.photo_file ? (
+                      <img
+                        src={`/api/vendor-checklist/facility-reports/${selectedComplaint.id}/photo?type=issue`}
+                        alt="Foto Kendala"
+                        className="w-full h-full object-contain"
+                      />
+                    ) : (
+                      <div className="h-full flex items-center justify-center text-neutral-500 font-mono text-xs">
+                        Tidak ada foto
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* 2. Foto Penyelesaian */}
+                <div className="space-y-1">
+                  <div className="font-mono text-[11px] font-bold text-neutral-600 dark:text-neutral-300 flex items-center justify-between">
+                    <span>2. BUKTI PENYELESAIAN (CLEANER)</span>
+                    <span className="text-[10px] text-neutral-400">Klik zoom</span>
+                  </div>
+                  <div
+                    onClick={() => {
+                      if (selectedComplaint.resolution_photo_file) {
+                        setZoomImage({
+                          url: `/api/vendor-checklist/facility-reports/${selectedComplaint.id}/photo?type=resolution`,
+                          title: `Bukti Penyelesaian — ${selectedComplaint.room_name}`
+                        })
+                      }
+                    }}
+                    className="rounded overflow-hidden bg-black aspect-4/3 cursor-pointer border border-neutral-700 relative group"
+                  >
+                    {selectedComplaint.resolution_photo_file ? (
+                      <img
+                        src={`/api/vendor-checklist/facility-reports/${selectedComplaint.id}/photo?type=resolution`}
+                        alt="Bukti Selesai"
+                        className="w-full h-full object-contain"
+                      />
+                    ) : (
+                      <div className="h-full flex items-center justify-center text-neutral-500 font-mono text-xs">
+                        Belum ada bukti selesai
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Resolution Notes Box */}
+            {selectedComplaint.resolution_notes && (
+              <div style={{ background: isDark ? '#141416' : '#ECFDF5', border: `1px solid ${borderColor}`, borderRadius: '6px' }} className="p-3">
+                <span className="font-bold text-emerald-600 font-mono text-[10px]">CATATAN PENANGANAN CLEANER:</span>
+                <p className="mt-0.5 text-xs text-neutral-700 dark:text-neutral-300">{selectedComplaint.resolution_notes}</p>
+              </div>
+            )}
+
+            {/* Supervisor Action Box */}
+            {isSupervisor && (
+              <div style={{ background: isDark ? '#141416' : '#F9F9F8', border: `1px solid ${borderColor}`, borderRadius: '6px' }} className="p-3 space-y-2">
+                <div className="font-bold text-[11px]" style={{ color: textPrimary }}>
+                  Tindakan Supervisor:
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  {selectedComplaint.status !== 'resolved' && (
+                    <button
+                      type="button"
+                      disabled={complaintActionLoading}
+                      onClick={() => handleUpdateComplaintStatus(selectedComplaint.id, 'resolved')}
+                      className="px-3 py-1.5 rounded bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs transition"
+                    >
+                      <FontAwesomeIcon icon={faCheckCircle} className="mr-1.5" />
+                      Tandai Selesai (Resolve)
+                    </button>
+                  )}
+
+                  {selectedComplaint.status === 'pending' && (
+                    <button
+                      type="button"
+                      disabled={complaintActionLoading}
+                      onClick={() => handleUpdateComplaintStatus(selectedComplaint.id, 'in_progress')}
+                      className="px-3 py-1.5 rounded bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs transition"
+                    >
+                      <FontAwesomeIcon icon={faClock} className="mr-1.5" />
+                      Tandai Sedang Ditangani
+                    </button>
+                  )}
+
+                  {selectedComplaint.status === 'resolved' && (
+                    <button
+                      type="button"
+                      disabled={complaintActionLoading}
+                      onClick={() => handleUpdateComplaintStatus(selectedComplaint.id, 'pending')}
+                      className="px-3 py-1.5 rounded bg-neutral-200 dark:bg-neutral-800 hover:bg-neutral-300 text-neutral-800 dark:text-neutral-200 font-semibold text-xs transition"
+                    >
+                      <FontAwesomeIcon icon={faRotateRight} className="mr-1.5" />
+                      Buka Kembali Komplain (Re-open)
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </Modal>
 
     </div>

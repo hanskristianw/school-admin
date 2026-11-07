@@ -9,9 +9,62 @@
 
 export const SYSTEM_RELEASES = [
   {
-    version: '0.7.2',
+    version: '0.8.0',
     date: '2026-11-07',
     isLatest: true,
+    summary: {
+      id: 'Peluncuran modul komprehensif Riwayat Komplain Fasilitas Ruangan & Hamburger Menu Drawer pada portal mobile, serta integrasi Tab Laporan & Komplain Fasilitas terpadu pada dashboard supervisor /data/vendor-checklist.',
+      en: 'Comprehensive release of Room Facility Complaint History & Hamburger Navigation Drawer on the mobile portal, along with unified Facility Complaints tab on the /data/vendor-checklist supervisor dashboard.',
+      zh: '教室设施报修历史与移动端汉堡导航抽屉全面上线，并在 /data/vendor-checklist 主管仪表板中深度集成设施报修与整改追踪选项卡。'
+    },
+    sections: {
+      added: [
+        {
+          id: 'Hamburger Navigation Drawer (Slide-over) pada portal cPanel vendor/cleaning (index.php) untuk navigasi ergonomis antar Scanner, Komplain Aktif, Riwayat Komplain, dan Ganti Peran.',
+          en: 'Mobile-friendly Slide-over Hamburger Navigation Drawer on cPanel vendor/cleaning portal (index.php) allowing seamless switching between Scanner, Active Complaints, Resolved History, and Role Settings.',
+          zh: '在 cPanel 外包/保洁门户（index.php）中引入极简侧滑抽屉汉堡菜单，轻松切换扫码、活跃报修、处理历史及角色设置。'
+        },
+        {
+          id: 'Tampilan Riwayat Komplain Selesai (Resolved History) pada portal cPanel yang menampilkan arsip komplain yang telah ditangani cleaner lengkap dengan perbandingan foto kendala vs foto bukti penyelesaian dan nama petugas.',
+          en: 'Resolved Complaints History section on cPanel portal archiving handled issues with side-by-side problem vs resolution photo proof and cleaner identity.',
+          zh: '在 cPanel 门户新增“已完成报修历史”独立面板，归档展示整改完成的报修单、报修 vs 整改双照对比及处理员工姓名。'
+        },
+        {
+          id: 'Tab Laporan & Komplain Fasilitas terpadu pada halaman Next.js /data/vendor-checklist dilengkapi kartu metrik bento, filter status, tabel laporan, dan modal inspeksi komplain perbandingan foto kendala vs hasil selesai.',
+          en: 'Unified Facility Complaints tab on Next.js /data/vendor-checklist dashboard featuring bento metric cards, status filters, report data table, and side-by-side inspection photo modal.',
+          zh: '在 Next.js /data/vendor-checklist 页面新增设施报修综合选项卡，配备便当式统计卡片、状态筛选、数据表格及双照对比审核弹窗。'
+        },
+        {
+          id: 'Endpoint Next.js API /api/vendor-checklist/facility-reports dan photo streaming proxy untuk sinkronisasi data komplain dan peninjauan foto bukti dari hosting cPanel.',
+          en: 'Next.js API endpoints /api/vendor-checklist/facility-reports and photo streaming proxy enabling seamless complaint data synchronization and remote photo verification from cPanel.',
+          zh: '新增 Next.js 报修管理接口 /api/vendor-checklist/facility-reports 与安全图片流式代理，实现报修数据同步与跨域凭证图片安全调取。'
+        }
+      ]
+    }
+  },
+  {
+    version: '0.7.3',
+    date: '2026-11-07',
+    isLatest: false,
+    summary: {
+      id: 'Penyederhanaan formulir pelaporan fasilitas: menghapus input kontak/nomor WhatsApp agar proses pelaporan kendala ruangan lebih cepat, ringkas, dan langsung.',
+      en: 'Simplified room facility reporting form: removed contact/WhatsApp number input field for a faster, friction-free reporting process.',
+      zh: '教室报修表单极简优化：彻底移除联系方式/WhatsApp 号码选填项，实现无阻碍极速报修。'
+    },
+    sections: {
+      removed: [
+        {
+          id: 'Menghapus field input "No. WhatsApp / Email" pada formulir pelaporan fasilitas ruangan di portal cPanel checklist sehingga pelapor cukup mengisi nama, memotret kondisi, dan mendeskripsikan kendala.',
+          en: 'Removed "WhatsApp No. / Email" input field from the room facility reporting form on cPanel checklist portal so reporters only need to provide their name, take a photo, and describe the issue.',
+          zh: '从 cPanel 教室设施报修表单中彻底移除“WhatsApp/邮箱”输入框，报修人仅需输入姓名、拍照并描述问题即可极速提交。'
+        }
+      ]
+    }
+  },
+  {
+    version: '0.7.2',
+    date: '2026-11-07',
+    isLatest: false,
     summary: {
       id: 'Integrasi pelaporan dan penanganan komplain fasilitas ruangan pada portal kebersihan: daftar komplain aktif di halaman scanner, peringatan komplain di ruangan terkait, dan dialog penyelesaian dengan unggah bukti foto.',
       en: 'Integration of room facility complaint tracking and resolution into the cleaning portal: active complaints list on the scanner page, room-specific warning alerts, and resolution modal with photo proof upload.',
@@ -38,35 +91,6 @@ export const SYSTEM_RELEASES = [
           id: 'Endpoint backend Next.js dan cPanel PHP (action: get_active_reports & resolve_report) untuk sinkronisasi data komplain aktif dan update status resolved beserta bukti foto ke Supabase.',
           en: 'Next.js and cPanel PHP backend endpoints (action: get_active_reports & resolve_report) synchronizing active complaints and recording resolved status with photo proof to Supabase.',
           zh: '在 Next.js 及 cPanel PHP 网关中新增 get_active_reports 与 resolve_report 接口，实现报修数据双向同步与整改记录落库 Supabase。'
-        }
-      ]
-    }
-  },
-  {
-    version: '0.6.4',
-    date: '2026-11-07',
-    isLatest: false,
-    summary: {
-      id: 'Penambahan tombol aksi lanjut scan ruangan lain pada status selesai menunggu review, popup sukses, dan header ruangan.',
-      en: 'Added continue to next room scan button across pending review status, success dialog, and room headers.',
-      zh: '在等待审核状态卡片、提交成功弹窗及教室头部新增“继续扫描下一间教室”按钮，实现连续作业全流程闭环。'
-    },
-    sections: {
-      added: [
-        {
-          id: 'Tombol aksi utama "Lanjut ke Ruangan Lain (Scan QR)" pada tampilan checklist status Menunggu Review (pending_review) dan Disetujui (approved) untuk langsung mengaktifkan kamera scanner berikutnya.',
-          en: 'Primary action button "Continue to Next Room (Scan QR)" on Pending Review and Approved checklist screens to immediately activate the camera scanner for the next room.',
-          zh: '在“等待审核”与“已审核”状态页面底部新增“继续扫描下一间教室（扫码）”主操作按钮，点击后立即无缝唤起摄像头进入下一间教室扫码。'
-        },
-        {
-          id: 'Opsi instan pada notifikasi sukses selesai membersihkan: tombol utama "Lanjut Scan Ruangan Lain" untuk langsung berpindah ke kamera scanner tanpa jeda.',
-          en: 'Instant option on cleaning completion dialog: primary "Scan Next Room" button allowing cleaners to switch directly to the scanner.',
-          zh: '打扫完成弹窗新增“继续扫描下一间教室”主按钮，支持保洁员一键直达扫码界面。'
-        },
-        {
-          id: 'Tombol sekunder "Scan Ruangan Lain" pada header kartu ruangan sehingga petugas/pelapor dapat berpindah ruangan kapan saja.',
-          en: 'Secondary "Scan Another Room" button on the room header box allowing staff/reporters to switch rooms at any point.',
-          zh: '在教室信息头部新增“扫描其他教室”便捷入口，方便保洁员或报修人随时切换目标教室。'
         }
       ]
     }
@@ -162,9 +186,9 @@ export const SYSTEM_RELEASES = [
     date: '2026-11-07',
     isLatest: false,
     summary: {
-      id: 'Penyempurnaan alur pendaftaran siswa: penambahan tahap ke-3 (Referral Opsional) dalam alur stepper 6 tahap di portal pendaftar dengan kartu mandiri, opsi simpan/lewati tahap, serta integrasi API Next.js.',
-      en: 'Refined student admission flow: added dedicated Step 3 (Optional Referral) in the 6-stage applicant stepper with standalone card, save/skip actions, and Next.js public API integration.',
-      zh: '优化新生报名流程：在申请状态追踪中新增独立的第 3 步“推荐人（选填）”流程卡片（升级为 6 步进度条），支持一键保存或跳过，并全面打通 Next.js API 接口。'
+      id: 'Penyempurnaan alur pendaftaran siswa (penambahan tahap Referral pada stepper 6 tahap portal pendaftar) serta penambahan tombol navigasi lanjut scan ruangan lain pada portal checklist vendor.',
+      en: 'Refined student admission flow (added dedicated Referral step in the 6-stage applicant stepper) and added continuous room scan navigation buttons to the vendor checklist portal.',
+      zh: '新生报名流程深度优化（在申请进度追踪中新增独立的第 3 步推荐人选填卡片）并为外包保洁门户新增连续扫描下一间教室导航按钮。'
     },
     sections: {
       added: [
@@ -182,6 +206,21 @@ export const SYSTEM_RELEASES = [
           id: 'Handler API Next.js action "save_referral" dan "update_referral" di /api/public/admission dengan dukungan fallback database otomatis.',
           en: 'Next.js API endpoint handler for "save_referral" and "update_referral" in /api/public/admission with automatic database schema fallback.',
           zh: '在 /api/public/admission 中新增 "save_referral" 与 "update_referral" 接口处理，支持字段兼容与自动降级保障。'
+        },
+        {
+          id: 'Tombol aksi utama "Lanjut ke Ruangan Lain (Scan QR)" pada tampilan checklist status Menunggu Review (pending_review) dan Disetujui (approved) untuk langsung mengaktifkan kamera scanner berikutnya.',
+          en: 'Primary action button "Continue to Next Room (Scan QR)" on Pending Review and Approved checklist screens to immediately activate the camera scanner for the next room.',
+          zh: '在“等待审核”与“已审核”状态页面底部新增“继续扫描下一间教室（扫码）”主操作按钮，点击后立即无缝唤起摄像头进入下一间教室扫码。'
+        },
+        {
+          id: 'Opsi instan pada notifikasi sukses selesai membersihkan: tombol utama "Lanjut Scan Ruangan Lain" untuk langsung berpindah ke kamera scanner tanpa jeda.',
+          en: 'Instant option on cleaning completion dialog: primary "Scan Next Room" button allowing cleaners to switch directly to the scanner.',
+          zh: '打扫完成弹窗新增“继续扫描下一间教室”主按钮，支持保洁员一键直达扫码界面。'
+        },
+        {
+          id: 'Tombol sekunder "Scan Ruangan Lain" pada header kartu ruangan sehingga petugas/pelapor dapat berpindah ruangan kapan saja.',
+          en: 'Secondary "Scan Another Room" button on the room header box allowing staff/reporters to switch rooms at any point.',
+          zh: '在教室信息头部新增“扫描其他教室”便捷入口，方便保洁员或报修人随时切换目标教室。'
         }
       ],
       changed: [

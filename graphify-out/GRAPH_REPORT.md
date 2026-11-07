@@ -1,16 +1,16 @@
 # Graph Report - school-admin  (2026-11-07)
 
 ## Corpus Check
-- 464 files · ~800,144 words
+- 466 files · ~804,775 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 2745 nodes · 2821 edges · 536 communities (325 shown, 211 thin omitted)
+- 2752 nodes · 2826 edges · 539 communities (326 shown, 213 thin omitted)
 - Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 9 edges (avg confidence: 0.67)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `5ff52ecd`
+- Built from commit: `c055e234`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -412,6 +412,9 @@
 - qrcode
 - @radix-ui/react-slot
 - @tiptap/extension-font-family
+- GoogleClassroomConnector.jsx
+- route.js
+- route.js
 
 ## God Nodes (most connected - your core abstractions)
 1. `jspdf` - 39 edges
@@ -440,7 +443,7 @@
 ## Import Cycles
 - None detected.
 
-## Communities (536 total, 211 thin omitted)
+## Communities (539 total, 213 thin omitted)
 
 ### Community 0 - "Admission Management"
 Cohesion: 0.08
@@ -899,8 +902,8 @@ Cohesion: 0.33
 Nodes (6): **1. Icons Not Showing:**, **2. Teacher Filter Not Working:**, **3. Assessment Date Validation:**, **4. Menu Permissions:**, **5. RLS write blocked on subject-class mapping (detail_kelas)**, 📋 **Common Issues & Solutions**
 
 ### Community 145 - "Module 145"
-Cohesion: 0.08
-Nodes (55): AssessmentInstructionEditor(), FONT_FAMILIES, FONT_SIZES, FontSize, HIGHLIGHT_COLORS, Indent, plainTextToHtml(), TEXT_COLORS (+47 more)
+Cohesion: 0.10
+Nodes (46): AssessmentInstructionEditor(), FONT_FAMILIES, FONT_SIZES, FontSize, HIGHLIGHT_COLORS, Indent, plainTextToHtml(), TEXT_COLORS (+38 more)
 
 ### Community 146 - "Module 146"
 Cohesion: 0.33
@@ -1186,20 +1189,24 @@ Nodes (3): 1. PostgREST Hard Limit of 1,000 Rows per Query, 2. Bulk/Batch Writes
 Cohesion: 0.40
 Nodes (3): ALLOWED_EXTS, ALLOWED_TYPES, supabaseAdmin
 
+### Community 536 - "GoogleClassroomConnector.jsx"
+Cohesion: 0.36
+Nodes (9): authorizeGoogleClassroom(), clearStoredClassroomToken(), extractClassroomLinks(), getStoredClassroomToken(), getValidClassroomToken(), GOOGLE_CLASSROOM_SCOPES, GoogleClassroomConnector(), refreshClassroomToken() (+1 more)
+
 ## Knowledge Gaps
-- **1330 isolated node(s):** `extends`, `next/core-web-vitals`, `$schema`, `style`, `rsc` (+1325 more)
+- **1332 isolated node(s):** `extends`, `next/core-web-vitals`, `$schema`, `style`, `rsc` (+1327 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **211 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **213 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `jspdf` connect `Admission Management` to `Module 145`, `Module 133`, `@googleapis/chat`?**
-  _High betweenness centrality (0.006) - this node is a cross-community bridge._
 - **Why does `dependencies` connect `Module 133` to `Admission Management`, `Package Dependencies & Config`, `next-auth`, `DDL`, `📁 **Project Structure**`, `react-dom`, `Module 134`, `pdf-lib`, `@radix-ui/react-select`, `react-hook-form`, `React UI Components`, `class-variance-authority`, `@tiptap/extension-table-cell`, `@tiptap/extension-table-header`, `@tiptap/extension-table-row`, `@tiptap/extension-task-item`, `@tiptap/extension-task-list`, `@tiptap/extension-text-align`, `docx`, `@tiptap/extension-text-style`, `@tiptap/extension-underline`, `@tiptap/pm`, `Module 154`, `Module 155`, `@tiptap/react`, `@tiptap/starter-kit`, `xlsx`, `**3. Assessment System**`, `SKILL.md`, `exceljs`, `clsx`, `dotenv`, `googleapis`, `zod`, `Appendix B - Canonical Sources (read these before reinventing)`, `Analysis & Synthesis Instructions`, `**3. Assessment System**`, `9. AI TELLS (Forbidden Patterns)`, `12. THE COMBINATORIAL VARIATION ENGINE`, `📁 **Project Structure**`, `html5-qrcode`, `11. REDESIGN PROTOCOL`, `33. CATEGORY-SPECIFIC BIAS`, `qrcode`, `@radix-ui/react-slot`, `Module 239`, `@tiptap/extension-font-family`, `jsonwebtoken`, `jspdf-autotable`, `@sparticuz/chromium-min`, `@supabase/supabase-js`, `react-easy-crop`?**
-  _High betweenness centrality (0.006) - this node is a cross-community bridge._
+  _High betweenness centrality (0.005) - this node is a cross-community bridge._
+- **Why does `jspdf` connect `Admission Management` to `Module 145`, `Module 133`, `@googleapis/chat`?**
+  _High betweenness centrality (0.005) - this node is a cross-community bridge._
 - **What connects `extends`, `next/core-web-vitals`, `$schema` to the rest of the system?**
-  _1330 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _1332 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `Admission Management` be split into smaller, more focused modules?**
   _Cohesion score 0.07667900581702802 - nodes in this community are weakly interconnected._
 - **Should `Package Dependencies & Config` be split into smaller, more focused modules?**

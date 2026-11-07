@@ -1,16 +1,16 @@
 # Graph Report - school-admin  (2026-11-07)
 
 ## Corpus Check
-- 463 files · ~794,709 words
+- 464 files · ~800,144 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 2743 nodes · 2820 edges · 536 communities (326 shown, 210 thin omitted)
+- 2745 nodes · 2821 edges · 536 communities (325 shown, 211 thin omitted)
 - Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 9 edges (avg confidence: 0.67)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `7690916a`
+- Built from commit: `5ff52ecd`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -440,7 +440,7 @@
 ## Import Cycles
 - None detected.
 
-## Communities (536 total, 210 thin omitted)
+## Communities (536 total, 211 thin omitted)
 
 ### Community 0 - "Admission Management"
 Cohesion: 0.08
@@ -860,7 +860,7 @@ Nodes (7): 13. COLOR & MATERIAL RULES, Background Confidence Rule, Background-im
 
 ### Community 133 - "Module 133"
 Cohesion: 0.15
-Nodes (13): class-variance-authority, @googleapis/chat, @hookform/resolvers, lucide-react, dependencies, class-variance-authority, @googleapis/chat, @hookform/resolvers (+5 more)
+Nodes (13): bcryptjs, @googleapis/chat, @hookform/resolvers, lucide-react, dependencies, bcryptjs, @googleapis/chat, @hookform/resolvers (+5 more)
 
 ### Community 135 - "Module 135"
 Cohesion: 0.29
@@ -899,8 +899,8 @@ Cohesion: 0.33
 Nodes (6): **1. Icons Not Showing:**, **2. Teacher Filter Not Working:**, **3. Assessment Date Validation:**, **4. Menu Permissions:**, **5. RLS write blocked on subject-class mapping (detail_kelas)**, 📋 **Common Issues & Solutions**
 
 ### Community 145 - "Module 145"
-Cohesion: 0.10
-Nodes (46): AssessmentInstructionEditor(), FONT_FAMILIES, FONT_SIZES, FontSize, HIGHLIGHT_COLORS, Indent, plainTextToHtml(), TEXT_COLORS (+38 more)
+Cohesion: 0.08
+Nodes (55): AssessmentInstructionEditor(), FONT_FAMILIES, FONT_SIZES, FontSize, HIGHLIGHT_COLORS, Indent, plainTextToHtml(), TEXT_COLORS (+47 more)
 
 ### Community 146 - "Module 146"
 Cohesion: 0.33
@@ -929,10 +929,6 @@ Nodes (6): 16.1 Tables, 16.2 Zero-Friction Fallback Architecture, 16. Athletic D
 ### Community 152 - "Module 152"
 Cohesion: 0.33
 Nodes (5): absen, attendance_scan_log, _backup_attendance_session, _backup_session_absen, _backup_session_scan_logs
-
-### Community 155 - "Module 155"
-Cohesion: 0.36
-Nodes (9): authorizeGoogleClassroom(), clearStoredClassroomToken(), extractClassroomLinks(), getStoredClassroomToken(), getValidClassroomToken(), GOOGLE_CLASSROOM_SCOPES, GoogleClassroomConnector(), refreshClassroomToken() (+1 more)
 
 ### Community 156 - "**3. Assessment System**"
 Cohesion: 0.53
@@ -1191,24 +1187,24 @@ Cohesion: 0.40
 Nodes (3): ALLOWED_EXTS, ALLOWED_TYPES, supabaseAdmin
 
 ## Knowledge Gaps
-- **1329 isolated node(s):** `extends`, `next/core-web-vitals`, `$schema`, `style`, `rsc` (+1324 more)
+- **1330 isolated node(s):** `extends`, `next/core-web-vitals`, `$schema`, `style`, `rsc` (+1325 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **210 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **211 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
 - **Why does `jspdf` connect `Admission Management` to `Module 145`, `Module 133`, `@googleapis/chat`?**
   _High betweenness centrality (0.006) - this node is a cross-community bridge._
-- **Why does `dependencies` connect `Module 133` to `Admission Management`, `Package Dependencies & Config`, `next-auth`, `DDL`, `📁 **Project Structure**`, `react-dom`, `Module 134`, `pdf-lib`, `@radix-ui/react-select`, `react-hook-form`, `React UI Components`, `class-variance-authority`, `@tiptap/extension-table-cell`, `@tiptap/extension-table-header`, `@tiptap/extension-table-row`, `@tiptap/extension-task-item`, `@tiptap/extension-task-list`, `@tiptap/extension-text-align`, `docx`, `@tiptap/extension-text-style`, `@tiptap/extension-underline`, `@tiptap/pm`, `Module 154`, `@tiptap/react`, `@tiptap/starter-kit`, `xlsx`, `**3. Assessment System**`, `SKILL.md`, `exceljs`, `clsx`, `dotenv`, `googleapis`, `zod`, `Appendix B - Canonical Sources (read these before reinventing)`, `Analysis & Synthesis Instructions`, `**3. Assessment System**`, `22. STYLE VARIATION ENGINE`, `9. AI TELLS (Forbidden Patterns)`, `12. THE COMBINATORIAL VARIATION ENGINE`, `📁 **Project Structure**`, `html5-qrcode`, `11. REDESIGN PROTOCOL`, `33. CATEGORY-SPECIFIC BIAS`, `qrcode`, `@radix-ui/react-slot`, `Module 239`, `@tiptap/extension-font-family`, `jsonwebtoken`, `jspdf-autotable`, `@sparticuz/chromium-min`, `@supabase/supabase-js`, `react-easy-crop`?**
-  _High betweenness centrality (0.005) - this node is a cross-community bridge._
-- **Why does `Database Schema & Relationships` connect `SKILL.md` to `Module 193`, `page.jsx`, `Module 101`, `Module 103`, `Module 104`, `Module 139`, `Module 140`, `Module 108`, `Module 107`, `Module 235`, `Module 114`, `Module 242`, `Module 148`, `Module 118`, `Module 151`?**
-  _High betweenness centrality (0.002) - this node is a cross-community bridge._
+- **Why does `dependencies` connect `Module 133` to `Admission Management`, `Package Dependencies & Config`, `next-auth`, `DDL`, `📁 **Project Structure**`, `react-dom`, `Module 134`, `pdf-lib`, `@radix-ui/react-select`, `react-hook-form`, `React UI Components`, `class-variance-authority`, `@tiptap/extension-table-cell`, `@tiptap/extension-table-header`, `@tiptap/extension-table-row`, `@tiptap/extension-task-item`, `@tiptap/extension-task-list`, `@tiptap/extension-text-align`, `docx`, `@tiptap/extension-text-style`, `@tiptap/extension-underline`, `@tiptap/pm`, `Module 154`, `Module 155`, `@tiptap/react`, `@tiptap/starter-kit`, `xlsx`, `**3. Assessment System**`, `SKILL.md`, `exceljs`, `clsx`, `dotenv`, `googleapis`, `zod`, `Appendix B - Canonical Sources (read these before reinventing)`, `Analysis & Synthesis Instructions`, `**3. Assessment System**`, `9. AI TELLS (Forbidden Patterns)`, `12. THE COMBINATORIAL VARIATION ENGINE`, `📁 **Project Structure**`, `html5-qrcode`, `11. REDESIGN PROTOCOL`, `33. CATEGORY-SPECIFIC BIAS`, `qrcode`, `@radix-ui/react-slot`, `Module 239`, `@tiptap/extension-font-family`, `jsonwebtoken`, `jspdf-autotable`, `@sparticuz/chromium-min`, `@supabase/supabase-js`, `react-easy-crop`?**
+  _High betweenness centrality (0.006) - this node is a cross-community bridge._
 - **What connects `extends`, `next/core-web-vitals`, `$schema` to the rest of the system?**
-  _1329 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _1330 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `Admission Management` be split into smaller, more focused modules?**
   _Cohesion score 0.07667900581702802 - nodes in this community are weakly interconnected._
 - **Should `Package Dependencies & Config` be split into smaller, more focused modules?**
   _Cohesion score 0.09090909090909091 - nodes in this community are weakly interconnected._
 - **Should `RLS & Migration Scripts` be split into smaller, more focused modules?**
   _Cohesion score 0.045454545454545456 - nodes in this community are weakly interconnected._
+- **Should `Component Aliases & UI Library` be split into smaller, more focused modules?**
+  _Cohesion score 0.05 - nodes in this community are weakly interconnected._
