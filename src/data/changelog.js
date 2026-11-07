@@ -9,9 +9,79 @@
 
 export const SYSTEM_RELEASES = [
   {
+    version: '0.6.1',
+    date: '2026-11-07',
+    isLatest: true,
+    summary: {
+      id: 'Penambahan input referral (orang tua & siswa yang merekomendasikan) saat pembayaran biaya formulir di portal pendaftar dan integrasi penuh pada sistem Next.js.',
+      en: 'Added referral input (referring parent & student name) during form fee payment on applicant portal with full Next.js admin integration.',
+      zh: '在新生报名系统及表单缴费环节新增推荐人（推荐家长与学生姓名）文本输入框，并全面整合至 Next.js 管理后台。'
+    },
+    sections: {
+      added: [
+        {
+          id: 'Penambahan textbox input "Referral (Nama Orang Tua & Siswa yang Mereferensikan)" pada formulir upload bukti transfer biaya formulir di portal cek status pendaftaran (cPanel & Next.js).',
+          en: 'Added "Referral (Referring Parent & Student Name)" textbox to the form fee transfer receipt submission form on applicant portals (cPanel & Next.js).',
+          zh: '在新生报名状态查询及缴费转账凭证提交表单中新增“推荐人（推荐家长与学生姓名）”输入框（支持中、英、印尼三语）。'
+        },
+        {
+          id: 'Integrasi data referral pada modul Admisi Next.js: badge referral di tabel utama (/data/admission), kartu informasi referral khusus pada Step 2 (Biaya Formulir), serta kolom referral pada form edit Step 3 di UnifiedAdmissionModal.',
+          en: 'Full referral integration across Next.js Admission module: referral badges on the main directory table (/data/admission), dedicated referral detail card in Step 2 (Form Fee), and editable referral field in Step 3 inside UnifiedAdmissionModal.',
+          zh: '全面整合推荐人信息至 Next.js 招生管理系统：在报名花名册主表格展示推荐人标签、在第 2 步（表单缴费）新增独立推荐人卡片，并在第 3 步弹窗编辑模式中支持修改。'
+        },
+        {
+          id: 'Dukungan skema database migrasi add-referral-to-student-applications.sql dan mekanisme fallback defensif [REFERRAL] di API /api/public/admission agar sistem tetap berjalan mulus sebelum maupun sesudah migrasi.',
+          en: 'Database migration script add-referral-to-student-applications.sql and defensive API fallback [REFERRAL] in /api/public/admission ensuring seamless backward compatibility.',
+          zh: '提供数据库迁移脚本 add-referral-to-student-applications.sql，并在 /api/public/admission API 中实现防御性降级兼容处理，确保无感平滑迁移。'
+        }
+      ]
+    }
+  },
+  {
+    version: '0.6.0',
+    date: '2026-11-07',
+    isLatest: false,
+    summary: {
+      id: 'Peningkatan portal vendor: pemilihan peran Petugas Kebersihan vs Pelapor Fasilitas, dropdown otomatis cleaner, pelaporan kerusakan fasilitas, dan dukungan dwi-bahasa (ID/EN).',
+      en: 'Vendor portal overhaul: role selection (Cleaner vs Facility Reporter), automated cleaner dropdown, facility damage reporting, and full bilingual support (ID/EN).',
+      zh: '外包服务门户重构：新增保洁与设施报修双重角色选择、保洁员动态下拉菜单、设施故障拍照报修及中英/印英双语界面。'
+    },
+    sections: {
+      added: [
+        {
+          id: 'Portal web vendor cPanel kini dilengkapi pemilihan peran (Petugas Kebersihan vs Pelapor Fasilitas) sebelum scan QR code pintu ruangan, dengan penyimpanan preferensi otomatis (localStorage).',
+          en: 'cPanel vendor web portal now features role selection (Cleaning Staff vs Facility Reporter) before scanning door QR codes, with automatic device memory (localStorage).',
+          zh: 'cPanel 外包服务门户现已支持在扫码前选择角色（保洁员 vs 报修人），并通过本地缓存自动记住用户角色偏好。'
+        },
+        {
+          id: 'Fitur pelaporan kendala & kerusakan fasilitas ruangan oleh guru, siswa, maupun staf umum lengkap dengan foto kamera beresolusi terkompresi (~300KB) dan deskripsi masalah.',
+          en: 'Facility issue reporting module allowing teachers, staff, or reporters to log damaged room equipment with compressed camera photos (~300KB) and issue details.',
+          zh: '新增教室设施报修模块，支持教职工或学生拍照反馈损坏设备（自动压缩至约300KB）并填写问题说明。'
+        },
+        {
+          id: 'Tabel database baru room_facility_reports beserta API gateway di Next.js untuk mencatat seluruh keluhan fasilitas ruangan sekolah secara terpusat.',
+          en: 'New room_facility_reports database table and Next.js API gateway to track and manage all facility complaints centrally.',
+          zh: '新增 room_facility_reports 数据库表及 Next.js API 网关，用于集中记录和管理全校各教室设施故障。'
+        }
+      ],
+      changed: [
+        {
+          id: 'Kolom input manual nama petugas kebersihan diganti menjadi dropdown dinamis yang mengambil data staf aktif divisi Cleaning (role_id 14) secara otomatis.',
+          en: 'Replaced manual text input for cleaners with an automated dynamic dropdown fetching active staff from the Cleaning division (role_id 14).',
+          zh: '将保洁员手工文本输入升级为动态下拉菜单，自动拉取保洁组在职员工名单（role_id 14）。'
+        },
+        {
+          id: 'Penyediaan antarmuka dwi-bahasa (Bilingual: Bahasa Indonesia & English) dengan tombol switcher bahasa instan di bagian navigasi atas.',
+          en: 'Added bilingual interface support (Indonesian & English) with an instant language toggle pill in the top header.',
+          zh: '提供印尼语和英语双语界面，并在顶部导航栏配置一键即时语言切换按钮。'
+        }
+      ]
+    }
+  },
+  {
     version: '0.5.7',
     date: '2026-11-06',
-    isLatest: true,
+    isLatest: false,
     summary: {
       id: 'Perapian tata letak teks empty state modal pelaporan dan penghapusan tombol pelaporan redundan di halaman Changelog.',
       en: 'Fixed empty state text alignment in Bug Reporting modal and removed redundant report button on Changelog page.',

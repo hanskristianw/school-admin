@@ -31,6 +31,7 @@ import {
   faSchool,
   faCalendar,
   faUser,
+  faUsers,
   faMapMarkerAlt,
   faBriefcase,
   faInfoCircle,
@@ -180,6 +181,7 @@ export default function AdmissionManagement() {
     return notes
       .replace(/\[SCHEDULE_META\]:.*$/s, '')
       .replace(/\[PROMO_CLAIM\]:.*$/s, '')
+      .replace(/\[REFERRAL\]:.*$/s, '')
       .trim();
   };
 
@@ -701,6 +703,12 @@ export default function AdmissionManagement() {
       const parsedApps = (applicationsData || []).map(app => {
         let meta = {};
         let promoMeta = {};
+        let referralMeta = null;
+        if (app.additional_notes && app.additional_notes.includes('[REFERRAL]:')) {
+          try {
+            referralMeta = app.additional_notes.split('[REFERRAL]:')[1].split('[PROMO_CLAIM]:')[0].split('[SCHEDULE_META]:')[0].trim();
+          } catch (e) {}
+        }
         if (app.additional_notes && app.additional_notes.includes('[PROMO_CLAIM]:')) {
           try {
             const pParts = app.additional_notes.split('[PROMO_CLAIM]:');
@@ -717,6 +725,7 @@ export default function AdmissionManagement() {
         return {
           ...app,
           additional_notes: cleaned || null,
+          referral_name: app.referral_name || referralMeta || null,
           test_date: app.test_date || meta.test_date || null,
           test_session: app.test_session || meta.test_session || null,
           interview_date: app.interview_date || meta.interview_date || null,
@@ -1047,6 +1056,7 @@ export default function AdmissionManagement() {
       parent_email: app.parent_email || '',
       parent_occupation: app.parent_occupation || '',
       parent_address: app.parent_address || '',
+      referral_name: app.referral_name || '',
       test_date: app.test_date || '',
       test_session: app.test_session || 'Sesi 1 (08:30 - 10:00 WIB)',
       interview_date: app.interview_date || '',
@@ -1084,6 +1094,7 @@ export default function AdmissionManagement() {
         parent_email: editData.parent_email.trim() || null,
         parent_occupation: editData.parent_occupation.trim() || null,
         parent_address: editData.parent_address.trim() || null,
+        referral_name: editData.referral_name?.trim() || null,
         test_date: editData.test_date || null,
         test_session: editData.test_session || null,
         interview_date: editData.interview_date || null,
@@ -1097,7 +1108,13 @@ export default function AdmissionManagement() {
         .eq('application_id', selectedApplication.application_id);
 
       // Fallback jika kolom jadwal belum ada di tabel Supabase
-      if (error && error.message && (error.message.includes('column') || error.message.includes('test_date'))) {
+      if (error && error.message && (error.message.includes('column') || error.message.includes('test_date') || error.message.includes('referral_name'))) {
+        if (updatePayload.referral_name) {
+          const rName = updatePayload.referral_name;
+          delete updatePayload.referral_name;
+          const prevNotes = updatePayload.additional_notes || '';
+          updatePayload.additional_notes = prevNotes ? `${prevNotes}\n[REFERRAL]: ${rName}` : `[REFERRAL]: ${rName}`;
+        }
         const schedMeta = {
           test_date: editData.test_date || null,
           test_session: editData.test_session || null,
@@ -2652,6 +2669,12 @@ export default function AdmissionManagement() {
                       <td className="px-3.5 py-2.5">
                         <div className="text-xs font-medium" style={{ color: textPrimary }}>{app.parent_name || '-'}</div>
                         <div className="text-[11px] font-mono" style={{ color: textSecondary }}>{app.parent_phone || '-'}</div>
+                        {app.referral_name && (
+                          <div className="mt-1 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] bg-sky-50 dark:bg-sky-950/40 text-sky-700 dark:text-sky-300 border border-sky-200 dark:border-sky-800" title={`Referral: ${app.referral_name}`}>
+                            <FontAwesomeIcon icon={faUsers} className="text-[8px]" />
+                            <span className="truncate max-w-[130px]">Ref: {app.referral_name}</span>
+                          </div>
+                        )}
                       </td>
                       <td className="px-3.5 py-2.5 text-xs" style={{ color: textSecondary }}>
                         {app.level?.level_name || app.unit?.unit_name || '-'}

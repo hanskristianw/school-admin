@@ -1171,12 +1171,14 @@ This domain manages the physical rooms within the school and allows staff to res
 ### 8.1 Tables
 
 #### `room`
-Stores the master data for physical rooms or facilities available for booking.
+Stores the master data for physical rooms or facilities available for booking and vendor/cleaning operations.
 
 | Column Name | Type | Description / Constraint |
 | --- | --- | --- |
 | `room_id` | `SERIAL` | Primary Key |
 | `room_name` | `VARCHAR(100)` | Name of the room (Unique) |
+| `qr_code_token` | `VARCHAR(100)` | Unique token encoded in door QR stickers for vendor scanning (e.g., `RM_A1B2C3D4`) |
+| `is_active` | `BOOLEAN` | Default `true`. If `false`, room is excluded from daily vendor cleaning and booking |
 | `created_at` | `TIMESTAMP` | Record creation time |
 | `updated_at` | `TIMESTAMP` | Record update time |
 
@@ -1210,6 +1212,48 @@ Records administrative blocks to prevent room bookings on specific dates or recu
 
 > [!NOTE]
 > **Overlap Prevention:** The `room_booking.booking_time` column uses a PostgreSQL `TSTZRANGE` type. Overlaps are prevented by checking existing bookings with an `approved` status, as well as checking against `room_blocks` (both specific dates and recurring days).
+
+#### `vendor_room_checklists`
+Stores daily room cleaning checklist workflows submitted by cleaning staff via the cPanel vendor web portal.
+
+| Column Name | Type | Description / Constraint |
+| --- | --- | --- |
+| `id` | `BIGSERIAL` | Primary Key |
+| `room_id` | `INTEGER` | FK to `room(room_id)` |
+| `check_date` | `DATE` | Cleaning date (WIB) |
+| `vendor_worker_name` | `VARCHAR(150)` | Full name of the cleaning staff (selected from `users` with Cleaning role) |
+| `image_before_file` | `TEXT` | Filename of the compressed photo before cleaning |
+| `image_after_file` | `TEXT` | Filename of the compressed photo after cleaning |
+| `image_revision_file` | `TEXT` | Filename of the compressed photo after revision |
+| `hosting_url` | `TEXT` | Base URL of the cPanel storage server |
+| `status` | `VARCHAR(50)` | `'in_progress'`, `'pending_review'`, `'approved'`, `'rejected'` |
+| `notes` | `TEXT` | Cleaning notes from staff |
+| `start_time` | `TIMESTAMPTZ` | Timestamp when cleaning started |
+| `end_time` | `TIMESTAMPTZ` | Timestamp when cleaning finished |
+| `reviewed_by` | `INTEGER` | FK to `users(user_id)` (Supervisor / Admin) |
+| `review_notes` | `TEXT` | Supervisor review feedback |
+| `reviewed_at` | `TIMESTAMPTZ` | Timestamp when reviewed |
+| `created_at` | `TIMESTAMPTZ` | Record creation timestamp |
+| `updated_at` | `TIMESTAMPTZ` | Record last update timestamp |
+
+#### `room_facility_reports`
+Stores reports of damaged or problematic room facilities submitted by room reporters (teachers, students, staff, guests) via the cPanel bilingual portal.
+
+| Column Name | Type | Description / Constraint |
+| --- | --- | --- |
+| `id` | `BIGSERIAL` | Primary Key |
+| `room_id` | `INTEGER` | FK to `room(room_id)` |
+| `reporter_name` | `VARCHAR(150)` | Name of the person reporting the issue |
+| `reporter_contact` | `VARCHAR(100)` | Optional contact (WhatsApp / Email / Phone) |
+| `issue_description` | `TEXT` | Detailed description of the problem or damaged facility |
+| `photo_file` | `TEXT` | Filename of the compressed photo evidence |
+| `hosting_url` | `TEXT` | Base URL of the cPanel storage server |
+| `status` | `VARCHAR(50)` | Default `'pending'`. Status: `'pending'`, `'in_progress'`, `'resolved'`, `'cancelled'` |
+| `resolved_at` | `TIMESTAMPTZ` | Timestamp when issue was resolved |
+| `resolved_by` | `INTEGER` | FK to `users(user_id)` |
+| `notes` | `TEXT` | Operational follow-up notes |
+| `created_at` | `TIMESTAMPTZ` | Report timestamp |
+| `updated_at` | `TIMESTAMPTZ` | Last update timestamp |
 
 ### 8.2 ERD / Relationships (Room Booking)
 
@@ -2207,6 +2251,7 @@ Primary record for each prospective student's application form submission.
 | `wave_name` | `VARCHAR(100)` | Name of active pricing wave during registration |
 | `hosting_url` | `TEXT` | Origin cPanel hosting URL (e.g. `https://ccs.sch.id/registrasi`) |
 | `is_form_completed` | `BOOLEAN` | Default `false` (Flag indicating whether parent has completed the full student biographical form after payment verification) |
+| `referral_name` | `TEXT` | Name of referring parent & student (input during form fee payment / upload receipt) |
 | `paid_at` | `TIMESTAMPTZ` | Timestamp when payment proof was uploaded |
 | `verified_by` | `INTEGER` | FK to `users(user_id)` (Staff who verified payment) |
 | `verified_at` | `TIMESTAMPTZ` | Timestamp when payment was approved |

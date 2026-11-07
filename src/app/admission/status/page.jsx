@@ -347,6 +347,12 @@ export default function AdmissionStatusPage() {
                     <span>Tanggal Daftar:</span>
                     <span>{formatDate(application.created_at)}</span>
                   </div>
+                  {application.referral_name && (
+                    <div className="flex justify-between text-white/60">
+                      <span>Referral:</span>
+                      <span className="text-cyan-400 font-medium">{application.referral_name}</span>
+                    </div>
+                  )}
                   {application.reviewed_at && (
                     <div className="flex justify-between text-white/60">
                       <span>Tanggal Review:</span>

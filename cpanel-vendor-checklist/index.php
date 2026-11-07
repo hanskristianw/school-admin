@@ -1,8 +1,8 @@
 <?php
 /**
  * ==============================================================================
- * SISTEM CHECKLIST KEBERSIHAN RUANGAN VENDOR — CHUNG CHUNG CHRISTIAN SCHOOL
- * Yayasan Pendidikan Mayapada School
+ * SISTEM CHECKLIST KEBERSIHAN & PELAPORAN FASILITAS RUANGAN — CCS
+ * Yayasan Pendidikan Mayapada School — Chung Chung Christian School
  * ==============================================================================
  * Standalone PHP 7.4 - 8.3 Application
  * Desain & Tipografi: 1:1 Identik dengan Sistem Sewa Lapangan & Registrasi CCS (ccs.sch.id)
@@ -102,7 +102,29 @@ if (isset($_GET['action']) && $_GET['action'] === 'fetch_room') {
     exit;
 }
 
-// ─── 3. AJAX ENDPOINT: PROSES UPLOAD FOTO & SINKRONISASI KE NEXT.JS ───────
+// ─── 2b. AJAX ENDPOINT: FETCH DAFTAR PETUGAS CLEANING (USERS ROLE ID 14) ──
+if (isset($_GET['action']) && $_GET['action'] === 'fetch_cleaners') {
+    header('Content-Type: application/json');
+
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, NEXTJS_API_URL . '?action=get_cleaners');
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 15);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    if ($response === false || $httpCode >= 500) {
+        echo json_encode(['success' => false, 'message' => 'Gagal mengambil data petugas dari server']);
+        exit;
+    }
+
+    echo $response;
+    exit;
+}
+
+// ─── 3. AJAX ENDPOINT: PROSES UPLOAD FOTO & SINKRONISASI CLEANER ──────────
 if (isset($_POST['action']) && $_POST['action'] === 'submit_step') {
     header('Content-Type: application/json');
 
@@ -117,7 +139,7 @@ if (isset($_POST['action']) && $_POST['action'] === 'submit_step') {
     }
 
     if ($stageAction === 'start_progress' && empty($workerName)) {
-        echo json_encode(['success' => false, 'message' => 'Nama petugas wajib diisi']);
+        echo json_encode(['success' => false, 'message' => 'Nama petugas wajib dipilih']);
         exit;
     }
 
@@ -207,6 +229,101 @@ if (isset($_POST['action']) && $_POST['action'] === 'submit_step') {
     exit;
 }
 
+// ─── 4. AJAX ENDPOINT: PROSES LAPORAN FASILITAS / PELAPOR ─────────────────
+if (isset($_POST['action']) && $_POST['action'] === 'submit_report') {
+    header('Content-Type: application/json');
+
+    $roomToken        = trim($_POST['room_token'] ?? '');
+    $reporterName     = trim($_POST['reporter_name'] ?? '');
+    $reporterContact  = trim($_POST['reporter_contact'] ?? '');
+    $issueDescription = trim($_POST['issue_description'] ?? '');
+
+    if (!$roomToken || !$reporterName || !$issueDescription) {
+        echo json_encode(['success' => false, 'message' => 'Nama pelapor, ruangan, dan deskripsi keluhan wajib diisi']);
+        exit;
+    }
+
+    if (!isset($_FILES['photo_file']) || $_FILES['photo_file']['error'] !== UPLOAD_ERR_OK) {
+        echo json_encode(['success' => false, 'message' => 'Foto bukti kondisi/kerusakan wajib diunggah']);
+        exit;
+    }
+
+    $fileTmp  = $_FILES['photo_file']['tmp_name'];
+    $fileSize = $_FILES['photo_file']['size'];
+    $rawName  = $_FILES['photo_file']['name'];
+    $ext      = strtolower(pathinfo($rawName, PATHINFO_EXTENSION));
+
+    if (!in_array($ext, ['jpg', 'jpeg', 'png', 'webp'])) {
+        echo json_encode(['success' => false, 'message' => 'Format file harus berupa gambar (JPG, PNG, atau WEBP)']);
+        exit;
+    }
+
+    if ($fileSize > 15 * 1024 * 1024) {
+        echo json_encode(['success' => false, 'message' => 'Ukuran file foto maksimal 15 MB']);
+        exit;
+    }
+
+    $safeDate = date('Ymd_His');
+    $fileName = 'report_' . preg_replace('/[^a-zA-Z0-9_-]/', '', $roomToken) . "_{$safeDate}_" . bin2hex(random_bytes(4)) . '.' . $ext;
+    $targetPath = UPLOAD_DIR . '/' . $fileName;
+
+    if (!move_uploaded_file($fileTmp, $targetPath)) {
+        echo json_encode(['success' => false, 'message' => 'Gagal menyimpan file foto ke server hosting']);
+        exit;
+    }
+
+    $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? "https" : "http";
+    $host = $_SERVER['HTTP_HOST'];
+    $dir = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/\\');
+    $hostingBaseUrl = "{$protocol}://{$host}{$dir}";
+
+    $payload = [
+        'secret_token'      => API_SECRET_TOKEN,
+        'action'            => 'submit_report',
+        'room_token'        => $roomToken,
+        'reporter_name'     => $reporterName,
+        'reporter_contact'  => $reporterContact,
+        'issue_description' => $issueDescription,
+        'image_file'        => $fileName,
+        'hosting_url'       => $hostingBaseUrl
+    ];
+
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, NEXTJS_API_URL);
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
+    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        'Content-Type: application/json',
+        'Authorization: Bearer ' . API_SECRET_TOKEN
+    ]);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 20);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    if ($response === false) {
+        echo json_encode(['success' => false, 'message' => 'Gagal mengirim laporan ke server utama']);
+        exit;
+    }
+
+    $resData = json_decode($response, true);
+    if ($httpCode >= 400 || (isset($resData['success']) && !$resData['success'])) {
+        $errMsg = $resData['message'] ?? 'Terjadi kesalahan saat memproses laporan di server';
+        echo json_encode(['success' => false, 'message' => $errMsg]);
+        exit;
+    }
+
+    echo json_encode([
+        'success'   => true,
+        'message'   => $resData['message'] ?? 'Laporan berhasil dikirim',
+        'fileName'  => $fileName,
+        'serverRes' => $resData
+    ]);
+    exit;
+}
+
 $roomParam = htmlspecialchars(trim($_GET['room'] ?? ''));
 ?>
 <!DOCTYPE html>
@@ -214,17 +331,17 @@ $roomParam = htmlspecialchars(trim($_GET['room'] ?? ''));
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Checklist Kebersihan Ruangan — Chung Chung Christian School</title>
+  <title>Portal Ruangan & Checklist — Chung Chung Christian School</title>
   
   <!-- Favicon Resmi CCS -->
   <link rel="icon" type="image/png" sizes="16x16" href="https://ccs.sch.id/assets/images/favicon.png">
 
-  <!-- Google Font: Poppins (Font Resmi ccs.sch.id, sewa lapangan & registrasi) -->
+  <!-- Google Font: Poppins -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 
-  <!-- FontAwesome 5 Icons (Identik dengan ccs.sch.id, sewa lapangan & registrasi) -->
+  <!-- FontAwesome 5 Icons -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
 
   <!-- Tailwind CSS CDN -->
@@ -290,7 +407,6 @@ $roomParam = htmlspecialchars(trim($_GET['room'] ?? ''));
       display: block;
     }
 
-    /* Tombol Khas CCS (.thm-btn) Identik Sewa Lapangan & Registrasi */
     .thm-btn {
       display: inline-flex;
       align-items: center;
@@ -299,10 +415,10 @@ $roomParam = htmlspecialchars(trim($_GET['room'] ?? ''));
       border: 2px solid #f16101;
       outline: none;
       background-color: #f16101;
-      font-size: 15px;
+      font-size: 14px;
       font-weight: 600;
       color: #ffffff;
-      padding: 12px 32px;
+      padding: 11px 24px;
       border-radius: 40px;
       transition: all 0.3s ease;
       cursor: pointer;
@@ -315,15 +431,6 @@ $roomParam = htmlspecialchars(trim($_GET['room'] ?? ''));
       transform: translateY(-1px);
       box-shadow: 0 4px 12px rgba(2, 44, 70, 0.15);
     }
-    .thm-btn--outline {
-      background-color: transparent;
-      border-color: #0b4877;
-      color: #0b4877;
-    }
-    .thm-btn--outline:hover {
-      background-color: #0b4877;
-      color: #ffffff;
-    }
     .thm-btn--teal {
       background-color: #2da397;
       border-color: #2da397;
@@ -332,8 +439,17 @@ $roomParam = htmlspecialchars(trim($_GET['room'] ?? ''));
       background-color: #022c46;
       border-color: #022c46;
     }
+    .thm-btn--outline {
+      background-color: transparent;
+      border-color: #cbd5e1;
+      color: #475569;
+    }
+    .thm-btn--outline:hover {
+      background-color: #f1f5f9;
+      border-color: #94a3ac;
+      color: #0b4877;
+    }
 
-    /* Footer Sesuai Website CCS Asli */
     .site-footer {
       background-color: #012237;
     }
@@ -349,11 +465,30 @@ $roomParam = htmlspecialchars(trim($_GET['room'] ?? ''));
 <body class="min-h-screen flex flex-col justify-between">
 
   <!-- ═══════════════════════════════════════════════════════════════════════ -->
-  <!-- 1. TOP BAR (TANGGAL RESMI CCS)                                          -->
+  <!-- 1. TOP BAR (TANGGAL & BAHASA / LANGUAGE SWITCHER)                       -->
   <!-- ═══════════════════════════════════════════════════════════════════════ -->
   <div class="bg-ccsNavy text-white py-2">
-    <div class="max-w-4xl mx-auto px-4 sm:px-6 flex items-center justify-end">
-      <div class="flex items-center gap-2 text-[13px] font-medium text-gray-200">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 flex items-center justify-between">
+      <!-- Language Switcher Pill -->
+      <div class="flex items-center gap-1.5 text-xs font-semibold bg-white/10 p-0.5 rounded-full border border-white/20">
+        <button 
+          id="btnLangID" 
+          onclick="setLanguage('id')" 
+          class="px-2.5 py-0.5 rounded-full text-[11px] transition-all bg-ccsOrange text-white shadow-xs"
+        >
+          ID
+        </button>
+        <button 
+          id="btnLangEN" 
+          onclick="setLanguage('en')" 
+          class="px-2.5 py-0.5 rounded-full text-[11px] transition-all text-gray-300 hover:text-white"
+        >
+          EN
+        </button>
+      </div>
+
+      <!-- Date Display -->
+      <div class="flex items-center gap-2 text-[12px] sm:text-[13px] font-medium text-gray-200">
         <i class="far fa-calendar-alt text-ccsOrangeLight"></i>
         <span><?= date('d M Y') ?></span>
       </div>
@@ -361,10 +496,10 @@ $roomParam = htmlspecialchars(trim($_GET['room'] ?? ''));
   </div>
 
   <!-- ═══════════════════════════════════════════════════════════════════════ -->
-  <!-- 2. NAVBAR IDENTIK SEWA LAPANGAN & REGISTRASI DENGAN LOGO RESMI CCS     -->
+  <!-- 2. NAVBAR DENGAN LOGO RESMI CCS                                         -->
   <!-- ═══════════════════════════════════════════════════════════════════════ -->
   <header class="bg-white sticky top-0 z-50 shadow-sm">
-    <div class="max-w-4xl mx-auto px-4 sm:px-6 h-[76px] flex items-center justify-between">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 h-[72px] sm:h-[76px] flex items-center justify-between">
       <a href="https://ccs.sch.id/" class="flex items-center">
         <img 
           src="https://ccs.sch.id/assets/images/logo-cccs.png" 
@@ -373,17 +508,17 @@ $roomParam = htmlspecialchars(trim($_GET['room'] ?? ''));
           onerror="this.src='https://ccs.sch.id/assets/images/logo.png';"
         />
       </a>
-      <nav class="flex items-center gap-6 text-[15px] font-medium">
-        <a href="https://ccs.sch.id/" class="text-gray-800 hover:text-ccsOrange transition-colors">
+      <nav class="flex items-center gap-3 sm:gap-6 text-xs sm:text-[15px] font-medium">
+        <a href="https://ccs.sch.id/" class="text-gray-800 hover:text-ccsOrange transition-colors hidden sm:inline-block">
           Home
         </a>
         <a href="index.php" class="text-ccsOrange font-semibold border-b-2 border-ccsOrange pb-1 transition-colors">
-          Checklist Ruangan
+          <span data-i18n="portal_title">Portal Ruangan</span>
         </a>
       </nav>
     </div>
 
-    <!-- PITA 3 WARNA IKONIK CCS (Teal, Orange, Purple) TEPAT DI BAWAH NAVBAR -->
+    <!-- PITA 3 WARNA IKONIK CCS -->
     <div class="w-full flex h-[6px]">
       <div class="flex-1 bg-ccsTeal"></div>
       <div class="flex-1 bg-ccsOrange"></div>
@@ -392,32 +527,120 @@ $roomParam = htmlspecialchars(trim($_GET['room'] ?? ''));
   </header>
 
   <!-- ═══════════════════════════════════════════════════════════════════════ -->
-  <!-- 3. KONTEN UTAMA: CHECKLIST RUANGAN VENDOR                              -->
+  <!-- 3. KONTEN UTAMA                                                         -->
   <!-- ═══════════════════════════════════════════════════════════════════════ -->
   <main class="max-w-xl mx-auto px-4 sm:px-6 py-6 sm:py-8 flex-1 w-full space-y-6">
+
+    <!-- Active Role Header Indicator (Visible when a role is selected) -->
+    <div id="activeRoleBar" class="hidden bg-white rounded-xl p-3 border border-gray-100 shadow-xs flex items-center justify-between">
+      <div class="flex items-center gap-2.5">
+        <div id="activeRoleIcon" class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold bg-orange-100 text-ccsOrange">
+          <i class="fas fa-broom"></i>
+        </div>
+        <div>
+          <div class="text-[10px] text-gray-400 uppercase tracking-wider font-semibold" data-i18n="active_role_label">Peran Saat Ini</div>
+          <div id="activeRoleText" class="text-xs font-bold text-ccsHeading">Petugas Kebersihan</div>
+        </div>
+      </div>
+      <button 
+        onclick="resetRole()" 
+        class="text-xs font-semibold text-ccsNavy hover:text-ccsOrange border border-gray-200 hover:border-ccsOrange px-3 py-1 rounded-full transition flex items-center gap-1.5"
+      >
+        <i class="fas fa-sync-alt text-[10px]"></i>
+        <span data-i18n="switch_role">Ganti Peran</span>
+      </button>
+    </div>
 
     <!-- Loading State Card -->
     <div id="loadingCard" class="bg-white rounded-2xl p-8 border border-gray-100 shadow-sm text-center">
       <div class="w-12 h-12 border-4 border-ccsOrange border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-      <p class="text-sm font-semibold text-ccsHeading">Memeriksa Data Ruangan...</p>
-      <p class="text-xs text-gray-400 mt-1">Menghubungkan ke sistem kebersihan Chung Chung Christian School</p>
+      <p class="text-sm font-semibold text-ccsHeading" data-i18n="loading_room">Memeriksa Data Ruangan...</p>
+      <p class="text-xs text-gray-400 mt-1" data-i18n="connecting_server">Menghubungkan ke sistem Chung Chung Christian School</p>
     </div>
 
-    <!-- Scanner Section (Jika tidak ada parameter ?room=) -->
+    <!-- ─── SECTION 1: ROLE SELECTION (PILIH PERAN) ─────────────────────── -->
+    <div id="roleSelectionSection" class="hidden space-y-5">
+      <div class="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm text-center space-y-2">
+        <div class="w-12 h-12 rounded-full bg-orange-100 text-ccsOrange font-bold flex items-center justify-center text-xl mx-auto mb-1">
+          <i class="fas fa-user-tag"></i>
+        </div>
+        <h2 class="text-lg sm:text-xl font-bold text-ccsHeading" data-i18n="role_title">
+          Pilih Peran Anda
+        </h2>
+        <p class="text-xs text-gray-500 max-w-sm mx-auto" data-i18n="role_subtitle">
+          Silakan pilih apakah Anda bertugas sebagai tim kebersihan ruangan atau ingin melaporkan kendala fasilitas.
+        </p>
+      </div>
+
+      <!-- Choice Cards (Responsive Mobile-First) -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+        <!-- Card: Cleaner (Petugas Kebersihan) -->
+        <div 
+          onclick="selectRole('cleaner')" 
+          class="bg-white rounded-2xl p-5 border-2 border-gray-100 hover:border-ccsOrange transition-all duration-300 shadow-xs hover:shadow-md cursor-pointer flex flex-col justify-between group relative overflow-hidden"
+        >
+          <div class="absolute top-0 right-0 w-16 h-16 bg-orange-50 rounded-bl-full -mr-4 -mt-4 transition-transform group-hover:scale-110"></div>
+          <div>
+            <div class="w-12 h-12 rounded-2xl bg-orange-100 text-ccsOrange flex items-center justify-center text-xl mb-4 group-hover:scale-105 transition-transform">
+              <i class="fas fa-broom"></i>
+            </div>
+            <div class="flex items-center gap-2 mb-1">
+              <h3 class="text-base font-bold text-ccsHeading" data-i18n="role_cleaner_name">Petugas Kebersihan</h3>
+              <span class="text-[10px] font-semibold bg-orange-50 text-ccsOrange px-2 py-0.5 rounded-full" data-i18n="role_cleaner_badge">Cleaner</span>
+            </div>
+            <p class="text-xs text-gray-500 line-clamp-3 mb-4" data-i18n="role_cleaner_desc">
+              Checklist pengerjaan kebersihan ruangan & unggah foto before / after.
+            </p>
+          </div>
+          <button class="thm-btn w-full text-xs py-2.5 group-hover:bg-ccsNavy group-hover:border-ccsNavy">
+            <i class="fas fa-check-circle mr-1"></i>
+            <span data-i18n="role_cleaner_btn">Masuk sebagai Cleaner</span>
+          </button>
+        </div>
+
+        <!-- Card: Pelapor (Facility Reporter) -->
+        <div 
+          onclick="selectRole('reporter')" 
+          class="bg-white rounded-2xl p-5 border-2 border-gray-100 hover:border-ccsTeal transition-all duration-300 shadow-xs hover:shadow-md cursor-pointer flex flex-col justify-between group relative overflow-hidden"
+        >
+          <div class="absolute top-0 right-0 w-16 h-16 bg-teal-50 rounded-bl-full -mr-4 -mt-4 transition-transform group-hover:scale-110"></div>
+          <div>
+            <div class="w-12 h-12 rounded-2xl bg-teal-100 text-ccsTeal flex items-center justify-center text-xl mb-4 group-hover:scale-105 transition-transform">
+              <i class="fas fa-bullhorn"></i>
+            </div>
+            <div class="flex items-center gap-2 mb-1">
+              <h3 class="text-base font-bold text-ccsHeading" data-i18n="role_reporter_name">Pelapor Fasilitas</h3>
+              <span class="text-[10px] font-semibold bg-teal-50 text-ccsTeal px-2 py-0.5 rounded-full" data-i18n="role_reporter_badge">Reporter</span>
+            </div>
+            <p class="text-xs text-gray-500 line-clamp-3 mb-4" data-i18n="role_reporter_desc">
+              Laporkan fasilitas ruangan yang rusak, bermasalah, atau memerlukan perbaikan.
+            </p>
+          </div>
+          <button class="thm-btn thm-btn--teal w-full text-xs py-2.5 group-hover:bg-ccsNavy group-hover:border-ccsNavy">
+            <i class="fas fa-exclamation-circle mr-1"></i>
+            <span data-i18n="role_reporter_btn">Laporkan Masalah</span>
+          </button>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ─── SECTION 2: QR SCANNER SECTION ───────────────────────────────── -->
     <div id="scannerSection" class="hidden">
       <div class="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm space-y-5">
         <div class="text-center">
-          <div class="w-12 h-12 rounded-full bg-orange-100 text-ccsOrange font-bold flex items-center justify-center text-xl mx-auto mb-3">
+          <div id="scannerIconBox" class="w-12 h-12 rounded-full bg-orange-100 text-ccsOrange font-bold flex items-center justify-center text-xl mx-auto mb-3">
             <i class="fas fa-qrcode"></i>
           </div>
-          <h2 class="text-lg font-bold text-ccsHeading">Scan QR Code Ruangan</h2>
-          <p class="text-xs text-gray-500 mt-1">Arahkan kamera ke stiker barcode di pintu ruangan sekolah</p>
+          <h2 id="scannerHeading" class="text-lg font-bold text-ccsHeading" data-i18n="scan_heading">Scan QR Code Ruangan</h2>
+          <p id="scannerSubHeading" class="text-xs text-gray-500 mt-1" data-i18n="scan_subtitle">Arahkan kamera ke stiker barcode di pintu ruangan sekolah</p>
         </div>
 
         <div id="qrReader" class="overflow-hidden rounded-xl border border-gray-200 bg-gray-900 min-h-[240px]"></div>
 
         <div class="pt-4 border-t border-gray-100 text-center">
-          <p class="text-xs text-gray-400 mb-2 font-medium">Atau masukkan kode token ruangan:</p>
+          <p class="text-xs text-gray-400 mb-2 font-medium" data-i18n="manual_token_label">Atau masukkan kode token ruangan:</p>
           <div class="flex gap-2">
             <input 
               type="text" 
@@ -426,69 +649,209 @@ $roomParam = htmlspecialchars(trim($_GET['room'] ?? ''));
               class="flex-1 px-4 py-2.5 text-xs border border-gray-200 rounded-xl focus:border-ccsNavy focus:ring-2 focus:ring-ccsNavy/10 font-mono uppercase outline-none"
             >
             <button onclick="handleManualToken()" class="thm-btn py-2 px-5 text-xs">
-              Buka
+              <span data-i18n="open_btn">Buka</span>
             </button>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Room Information & Form Section -->
-    <div id="formSection" class="hidden space-y-5">
+    <!-- ─── SECTION 3: CLEANER FORM SECTION ─────────────────────────────── -->
+    <div id="cleanerFormSection" class="hidden space-y-5">
 
-      <!-- Room Header Box (Identik Box Form Sewa Lapangan) -->
+      <!-- Room Header Box -->
       <div class="bg-white rounded-2xl p-5 sm:p-6 border border-gray-100 shadow-sm relative overflow-hidden">
         <div class="flex items-start justify-between gap-3">
           <div>
             <span class="text-[11px] font-bold tracking-wider uppercase text-ccsTeal bg-teal-50 px-2.5 py-1 rounded-md inline-block">
-              <i class="fas fa-door-open mr-1"></i> Lokasi Ruangan
+              <i class="fas fa-door-open mr-1"></i> <span data-i18n="room_location">Lokasi Ruangan</span>
             </span>
-            <h2 id="roomNameDisplay" class="text-lg sm:text-xl font-bold text-ccsHeading mt-2">
+            <h2 id="cleanerRoomName" class="text-lg sm:text-xl font-bold text-ccsHeading mt-2">
               Nama Ruangan
             </h2>
-            <p id="roomTokenDisplay" class="text-xs font-mono text-gray-400 mt-0.5">
+            <p id="cleanerRoomToken" class="text-xs font-mono text-gray-400 mt-0.5">
               Token: -
             </p>
           </div>
-          <div id="statusBadge" class="shrink-0 text-xs font-bold px-3 py-1.5 rounded-full">
+          <div id="cleanerStatusBadge" class="shrink-0 text-xs font-bold px-3 py-1.5 rounded-full">
             <!-- Dynamic Status Badge -->
           </div>
         </div>
       </div>
 
-      <!-- Identitas Petugas Vendor (Box Step 1 Identik Registrasi) -->
+      <!-- Identitas Petugas Cleaner (Dropdown dari users role Cleaning) -->
       <div class="bg-white rounded-2xl p-5 sm:p-6 border border-gray-100 shadow-sm space-y-3">
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-3">
             <div class="w-8 h-8 rounded-full bg-orange-100 text-ccsOrange font-bold text-xs flex items-center justify-center shrink-0">
               <i class="fas fa-user"></i>
             </div>
-            <h3 class="text-sm font-bold text-ccsHeading">Identitas Petugas Vendor</h3>
+            <h3 class="text-sm font-bold text-ccsHeading" data-i18n="cleaner_id_title">Identitas Petugas Kebersihan</h3>
           </div>
           <span class="text-[11px] text-emerald-600 font-semibold flex items-center bg-emerald-50 px-2 py-0.5 rounded-md">
-            <i class="fas fa-check-circle mr-1"></i> Tersimpan Otomatis
+            <i class="fas fa-check-circle mr-1"></i> <span data-i18n="auto_saved">Tersimpan Otomatis</span>
           </span>
         </div>
 
         <div>
-          <label class="block text-xs font-semibold uppercase tracking-wider text-gray-700 mb-1.5">
+          <label class="block text-xs font-semibold uppercase tracking-wider text-gray-700 mb-1.5" data-i18n="cleaner_select_label">
             Nama Lengkap Petugas
           </label>
-          <input 
-            type="text" 
-            id="workerNameInput" 
-            placeholder="Masukkan nama petugas..."
-            class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:border-ccsNavy focus:ring-2 focus:ring-ccsNavy/10 text-sm outline-none transition"
-          >
-          <p class="text-[11px] text-gray-400 mt-1.5">
-            Nama Anda otomatis tersimpan di HP ini, tidak perlu diketik ulang untuk ruangan lainnya.
+          <div class="relative">
+            <select 
+              id="workerNameSelect" 
+              class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:border-ccsNavy focus:ring-2 focus:ring-ccsNavy/10 text-sm outline-none transition bg-white appearance-none cursor-pointer"
+            >
+              <option value="" data-i18n="cleaner_loading">-- Memuat daftar petugas... --</option>
+            </select>
+            <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-400">
+              <i class="fas fa-chevron-down text-xs"></i>
+            </div>
+          </div>
+          <p class="text-[11px] text-gray-400 mt-1.5" data-i18n="cleaner_hint">
+            Pilihan Anda otomatis tersimpan di HP ini, tidak perlu dipilih ulang untuk ruangan lainnya.
           </p>
         </div>
       </div>
 
-      <!-- DYNAMIC STAGE CONTAINER (Identik Card Form CCS) -->
+      <!-- Dynamic Stage Container (Before / After / Revision) -->
       <div id="stageContainer" class="bg-white rounded-2xl p-5 sm:p-6 border border-gray-100 shadow-sm space-y-4">
-        <!-- Injected via JavaScript based on checklist state -->
+        <!-- Injected via JavaScript -->
+      </div>
+
+    </div>
+
+    <!-- ─── SECTION 4: PELAPOR / REPORTER FORM SECTION ───────────────────── -->
+    <div id="reporterFormSection" class="hidden space-y-5">
+
+      <!-- Room Header Box -->
+      <div class="bg-white rounded-2xl p-5 sm:p-6 border border-gray-100 shadow-sm relative overflow-hidden">
+        <div class="flex items-start justify-between gap-3">
+          <div>
+            <span class="text-[11px] font-bold tracking-wider uppercase text-ccsTeal bg-teal-50 px-2.5 py-1 rounded-md inline-block">
+              <i class="fas fa-door-open mr-1"></i> <span data-i18n="room_location">Lokasi Ruangan</span>
+            </span>
+            <h2 id="reporterRoomName" class="text-lg sm:text-xl font-bold text-ccsHeading mt-2">
+              Nama Ruangan
+            </h2>
+            <p id="reporterRoomToken" class="text-xs font-mono text-gray-400 mt-0.5">
+              Token: -
+            </p>
+          </div>
+          <div class="shrink-0 text-xs font-bold px-3 py-1.5 rounded-full bg-teal-50 text-ccsTeal border border-teal-200">
+            <i class="fas fa-bullhorn mr-1"></i> <span data-i18n="facility_report_badge">Laporan Fasilitas</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Form Card: Pelaporan Kendala / Kerusakan Ruangan -->
+      <div class="bg-white rounded-2xl p-5 sm:p-6 border border-gray-100 shadow-sm space-y-4">
+        <div class="border-b border-gray-100 pb-3">
+          <h3 class="text-sm font-bold text-ccsHeading flex items-center gap-2">
+            <i class="fas fa-clipboard-list text-ccsTeal"></i>
+            <span data-i18n="reporter_form_title">Formulir Laporan Fasilitas</span>
+          </h3>
+          <p class="text-xs text-gray-400 mt-1" data-i18n="reporter_form_subtitle">
+            Kirimkan laporan kendala atau kerusakan ruangan untuk ditindaklanjuti tim operasional.
+          </p>
+        </div>
+
+        <!-- Nama Pelapor -->
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wider text-gray-700 mb-1.5">
+            <span data-i18n="reporter_name_label">Nama Lengkap Pelapor</span> <span class="text-rose-500">*</span>
+          </label>
+          <input 
+            type="text" 
+            id="reporterNameInput" 
+            placeholder="Contoh: Budi Santoso / Ms. Sarah"
+            data-i18n-ph="reporter_name_placeholder"
+            class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:border-ccsTeal focus:ring-2 focus:ring-ccsTeal/10 text-sm outline-none transition"
+          >
+        </div>
+
+        <!-- Kontak WhatsApp / Email (Opsional) -->
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wider text-gray-700 mb-1.5">
+            <span data-i18n="reporter_contact_label">No. WhatsApp / Email</span> <span class="text-gray-400 font-normal text-[11px]" data-i18n="optional_tag">(Opsional)</span>
+          </label>
+          <input 
+            type="text" 
+            id="reporterContactInput" 
+            placeholder="Untuk konfirmasi status tindak lanjut"
+            data-i18n-ph="reporter_contact_placeholder"
+            class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:border-ccsTeal focus:ring-2 focus:ring-ccsTeal/10 text-sm outline-none transition"
+          >
+        </div>
+
+        <!-- Foto Bukti Kondisi / Kerusakan (Wajib) -->
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wider text-gray-700 mb-1.5">
+            <span data-i18n="reporter_photo_label">Foto Bukti Kerusakan / Kondisi</span> <span class="text-rose-500">*</span>
+          </label>
+
+          <input 
+            type="file" 
+            id="reporterCameraInput" 
+            accept="image/*" 
+            capture="environment" 
+            class="hidden" 
+            onchange="handleReporterFileSelect(event)"
+          >
+
+          <!-- Upload Box / Camera Trigger -->
+          <div 
+            id="reporterUploadPlaceholder"
+            onclick="triggerReporterCamera()"
+            class="border-2 border-dashed border-gray-200 hover:border-ccsTeal rounded-2xl p-6 text-center cursor-pointer transition-colors bg-teal-50/20"
+          >
+            <div class="w-12 h-12 rounded-full bg-teal-100 text-ccsTeal flex items-center justify-center text-xl mx-auto mb-2">
+              <i class="fas fa-camera"></i>
+            </div>
+            <p class="text-xs font-bold text-ccsHeading" data-i18n="take_photo_btn">Ambil Foto dengan Kamera</p>
+            <p class="text-[11px] text-gray-400 mt-0.5" data-i18n="photo_auto_compress">Foto otomatis dikompresi agar hemat kuota</p>
+          </div>
+
+          <!-- Preview Box -->
+          <div id="reporterPreviewBox" class="hidden space-y-2">
+            <div class="relative rounded-2xl overflow-hidden border border-gray-200 bg-gray-900 flex items-center justify-center max-h-[260px]">
+              <img id="reporterImgPreview" src="" alt="Bukti Laporan" class="w-full h-auto max-h-[260px] object-contain">
+            </div>
+            <button 
+              type="button" 
+              onclick="triggerReporterCamera()"
+              class="w-full py-2 px-3 text-xs font-semibold text-ccsTeal hover:bg-teal-50 rounded-xl border border-teal-200 transition flex items-center justify-center gap-1.5"
+            >
+              <i class="fas fa-sync-alt"></i>
+              <span data-i18n="retake_photo">Ganti / Foto Ulang</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Deskripsi Kendala / Kerusakan (Wajib) -->
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wider text-gray-700 mb-1.5">
+            <span data-i18n="reporter_desc_label">Deskripsi Kendala / Kerusakan</span> <span class="text-rose-500">*</span>
+          </label>
+          <textarea 
+            id="reporterIssueDesc" 
+            rows="3" 
+            placeholder="Jelaskan kendala fasilitas (misal: AC tidak dingin, lampu mati, proyektor bergaris, meja rusak, dll)..."
+            data-i18n-ph="reporter_desc_placeholder"
+            class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:border-ccsTeal focus:ring-2 focus:ring-ccsTeal/10 text-sm outline-none transition"
+          ></textarea>
+        </div>
+
+        <!-- Submit Button -->
+        <button 
+          id="btnSubmitReport"
+          onclick="submitReporterReport()" 
+          class="thm-btn thm-btn--teal w-full py-3.5 text-sm font-semibold rounded-xl flex items-center justify-center gap-2"
+        >
+          <i class="fas fa-paper-plane"></i>
+          <span data-i18n="submit_report_btn">Kirim Laporan Fasilitas</span>
+        </button>
+
       </div>
 
     </div>
@@ -496,11 +859,11 @@ $roomParam = htmlspecialchars(trim($_GET['room'] ?? ''));
   </main>
 
   <!-- ═══════════════════════════════════════════════════════════════════════ -->
-  <!-- 4. COPYRIGHT FOOTER (1:1 SESUAI ccs.sch.id & SEWA LAPANGAN)             -->
+  <!-- 4. COPYRIGHT FOOTER                                                     -->
   <!-- ═══════════════════════════════════════════════════════════════════════ -->
   <footer class="site-footer bg-[#012237] py-6 text-center">
     <div class="max-w-4xl mx-auto px-4 flex items-center justify-center relative">
-      <p class="site-footer__copy text-[#94a3ac] text-[15px] font-medium m-0 tracking-normal">
+      <p class="site-footer__copy text-[#94a3ac] text-[13px] sm:text-[14px] font-medium m-0 tracking-normal">
         &copy; <?= date('Y') ?> Chung Chung Christian School. All Right Reserved
       </p>
     </div>
@@ -519,40 +882,312 @@ $roomParam = htmlspecialchars(trim($_GET['room'] ?? ''));
     </div>
   </div>
 
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <!-- 5. JAVASCRIPT APLIKASI (BILINGUAL ID & EN, ROLE SELECTION, CAMERA)       -->
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
   <script>
+    // ─── KAMUS BAHASA DUA ARAH (INDONESIAN & ENGLISH) ──────────────────────
+    const I18N = {
+      id: {
+        portal_title: 'Portal Ruangan',
+        active_role_label: 'Peran Saat Ini',
+        switch_role: 'Ganti Peran',
+        loading_room: 'Memeriksa Data Ruangan...',
+        connecting_server: 'Menghubungkan ke sistem Chung Chung Christian School',
+        role_title: 'Pilih Peran Anda',
+        role_subtitle: 'Silakan pilih apakah Anda bertugas sebagai tim kebersihan ruangan atau ingin melaporkan kendala fasilitas.',
+        role_cleaner_name: 'Petugas Kebersihan',
+        role_cleaner_badge: 'Cleaner',
+        role_cleaner_desc: 'Checklist pengerjaan kebersihan ruangan & unggah foto before / after.',
+        role_cleaner_btn: 'Masuk sebagai Cleaner',
+        role_reporter_name: 'Pelapor Fasilitas',
+        role_reporter_badge: 'Reporter',
+        role_reporter_desc: 'Laporkan fasilitas ruangan yang rusak, bermasalah, atau memerlukan perbaikan.',
+        role_reporter_btn: 'Laporkan Masalah',
+        scan_heading: 'Scan QR Code Ruangan',
+        scan_cleaner_sub: 'Arahkan kamera ke stiker barcode di pintu ruangan sekolah',
+        scan_reporter_sub: 'Arahkan kamera ke stiker barcode di pintu ruangan yang ingin dilaporkan',
+        manual_token_label: 'Atau masukkan kode token ruangan:',
+        manual_token_placeholder: 'Contoh: rm_a1b2c3d4',
+        open_btn: 'Buka',
+        room_location: 'Lokasi Ruangan',
+        cleaner_id_title: 'Identitas Petugas Kebersihan',
+        auto_saved: 'Tersimpan Otomatis',
+        cleaner_select_label: 'Nama Lengkap Petugas',
+        cleaner_loading: '-- Memuat daftar petugas... --',
+        cleaner_placeholder: '-- Pilih nama Anda --',
+        cleaner_hint: 'Pilihan Anda otomatis tersimpan di HP ini, tidak perlu dipilih ulang untuk ruangan lainnya.',
+        facility_report_badge: 'Laporan Fasilitas',
+        reporter_form_title: 'Formulir Laporan Fasilitas',
+        reporter_form_subtitle: 'Kirimkan laporan kendala atau kerusakan ruangan untuk ditindaklanjuti tim operasional.',
+        reporter_name_label: 'Nama Lengkap Pelapor',
+        reporter_name_placeholder: 'Contoh: Budi Santoso / Ms. Sarah',
+        reporter_contact_label: 'No. WhatsApp / Email',
+        reporter_contact_placeholder: 'Untuk konfirmasi status tindak lanjut',
+        optional_tag: '(Opsional)',
+        reporter_photo_label: 'Foto Bukti Kerusakan / Kondisi',
+        take_photo_btn: 'Ambil Foto dengan Kamera',
+        photo_auto_compress: 'Foto otomatis dikompresi agar hemat kuota',
+        retake_photo: 'Ganti / Foto Ulang',
+        reporter_desc_label: 'Deskripsi Kendala / Kerusakan',
+        reporter_desc_placeholder: 'Jelaskan kendala fasilitas (misal: AC tidak dingin, lampu mati, proyektor bergaris, meja rusak, dll)...',
+        submit_report_btn: 'Kirim Laporan Fasilitas',
+        submitting_report: 'Mengunggah & Mengirim Laporan...',
+        report_success_title: 'Laporan Berhasil Terkirim!',
+        report_success_desc: 'Terima kasih atas laporan Anda. Tim operasional sekolah akan segera memeriksa dan menindaklanjuti kendala di ruangan ini.',
+        scan_another_room: 'Scan Ruangan Lain',
+        alert_select_cleaner: 'Silakan pilih nama petugas kebersihan terlebih dahulu.',
+        alert_take_photo: 'Silakan ambil foto bukti terlebih dahulu menggunakan kamera.',
+        alert_enter_desc: 'Silakan isi deskripsi kendala kerusakan ruangan terlebih dahulu.',
+        alert_enter_name: 'Silakan isi nama pelapor terlebih dahulu.'
+      },
+      en: {
+        portal_title: 'Room Portal',
+        active_role_label: 'Current Role',
+        switch_role: 'Switch Role',
+        loading_room: 'Checking Room Data...',
+        connecting_server: 'Connecting to Chung Chung Christian School system',
+        role_title: 'Select Your Role',
+        role_subtitle: 'Please select whether you are cleaning staff or reporting a facility issue.',
+        role_cleaner_name: 'Cleaning Staff',
+        role_cleaner_badge: 'Cleaner',
+        role_cleaner_desc: 'Room cleaning checklist & before / after photo verification.',
+        role_cleaner_btn: 'Enter as Cleaner',
+        role_reporter_name: 'Facility Reporter',
+        role_reporter_badge: 'Reporter',
+        role_reporter_desc: 'Report damaged, malfunctioning, or dirty room facilities.',
+        role_reporter_btn: 'Report an Issue',
+        scan_heading: 'Scan Room QR Code',
+        scan_cleaner_sub: 'Aim your camera at the QR sticker on the classroom door',
+        scan_reporter_sub: 'Aim your camera at the QR sticker on the door of the room you wish to report',
+        manual_token_label: 'Or enter room token code:',
+        manual_token_placeholder: 'e.g.: rm_a1b2c3d4',
+        open_btn: 'Open',
+        room_location: 'Room Location',
+        cleaner_id_title: 'Cleaning Staff Identity',
+        auto_saved: 'Saved Automatically',
+        cleaner_select_label: 'Staff Full Name',
+        cleaner_loading: '-- Loading staff list... --',
+        cleaner_placeholder: '-- Select your name --',
+        cleaner_hint: 'Your selection is automatically saved on this phone for subsequent rooms.',
+        facility_report_badge: 'Facility Report',
+        reporter_form_title: 'Facility Issue Report Form',
+        reporter_form_subtitle: 'Submit room issues or damage for operations team follow-up.',
+        reporter_name_label: 'Reporter Full Name',
+        reporter_name_placeholder: 'e.g.: Budi Santoso / Ms. Sarah',
+        reporter_contact_label: 'WhatsApp No. / Email',
+        reporter_contact_placeholder: 'For follow-up status updates',
+        optional_tag: '(Optional)',
+        reporter_photo_label: 'Photo of Issue / Condition',
+        take_photo_btn: 'Take Photo with Camera',
+        photo_auto_compress: 'Photos are automatically compressed to save cellular data',
+        retake_photo: 'Retake Photo',
+        reporter_desc_label: 'Issue / Damage Description',
+        reporter_desc_placeholder: 'Describe the issue (e.g., AC not cold, lights flickering, broken projector, damaged desk, etc.)...',
+        submit_report_btn: 'Submit Facility Report',
+        submitting_report: 'Uploading & Submitting Report...',
+        report_success_title: 'Report Submitted Successfully!',
+        report_success_desc: 'Thank you for your report. The school operations team will inspect and follow up on this room shortly.',
+        scan_another_room: 'Scan Another Room',
+        alert_select_cleaner: 'Please select your cleaning staff name first.',
+        alert_take_photo: 'Please take photo evidence using the camera first.',
+        alert_enter_desc: 'Please provide a description of the issue or damage.',
+        alert_enter_name: 'Please enter reporter name first.'
+      }
+    };
+
+    let currentLang = localStorage.getItem('ccs_portal_lang') || 'id';
+    let currentRole = localStorage.getItem('ccs_portal_role') || null; // 'cleaner' | 'reporter' | null
     let currentRoomToken = '<?= $roomParam ?>';
     let currentRoomData = null;
     let currentChecklist = null;
-    let selectedFileBlob = null;
+    let cleanersList = [];
+
+    let selectedCleanerBlob = null;
+    let selectedReporterBlob = null;
     let qrScanner = null;
 
     document.addEventListener('DOMContentLoaded', () => {
-      initWorkerName();
+      applyLanguage(currentLang);
+      fetchCleaners();
+
+      // Inisialisasi Alur Opsi A
       if (currentRoomToken) {
-        loadRoomChecklist(currentRoomToken);
+        if (currentRole === 'cleaner') {
+          selectRole('cleaner', false);
+        } else if (currentRole === 'reporter') {
+          selectRole('reporter', false);
+        } else {
+          // Belum memilih peran tapi sudah scan QR ruangan
+          showRoleSelectionSection();
+        }
       } else {
-        showScannerSection();
+        if (currentRole === 'cleaner' || currentRole === 'reporter') {
+          selectRole(currentRole, false);
+        } else {
+          showRoleSelectionSection();
+        }
       }
     });
 
-    function initWorkerName() {
-      const savedName = localStorage.getItem('ccs_vendor_worker_name');
-      const nameInput = document.getElementById('workerNameInput');
-      if (savedName) {
-        nameInput.value = savedName;
+    // ─── FITUR BAHASA (I18N) ───────────────────────────────────────────────
+    function setLanguage(lang) {
+      currentLang = lang;
+      localStorage.setItem('ccs_portal_lang', lang);
+      applyLanguage(lang);
+      if (currentChecklist && currentRole === 'cleaner') {
+        renderCleanerStage(currentChecklist);
       }
-      nameInput.addEventListener('input', (e) => {
-        const val = e.target.value.trim();
-        if (val) {
-          localStorage.setItem('ccs_vendor_worker_name', val);
+    }
+
+    function applyLanguage(lang) {
+      const dict = I18N[lang] || I18N.id;
+
+      // Update switcher UI
+      const btnID = document.getElementById('btnLangID');
+      const btnEN = document.getElementById('btnLangEN');
+      if (btnID && btnEN) {
+        if (lang === 'id') {
+          btnID.className = 'px-2.5 py-0.5 rounded-full text-[11px] transition-all bg-ccsOrange text-white shadow-xs';
+          btnEN.className = 'px-2.5 py-0.5 rounded-full text-[11px] transition-all text-gray-300 hover:text-white';
+        } else {
+          btnEN.className = 'px-2.5 py-0.5 rounded-full text-[11px] transition-all bg-ccsOrange text-white shadow-xs';
+          btnID.className = 'px-2.5 py-0.5 rounded-full text-[11px] transition-all text-gray-300 hover:text-white';
+        }
+      }
+
+      // Update all elements with data-i18n
+      document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.getAttribute('data-i18n');
+        if (dict[key]) el.textContent = dict[key];
+      });
+
+      // Update placeholders
+      document.querySelectorAll('[data-i18n-ph]').forEach(el => {
+        const key = el.getAttribute('data-i18n-ph');
+        if (dict[key]) el.placeholder = dict[key];
+      });
+
+      // Update scanner subtitle depending on active role
+      updateScannerText();
+    }
+
+    // ─── AMBIL DAFTAR CLEANERS DARI USERS (ROLE CLEANING) ─────────────────
+    async function fetchCleaners() {
+      try {
+        const res = await fetch('index.php?action=fetch_cleaners');
+        const data = await res.json();
+        if (data.success && Array.isArray(data.cleaners)) {
+          cleanersList = data.cleaners;
+          populateCleanerSelect();
+        }
+      } catch (e) {
+        console.warn('Gagal memuat daftar cleaners:', e);
+      }
+    }
+
+    function populateCleanerSelect() {
+      const sel = document.getElementById('workerNameSelect');
+      if (!sel) return;
+
+      const dict = I18N[currentLang] || I18N.id;
+      sel.innerHTML = `<option value="">${dict.cleaner_placeholder}</option>`;
+
+      cleanersList.forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = c.name;
+        opt.textContent = c.name;
+        sel.appendChild(opt);
+      });
+
+      // Restore dari localStorage
+      const saved = localStorage.getItem('ccs_vendor_worker_name');
+      if (saved) {
+        sel.value = saved;
+      }
+
+      sel.addEventListener('change', (e) => {
+        if (e.target.value) {
+          localStorage.setItem('ccs_vendor_worker_name', e.target.value);
         }
       });
     }
 
+    // ─── PENGATURAN PERAN (ROLE SELECTION) ─────────────────────────────────
+    function showRoleSelectionSection() {
+      stopScanner();
+      document.getElementById('loadingCard').classList.add('hidden');
+      document.getElementById('scannerSection').classList.add('hidden');
+      document.getElementById('cleanerFormSection').classList.add('hidden');
+      document.getElementById('reporterFormSection').classList.add('hidden');
+      document.getElementById('activeRoleBar').classList.add('hidden');
+      document.getElementById('roleSelectionSection').classList.remove('hidden');
+    }
+
+    function selectRole(role, saveStorage = true) {
+      currentRole = role;
+      if (saveStorage) {
+        localStorage.setItem('ccs_portal_role', role);
+      }
+
+      // Update Active Role Indicator Bar
+      const bar = document.getElementById('activeRoleBar');
+      const icon = document.getElementById('activeRoleIcon');
+      const text = document.getElementById('activeRoleText');
+      const dict = I18N[currentLang] || I18N.id;
+
+      bar.classList.remove('hidden');
+      if (role === 'cleaner') {
+        icon.className = 'w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold bg-orange-100 text-ccsOrange';
+        icon.innerHTML = '<i class="fas fa-broom"></i>';
+        text.textContent = dict.role_cleaner_name;
+      } else {
+        icon.className = 'w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold bg-teal-100 text-ccsTeal';
+        icon.innerHTML = '<i class="fas fa-bullhorn"></i>';
+        text.textContent = dict.role_reporter_name;
+      }
+
+      document.getElementById('roleSelectionSection').classList.add('hidden');
+
+      if (currentRoomToken) {
+        if (role === 'cleaner') {
+          loadRoomForCleaner(currentRoomToken);
+        } else {
+          loadRoomForReporter(currentRoomToken);
+        }
+      } else {
+        showScannerSection();
+      }
+    }
+
+    function resetRole() {
+      currentRole = null;
+      localStorage.removeItem('ccs_portal_role');
+      showRoleSelectionSection();
+    }
+
+    // ─── QR SCANNER LOGIC ──────────────────────────────────────────────────
+    function updateScannerText() {
+      const dict = I18N[currentLang] || I18N.id;
+      const sub = document.getElementById('scannerSubHeading');
+      const iconBox = document.getElementById('scannerIconBox');
+      if (!sub) return;
+
+      if (currentRole === 'reporter') {
+        sub.textContent = dict.scan_reporter_sub;
+        if (iconBox) iconBox.className = 'w-12 h-12 rounded-full bg-teal-100 text-ccsTeal font-bold flex items-center justify-center text-xl mx-auto mb-3';
+      } else {
+        sub.textContent = dict.scan_cleaner_sub;
+        if (iconBox) iconBox.className = 'w-12 h-12 rounded-full bg-orange-100 text-ccsOrange font-bold flex items-center justify-center text-xl mx-auto mb-3';
+      }
+    }
+
     function showScannerSection() {
       document.getElementById('loadingCard').classList.add('hidden');
-      document.getElementById('formSection').classList.add('hidden');
+      document.getElementById('cleanerFormSection').classList.add('hidden');
+      document.getElementById('reporterFormSection').classList.add('hidden');
       document.getElementById('scannerSection').classList.remove('hidden');
+      updateScannerText();
 
       try {
         qrScanner = new Html5Qrcode("qrReader");
@@ -571,10 +1206,15 @@ $roomParam = htmlspecialchars(trim($_GET['room'] ?? ''));
       }
     }
 
-    function handleDecodedQr(text) {
+    function stopScanner() {
       if (qrScanner) {
         qrScanner.stop().catch(() => {});
+        qrScanner = null;
       }
+    }
+
+    function handleDecodedQr(text) {
+      stopScanner();
       let token = text.trim();
       if (token.includes('room=')) {
         const match = token.match(/room=([a-zA-Z0-9_-]+)/);
@@ -589,16 +1229,23 @@ $roomParam = htmlspecialchars(trim($_GET['room'] ?? ''));
     function handleManualToken() {
       const input = document.getElementById('manualRoomToken').value.trim();
       if (!input) {
-        Swal.fire({ icon: 'warning', title: 'Perhatian', text: 'Ketikkan token ruangan terlebih dahulu' });
+        Swal.fire({ 
+          icon: 'warning', 
+          title: currentLang === 'en' ? 'Attention' : 'Perhatian', 
+          text: currentLang === 'en' ? 'Please enter a room token first' : 'Ketikkan token ruangan terlebih dahulu' 
+        });
         return;
       }
       window.location.href = `?room=${encodeURIComponent(input)}`;
     }
 
-    async function loadRoomChecklist(token) {
+    // ─── CLEANER FLOW (FETCH ROOM & RENDER CHECKLIST) ──────────────────────
+    async function loadRoomForCleaner(token) {
+      stopScanner();
       document.getElementById('loadingCard').classList.remove('hidden');
       document.getElementById('scannerSection').classList.add('hidden');
-      document.getElementById('formSection').classList.add('hidden');
+      document.getElementById('reporterFormSection').classList.add('hidden');
+      document.getElementById('cleanerFormSection').classList.add('hidden');
 
       try {
         const res = await fetch(`index.php?action=fetch_room&room_token=${encodeURIComponent(token)}`);
@@ -608,308 +1255,283 @@ $roomParam = htmlspecialchars(trim($_GET['room'] ?? ''));
           document.getElementById('loadingCard').classList.add('hidden');
           Swal.fire({
             icon: 'error',
-            title: 'Ruangan Tidak Ditemukan',
-            text: data.message || 'QR code ruangan tidak valid atau tidak terdaftar.',
-            confirmButtonText: 'Scan Ulang'
+            title: currentLang === 'en' ? 'Room Not Found' : 'Ruangan Tidak Ditemukan',
+            text: data.message || (currentLang === 'en' ? 'QR Code token is invalid' : 'QR Code ruangan tidak terdaftar di sistem.'),
+            confirmButtonText: currentLang === 'en' ? 'Scan Another Room' : 'Scan Ulang Ruangan'
           }).then(() => {
-            window.location.href = window.location.pathname;
+            window.location.href = 'index.php';
           });
           return;
         }
 
         currentRoomData = data.room;
         currentChecklist = data.checklist;
-        renderRoomInterface();
+
+        document.getElementById('cleanerRoomName').textContent = data.room.name;
+        document.getElementById('cleanerRoomToken').textContent = `Token: ${data.room.token}`;
+
+        document.getElementById('loadingCard').classList.add('hidden');
+        document.getElementById('cleanerFormSection').classList.remove('hidden');
+
+        populateCleanerSelect();
+        renderCleanerStage(data.checklist);
+
       } catch (err) {
         document.getElementById('loadingCard').classList.add('hidden');
         Swal.fire({
           icon: 'error',
-          title: 'Gangguan Koneksi',
-          text: 'Tidak dapat memuat status ruangan. Periksa koneksi internet Anda.'
+          title: currentLang === 'en' ? 'Connection Error' : 'Gangguan Koneksi',
+          text: currentLang === 'en' ? 'Failed to connect to school server' : 'Gagal menghubungi server utama sekolah.'
         });
       }
     }
 
-    function renderRoomInterface() {
-      document.getElementById('loadingCard').classList.add('hidden');
-      document.getElementById('formSection').classList.remove('hidden');
+    function renderCleanerStage(checklist) {
+      const container = document.getElementById('stageContainer');
+      const statusBadge = document.getElementById('cleanerStatusBadge');
+      const isEN = currentLang === 'en';
 
-      document.getElementById('roomNameDisplay').textContent = currentRoomData.name;
-      document.getElementById('roomTokenDisplay').textContent = `Token: ${currentRoomData.token}`;
+      if (!checklist || checklist.status === 'in_progress' && !checklist.image_before_file) {
+        statusBadge.className = 'shrink-0 text-xs font-bold px-3 py-1.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200';
+        statusBadge.innerHTML = `<i class="fas fa-clock mr-1"></i> ${isEN ? 'Not Started' : 'Belum Dikerjakan'}`;
 
-      const statusBadge = document.getElementById('statusBadge');
-      const stageContainer = document.getElementById('stageContainer');
-      selectedFileBlob = null;
-      const checklist = currentChecklist;
-
-      // ─── STAGE 1: BELUM DIKERJAKAN ─────────────────────────────────────────
-      if (!checklist) {
-        statusBadge.className = 'shrink-0 text-xs font-bold px-3 py-1.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200';
-        statusBadge.innerHTML = '<i class="far fa-clock mr-1"></i> Belum Dikerjakan';
-
-        stageContainer.innerHTML = `
-          <div class="flex items-center gap-3 pb-3 border-b border-gray-100">
-            <div class="w-8 h-8 rounded-full bg-orange-100 text-ccsOrange font-bold text-xs flex items-center justify-center shrink-0">
-              1
+        container.innerHTML = `
+          <div class="space-y-3">
+            <div class="flex items-center justify-between border-b border-gray-100 pb-2">
+              <span class="text-xs font-bold uppercase tracking-wider text-ccsHeading">
+                <i class="fas fa-camera mr-1 text-ccsOrange"></i> ${isEN ? 'Step 1: Photo Before Cleaning' : 'Tahap 1: Foto Sebelum Dibersihkan (Before)'}
+              </span>
+              <span class="text-[11px] font-semibold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-md">
+                ${isEN ? 'Starting Cleaning' : 'Mulai Bersihkan'}
+              </span>
             </div>
-            <div>
-              <h3 class="text-sm font-bold text-ccsHeading">Tahap 1: Foto Sebelum Pembersihan (Before)</h3>
-              <p class="text-xs text-gray-500">Ambil foto kondisi ruangan saat Anda pertama kali tiba</p>
-            </div>
-          </div>
 
-          <!-- Camera Trigger Box -->
-          <div id="dropZone" class="border-2 border-dashed border-gray-200 hover:border-ccsOrange rounded-2xl p-6 text-center cursor-pointer transition bg-gray-50/50" onclick="triggerCameraInput()">
-            <input type="file" id="cameraInput" accept="image/*" capture="environment" class="hidden" onchange="handleFileSelect(event)">
-            
-            <div id="uploadPlaceholder">
-              <div class="w-12 h-12 rounded-full bg-orange-100 text-ccsOrange flex items-center justify-center mx-auto mb-2 text-xl">
+            <p class="text-xs text-gray-500">
+              ${isEN 
+                ? 'Take a photo of the room condition before cleaning. The system will record the start time automatically.' 
+                : 'Ambil foto kondisi ruangan saat ini sebelum dibersihkan. Sistem akan mencatat waktu mulai secara otomatis.'}
+            </p>
+
+            <input type="file" id="cameraInput" accept="image/*" capture="environment" class="hidden" onchange="handleCleanerFileSelect(event)">
+
+            <div id="uploadPlaceholder" onclick="triggerCleanerCamera()" class="border-2 border-dashed border-gray-200 hover:border-ccsOrange rounded-2xl p-6 text-center cursor-pointer transition-colors bg-orange-50/20">
+              <div class="w-12 h-12 rounded-full bg-orange-100 text-ccsOrange flex items-center justify-center text-xl mx-auto mb-2">
                 <i class="fas fa-camera"></i>
               </div>
-              <p class="text-xs font-bold text-ccsHeading">Ketuk untuk Ambil Foto Kamera</p>
-              <p class="text-[11px] text-gray-400 mt-0.5">Kamera belakang HP otomatis diaktifkan</p>
+              <p class="text-xs font-bold text-ccsHeading">${isEN ? 'Take Before Photo with Camera' : 'Ambil Foto Before dengan Kamera'}</p>
+              <p class="text-[11px] text-gray-400 mt-0.5">${isEN ? 'Photo is automatically compressed to save data' : 'Foto otomatis dikompresi agar hemat kuota'}</p>
             </div>
 
-            <div id="previewBox" class="hidden">
-              <img id="imgPreview" src="" alt="Preview" class="w-full h-44 object-cover rounded-xl mx-auto shadow-sm">
-              <p class="text-xs text-emerald-600 font-bold mt-2 flex items-center justify-center">
-                <i class="fas fa-check-circle mr-1"></i> Foto Siap Diunggah
-              </p>
-              <p class="text-[11px] text-gray-400">Ketuk kembali untuk foto ulang</p>
+            <div id="previewBox" class="hidden space-y-2">
+              <div class="relative rounded-2xl overflow-hidden border border-gray-200 bg-gray-900 flex items-center justify-center max-h-[260px]">
+                <img id="imgPreview" src="" alt="Preview" class="w-full h-auto max-h-[260px] object-contain">
+              </div>
+              <button type="button" onclick="triggerCleanerCamera()" class="w-full py-2 px-3 text-xs font-semibold text-ccsNavy hover:bg-gray-100 rounded-xl border border-gray-200 transition flex items-center justify-center gap-1.5">
+                <i class="fas fa-sync-alt"></i> ${isEN ? 'Retake Photo' : 'Ganti / Foto Ulang'}
+              </button>
             </div>
+
+            <button id="btnSubmitStage" onclick="submitCleanerStage('start_progress')" class="thm-btn w-full py-3 text-sm font-semibold rounded-xl flex items-center justify-center gap-2">
+              <i class="fas fa-play"></i> ${isEN ? 'Start Cleaning & Send Before Photo' : 'Mulai Bersihkan & Kirim Foto Before'}
+            </button>
           </div>
-
-          <button id="btnSubmitStage" onclick="submitStage('start_progress')" class="thm-btn w-full py-3.5 text-sm mt-3">
-            <i class="fas fa-play mr-1"></i> Mulai Bersihkan Ruangan
-          </button>
         `;
         return;
       }
 
-      // ─── STAGE 2: SEDANG DIKERJAKAN (IN PROGRESS) ──────────────────────────
       if (checklist.status === 'in_progress') {
-        statusBadge.className = 'shrink-0 text-xs font-bold px-3 py-1.5 rounded-full bg-blue-50 text-ccsHeading border border-blue-200';
-        statusBadge.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> Sedang Dikerjakan';
+        statusBadge.className = 'shrink-0 text-xs font-bold px-3 py-1.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200';
+        statusBadge.innerHTML = `<i class="fas fa-spinner fa-spin mr-1"></i> ${isEN ? 'In Progress' : 'Sedang Dikerjakan'}`;
 
-        const startTimeStr = checklist.start_time ? new Date(checklist.start_time).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB' : '-';
-
-        stageContainer.innerHTML = `
-          <!-- Info Mulai -->
-          <div class="border-l-4 border-ccsTeal bg-teal-50/60 p-3.5 rounded-r-xl text-xs space-y-1.5">
-            <div class="flex items-center justify-between font-bold text-ccsHeading">
-              <span><i class="fas fa-user mr-1.5 text-ccsTeal"></i> ${checklist.vendor_worker_name}</span>
-              <span><i class="far fa-clock mr-1 text-ccsTeal"></i> Mulai: ${startTimeStr}</span>
+        container.innerHTML = `
+          <div class="space-y-4">
+            <div class="flex items-center justify-between border-b border-gray-100 pb-2">
+              <span class="text-xs font-bold uppercase tracking-wider text-ccsHeading">
+                <i class="fas fa-check-double mr-1 text-emerald-600"></i> ${isEN ? 'Step 2: Finish & Photo After' : 'Tahap 2: Selesai & Foto Hasil (After)'}
+              </span>
+              <span class="text-[11px] font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md">
+                ${isEN ? 'Cleaning in Progress' : 'Sedang Dikerjakan'}
+              </span>
             </div>
-            <div class="pt-1.5 border-t border-teal-200/50 flex items-center justify-between text-[11px]">
-              <span class="text-gray-500">Bukti Foto Sebelum:</span>
-              <button onclick="viewRemotePhoto(${checklist.id}, 'before', 'Foto Sebelum (Before)')" class="text-ccsTeal font-bold hover:underline">
-                <i class="fas fa-eye mr-1"></i> Lihat Foto Before
+
+            <!-- Kartu Info Foto Before -->
+            <div class="bg-gray-50 rounded-xl p-3 border border-gray-200 flex items-center justify-between text-xs">
+              <div class="flex items-center gap-2.5">
+                <div class="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                  <i class="fas fa-check"></i>
+                </div>
+                <div>
+                  <div class="font-bold text-gray-800">${isEN ? 'Before Photo Recorded' : 'Foto Before Telah Tersimpan'}</div>
+                  <div class="text-[11px] text-gray-500">${checklist.vendor_worker_name || '-'}</div>
+                </div>
+              </div>
+              <button type="button" onclick="viewRemotePhoto(${checklist.id}, 'before', '${isEN ? 'Before Photo' : 'Foto Before Ruangan'}')" class="text-xs text-ccsOrange font-semibold hover:underline">
+                <i class="fas fa-eye mr-1"></i> ${isEN ? 'View' : 'Lihat'}
+              </button>
+            </div>
+
+            <p class="text-xs text-gray-500">
+              ${isEN 
+                ? 'After finishing cleaning, take a photo of the clean room to complete the task.' 
+                : 'Setelah selesai membersihkan, ambil foto hasil ruangan yang sudah bersih untuk menyelesaikan tugas.'}
+            </p>
+
+            <input type="file" id="cameraInput" accept="image/*" capture="environment" class="hidden" onchange="handleCleanerFileSelect(event)">
+
+            <div id="uploadPlaceholder" onclick="triggerCleanerCamera()" class="border-2 border-dashed border-gray-200 hover:border-emerald-500 rounded-2xl p-6 text-center cursor-pointer transition-colors bg-emerald-50/20">
+              <div class="w-12 h-12 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-xl mx-auto mb-2">
+                <i class="fas fa-camera"></i>
+              </div>
+              <p class="text-xs font-bold text-ccsHeading">${isEN ? 'Take After Photo with Camera' : 'Ambil Foto After dengan Kamera'}</p>
+              <p class="text-[11px] text-gray-400 mt-0.5">${isEN ? 'Photo is automatically compressed' : 'Foto otomatis dikompresi agar hemat kuota'}</p>
+            </div>
+
+            <div id="previewBox" class="hidden space-y-2">
+              <div class="relative rounded-2xl overflow-hidden border border-gray-200 bg-gray-900 flex items-center justify-center max-h-[260px]">
+                <img id="imgPreview" src="" alt="Preview" class="w-full h-auto max-h-[260px] object-contain">
+              </div>
+              <button type="button" onclick="triggerCleanerCamera()" class="w-full py-2 px-3 text-xs font-semibold text-ccsNavy hover:bg-gray-100 rounded-xl border border-gray-200 transition flex items-center justify-center gap-1.5">
+                <i class="fas fa-sync-alt"></i> ${isEN ? 'Retake Photo' : 'Ganti / Foto Ulang'}
+              </button>
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold text-gray-700 mb-1">${isEN ? 'Notes (Optional)' : 'Catatan Petugas (Opsional)'}</label>
+              <textarea id="stageNotes" rows="2" placeholder="${isEN ? 'e.g., mopped floor, trash emptied, etc.' : 'Misal: Lantai sudah dipel, tong sampah dikosongkan...'}" class="w-full px-3 py-2 text-xs border border-gray-200 rounded-xl focus:border-ccsNavy outline-none"></textarea>
+            </div>
+
+            <button id="btnSubmitStage" onclick="submitCleanerStage('submit_finish')" class="thm-btn w-full py-3 text-sm font-semibold rounded-xl flex items-center justify-center gap-2 bg-emerald-600 border-emerald-600 hover:bg-emerald-700">
+              <i class="fas fa-check-circle"></i> ${isEN ? 'Finish & Submit for Review' : 'Selesai & Kirim untuk Ditinjau'}
+            </button>
+          </div>
+        `;
+        return;
+      }
+
+      if (checklist.status === 'revision') {
+        statusBadge.className = 'shrink-0 text-xs font-bold px-3 py-1.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200';
+        statusBadge.innerHTML = `<i class="fas fa-exclamation-triangle mr-1"></i> ${isEN ? 'Revision Required' : 'Perlu Revisi'}`;
+
+        container.innerHTML = `
+          <div class="space-y-4">
+            <div class="bg-rose-50 rounded-2xl p-4 border border-rose-200 text-rose-800 space-y-1.5">
+              <div class="flex items-center gap-2 font-bold text-xs uppercase tracking-wider text-rose-700">
+                <i class="fas fa-exclamation-circle text-sm"></i> ${isEN ? 'Supervisor Revision Instructions' : 'Instruksi Revisi Supervisor'}
+              </div>
+              <p class="text-xs font-medium pl-5">${checklist.review_notes || (isEN ? 'Please clean the room again properly.' : 'Harap bersihkan kembali ruangan dengan baik.')}</p>
+            </div>
+
+            <p class="text-xs text-gray-500">
+              ${isEN 
+                ? 'Please re-clean the areas requested by the supervisor, then upload proof of revision photo.' 
+                : 'Silakan bersihkan ulang area yang diminta supervisor, lalu unggah foto bukti perbaikan revisi.'}
+            </p>
+
+            <input type="file" id="cameraInput" accept="image/*" capture="environment" class="hidden" onchange="handleCleanerFileSelect(event)">
+
+            <div id="uploadPlaceholder" onclick="triggerCleanerCamera()" class="border-2 border-dashed border-rose-200 hover:border-rose-500 rounded-2xl p-6 text-center cursor-pointer transition-colors bg-rose-50/20">
+              <div class="w-12 h-12 rounded-full bg-rose-100 text-rose-700 flex items-center justify-center text-xl mx-auto mb-2">
+                <i class="fas fa-camera"></i>
+              </div>
+              <p class="text-xs font-bold text-ccsHeading">${isEN ? 'Take Revision Photo with Camera' : 'Ambil Foto Revisi dengan Kamera'}</p>
+              <p class="text-[11px] text-gray-400 mt-0.5">${isEN ? 'Photo is automatically compressed' : 'Foto otomatis dikompresi'}</p>
+            </div>
+
+            <div id="previewBox" class="hidden space-y-2">
+              <div class="relative rounded-2xl overflow-hidden border border-gray-200 bg-gray-900 flex items-center justify-center max-h-[260px]">
+                <img id="imgPreview" src="" alt="Preview" class="w-full h-auto max-h-[260px] object-contain">
+              </div>
+              <button type="button" onclick="triggerCleanerCamera()" class="w-full py-2 px-3 text-xs font-semibold text-ccsNavy hover:bg-gray-100 rounded-xl border border-gray-200 transition flex items-center justify-center gap-1.5">
+                <i class="fas fa-sync-alt"></i> ${isEN ? 'Retake Photo' : 'Ganti / Foto Ulang'}
+              </button>
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold text-gray-700 mb-1">${isEN ? 'Revision Notes' : 'Catatan Perbaikan'}</label>
+              <textarea id="stageNotes" rows="2" placeholder="${isEN ? 'e.g., floor mopped again, trash emptied' : 'Misal: Area lantai sudah dipel ulang...'}" class="w-full px-3 py-2 text-xs border border-gray-200 rounded-xl focus:border-ccsNavy outline-none"></textarea>
+            </div>
+
+            <button id="btnSubmitStage" onclick="submitCleanerStage('submit_revision')" class="thm-btn w-full py-3 text-sm font-semibold rounded-xl flex items-center justify-center gap-2 bg-rose-600 border-rose-600 hover:bg-rose-700">
+              <i class="fas fa-paper-plane"></i> ${isEN ? 'Send Revision Photo' : 'Kirim Foto Bukti Revisi'}
+            </button>
+          </div>
+        `;
+        return;
+      }
+
+      if (checklist.status === 'pending_review') {
+        statusBadge.className = 'shrink-0 text-xs font-bold px-3 py-1.5 rounded-full bg-purple-50 text-purple-700 border border-purple-200';
+        statusBadge.innerHTML = `<i class="fas fa-hourglass-half mr-1"></i> ${isEN ? 'Pending Review' : 'Menunggu Review'}`;
+
+        container.innerHTML = `
+          <div class="text-center py-6 space-y-3">
+            <div class="w-14 h-14 bg-purple-100 text-purple-700 rounded-full flex items-center justify-center mx-auto text-2xl">
+              <i class="fas fa-clipboard-check"></i>
+            </div>
+            <div>
+              <h3 class="text-base font-bold text-ccsHeading">${isEN ? 'Checklist Awaiting Supervisor Review' : 'Pekerjaan Selesai & Menunggu Review'}</h3>
+              <p class="text-xs text-gray-500 max-w-sm mx-auto mt-1">
+                ${isEN 
+                  ? 'All photos have been submitted. The supervisor will inspect the cleaning quality soon.' 
+                  : 'Foto sebelum dan sesudah telah dikirim. Supervisor akan memeriksa kualitas kebersihan ruangan ini.'}
+              </p>
+            </div>
+            <div class="flex items-center justify-center gap-2 pt-2">
+              <button type="button" onclick="viewRemotePhoto(${checklist.id}, 'before', '${isEN ? 'Before Photo' : 'Foto Sebelum'}')" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 transition">
+                <i class="fas fa-eye mr-1"></i> ${isEN ? 'Before Photo' : 'Foto Sebelum'}
+              </button>
+              <button type="button" onclick="viewRemotePhoto(${checklist.id}, 'after', '${isEN ? 'After Photo' : 'Foto Sesudah'}')" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 transition">
+                <i class="fas fa-eye mr-1"></i> ${isEN ? 'After Photo' : 'Foto Sesudah'}
               </button>
             </div>
           </div>
-
-          <div class="flex items-center gap-3 pb-3 border-b border-gray-100">
-            <div class="w-8 h-8 rounded-full bg-teal-100 text-ccsTeal font-bold text-xs flex items-center justify-center shrink-0">
-              2
-            </div>
-            <div>
-              <h3 class="text-sm font-bold text-ccsHeading">Tahap 2: Foto Sesudah Selesai (After)</h3>
-              <p class="text-xs text-gray-500">Pekerjaan selesai? Ambil foto hasil ruangan yang bersih</p>
-            </div>
-          </div>
-
-          <!-- Camera Trigger Box -->
-          <div id="dropZone" class="border-2 border-dashed border-gray-200 hover:border-ccsTeal rounded-2xl p-6 text-center cursor-pointer transition bg-gray-50/50" onclick="triggerCameraInput()">
-            <input type="file" id="cameraInput" accept="image/*" capture="environment" class="hidden" onchange="handleFileSelect(event)">
-            
-            <div id="uploadPlaceholder">
-              <div class="w-12 h-12 rounded-full bg-teal-100 text-ccsTeal flex items-center justify-center mx-auto mb-2 text-xl">
-                <i class="fas fa-camera"></i>
-              </div>
-              <p class="text-xs font-bold text-ccsHeading">Ketuk untuk Ambil Foto Selesai</p>
-              <p class="text-[11px] text-gray-400 mt-0.5">Kamera belakang HP otomatis diaktifkan</p>
-            </div>
-
-            <div id="previewBox" class="hidden">
-              <img id="imgPreview" src="" alt="Preview" class="w-full h-44 object-cover rounded-xl mx-auto shadow-sm">
-              <p class="text-xs text-emerald-600 font-bold mt-2 flex items-center justify-center">
-                <i class="fas fa-check-circle mr-1"></i> Foto Siap Diunggah
-              </p>
-              <p class="text-[11px] text-gray-400">Ketuk kembali untuk foto ulang</p>
-            </div>
-          </div>
-
-          <div>
-            <label class="block text-xs font-semibold uppercase tracking-wider text-gray-700 mb-1">
-              Catatan Pengerjaan (Opsional)
-            </label>
-            <textarea 
-              id="stageNotes" 
-              rows="2" 
-              placeholder="Contoh: Lampu dan AC dimatikan, sampah sudah dibuang..."
-              class="w-full px-3 py-2 text-xs border border-gray-200 rounded-xl focus:border-ccsNavy focus:ring-2 focus:ring-ccsNavy/10 outline-none"
-            ></textarea>
-          </div>
-
-          <button id="btnSubmitStage" onclick="submitStage('submit_finish')" class="thm-btn thm-btn--teal w-full py-3.5 text-sm">
-            <i class="fas fa-paper-plane mr-1"></i> Selesai & Kirim ke Supervisor
-          </button>
         `;
         return;
       }
 
-      // ─── STAGE 3: PENDING REVIEW ───────────────────────────────────────────
-      if (checklist.status === 'pending_review') {
-        statusBadge.className = 'shrink-0 text-xs font-bold px-3 py-1.5 rounded-full bg-amber-50 text-amber-800 border border-amber-300';
-        statusBadge.innerHTML = '<i class="fas fa-hourglass-half mr-1"></i> Menunggu Review';
-
-        stageContainer.innerHTML = `
-          <div class="text-center py-4 space-y-3">
-            <div class="w-14 h-14 bg-amber-100 text-amber-700 rounded-full flex items-center justify-center mx-auto text-2xl">
-              <i class="fas fa-clock"></i>
-            </div>
-            <div>
-              <h3 class="text-base font-bold text-ccsHeading">Menunggu Pemeriksaan Supervisor</h3>
-              <p class="text-xs text-gray-500 mt-1 max-w-sm mx-auto">
-                Pekerjaan telah dikirimkan oleh <strong>${checklist.vendor_worker_name}</strong> dan sedang menunggu verifikasi dari supervisor operasional.
-              </p>
-            </div>
-          </div>
-
-          <div class="grid grid-cols-2 gap-3 pt-3 border-t border-gray-100">
-            <button onclick="viewRemotePhoto(${checklist.id}, 'before', 'Foto Sebelum (Before)')" class="p-3 bg-gray-50 border border-gray-200 rounded-xl text-center hover:bg-gray-100 transition">
-              <i class="fas fa-image text-gray-400 text-lg mb-1 block"></i>
-              <span class="text-xs font-bold text-ccsHeading block">Foto Before</span>
-              <span class="text-[10px] text-ccsOrange font-semibold">Lihat Gambar</span>
-            </button>
-            <button onclick="viewRemotePhoto(${checklist.id}, 'after', 'Foto Sesudah (After)')" class="p-3 bg-gray-50 border border-gray-200 rounded-xl text-center hover:bg-gray-100 transition">
-              <i class="fas fa-check-circle text-emerald-500 text-lg mb-1 block"></i>
-              <span class="text-xs font-bold text-ccsHeading block">Foto After</span>
-              <span class="text-[10px] text-ccsOrange font-semibold">Lihat Gambar</span>
-            </button>
-          </div>
-
-          <button onclick="loadRoomChecklist(currentRoomToken)" class="thm-btn thm-btn--outline w-full py-2.5 text-xs mt-3">
-            <i class="fas fa-sync-alt mr-1"></i> Muat Ulang Status
-          </button>
-        `;
-        return;
-      }
-
-      // ─── STAGE 4: PERLU REVISI ─────────────────────────────────────────────
-      if (checklist.status === 'revision') {
-        statusBadge.className = 'shrink-0 text-xs font-bold px-3 py-1.5 rounded-full bg-rose-50 text-rose-700 border border-rose-300';
-        statusBadge.innerHTML = '<i class="fas fa-exclamation-triangle mr-1"></i> Perlu Revisi';
-
-        stageContainer.innerHTML = `
-          <!-- Catatan Supervisor (Identik Alert Box Sewa Lapangan) -->
-          <div class="border-l-4 border-rose-500 bg-rose-50/70 p-4 rounded-r-xl space-y-1">
-            <h4 class="text-xs font-bold text-rose-800 flex items-center">
-              <i class="fas fa-comment-dots mr-1.5"></i> Catatan Revisi dari Supervisor:
-            </h4>
-            <p class="text-xs text-rose-900 font-medium bg-white p-2.5 rounded-lg border border-rose-200">
-              "${checklist.review_notes || 'Mohon dibersihkan ulang bagian yang belum rapi.'}"
-            </p>
-          </div>
-
-          <div class="flex items-center gap-3 pb-3 border-b border-gray-100">
-            <div class="w-8 h-8 rounded-full bg-rose-100 text-rose-600 font-bold text-xs flex items-center justify-center shrink-0">
-              <i class="fas fa-redo-alt"></i>
-            </div>
-            <div>
-              <h3 class="text-sm font-bold text-ccsHeading">Upload Foto Hasil Revisi</h3>
-              <p class="text-xs text-gray-500">Bersihkan ulang sesuai catatan lalu foto hasilnya</p>
-            </div>
-          </div>
-
-          <!-- Camera Trigger Box -->
-          <div id="dropZone" class="border-2 border-dashed border-rose-200 hover:border-rose-400 rounded-2xl p-6 text-center cursor-pointer transition bg-rose-50/30" onclick="triggerCameraInput()">
-            <input type="file" id="cameraInput" accept="image/*" capture="environment" class="hidden" onchange="handleFileSelect(event)">
-            
-            <div id="uploadPlaceholder">
-              <div class="w-12 h-12 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center mx-auto mb-2 text-xl">
-                <i class="fas fa-camera"></i>
-              </div>
-              <p class="text-xs font-bold text-ccsHeading">Ambil Foto Bukti Revisi</p>
-              <p class="text-[11px] text-gray-400 mt-0.5">Kamera belakang HP otomatis diaktifkan</p>
-            </div>
-
-            <div id="previewBox" class="hidden">
-              <img id="imgPreview" src="" alt="Preview" class="w-full h-44 object-cover rounded-xl mx-auto shadow-sm">
-              <p class="text-xs text-emerald-600 font-bold mt-2 flex items-center justify-center">
-                <i class="fas fa-check-circle mr-1"></i> Foto Siap Diunggah
-              </p>
-              <p class="text-[11px] text-gray-400">Ketuk kembali untuk foto ulang</p>
-            </div>
-          </div>
-
-          <div>
-            <label class="block text-xs font-semibold uppercase tracking-wider text-gray-700 mb-1">
-              Catatan Perbaikan Petugas
-            </label>
-            <textarea 
-              id="stageNotes" 
-              rows="2" 
-              placeholder="Contoh: Kaca sudah dilap bersih, lantai sudah disapu ulang..."
-              class="w-full px-3 py-2 text-xs border border-gray-200 rounded-xl focus:border-ccsNavy focus:ring-2 focus:ring-ccsNavy/10 outline-none"
-            ></textarea>
-          </div>
-
-          <button id="btnSubmitStage" onclick="submitStage('submit_revision')" class="thm-btn w-full py-3.5 text-sm bg-rose-600 hover:bg-rose-700 border-rose-600">
-            <i class="fas fa-redo-alt mr-1"></i> Kirim Ulang Bukti Revisi
-          </button>
-        `;
-        return;
-      }
-
-      // ─── STAGE 5: APPROVED (DISETUJUI) ─────────────────────────────────────
       if (checklist.status === 'approved') {
-        statusBadge.className = 'shrink-0 text-xs font-bold px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-300';
-        statusBadge.innerHTML = '<i class="fas fa-check-circle mr-1"></i> Disetujui';
+        statusBadge.className = 'shrink-0 text-xs font-bold px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200';
+        statusBadge.innerHTML = `<i class="fas fa-check-circle mr-1"></i> ${isEN ? 'Approved' : 'Disetujui'}`;
 
-        stageContainer.innerHTML = `
+        container.innerHTML = `
           <div class="text-center py-6 space-y-3">
-            <div class="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto text-3xl">
-              <i class="fas fa-check"></i>
+            <div class="w-14 h-14 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto text-2xl">
+              <i class="fas fa-shield-alt"></i>
             </div>
             <div>
-              <h3 class="text-lg font-bold text-ccsHeading">Ruangan Bersih & Disetujui!</h3>
-              <p class="text-xs text-gray-500 mt-1 max-w-sm mx-auto">
-                Pekerjaan kebersihan untuk ruangan ini pada hari ini telah diperiksa dan disetujui oleh supervisor. Terima kasih atas kerja samanya!
+              <h3 class="text-base font-bold text-ccsHeading">${isEN ? 'Room Clean & Approved!' : 'Ruangan Bersih & Disetujui!'}</h3>
+              <p class="text-xs text-gray-500 max-w-sm mx-auto mt-1">
+                ${isEN 
+                  ? 'Cleaning has been verified and approved by the supervisor.' 
+                  : 'Hasil pekerjaan kebersihan ruangan ini telah diperiksa dan disetujui oleh supervisor.'}
               </p>
             </div>
-          </div>
-
-          <div class="grid grid-cols-2 gap-3 pt-3 border-t border-gray-100">
-            <button onclick="viewRemotePhoto(${checklist.id}, 'before', 'Foto Sebelum (Before)')" class="p-3 bg-gray-50 border border-gray-200 rounded-xl text-center hover:bg-gray-100 transition">
-              <i class="fas fa-image text-gray-400 text-lg mb-1 block"></i>
-              <span class="text-xs font-bold text-ccsHeading block">Foto Before</span>
-              <span class="text-[10px] text-ccsOrange font-semibold">Lihat Gambar</span>
-            </button>
-            <button onclick="viewRemotePhoto(${checklist.id}, 'after', 'Foto Sesudah (After)')" class="p-3 bg-gray-50 border border-gray-200 rounded-xl text-center hover:bg-gray-100 transition">
-              <i class="fas fa-check-circle text-emerald-500 text-lg mb-1 block"></i>
-              <span class="text-xs font-bold text-ccsHeading block">Foto After</span>
-              <span class="text-[10px] text-ccsOrange font-semibold">Lihat Gambar</span>
-            </button>
+            <div class="flex items-center justify-center gap-2 pt-2">
+              <button type="button" onclick="viewRemotePhoto(${checklist.id}, 'before', '${isEN ? 'Before Photo' : 'Foto Sebelum'}')" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 transition">
+                <i class="fas fa-eye mr-1"></i> ${isEN ? 'Before' : 'Sebelum'}
+              </button>
+              <button type="button" onclick="viewRemotePhoto(${checklist.id}, 'after', '${isEN ? 'After Photo' : 'Foto Sesudah'}')" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 transition">
+                <i class="fas fa-eye mr-1"></i> ${isEN ? 'After' : 'Sesudah'}
+              </button>
+            </div>
           </div>
         `;
         return;
       }
 
-      // ─── STAGE 6: REJECTED ─────────────────────────────────────────────────
       if (checklist.status === 'rejected') {
         statusBadge.className = 'shrink-0 text-xs font-bold px-3 py-1.5 rounded-full bg-gray-200 text-gray-700 border border-gray-300';
-        statusBadge.innerHTML = '<i class="fas fa-times-circle mr-1"></i> Ditolak';
+        statusBadge.innerHTML = `<i class="fas fa-times-circle mr-1"></i> ${isEN ? 'Rejected' : 'Ditolak'}`;
 
-        stageContainer.innerHTML = `
+        container.innerHTML = `
           <div class="text-center py-4 space-y-3">
             <div class="w-14 h-14 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center mx-auto text-2xl">
               <i class="fas fa-times"></i>
             </div>
             <div>
-              <h3 class="text-base font-bold text-ccsHeading">Checklist Ditolak</h3>
+              <h3 class="text-base font-bold text-ccsHeading">${isEN ? 'Checklist Rejected' : 'Checklist Ditolak'}</h3>
               <p class="text-xs text-rose-700 mt-1 bg-rose-50 p-3 rounded-xl border border-rose-200">
-                "${checklist.review_notes || 'Pekerjaan kebersihan tidak memenuhi standar.'}"
+                "${checklist.review_notes || (isEN ? 'Cleaning did not meet standard.' : 'Pekerjaan kebersihan tidak memenuhi standar.')}"
               </p>
             </div>
           </div>
@@ -918,23 +1540,250 @@ $roomParam = htmlspecialchars(trim($_GET['room'] ?? ''));
       }
     }
 
-    function triggerCameraInput() {
+    function triggerCleanerCamera() {
       const input = document.getElementById('cameraInput');
       if (input) input.click();
     }
 
-    function handleFileSelect(e) {
+    function handleCleanerFileSelect(e) {
       const file = e.target.files[0];
       if (!file) return;
 
       compressImage(file, 1280, 0.8, (compressedBlob, dataUrl) => {
-        selectedFileBlob = compressedBlob;
+        selectedCleanerBlob = compressedBlob;
         document.getElementById('uploadPlaceholder').classList.add('hidden');
         document.getElementById('previewBox').classList.remove('hidden');
         document.getElementById('imgPreview').src = dataUrl;
       });
     }
 
+    async function submitCleanerStage(actionType) {
+      const isEN = currentLang === 'en';
+      const workerSelect = document.getElementById('workerNameSelect');
+      const workerName = workerSelect ? workerSelect.value.trim() : '';
+
+      if (actionType === 'start_progress' && !workerName) {
+        Swal.fire({
+          icon: 'warning',
+          title: isEN ? 'Staff Not Selected' : 'Nama Petugas Belum Dipilih',
+          text: isEN ? 'Please select your name from the dropdown list before starting.' : 'Silakan pilih nama petugas kebersihan dari dropdown terlebih dahulu.'
+        });
+        workerSelect.focus();
+        return;
+      }
+
+      if (!selectedCleanerBlob) {
+        Swal.fire({
+          icon: 'warning',
+          title: isEN ? 'Photo Required' : 'Foto Belum Diambil',
+          text: isEN ? 'Please take photo evidence using the camera first.' : 'Silakan ambil foto bukti pekerjaan terlebih dahulu menggunakan kamera.'
+        });
+        return;
+      }
+
+      const notesEl = document.getElementById('stageNotes');
+      const notes = notesEl ? notesEl.value.trim() : '';
+
+      const btn = document.getElementById('btnSubmitStage');
+      const origText = btn.innerHTML;
+      btn.disabled = true;
+      btn.innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i> ${isEN ? 'Uploading & Saving...' : 'Mengunggah & Menyimpan...'}`;
+
+      try {
+        const formData = new FormData();
+        formData.append('action', 'submit_step');
+        formData.append('stage_action', actionType);
+        formData.append('room_token', currentRoomToken);
+        formData.append('worker_name', workerName);
+        formData.append('notes', notes);
+        formData.append('photo_file', selectedCleanerBlob, 'upload.jpg');
+
+        const res = await fetch('index.php', {
+          method: 'POST',
+          body: formData
+        });
+
+        const result = await res.json();
+        if (!result.success) {
+          throw new Error(result.message || (isEN ? 'Failed to save data' : 'Gagal menyimpan data'));
+        }
+
+        Swal.fire({
+          icon: 'success',
+          title: isEN ? 'Success!' : 'Berhasil!',
+          text: result.message,
+          timer: 2000,
+          showConfirmButton: false
+        }).then(() => {
+          loadRoomForCleaner(currentRoomToken);
+        });
+
+      } catch (err) {
+        Swal.fire({
+          icon: 'error',
+          title: isEN ? 'Save Failed' : 'Gagal Menyimpan',
+          text: err.message || (isEN ? 'System error occurred' : 'Terjadi kesalahan sistem')
+        });
+        btn.disabled = false;
+        btn.innerHTML = origText;
+      }
+    }
+
+    // ─── PELAPOR / REPORTER FLOW ───────────────────────────────────────────
+    async function loadRoomForReporter(token) {
+      stopScanner();
+      document.getElementById('loadingCard').classList.remove('hidden');
+      document.getElementById('scannerSection').classList.add('hidden');
+      document.getElementById('cleanerFormSection').classList.add('hidden');
+      document.getElementById('reporterFormSection').classList.add('hidden');
+
+      try {
+        const res = await fetch(`index.php?action=fetch_room&room_token=${encodeURIComponent(token)}`);
+        const data = await res.json();
+
+        if (!data.success) {
+          document.getElementById('loadingCard').classList.add('hidden');
+          Swal.fire({
+            icon: 'error',
+            title: currentLang === 'en' ? 'Room Not Found' : 'Ruangan Tidak Ditemukan',
+            text: data.message || (currentLang === 'en' ? 'Room QR code is invalid' : 'QR Code ruangan tidak terdaftar.'),
+            confirmButtonText: currentLang === 'en' ? 'Scan Another Room' : 'Scan Ulang'
+          }).then(() => {
+            window.location.href = 'index.php';
+          });
+          return;
+        }
+
+        currentRoomData = data.room;
+        document.getElementById('reporterRoomName').textContent = data.room.name;
+        document.getElementById('reporterRoomToken').textContent = `Token: ${data.room.token}`;
+
+        // Restore saved reporter info
+        const savedRepName = localStorage.getItem('ccs_reporter_name');
+        const savedRepContact = localStorage.getItem('ccs_reporter_contact');
+        if (savedRepName) document.getElementById('reporterNameInput').value = savedRepName;
+        if (savedRepContact) document.getElementById('reporterContactInput').value = savedRepContact;
+
+        document.getElementById('loadingCard').classList.add('hidden');
+        document.getElementById('reporterFormSection').classList.remove('hidden');
+
+      } catch (err) {
+        document.getElementById('loadingCard').classList.add('hidden');
+        Swal.fire({
+          icon: 'error',
+          title: currentLang === 'en' ? 'Connection Error' : 'Gangguan Koneksi',
+          text: currentLang === 'en' ? 'Failed to connect to school server' : 'Gagal menghubungi server utama sekolah.'
+        });
+      }
+    }
+
+    function triggerReporterCamera() {
+      const input = document.getElementById('reporterCameraInput');
+      if (input) input.click();
+    }
+
+    function handleReporterFileSelect(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      compressImage(file, 1280, 0.8, (compressedBlob, dataUrl) => {
+        selectedReporterBlob = compressedBlob;
+        document.getElementById('reporterUploadPlaceholder').classList.add('hidden');
+        document.getElementById('reporterPreviewBox').classList.remove('hidden');
+        document.getElementById('reporterImgPreview').src = dataUrl;
+      });
+    }
+
+    async function submitReporterReport() {
+      const isEN = currentLang === 'en';
+      const nameInput = document.getElementById('reporterNameInput');
+      const contactInput = document.getElementById('reporterContactInput');
+      const descInput = document.getElementById('reporterIssueDesc');
+
+      const repName = nameInput ? nameInput.value.trim() : '';
+      const repContact = contactInput ? contactInput.value.trim() : '';
+      const repDesc = descInput ? descInput.value.trim() : '';
+
+      if (!repName) {
+        Swal.fire({
+          icon: 'warning',
+          title: isEN ? 'Name Required' : 'Nama Pelapor Wajib Diisi',
+          text: isEN ? 'Please enter your full name before submitting the report.' : 'Silakan isi nama lengkap pelapor terlebih dahulu.'
+        });
+        nameInput.focus();
+        return;
+      }
+
+      if (!selectedReporterBlob) {
+        Swal.fire({
+          icon: 'warning',
+          title: isEN ? 'Photo Required' : 'Foto Wajib Diambil',
+          text: isEN ? 'Please take a photo of the damaged or problematic facility condition.' : 'Silakan ambil foto bukti kerusakan atau kondisi fasilitas terlebih dahulu.'
+        });
+        return;
+      }
+
+      if (!repDesc) {
+        Swal.fire({
+          icon: 'warning',
+          title: isEN ? 'Description Required' : 'Deskripsi Keluhan Wajib Diisi',
+          text: isEN ? 'Please describe the facility issue or damage in this room.' : 'Silakan jelaskan kendala atau kerusakan fasilitas yang terjadi.'
+        });
+        descInput.focus();
+        return;
+      }
+
+      // Save to localStorage for convenience
+      localStorage.setItem('ccs_reporter_name', repName);
+      if (repContact) localStorage.setItem('ccs_reporter_contact', repContact);
+
+      const btn = document.getElementById('btnSubmitReport');
+      const origText = btn.innerHTML;
+      btn.disabled = true;
+      btn.innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i> ${isEN ? 'Submitting Report...' : 'Mengunggah & Mengirim Laporan...'}`;
+
+      try {
+        const formData = new FormData();
+        formData.append('action', 'submit_report');
+        formData.append('room_token', currentRoomToken);
+        formData.append('reporter_name', repName);
+        formData.append('reporter_contact', repContact);
+        formData.append('issue_description', repDesc);
+        formData.append('photo_file', selectedReporterBlob, 'report.jpg');
+
+        const res = await fetch('index.php', {
+          method: 'POST',
+          body: formData
+        });
+
+        const result = await res.json();
+        if (!result.success) {
+          throw new Error(result.message || (isEN ? 'Failed to submit report' : 'Gagal mengirim laporan'));
+        }
+
+        Swal.fire({
+          icon: 'success',
+          title: isEN ? 'Report Submitted Successfully!' : 'Laporan Berhasil Terkirim!',
+          text: isEN 
+            ? 'Thank you for your report. The school operations team will inspect and follow up shortly.' 
+            : 'Terima kasih atas laporan Anda. Tim operasional sekolah akan segera memeriksa dan menindaklanjuti kendala di ruangan ini.',
+          confirmButtonText: isEN ? 'Scan Another Room' : 'Scan Ruangan Lain'
+        }).then(() => {
+          window.location.href = 'index.php';
+        });
+
+      } catch (err) {
+        Swal.fire({
+          icon: 'error',
+          title: isEN ? 'Submission Failed' : 'Gagal Mengirim Laporan',
+          text: err.message || (isEN ? 'System error occurred' : 'Terjadi kesalahan sistem')
+        });
+        btn.disabled = false;
+        btn.innerHTML = origText;
+      }
+    }
+
+    // ─── KOMPRESI GAMBAR CLIENT-SIDE (CANVAS HTML5) ────────────────────────
     function compressImage(file, maxDimension, quality, callback) {
       const reader = new FileReader();
       reader.onload = function(event) {
@@ -971,77 +1820,7 @@ $roomParam = htmlspecialchars(trim($_GET['room'] ?? ''));
       reader.readAsDataURL(file);
     }
 
-    async function submitStage(actionType) {
-      const workerNameInput = document.getElementById('workerNameInput');
-      const workerName = workerNameInput ? workerNameInput.value.trim() : '';
-
-      if (actionType === 'start_progress' && !workerName) {
-        Swal.fire({
-          icon: 'warning',
-          title: 'Nama Petugas Kosong',
-          text: 'Silakan isi nama petugas vendor sebelum memulai.'
-        });
-        workerNameInput.focus();
-        return;
-      }
-
-      if (!selectedFileBlob) {
-        Swal.fire({
-          icon: 'warning',
-          title: 'Foto Belum Diambil',
-          text: 'Silakan ambil foto bukti pekerjaan terlebih dahulu menggunakan kamera.'
-        });
-        return;
-      }
-
-      const notesEl = document.getElementById('stageNotes');
-      const notes = notesEl ? notesEl.value.trim() : '';
-
-      const btn = document.getElementById('btnSubmitStage');
-      const origText = btn.innerHTML;
-      btn.disabled = true;
-      btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Mengunggah & Menyimpan...';
-
-      try {
-        const formData = new FormData();
-        formData.append('action', 'submit_step');
-        formData.append('stage_action', actionType);
-        formData.append('room_token', currentRoomToken);
-        formData.append('worker_name', workerName);
-        formData.append('notes', notes);
-        formData.append('photo_file', selectedFileBlob, 'upload.jpg');
-
-        const res = await fetch('index.php', {
-          method: 'POST',
-          body: formData
-        });
-
-        const result = await res.json();
-        if (!result.success) {
-          throw new Error(result.message || 'Gagal menyimpan data');
-        }
-
-        Swal.fire({
-          icon: 'success',
-          title: 'Berhasil!',
-          text: result.message,
-          timer: 2000,
-          showConfirmButton: false
-        }).then(() => {
-          loadRoomChecklist(currentRoomToken);
-        });
-
-      } catch (err) {
-        Swal.fire({
-          icon: 'error',
-          title: 'Gagal Menyimpan',
-          text: err.message || 'Terjadi kesalahan sistem'
-        });
-        btn.disabled = false;
-        btn.innerHTML = origText;
-      }
-    }
-
+    // ─── REMOTE IMAGE PREVIEW MODAL ────────────────────────────────────────
     function viewRemotePhoto(checklistId, type, title) {
       const modal = document.getElementById('imagePreviewModal');
       const modalTitle = document.getElementById('previewModalTitle');

@@ -17,6 +17,7 @@ import {
   faSchool,
   faCalendar,
   faUser,
+  faUsers,
   faTag,
   faPlus,
   faTrash,
@@ -453,6 +454,12 @@ export default function UnifiedAdmissionModal({
                     <span style={{ color: textSecondary }}>Gelombang:</span>
                     <span className="font-medium" style={{ color: textPrimary }}>{application.wave_name || 'Gelombang Reguler'}</span>
                   </div>
+                  <div className="flex justify-between">
+                    <span style={{ color: textSecondary }}>Referral:</span>
+                    <span className="font-semibold" style={{ color: application.referral_name ? (isDark ? '#38BDF8' : '#0284C7') : textSecondary }}>
+                      {application.referral_name || '-'}
+                    </span>
+                  </div>
                 </div>
               </div>
 
@@ -722,6 +729,37 @@ export default function UnifiedAdmissionModal({
               </div>
             </div>
 
+            {/* Informasi Referral Siswa & Orang Tua */}
+            <div className="p-4 rounded-lg border space-y-2.5" style={{ background: isDark ? '#1C1C1F' : '#F9F9F8', borderColor }}>
+              <div className="flex items-center justify-between pb-2 border-b" style={{ borderColor }}>
+                <div className="flex items-center gap-2">
+                  <FontAwesomeIcon icon={faUsers} style={{ color: textSecondary }} className="text-xs" />
+                  <h4 className="text-xs font-mono uppercase tracking-wider font-semibold" style={{ color: textPrimary }}>
+                    Informasi Referral (Orang Tua & Siswa yang Mereferensikan)
+                  </h4>
+                </div>
+                {application.referral_name && (
+                  <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300 border border-sky-300 dark:border-sky-800">
+                    Tercatat
+                  </span>
+                )}
+              </div>
+              <div className="pt-1 text-xs">
+                {application.referral_name ? (
+                  <div className="p-3 rounded-md border bg-sky-50/50 dark:bg-sky-950/20 border-sky-200 dark:border-sky-900">
+                    <span style={{ color: textSecondary }} className="block text-[11px] mb-1">Nama Orang Tua & Siswa CCS yang Merekomendasikan:</span>
+                    <span className="font-semibold text-sm" style={{ color: isDark ? '#38BDF8' : '#0369A1' }}>
+                      {application.referral_name}
+                    </span>
+                  </div>
+                ) : (
+                  <p className="text-xs italic" style={{ color: textSecondary }}>
+                    Pendaftar tidak mengisi informasi referral saat pembayaran biaya formulir.
+                  </p>
+                )}
+              </div>
+            </div>
+
             {/* Email Action Box Step 2 */}
             <div className="p-4 rounded-lg border space-y-3" style={{ background: isDark ? 'rgba(16, 185, 129, 0.08)' : '#F0FDF4', borderColor: isDark ? '#059669' : '#BBF7D0' }}>
               <div className="flex items-start justify-between gap-3 flex-wrap">
@@ -895,6 +933,10 @@ export default function UnifiedAdmissionModal({
                     <Input className="mt-1" style={inputStyle} value={editData.parent_email} onChange={(e) => setEditData(p => ({ ...p, parent_email: e.target.value }))} />
                   </div>
                   <div className="sm:col-span-2 md:col-span-3">
+                    <Label className="text-[10px] font-mono uppercase tracking-wider" style={{ color: textSecondary }}>Referral (Nama Orang Tua & Siswa yang Mereferensikan)</Label>
+                    <Input className="mt-1" style={inputStyle} value={editData.referral_name || ''} placeholder="Contoh: Bpk. Budi Santoso & Kevin Santoso (Kelas 3 Elementary)" onChange={(e) => setEditData(p => ({ ...p, referral_name: e.target.value }))} />
+                  </div>
+                  <div className="sm:col-span-2 md:col-span-3">
                     <Label className="text-[10px] font-mono uppercase tracking-wider" style={{ color: textSecondary }}>Alamat Domisili Siswa</Label>
                     <Input className="mt-1" style={inputStyle} value={editData.student_domicile_address || editData.student_address} onChange={(e) => setEditData(p => ({ ...p, student_domicile_address: e.target.value }))} />
                   </div>
@@ -937,6 +979,10 @@ export default function UnifiedAdmissionModal({
                   <div>
                     <span className="text-[10px] font-mono uppercase block" style={{ color: textSecondary }}>Pekerjaan Orang Tua:</span>
                     <span style={{ color: textPrimary }}>{application.parent_occupation || '-'}</span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-mono uppercase block" style={{ color: textSecondary }}>Referral:</span>
+                    <span style={{ color: application.referral_name ? (isDark ? '#38BDF8' : '#0369A1') : textPrimary }}>{application.referral_name || '-'}</span>
                   </div>
                   <div className="sm:col-span-2 md:col-span-3">
                     <span className="text-[10px] font-mono uppercase block" style={{ color: textSecondary }}>Alamat Domisili:</span>

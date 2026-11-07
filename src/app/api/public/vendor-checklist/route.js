@@ -29,12 +29,36 @@ function getTodayWIB() {
 }
 
 /**
- * GET: Ambil status checklist ruangan hari ini berdasarkan qr_token
+ * GET: Ambil status checklist ruangan hari ini berdasarkan qr_token ATAU ambil daftar cleaner
  * URL: /api/public/vendor-checklist?room_token=xxx
+ * URL: /api/public/vendor-checklist?action=get_cleaners
  */
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url)
+    const action = searchParams.get('action')
+
+    // 0. Ambil daftar petugas kebersihan (role_id 14: Cleaning, is_active: true)
+    if (action === 'get_cleaners') {
+      const { data: cleaners, error: cErr } = await supabaseAdmin
+        .from('users')
+        .select('user_id, user_nama_depan, user_nama_belakang, user_role_id')
+        .eq('user_role_id', 14)
+        .eq('is_active', true)
+        .order('user_nama_depan', { ascending: true })
+
+      if (cErr) {
+        return NextResponse.json({ success: false, message: cErr.message }, { status: 500 })
+      }
+
+      const list = (cleaners || []).map(u => ({
+        user_id: u.user_id,
+        name: `${u.user_nama_depan || ''} ${u.user_nama_belakang || ''}`.trim()
+      }))
+
+      return NextResponse.json({ success: true, cleaners: list })
+    }
+
     const roomToken = searchParams.get('room_token')
 
     if (!roomToken) {
@@ -101,7 +125,7 @@ export async function GET(request) {
 
 /**
  * POST: Simpan aksi checklist dari cPanel PHP
- * Action: 'start_progress' (Before) | 'submit_finish' (After) | 'submit_revision' (Revision)
+ * Action: 'start_progress' (Before) | 'submit_finish' (After) | 'submit_revision' (Revision) | 'submit_report' (Pelaporan Fasilitas)
  */
 export async function POST(request) {
   try {
@@ -113,7 +137,10 @@ export async function POST(request) {
       worker_name,
       image_file,
       hosting_url,
-      notes
+      notes,
+      reporter_name,
+      reporter_contact,
+      issue_description
     } = body
 
     if (!verifyAuth(request, secret_token)) {
@@ -146,6 +173,50 @@ export async function POST(request) {
 
     const today = getTodayWIB()
     const nowISO = new Date().toISOString()
+
+    // ── AKSI 4: SUBMIT REPORT / COMPLAINT (Pelaporan Fasilitas Ruangan) ───
+    if (action === 'submit_report' || action === 'submit_complaint') {
+      const repName = (reporter_name || worker_name || '').trim()
+      const desc = (issue_description || notes || '').trim()
+
+      if (!repName) {
+        return NextResponse.json({ success: false, message: 'Nama pelapor wajib diisi' }, { status: 400 })
+      }
+      if (!desc) {
+        return NextResponse.json({ success: false, message: 'Deskripsi keluhan wajib diisi' }, { status: 400 })
+      }
+
+      const { data: reportData, error: reportErr } = await supabaseAdmin
+        .from('room_facility_reports')
+        .insert({
+          room_id: room.room_id,
+          reporter_name: repName,
+          reporter_contact: reporter_contact?.trim() || null,
+          issue_description: desc,
+          photo_file: image_file || null,
+          hosting_url: hosting_url || null,
+          status: 'pending'
+        })
+        .select()
+        .maybeSingle()
+
+      if (reportErr) {
+        console.error('[VendorChecklist API] Error inserting report:', reportErr)
+        if (reportErr.code === '42P01') {
+          return NextResponse.json({
+            success: false,
+            message: 'Tabel room_facility_reports belum dibuat di Supabase. Silakan jalankan file migrasi create-room-facility-reports-table.sql.'
+          }, { status: 500 })
+        }
+        throw reportErr
+      }
+
+      return NextResponse.json({
+        success: true,
+        message: 'Laporan kerusakan/keluhan fasilitas berhasil dikirim',
+        data: reportData
+      })
+    }
 
     // 2. Cek apakah sudah ada checklist untuk hari ini
     const { data: existing } = await supabaseAdmin

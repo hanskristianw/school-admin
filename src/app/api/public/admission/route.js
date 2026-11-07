@@ -72,7 +72,18 @@ function extractScheduleMeta(app) {
   if (!app) return app
   let meta = {}
   let promoMeta = {}
+  let referralMeta = null
   let cleanNotes = app.additional_notes || null
+
+  if (cleanNotes && cleanNotes.includes('[REFERRAL]:')) {
+    try {
+      const rParts = cleanNotes.split('[REFERRAL]:')
+      cleanNotes = rParts[0].trim() || null
+      referralMeta = rParts[1].split('[PROMO_CLAIM]:')[0].split('[SCHEDULE_META]:')[0].trim() || null
+    } catch (e) {
+      // ignore
+    }
+  }
 
   if (cleanNotes && cleanNotes.includes('[PROMO_CLAIM]:')) {
     try {
@@ -98,6 +109,7 @@ function extractScheduleMeta(app) {
   return {
     ...app,
     additional_notes: cleanNotes,
+    referral_name: app.referral_name || referralMeta || null,
     test_date: app.test_date || meta.test_date || null,
     test_session: app.test_session || meta.test_session || null,
     interview_date: app.interview_date || meta.interview_date || null,
@@ -645,7 +657,7 @@ export async function POST(request) {
 
     // ─── TAHAP 2: UPLOAD BUKTI PEMBAYARAN FORMULIR ──────────────
     if (action === 'upload_proof') {
-      const { application_number, payment_proof_file, hosting_url } = body
+      const { application_number, payment_proof_file, hosting_url, referral_name, referral } = body
 
       if (!application_number || !payment_proof_file) {
         return NextResponse.json(
@@ -654,16 +666,46 @@ export async function POST(request) {
         )
       }
 
-      const { data: updated, error: updateErr } = await supabaseAdmin
+      const refName = (referral_name || referral || '').trim() || null
+
+      let updatePayload = {
+        payment_proof_file,
+        form_fee_status: 'proof_uploaded',
+        paid_at: new Date().toISOString(),
+        hosting_url: hosting_url || null
+      }
+      if (refName) {
+        updatePayload.referral_name = refName
+      }
+
+      let { data: updated, error: updateErr } = await supabaseAdmin
         .from('student_applications')
-        .update({
-          payment_proof_file,
-          form_fee_status: 'proof_uploaded',
-          paid_at: new Date().toISOString(),
-          hosting_url: hosting_url || null
-        })
+        .update(updatePayload)
         .eq('application_number', application_number)
         .select()
+
+      // Fallback jika kolom referral_name belum ada di schema cache Supabase
+      if (updateErr && refName && (updateErr.message?.includes('referral_name') || updateErr.message?.includes('schema cache') || updateErr.message?.includes('column'))) {
+        delete updatePayload.referral_name
+
+        const { data: curr } = await supabaseAdmin
+          .from('student_applications')
+          .select('additional_notes')
+          .eq('application_number', application_number)
+          .single()
+
+        const baseNotes = (curr?.additional_notes || '').replace(/\[REFERRAL\]:.*$/s, '').trim()
+        updatePayload.additional_notes = baseNotes ? `${baseNotes}\n[REFERRAL]: ${refName}` : `[REFERRAL]: ${refName}`
+
+        const retry = await supabaseAdmin
+          .from('student_applications')
+          .update(updatePayload)
+          .eq('application_number', application_number)
+          .select()
+
+        updated = retry.data
+        updateErr = retry.error
+      }
 
       if (updateErr) {
         console.error('Error updating proof in Supabase:', updateErr)
@@ -673,10 +715,14 @@ export async function POST(request) {
         )
       }
 
+      const formatted = Array.isArray(updated) 
+        ? updated.map(extractScheduleMeta) 
+        : (updated ? extractScheduleMeta(updated) : updated)
+
       return NextResponse.json({
         success: true,
         message: 'Bukti transfer berhasil diperbarui di Supabase',
-        data: updated
+        data: formatted
       })
     }
 
@@ -835,6 +881,7 @@ export async function POST(request) {
         interview_date: interview_date || null,
         interview_session: interview_session || null,
         schedule_notes: schedule_notes || null,
+        referral_name: (body.referral_name || body.referral)?.trim() || null,
         is_form_completed: true,
         status: 'under_review'
       }
@@ -846,7 +893,13 @@ export async function POST(request) {
         .select()
 
       // Fallback jika kolom jadwal belum ditambahkan pada tabel database Supabase
-      if (updateErr && updateErr.message && (updateErr.message.includes('column') || updateErr.message.includes('test_date'))) {
+      if (updateErr && updateErr.message && (updateErr.message.includes('column') || updateErr.message.includes('test_date') || updateErr.message.includes('referral_name'))) {
+        if (updatePayload.referral_name) {
+          const rName = updatePayload.referral_name;
+          delete updatePayload.referral_name;
+          const prevNotes = updatePayload.additional_notes || '';
+          updatePayload.additional_notes = prevNotes ? `${prevNotes}\n[REFERRAL]: ${rName}` : `[REFERRAL]: ${rName}`;
+        }
         const schedMeta = {
           test_date: test_date || null,
           test_session: test_session || null,

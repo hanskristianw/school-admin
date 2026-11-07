@@ -74,6 +74,7 @@ export default function AdmissionPage() {
     parent_email: '',
     parent_occupation: '',
     parent_address: '',
+    referral_name: '',
     // School selection
     level_id: '',
     year_id: '',
@@ -343,6 +344,7 @@ export default function AdmissionPage() {
         parent_email: formData.parent_email.trim() || null,
         parent_occupation: formData.parent_occupation.trim() || null,
         parent_address: formData.parent_address.trim() || null,
+        referral_name: formData.referral_name?.trim() || null,
         unit_id: levels.find(l => l.level_id === parseInt(formData.level_id))?.unit_id || null,
         level_id: parseInt(formData.level_id),
         year_id: parseInt(formData.year_id),

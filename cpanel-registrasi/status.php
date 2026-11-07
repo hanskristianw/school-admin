@@ -140,6 +140,10 @@ $i18n = [
         'btn_view_file' => 'Lihat Berkas &rarr;',
         'notice_waiting_approval' => 'Bukti pembayaran Anda telah diterima dan sedang menunggu proses verifikasi staf Admissions di sistem sekolah.',
         'notice_rejected_msg' => 'Bukti pembayaran sebelumnya ditolak oleh admin sekolah. Silakan unggah kembali bukti transfer yang jelas dan valid.',
+        'lbl_referral' => 'Referral (Nama Orang Tua & Siswa yang Mereferensikan)',
+        'ph_referral' => 'Contoh: Bpk. Budi Santoso & Kevin Santoso (Kelas 3 Elementary)',
+        'hint_referral' => 'Opsional: Masukkan nama orang tua dan siswa CCS yang merekomendasikan Anda.',
+        'opt_optional' => 'Opsional',
 
         // Formulir Lengkap (Ketika verified)
         'fullform_badge' => 'Pembayaran Formulir Telah Diverifikasi',
@@ -328,6 +332,10 @@ $i18n = [
         'btn_view_file' => 'View Document &rarr;',
         'notice_waiting_approval' => 'Your payment receipt has been received and is currently under verification by the Admissions team in our school system.',
         'notice_rejected_msg' => 'Your previous payment receipt was rejected by the Admissions office. Please re-upload a clear and valid receipt.',
+        'lbl_referral' => 'Referral (Referring Parent & Student Name)',
+        'ph_referral' => 'e.g., Mr. Budi Santoso & Kevin Santoso (Grade 3 Elementary)',
+        'hint_referral' => 'Optional: Enter the parent and student who referred you to CCS.',
+        'opt_optional' => 'Optional',
 
         // Full Form
         'fullform_badge' => 'Application Form Payment Verified',
@@ -516,6 +524,10 @@ $i18n = [
         'btn_view_file' => '查看文件 &rarr;',
         'notice_waiting_approval' => '您的转账凭证已成功接收，正在等待学校招生团队在后台管理系统中核实确认。',
         'notice_rejected_msg' => '您之前提交的转账凭证已被驳回，请重新上传清晰有效的付款单据。',
+        'lbl_referral' => '推荐人（推荐家长与学生姓名）',
+        'ph_referral' => '例如：Budi Santoso 先生与 Kevin Santoso（小三）',
+        'hint_referral' => '选填：请输入向您推荐 CCS 的家长与学生姓名。',
+        'opt_optional' => '选填',
 
         // Full Form
         'fullform_badge' => '报名表格费用已审核确认',
@@ -757,10 +769,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action_upload_proof']
             $destination = $uploadDir . '/' . $newFilename;
 
             if (move_uploaded_file($file['tmp_name'], $destination)) {
+                $referralName = trim($_POST['referral_name'] ?? '');
                 $payload = [
                     'action' => 'upload_proof',
                     'application_number' => $targetAppNo,
                     'payment_proof_file' => $newFilename,
+                    'referral_name' => $referralName,
                     'hosting_url' => HOSTING_URL
                 ];
 
@@ -768,6 +782,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action_upload_proof']
 
                 if (!empty($res['success'])) {
                     $_SESSION['applicant_proof_file'] = $newFilename;
+                    if (!empty($referralName)) {
+                        $_SESSION['applicant_referral_name'] = $referralName;
+                        if (isset($currentApplicant) && is_array($currentApplicant)) {
+                            $currentApplicant['referral_name'] = $referralName;
+                        }
+                    }
                     $flashMsg = 'Bukti transfer berhasil dikirimkan! Staf Admissions akan segera memverifikasi.';
                     $flashType = 'success';
                 } else {
@@ -1858,6 +1878,25 @@ function formatTanggalIndo($dateStr, $lang = 'id') {
                 <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
                 <input type="hidden" name="action_upload_proof" value="1">
                 <input type="hidden" name="target_app_no" value="<?= htmlspecialchars($currentApplicant['application_number']) ?>">
+
+                <!-- Input Textbox Referral (Nama Orang Tua & Siswa) -->
+                <div class="space-y-1.5 text-left bg-slate-50 border border-slate-200 rounded-lg p-3 sm:p-4">
+                  <label for="referral_name" class="block text-xs font-bold text-ccsHeading">
+                    <?= htmlspecialchars($L['lbl_referral']) ?>
+                    <span class="text-gray-400 font-normal ml-1">(<?= htmlspecialchars($L['opt_optional']) ?>)</span>
+                  </label>
+                  <input 
+                    type="text" 
+                    name="referral_name" 
+                    id="referral_name" 
+                    value="<?= htmlspecialchars($currentApplicant['referral_name'] ?? ($_SESSION['applicant_referral_name'] ?? '')) ?>"
+                    placeholder="<?= htmlspecialchars($L['ph_referral']) ?>"
+                    class="w-full px-3.5 py-2.5 rounded-md border border-gray-300 text-xs text-ccsHeading focus:outline-none focus:border-ccsOrange transition shadow-xs bg-white"
+                  >
+                  <p class="text-[11px] text-gray-500">
+                    <?= htmlspecialchars($L['hint_referral']) ?>
+                  </p>
+                </div>
 
                 <!-- Hidden file input triggered by custom interactive area -->
                 <input 
