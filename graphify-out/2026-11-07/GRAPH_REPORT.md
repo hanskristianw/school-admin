@@ -1,7 +1,7 @@
 # Graph Report - school-admin  (2026-11-07)
 
 ## Corpus Check
-- 463 files · ~792,073 words
+- 463 files · ~794,062 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
@@ -860,7 +860,7 @@ Nodes (7): 13. COLOR & MATERIAL RULES, Background Confidence Rule, Background-im
 
 ### Community 133 - "Module 133"
 Cohesion: 0.15
-Nodes (13): @fortawesome/free-solid-svg-icons, @googleapis/chat, @hookform/resolvers, lucide-react, dependencies, @fortawesome/free-solid-svg-icons, @googleapis/chat, @hookform/resolvers (+5 more)
+Nodes (13): class-variance-authority, @googleapis/chat, @hookform/resolvers, lucide-react, dependencies, class-variance-authority, @googleapis/chat, @hookform/resolvers (+5 more)
 
 ### Community 135 - "Module 135"
 Cohesion: 0.29

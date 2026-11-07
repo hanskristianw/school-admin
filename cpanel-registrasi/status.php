@@ -113,6 +113,8 @@ $i18n = [
         'referral_badge_open' => 'Bisa Diisi / Dilewati',
         'lbl_referral_recorded' => 'Nama Orang Tua & Siswa CCS yang Merekomendasikan:',
         'referral_recorded_hint' => 'Data rekomendasi ini telah terhubung dengan berkas admisi calon siswa.',
+        'referral_approved_hint' => 'Calon siswa telah resmi diterima. Jika Anda mendaftar atas rekomendasi keluarga besar, orang tua siswa, atau staf CCS dan belum sempat mencatatkannya, Anda tetap dapat menyimpannya di bawah ini.',
+        'btn_cancel' => 'Batal',
         'btn_edit_referral' => 'Ubah Referral',
         'btn_save_referral' => 'Simpan Referral',
         'btn_skip_referral' => 'Lewati Tahap Ini',
@@ -321,6 +323,8 @@ $i18n = [
         'referral_badge_open' => 'Open / Optional',
         'lbl_referral_recorded' => 'Referring Parent & Student Name:',
         'referral_recorded_hint' => 'This recommendation has been attached to the student application record.',
+        'referral_approved_hint' => 'The applicant is officially accepted. If you applied based on a recommendation from CCS parents or students and have not recorded it yet, you can still save it here.',
+        'btn_cancel' => 'Cancel',
         'btn_edit_referral' => 'Edit Referral',
         'btn_save_referral' => 'Save Referral',
         'btn_skip_referral' => 'Skip This Step',
@@ -529,6 +533,8 @@ $i18n = [
         'referral_badge_open' => '可填写 / 可跳过',
         'lbl_referral_recorded' => '推荐家长与学生姓名：',
         'referral_recorded_hint' => '该推荐信息已与当前学生的报名档案成功关联。',
+        'referral_approved_hint' => '学生已被正式录取。若您是通过在校学生、家长或教职工推荐报名且此前未填写，您仍可在此补充推荐人信息。',
+        'btn_cancel' => '取消',
         'btn_edit_referral' => '修改推荐人',
         'btn_save_referral' => '保存推荐人',
         'btn_skip_referral' => '跳过此步骤',
@@ -1201,6 +1207,26 @@ function formatTanggalIndo($dateStr, $lang = 'id') {
       font-weight: 700;
     }
 
+        /* Active State Stepper Tabs */
+    .tab-active-circle {
+      outline: 3px solid #f26522 !important;
+      outline-offset: 3px !important;
+      transform: scale(1.08) !important;
+      box-shadow: 0 4px 12px rgba(242, 101, 34, 0.25) !important;
+      transition: all 0.25s ease !important;
+    }
+    .tab-active-title {
+      color: #f26522 !important;
+      font-weight: 800 !important;
+    }
+    .tab-pane {
+      animation: fadeInTab 0.2s ease-out;
+    }
+    @keyframes fadeInTab {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
     /* Logo Resmi CCS */
     .main-logo {
       width: 128px !important;
@@ -1545,10 +1571,12 @@ function formatTanggalIndo($dateStr, $lang = 'id') {
           $appNoKey = $currentApplicant['application_number'] ?? '';
           $hasReferral = !empty($currentApplicant['referral_name']);
           $isReferralSkipped = !empty($_SESSION['referral_skipped_' . $appNoKey]);
+          $isAdvancedStage = ($overallStatus === 'approved' || $overallStatus === 'rejected' || $isFormDone || $feeStatus === 'verified');
 
           if ($hasReferral) {
               $s3 = ['state' => 'done', 'title' => $L['stepper_step3_title'], 'sub' => $L['stepper_step3_sub_done']];
-          } elseif ($isReferralSkipped) {
+          } elseif ($isReferralSkipped || $isAdvancedStage) {
+              // Jika sudah di tahap lanjut (sudah diterima / isi biodata) dan belum mengisi referral, tampilkan sebagai dilewati (opsional) bukan oranye aktif
               $s3 = ['state' => 'skipped', 'title' => $L['stepper_step3_title'], 'sub' => $L['stepper_step3_sub_skipped']];
           } else {
               $s3 = ['state' => 'active_referral', 'title' => $L['stepper_step3_title'], 'sub' => $L['stepper_step3_sub_fill']];
@@ -1596,6 +1624,22 @@ function formatTanggalIndo($dateStr, $lang = 'id') {
               $progressPct = 30;
           } else {
               $progressPct = 16.6;
+          }
+
+
+          // Penentuan Tab Default yang Otomatis Terbuka Berdasarkan Posisi Terkini
+          $defaultTab = 2; // Default awal jika menunggu pembayaran
+          if ($overallStatus === 'approved' || $overallStatus === 'rejected') {
+              $defaultTab = 6;
+          } elseif ($isFormDone) {
+              $defaultTab = 5;
+          } elseif ($feeStatus === 'verified') {
+              $defaultTab = 4;
+          } elseif ($feeStatus === 'proof_uploaded') {
+              $defaultTab = empty($currentApplicant['referral_name']) ? 3 : 2;
+          }
+          if (!empty($_GET['edit_referral']) || isset($_POST['action_save_referral']) || isset($_POST['action_skip_referral'])) {
+              $defaultTab = 3;
           }
 
           // Callout Box Content (6 Tahap)
@@ -1799,33 +1843,45 @@ function formatTanggalIndo($dateStr, $lang = 'id') {
                 <div class="h-full bg-emerald-500 rounded-full transition-all duration-700" style="width: <?= $progressPct ?>%;"></div>
               </div>
 
-              <!-- Grid 6 Lingkaran (Termasuk Tahap Referral Opsional) -->
+              <!-- Grid 6 Lingkaran Stepper Sebagai Tab Interaktif (Desktop) -->
               <div class="grid grid-cols-6 gap-2 relative z-10 text-center">
                 <?php foreach ($allSteps as $idx => $step): 
+                  $tabNum = $idx + 1;
                   $b = getCircleBadge($step);
                 ?>
-                  <div class="flex flex-col items-center">
-                    <div class="w-11 h-11 rounded-full flex items-center justify-center <?= $b['circle'] ?> transition-transform hover:scale-105">
+                  <button 
+                    type="button" 
+                    onclick="switchTab(<?= $tabNum ?>)" 
+                    id="step-tab-btn-<?= $tabNum ?>"
+                    class="step-tab-btn flex flex-col items-center group cursor-pointer transition-all focus:outline-none"
+                    title="Buka <?= htmlspecialchars($step['title']) ?>"
+                  >
+                    <div id="step-circle-<?= $tabNum ?>" class="w-11 h-11 rounded-full flex items-center justify-center <?= $b['circle'] ?> transition-transform group-hover:scale-105">
                       <i class="<?= $b['icon'] ?>"></i>
                     </div>
-                    <div class="font-bold text-xs mt-2 text-ccsHeading leading-snug">
+                    <div id="step-title-<?= $tabNum ?>" class="font-bold text-xs mt-2 text-ccsHeading leading-snug group-hover:text-ccsOrange transition-colors">
                       <?= htmlspecialchars($step['title']) ?>
                     </div>
                     <div class="text-[11px] mt-0.5 <?= $b['subClass'] ?> leading-tight">
                       <?= htmlspecialchars($step['sub']) ?>
                     </div>
-                  </div>
+                  </button>
                 <?php endforeach; ?>
               </div>
             </div>
 
-            <!-- TAMPILAN MOBILE: LIST VERTIKAL 6 TAHAP DENGAN INDIKATOR -->
-            <div class="sm:hidden space-y-2.5 pt-1">
+            <!-- TAMPILAN MOBILE: LIST 6 TAHAP SEBAGAI TAB BUTTON (Mobile) -->
+            <div class="sm:hidden space-y-2 pt-1">
               <?php foreach ($allSteps as $idx => $step): 
+                $tabNum = $idx + 1;
                 $b = getCircleBadge($step);
-                $isActive = in_array($step['state'], ['waiting_upload', 'waiting_review', 'active_referral', 'active_fill', 'in_review', 'approved']);
               ?>
-                <div class="flex items-center gap-3 p-2.5 rounded-md <?= $isActive ? 'bg-white border-2 border-ccsOrange/50 shadow-xs' : 'bg-slate-100/70 border border-slate-200' ?>">
+                <button 
+                  type="button" 
+                  onclick="switchTab(<?= $tabNum ?>)" 
+                  id="mob-step-tab-btn-<?= $tabNum ?>"
+                  class="mob-step-tab-btn w-full flex items-center gap-3 p-2.5 rounded-md text-left transition-all bg-slate-100/70 border border-slate-200 hover:bg-slate-50 focus:outline-none"
+                >
                   <div class="w-9 h-9 rounded-full flex items-center justify-center shrink-0 <?= $b['circle'] ?>">
                     <i class="<?= $b['icon'] ?>"></i>
                   </div>
@@ -1833,12 +1889,10 @@ function formatTanggalIndo($dateStr, $lang = 'id') {
                     <div class="text-xs font-bold text-ccsHeading truncate"><?= htmlspecialchars($step['title']) ?></div>
                     <div class="text-[11px] <?= $b['subClass'] ?> truncate"><?= htmlspecialchars($step['sub']) ?></div>
                   </div>
-                  <?php if ($isActive): ?>
-                    <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-orange-100 text-orange-800 uppercase tracking-wider shrink-0">
-                      Aktif
-                    </span>
-                  <?php endif; ?>
-                </div>
+                  <span id="mob-active-pill-<?= $tabNum ?>" class="mob-active-pill hidden px-2 py-0.5 rounded-full text-[10px] font-bold bg-orange-100 text-orange-800 uppercase tracking-wider shrink-0">
+                    Melihat
+                  </span>
+                </button>
               <?php endforeach; ?>
             </div>
 
@@ -1857,251 +1911,266 @@ function formatTanggalIndo($dateStr, $lang = 'id') {
               </div>
             </div>
 
+            <!-- Baris Indikator Navigasi Arsip (Muncul Jika Sedang Melihat Tahap Selain Tahap Terkini) -->
+            <div id="viewing-archived-bar" class="hidden p-2.5 sm:p-3 bg-amber-50/80 border border-amber-200 rounded-md text-xs flex items-center justify-between text-amber-900 transition-all">
+              <div class="flex items-center gap-2">
+                <i class="fas fa-eye text-amber-600"></i>
+                <span>Menampilkan rincian <strong>Tahap <span id="viewing-tab-num">1</span></strong></span>
+              </div>
+              <button type="button" onclick="switchTab(window.APP_DEFAULT_TAB || 1)" class="text-ccsOrange font-semibold hover:underline flex items-center gap-1">
+                Kembali ke Posisi Terkini (Tahap <?= $defaultTab ?>) &rarr;
+              </button>
+            </div>
+
           </div>
 
           <!-- ═══════════════════════════════════════════════════════════════ -->
-          <!-- KONDISI UTAMA: RESMI DITERIMA / BELUM VERIFIED / BIODATA / DST  -->
+          <!-- SISTEM TAB NAVIGASI TAHAPAN PENDAFTARAN (MINIMALIST & INTERAKTIF) -->
           <!-- ═══════════════════════════════════════════════════════════════ -->
-          <?php if ($overallStatus === 'approved'): ?>
-            <div class="border-t border-gray-200 pt-5 space-y-4">
-              <!-- Kartu Status Diterima: Institutional, Dignified, Sesuai Gaya Halaman (No AI gradient) -->
-              <div class="bg-white border border-gray-200 rounded-md p-6 sm:p-8 text-center space-y-4 shadow-xs">
-                
-                <div class="w-14 h-14 rounded-full bg-emerald-50 text-emerald-700 mx-auto flex items-center justify-center text-2xl border border-emerald-200">
-                  <i class="fas fa-graduation-cap"></i>
-                </div>
+          <div id="tabs-container" class="space-y-4 pt-2">
 
-                <div class="space-y-1">
-                  <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200 mb-1">
-                    <i class="fas fa-check-circle text-emerald-600"></i> <?= htmlspecialchars($L['approved_card_badge']) ?>
-                  </div>
-                  <h2 class="text-xl sm:text-2xl font-bold text-ccsHeading">
-                    <?= htmlspecialchars($L['approved_card_title']) ?>
-                  </h2>
-                  <p class="text-xs sm:text-sm text-gray-600 max-w-xl mx-auto leading-relaxed pt-1">
-                    <?= sprintf(
-                        $L['approved_card_desc'],
-                        htmlspecialchars($currentApplicant['student_name']),
-                        htmlspecialchars($currentApplicant['level_name'] ?? $currentApplicant['preferred_grade'] ?? '-')
-                    ) ?>
-                  </p>
-                </div>
-
-                <!-- Structured Metadata Box Sesuai Gaya Box Tanda Terima -->
-                <div class="p-4 bg-slate-50 rounded-md border border-slate-200 max-w-md mx-auto text-left text-xs space-y-2 text-gray-700">
-                  <div class="flex justify-between items-center pb-2 border-b border-slate-200/80">
-                    <span class="text-gray-500"><?= htmlspecialchars($L['lbl_code']) ?>:</span>
-                    <span class="font-mono text-ccsHeading font-bold"><?= htmlspecialchars($currentApplicant['application_number']) ?></span>
-                  </div>
-                  <div class="flex justify-between items-center pb-2 border-b border-slate-200/80">
-                    <span class="text-gray-500"><?= htmlspecialchars($L['lbl_student']) ?>:</span>
-                    <span class="font-semibold text-gray-900"><?= htmlspecialchars($currentApplicant['student_name']) ?></span>
-                  </div>
-                  <div class="flex justify-between items-center pb-2 border-b border-slate-200/80">
-                    <span class="text-gray-500"><?= htmlspecialchars($L['lbl_level_selected']) ?>:</span>
-                    <span class="font-medium text-gray-900"><?= htmlspecialchars($currentApplicant['level_name'] ?? $currentApplicant['preferred_grade'] ?? '-') ?></span>
-                  </div>
-                  <div class="flex justify-between items-center <?= !empty($currentApplicant['admin_notes']) ? 'pb-2 border-b border-slate-200/80' : '' ?>">
-                    <span class="text-gray-500">Status Seleksi:</span>
-                    <span class="text-emerald-700 font-bold inline-flex items-center gap-1">
-                      <i class="fas fa-check-circle"></i> <?= htmlspecialchars($L['approved_card_status']) ?>
-                    </span>
-                  </div>
-                  <?php if (!empty($currentApplicant['admin_notes'])): ?>
-                    <div class="pt-1">
-                      <span class="text-gray-500 block mb-1"><?= htmlspecialchars($L['approved_card_admin_notes']) ?></span>
-                      <div class="p-2.5 bg-white rounded border border-slate-200 text-gray-800 italic text-[11px] leading-relaxed">
-                        &ldquo;<?= nl2br(htmlspecialchars($currentApplicant['admin_notes'])) ?>&rdquo;
-                      </div>
+            <!-- ─── TAB 1: REGISTRASI AWAL ──────────────────────────────── -->
+            <div id="panel-tab-1" class="tab-pane hidden space-y-4">
+              <div class="bg-white border border-gray-200 rounded-md p-5 sm:p-6 space-y-4 shadow-xs">
+                <div class="flex items-center justify-between border-b border-gray-200 pb-3 flex-wrap gap-2">
+                  <div class="flex items-center gap-2.5">
+                    <div class="w-8 h-8 rounded-full bg-emerald-50 text-emerald-700 flex items-center justify-center text-sm font-bold border border-emerald-200">
+                      <i class="fas fa-id-card"></i>
                     </div>
+                    <div>
+                      <h3 class="text-sm font-bold text-ccsHeading uppercase tracking-wider">
+                        <?= htmlspecialchars($L['stepper_step1_title'] ?? '1. Registrasi') ?>
+                      </h3>
+                      <p class="text-[11px] text-gray-500">
+                        <?= htmlspecialchars($L['stepper_step1_sub'] ?? 'Nomor Registrasi Resmi Diterbitkan') ?>
+                      </p>
+                    </div>
+                  </div>
+                  <span class="px-2.5 py-1 rounded text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200 inline-flex items-center gap-1.5">
+                    <i class="fas fa-check-circle text-emerald-600"></i> Terbit Resmi
+                  </span>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                  <div class="p-3 bg-slate-50 border border-slate-200 rounded-md">
+                    <span class="text-[10px] text-gray-500 uppercase block font-mono"><?= htmlspecialchars($L['lbl_code']) ?>:</span>
+                    <span class="text-base font-bold font-mono text-ccsHeading select-all"><?= htmlspecialchars($currentApplicant['application_number']) ?></span>
+                  </div>
+                  <div class="p-3 bg-slate-50 border border-slate-200 rounded-md">
+                    <span class="text-[10px] text-gray-500 uppercase block font-mono"><?= htmlspecialchars($L['lbl_student']) ?>:</span>
+                    <span class="text-sm font-bold text-gray-900"><?= htmlspecialchars($currentApplicant['student_name']) ?></span>
+                  </div>
+                  <div class="p-3 bg-slate-50 border border-slate-200 rounded-md">
+                    <span class="text-[10px] text-gray-500 uppercase block font-mono"><?= htmlspecialchars($L['lbl_level_selected']) ?>:</span>
+                    <span class="text-xs font-semibold text-gray-900"><?= htmlspecialchars($currentApplicant['level_name'] ?? $currentApplicant['preferred_grade'] ?? '-') ?></span>
+                  </div>
+                  <div class="p-3 bg-slate-50 border border-slate-200 rounded-md">
+                    <span class="text-[10px] text-gray-500 uppercase block font-mono">Tanggal Pendaftaran:</span>
+                    <span class="text-xs font-semibold text-gray-900"><?= formatTanggalIndo($currentApplicant['created_at'] ?? null, $currLang) ?></span>
+                  </div>
+                  <div class="p-3 bg-slate-50 border border-slate-200 rounded-md">
+                    <span class="text-[10px] text-gray-500 uppercase block font-mono">Nama Orang Tua / Kontak:</span>
+                    <span class="text-xs font-semibold text-gray-900"><?= htmlspecialchars($currentApplicant['parent_name'] ?? $currentApplicant['father_name'] ?? '-') ?> &bull; <?= htmlspecialchars($currentApplicant['parent_phone'] ?? $currentApplicant['father_phone'] ?? '-') ?></span>
+                  </div>
+                  <div class="p-3 bg-slate-50 border border-slate-200 rounded-md">
+                    <span class="text-[10px] text-gray-500 uppercase block font-mono">Email Terdaftar:</span>
+                    <span class="text-xs font-semibold text-gray-900"><?= htmlspecialchars($currentApplicant['parent_email'] ?? $currentApplicant['father_email'] ?? '-') ?></span>
+                  </div>
+                </div>
+
+                <div class="flex items-center justify-end pt-3 border-t border-gray-100 flex-wrap gap-2 text-xs">
+                  <button type="button" onclick="switchTab(2)" class="thm-btn px-4 py-1.5 flex items-center gap-1.5 font-semibold text-xs">
+                    Lanjut ke Tahap 2: Biaya Formulir &rarr;
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- ─── TAB 2: BIAYA FORMULIR & BUKTI PEMBAYARAN ───────────── -->
+            <div id="panel-tab-2" class="tab-pane hidden space-y-4">
+              <div id="tempat-unggah" class="bg-white border border-gray-200 rounded-md p-5 sm:p-6 space-y-4 shadow-xs scroll-mt-28">
+                
+                <div class="flex items-center justify-between border-b border-gray-200 pb-3 flex-wrap gap-2">
+                  <div class="flex items-center gap-2.5">
+                    <div class="w-8 h-8 rounded-full bg-blue-50 text-ccsHeading flex items-center justify-center text-sm font-bold border border-blue-200">
+                      <i class="fas fa-money-check-alt"></i>
+                    </div>
+                    <div>
+                      <h3 class="text-sm font-bold text-ccsHeading uppercase tracking-wider">
+                        <?= htmlspecialchars($L['stepper_step2_title'] ?? '2. Biaya Formulir') ?>
+                      </h3>
+                      <p class="text-[11px] text-gray-500">
+                        Transfer Rekening Resmi Bank Mayapada & Bukti Bayar
+                      </p>
+                    </div>
+                  </div>
+                  <?php if ($feeStatus === 'verified'): ?>
+                    <span class="px-2.5 py-1 rounded text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200 inline-flex items-center gap-1.5">
+                      <i class="fas fa-check-circle text-emerald-600"></i> Lunas Terverifikasi
+                    </span>
+                  <?php elseif ($feeStatus === 'proof_uploaded'): ?>
+                    <span class="px-2.5 py-1 rounded text-xs font-semibold bg-sky-50 text-sky-800 border border-sky-200 inline-flex items-center gap-1.5">
+                      <i class="fas fa-clock text-sky-600"></i> Verifikasi Struk
+                    </span>
+                  <?php elseif ($feeStatus === 'rejected'): ?>
+                    <span class="px-2.5 py-1 rounded text-xs font-semibold bg-rose-50 text-rose-800 border border-rose-200 inline-flex items-center gap-1.5">
+                      <i class="fas fa-exclamation-triangle text-rose-600"></i> Bukti Ditolak
+                    </span>
+                  <?php else: ?>
+                    <span class="px-2.5 py-1 rounded text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-200 inline-flex items-center gap-1.5">
+                      <i class="fas fa-hourglass-half text-amber-600"></i> Menunggu Bukti Transfer
+                    </span>
                   <?php endif; ?>
                 </div>
 
-                <p class="text-xs text-gray-500 max-w-md mx-auto leading-relaxed pt-1">
-                  <?= htmlspecialchars($L['approved_card_email_notice']) ?>
-                </p>
-              </div>
-
-              <!-- Rekam Jadwal Observasi & Wawancara (Sebagai Arsip Riwayat, Tanpa Tombol Reschedule) -->
-              <?php if (!empty($currentApplicant['test_date']) || !empty($currentApplicant['interview_date'])): ?>
-                <div class="bg-white border border-gray-200 rounded-md p-5 space-y-4 shadow-xs">
-                  <div class="flex items-center justify-between flex-wrap gap-2 pb-3 border-b border-gray-200">
-                    <div class="flex items-center gap-2">
-                      <div class="w-8 h-8 rounded-full bg-slate-100 text-ccsHeading flex items-center justify-center border border-slate-200 text-sm">
-                        <i class="far fa-calendar-check"></i>
-                      </div>
-                      <div>
-                        <h3 class="text-xs font-bold text-ccsHeading uppercase tracking-wider"><?= htmlspecialchars($L['approved_sched_history_title']) ?></h3>
-                        <p class="text-[11px] text-gray-500 font-mono"><?= htmlspecialchars($currentApplicant['application_number']) ?> &bull; <?= htmlspecialchars($currentApplicant['student_name']) ?></p>
-                      </div>
-                    </div>
-                    <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
-                      <?= htmlspecialchars($L['approved_sched_history_badge']) ?>
-                    </span>
-                  </div>
-
-                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                    <?php if (!empty($currentApplicant['test_date'])): ?>
-                      <div class="p-3 bg-slate-50 border border-slate-200 rounded-md space-y-1">
-                        <span class="text-[10px] text-gray-500 uppercase block font-mono"><?= htmlspecialchars($L['test_schedule_badge']) ?>:</span>
-                        <div class="font-bold text-ccsHeading"><?= formatTanggalIndo($currentApplicant['test_date'], $currLang) ?></div>
-                        <div class="text-gray-600 text-[11px]"><?= htmlspecialchars($currentApplicant['test_session'] ?? '-') ?></div>
-                      </div>
-                    <?php endif; ?>
-                    <?php if (!empty($currentApplicant['interview_date'])): ?>
-                      <div class="p-3 bg-slate-50 border border-slate-200 rounded-md space-y-1">
-                        <span class="text-[10px] text-gray-500 uppercase block font-mono"><?= htmlspecialchars($L['interview_schedule_badge']) ?>:</span>
-                        <div class="font-bold text-ccsHeading"><?= formatTanggalIndo($currentApplicant['interview_date'], $currLang) ?></div>
-                        <div class="text-gray-600 text-[11px]"><?= htmlspecialchars($currentApplicant['interview_session'] ?? '-') ?></div>
-                      </div>
-                    <?php endif; ?>
-                  </div>
-                </div>
-              <?php endif; ?>
-
-            </div>
-
-          <!-- ───────────────────────────────────────────────────────────── -->
-          <!-- KONDISI B: BELUM VERIFIED (REKENING BANK & UPLOAD STRUK)       -->
-          <!-- ───────────────────────────────────────────────────────────── -->
-          <?php elseif (($currentApplicant['form_fee_status'] ?? '') !== 'verified'): ?>
-            <div id="tempat-unggah" class="border-t border-gray-200 pt-5 space-y-4 scroll-mt-28">
-              
-              <!-- Info Rekening Bank Mayapada: Formal & Dignified (No AI gradient) -->
-              <div class="bg-[#022c46] text-white p-5 rounded-md border border-[#0b4877] space-y-3">
-                <div class="flex items-center justify-between border-b border-white/10 pb-2.5">
-                  <div class="flex items-center gap-2">
+                <!-- Info Rekening Bank Mayapada -->
+                <div class="bg-[#022c46] text-white p-5 rounded-md border border-[#0b4877] space-y-3">
+                  <div class="flex items-center justify-between border-b border-white/10 pb-2.5">
                     <span class="font-bold text-sm tracking-wide text-white"><?= htmlspecialchars(BANK_NAME) ?></span>
+                    <span class="text-[11px] font-mono bg-white/10 px-2 py-0.5 rounded text-gray-200">IDR</span>
                   </div>
-                  <span class="text-[11px] font-mono bg-white/10 px-2 py-0.5 rounded text-gray-200">IDR</span>
-                </div>
-                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
-                  <div>
-                    <span class="text-[11px] text-gray-300 block"><?= htmlspecialchars($L['bank_card_rek']) ?></span>
-                    <span class="text-lg font-mono font-bold tracking-wider text-white select-all"><?= htmlspecialchars(BANK_REK) ?></span>
-                    <span class="text-xs text-gray-300 block mt-0.5"><?= htmlspecialchars($L['bank_card_an']) ?> <strong class="text-white"><?= htmlspecialchars(BANK_AN) ?></strong></span>
-                  </div>
-                  <button 
-                    type="button" 
-                    id="copyRekBtn"
-                    onclick="copyRekeningNumber()" 
-                    class="self-start sm:self-center px-3 py-1.5 rounded bg-white/15 hover:bg-white/25 text-xs font-semibold text-white transition flex items-center gap-1.5"
-                  >
-                    <i class="far fa-copy"></i> <span><?= htmlspecialchars($L['lbl_copy_rek'] ?? 'Salin') ?></span>
-                  </button>
-                </div>
-                <div class="text-[11px] text-gray-300 pt-2 border-t border-white/10 flex flex-wrap items-center gap-1.5">
-                  <span><?= htmlspecialchars($L['bank_card_remark']) ?> <strong class="text-white font-mono"><?= htmlspecialchars($currentApplicant['application_number']) ?> <?= htmlspecialchars($currentApplicant['student_name']) ?></strong></span>
-                </div>
-              </div>
-
-              <!-- Alert Jika Bukti Ditolak -->
-              <?php if (($currentApplicant['form_fee_status'] ?? '') === 'rejected'): ?>
-                <div class="p-3.5 bg-rose-50 border border-rose-200 rounded-md text-xs text-rose-800 flex items-center gap-2.5">
-                  <i class="fas fa-exclamation-triangle text-rose-600 shrink-0"></i>
-                  <span><?= htmlspecialchars($L['notice_rejected_msg']) ?></span>
-                </div>
-              <?php endif; ?>
-
-              <!-- Form Upload Bukti Struk Transfer -->
-              <div class="pt-2">
-                <h3 class="text-sm font-bold text-ccsHeading">
-                  <?= empty($currentApplicant['payment_proof_file']) ? htmlspecialchars($L['upload_title']) : htmlspecialchars($L['upload_title_re']) ?>
-                </h3>
-              </div>
-
-              <form method="POST" id="proofUploadForm" action="status.php?cek=<?= urlencode($searchQuery) ?>&phone=<?= urlencode($searchPhone) ?>&lang=<?= $currLang ?>#tempat-unggah" enctype="multipart/form-data" class="space-y-4">
-                <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
-                <input type="hidden" name="action_upload_proof" value="1">
-                <input type="hidden" name="target_app_no" value="<?= htmlspecialchars($currentApplicant['application_number']) ?>">
-
-                <!-- Hidden file input triggered by custom interactive area -->
-                <input 
-                  type="file" 
-                  name="payment_proof" 
-                  id="paymentProofFile" 
-                  required 
-                  accept=".jpg,.jpeg,.png,.webp,.pdf" 
-                  class="hidden" 
-                  onchange="handleProofFileSelect(this)"
-                >
-
-                <!-- Interactive Dropzone / File Picker Area -->
-                <div 
-                  id="proofDropArea"
-                  onclick="document.getElementById('paymentProofFile').click()"
-                  class="border-2 border-dashed border-gray-300 hover:border-ccsOrange rounded-lg p-6 sm:p-7 text-center cursor-pointer transition-all bg-slate-50/70 hover:bg-orange-50/20 group select-none"
-                >
-                  <!-- State 1: Belum Ada File Dipilih -->
-                  <div id="proofEmptyPrompt" class="space-y-3">
-                    <div class="w-12 h-12 rounded-full bg-white border border-gray-200 text-ccsOrange flex items-center justify-center mx-auto text-xl shadow-xs group-hover:scale-105 group-hover:border-orange-300 transition-all">
-                      <i class="fas fa-file-invoice-dollar"></i>
+                  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
+                    <div>
+                      <span class="text-[11px] text-gray-300 block"><?= htmlspecialchars($L['bank_card_rek']) ?></span>
+                      <span class="text-lg font-mono font-bold tracking-wider text-white select-all"><?= htmlspecialchars(BANK_REK) ?></span>
+                      <span class="text-xs text-gray-300 block mt-0.5"><?= htmlspecialchars($L['bank_card_an']) ?> <strong class="text-white"><?= htmlspecialchars(BANK_AN) ?></strong></span>
                     </div>
-                    <div class="space-y-1.5">
-                      <div>
-                        <span class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 group-hover:border-ccsOrange shadow-xs rounded-md text-xs font-bold text-ccsHeading transition">
-                          <i class="fas fa-folder-open text-ccsOrange"></i> <?= htmlspecialchars($L['btn_browse_file'] ?? 'Pilih File Struk Transfer') ?>
+                    <button 
+                      type="button" 
+                      id="copyRekBtn"
+                      onclick="copyRekeningNumber()" 
+                      class="self-start sm:self-center px-3 py-1.5 rounded bg-white/15 hover:bg-white/25 text-xs font-semibold text-white transition flex items-center gap-1.5"
+                    >
+                      <i class="far fa-copy"></i> <span><?= htmlspecialchars($L['lbl_copy_rek'] ?? 'Salin') ?></span>
+                    </button>
+                  </div>
+                  <div class="text-[11px] text-gray-300 pt-2 border-t border-white/10 flex flex-wrap items-center gap-1.5">
+                    <span><?= htmlspecialchars($L['bank_card_remark']) ?> <strong class="text-white font-mono"><?= htmlspecialchars($currentApplicant['application_number']) ?> <?= htmlspecialchars($currentApplicant['student_name']) ?></strong></span>
+                  </div>
+                </div>
+
+                <!-- Alert Jika Bukti Ditolak -->
+                <?php if ($feeStatus === 'rejected'): ?>
+                  <div class="p-3.5 bg-rose-50 border border-rose-200 rounded-md text-xs text-rose-800 flex items-center gap-2.5">
+                    <i class="fas fa-exclamation-triangle text-rose-600 shrink-0"></i>
+                    <span><?= htmlspecialchars($L['notice_rejected_msg']) ?></span>
+                  </div>
+                <?php endif; ?>
+
+                <!-- Tampilan Jika Sudah Lunas Terverifikasi -->
+                <?php if ($feeStatus === 'verified'): ?>
+                  <div class="p-4 bg-emerald-50/70 border border-emerald-200 rounded-md text-xs text-emerald-900 flex items-center justify-between flex-wrap gap-2">
+                    <div class="flex items-center gap-2">
+                      <i class="fas fa-check-circle text-emerald-600 text-base shrink-0"></i>
+                      <span>Pembayaran biaya formulir telah diverifikasi lunas oleh staf Admissions sekolah.</span>
+                    </div>
+                    <?php if (!empty($currentApplicant['payment_proof_file'])): ?>
+                      <a href="status.php?action=view_proof&file=<?= urlencode($currentApplicant['payment_proof_file']) ?>" target="_blank" class="px-3 py-1.5 rounded bg-emerald-100 text-emerald-900 border border-emerald-300 font-semibold hover:bg-emerald-200 transition inline-flex items-center gap-1">
+                        <i class="fas fa-file-invoice"></i> Lihat Berkas Struk &rarr;
+                      </a>
+                    <?php endif; ?>
+                  </div>
+                <?php else: ?>
+                  <!-- Form Upload Bukti Struk Transfer -->
+                  <div class="pt-1 space-y-3">
+                    <h4 class="text-xs font-bold text-ccsHeading uppercase tracking-wider">
+                      <?= empty($currentApplicant['payment_proof_file']) ? htmlspecialchars($L['upload_title']) : htmlspecialchars($L['upload_title_re']) ?>
+                    </h4>
+
+                    <form method="POST" id="proofUploadForm" action="status.php?cek=<?= urlencode($searchQuery) ?>&phone=<?= urlencode($searchPhone) ?>&lang=<?= $currLang ?>#step-2" enctype="multipart/form-data" class="space-y-4">
+                      <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
+                      <input type="hidden" name="action_upload_proof" value="1">
+                      <input type="hidden" name="target_app_no" value="<?= htmlspecialchars($currentApplicant['application_number']) ?>">
+
+                      <input 
+                        type="file" 
+                        name="payment_proof" 
+                        id="paymentProofFile" 
+                        required 
+                        accept=".jpg,.jpeg,.png,.webp,.pdf" 
+                        class="hidden" 
+                        onchange="handleProofFileSelect(this)"
+                      >
+
+                      <div 
+                        id="proofDropArea"
+                        onclick="document.getElementById('paymentProofFile').click()"
+                        class="border-2 border-dashed border-gray-300 hover:border-ccsOrange rounded-lg p-6 sm:p-7 text-center cursor-pointer transition-all bg-slate-50/70 hover:bg-orange-50/20 group select-none"
+                      >
+                        <div id="proofEmptyPrompt" class="space-y-2">
+                          <div class="w-10 h-10 rounded-full bg-white border border-gray-200 text-ccsOrange flex items-center justify-center mx-auto text-lg shadow-xs group-hover:scale-105 group-hover:border-orange-300 transition-all">
+                            <i class="fas fa-file-invoice-dollar"></i>
+                          </div>
+                          <div>
+                            <span class="inline-flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-300 group-hover:border-ccsOrange shadow-xs rounded-md text-xs font-bold text-ccsHeading transition">
+                              <i class="fas fa-folder-open text-ccsOrange"></i> <?= htmlspecialchars($L['btn_browse_file'] ?? 'Pilih File Struk Transfer') ?>
+                            </span>
+                            <p class="text-[11px] text-gray-500 mt-1"><?= htmlspecialchars($L['upload_drag_hint']) ?></p>
+                          </div>
+                        </div>
+
+                        <div id="proofSelectedPrompt" class="hidden py-1">
+                          <div class="inline-flex items-center gap-3 px-4 py-2.5 bg-emerald-50 border border-emerald-300 rounded-md text-left text-xs max-w-full shadow-xs">
+                            <div class="w-8 h-8 rounded bg-emerald-100 text-emerald-700 flex items-center justify-center text-sm shrink-0">
+                              <i id="proofFileIcon" class="fas fa-file-image"></i>
+                            </div>
+                            <div class="min-w-0 flex-1 pr-2">
+                              <div id="proofFileName" class="font-bold text-emerald-950 truncate max-w-xs sm:max-w-md">nama_file.jpg</div>
+                              <div id="proofFileSize" class="text-[11px] text-emerald-700 font-medium">1.2 MB</div>
+                            </div>
+                            <span class="text-xs text-ccsOrange font-bold underline hover:text-orange-700 ml-2 whitespace-nowrap">
+                              <?= htmlspecialchars($L['btn_change_file'] ?? 'Ganti File') ?>
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div class="flex flex-col sm:flex-row sm:items-center gap-3 pt-1">
+                        <button 
+                          type="submit" 
+                          id="submitProofBtn"
+                          class="thm-btn w-full sm:w-auto px-7 py-2.5 text-xs font-semibold flex items-center justify-center gap-2 opacity-50 cursor-not-allowed transition-all"
+                          disabled
+                        >
+                          <i class="fas fa-paper-plane"></i> <?= htmlspecialchars($L['btn_upload']) ?>
+                        </button>
+                        <span id="submitProofHint" class="text-xs text-gray-400">
+                          <?= htmlspecialchars($L['upload_need_file_hint'] ?? '* Silakan pilih berkas struk transfer terlebih dahulu di atas.') ?>
                         </span>
                       </div>
-                      <p class="text-xs text-gray-500 font-medium pt-1"><?= htmlspecialchars($L['upload_choose_hint'] ?? 'atau seret dan lepas file ke kotak ini') ?></p>
-                      <p class="text-[11px] text-gray-400"><?= htmlspecialchars($L['upload_drag_hint']) ?></p>
-                    </div>
-                  </div>
+                    </form>
 
-                  <!-- State 2: File Telah Dipilih -->
-                  <div id="proofSelectedPrompt" class="hidden py-1">
-                    <div class="inline-flex items-center gap-3 px-4 py-3 bg-emerald-50 border border-emerald-300 rounded-md text-left text-xs max-w-full shadow-xs">
-                      <div class="w-9 h-9 rounded bg-emerald-100 text-emerald-700 flex items-center justify-center text-base shrink-0">
-                        <i id="proofFileIcon" class="fas fa-file-image"></i>
+                    <?php if (!empty($currentApplicant['payment_proof_file'])): ?>
+                      <div class="p-3 bg-sky-50 border border-sky-200 rounded-md text-xs text-sky-900 flex items-center justify-between mt-2">
+                        <div class="flex items-center gap-2">
+                          <i class="fas fa-info-circle text-sky-600 shrink-0"></i>
+                          <span><?= htmlspecialchars($L['notice_waiting_approval']) ?></span>
+                        </div>
+                        <a href="status.php?action=view_proof&file=<?= urlencode($currentApplicant['payment_proof_file']) ?>" target="_blank" class="text-ccsOrange font-semibold hover:underline ml-2 whitespace-nowrap">
+                          <?= $L['btn_view_file'] ?>
+                        </a>
                       </div>
-                      <div class="min-w-0 flex-1 pr-2">
-                        <div id="proofFileName" class="font-bold text-emerald-950 truncate max-w-xs sm:max-w-md">nama_file.jpg</div>
-                        <div id="proofFileSize" class="text-[11px] text-emerald-700 font-medium">1.2 MB</div>
-                      </div>
-                      <span class="text-xs text-ccsOrange font-bold underline hover:text-orange-700 ml-2 whitespace-nowrap">
-                        <?= htmlspecialchars($L['btn_change_file'] ?? 'Ganti File') ?>
-                      </span>
-                    </div>
-                    <p class="text-xs text-emerald-700 font-medium mt-2 flex items-center justify-center gap-1.5">
-                      <i class="fas fa-check-circle text-emerald-600"></i>
-                      <span><?= htmlspecialchars($L['upload_file_ready'] ?? 'File siap dikirimkan. Klik tombol di bawah untuk menyelesaikan.') ?></span>
-                    </p>
+                    <?php endif; ?>
                   </div>
-                </div>
+                <?php endif; ?>
 
-                <!-- Tombol Submit & Helper Hint -->
-                <div class="flex flex-col sm:flex-row sm:items-center gap-3 pt-1">
-                  <button 
-                    type="submit" 
-                    id="submitProofBtn"
-                    class="thm-btn w-full sm:w-auto px-7 py-2.5 text-xs font-semibold flex items-center justify-center gap-2 opacity-50 cursor-not-allowed transition-all"
-                    disabled
-                  >
-                    <i class="fas fa-paper-plane"></i> <?= htmlspecialchars($L['btn_upload']) ?>
+                <!-- Navigasi Bawah Tab 2 -->
+                <div class="flex items-center justify-between pt-3 border-t border-gray-100 flex-wrap gap-2 text-xs">
+                  <button type="button" onclick="switchTab(1)" class="px-3 py-1.5 rounded border border-gray-300 text-gray-600 hover:bg-gray-50 flex items-center gap-1.5 transition">
+                    <i class="fas fa-arrow-left"></i> Tahap 1: Registrasi
                   </button>
-                  <span id="submitProofHint" class="text-xs text-gray-400">
-                    <?= htmlspecialchars($L['upload_need_file_hint'] ?? '* Silakan pilih berkas struk transfer terlebih dahulu di atas.') ?>
-                  </span>
+                  <button type="button" onclick="switchTab(3)" class="thm-btn px-4 py-1.5 flex items-center gap-1.5 font-semibold text-xs">
+                    Tahap 3: Referral (Opsional) &rarr;
+                  </button>
                 </div>
-              </form>
 
-              <!-- Notifikasi Bukti Telah Diterima -->
-              <?php if (!empty($currentApplicant['payment_proof_file'])): ?>
-                <div class="p-3 bg-sky-50 border border-sky-200 rounded-md text-xs text-sky-900 flex items-center justify-between">
-                  <div class="flex items-center gap-2">
-                    <i class="fas fa-info-circle text-sky-600 shrink-0"></i>
-                    <span><?= htmlspecialchars($L['notice_waiting_approval']) ?></span>
-                  </div>
-                  <a href="status.php?action=view_proof&file=<?= urlencode($currentApplicant['payment_proof_file']) ?>" target="_blank" class="text-ccsOrange font-semibold hover:underline ml-2 whitespace-nowrap">
-                    <?= $L['btn_view_file'] ?>
-                  </a>
-                </div>
-              <?php endif; ?>
+              </div>
+            </div>
 
-              <!-- ═══════════════════════════════════════════════════════════════ -->
-              <!-- TAHAP 3: INFORMASI REFERRAL (OPSIONAL) — KARTU TERSENDIRI       -->
-              <!-- ═══════════════════════════════════════════════════════════════ -->
+            <!-- ─── TAB 3: REFERRAL (OPSIONAL) ─────────────────────────── -->
+            <div id="panel-tab-3" class="tab-pane hidden space-y-4">
               <div id="tahap-referral" class="bg-white border border-gray-200 rounded-md p-5 sm:p-6 space-y-4 shadow-xs scroll-mt-28">
+                
                 <div class="flex items-center justify-between border-b border-gray-200 pb-3 flex-wrap gap-2">
                   <div class="flex items-center gap-2.5">
                     <div class="w-8 h-8 rounded-full bg-orange-100 text-ccsOrange flex items-center justify-center text-sm font-bold">
@@ -2120,7 +2189,7 @@ function formatTanggalIndo($dateStr, $lang = 'id') {
                     <span class="px-2.5 py-1 rounded text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200 inline-flex items-center gap-1.5">
                       <i class="fas fa-check-circle text-emerald-600"></i> <?= htmlspecialchars($L['referral_badge_recorded'] ?? 'Tercatat') ?>
                     </span>
-                  <?php elseif ($isReferralSkipped): ?>
+                  <?php elseif ($isReferralSkipped || $isAdvancedStage): ?>
                     <span class="px-2.5 py-1 rounded text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-300 inline-flex items-center gap-1.5">
                       <i class="fas fa-forward text-slate-500"></i> <?= htmlspecialchars($L['referral_badge_skipped'] ?? 'Dilewati (Opsional)') ?>
                     </span>
@@ -2130,6 +2199,15 @@ function formatTanggalIndo($dateStr, $lang = 'id') {
                     </span>
                   <?php endif; ?>
                 </div>
+
+                <?php if ($overallStatus === 'approved' && !$hasReferral && empty($_GET['edit_referral'])): ?>
+                  <div class="p-3 bg-emerald-50/80 border border-emerald-200 rounded-md text-xs text-emerald-900 flex items-start gap-2">
+                    <i class="fas fa-info-circle text-emerald-600 shrink-0 mt-0.5"></i>
+                    <div>
+                      <?= htmlspecialchars($L['referral_approved_hint'] ?? 'Calon siswa telah resmi diterima. Jika Anda mendaftar atas rekomendasi keluarga besar, orang tua siswa, atau staf CCS dan belum sempat mencatatkannya, Anda tetap dapat menyimpannya di bawah ini.') ?>
+                    </div>
+                  </div>
+                <?php endif; ?>
 
                 <?php if ($hasReferral && empty($_GET['edit_referral'])): ?>
                   <!-- Tampilan Jika Referral Sudah Terisi -->
@@ -2144,14 +2222,14 @@ function formatTanggalIndo($dateStr, $lang = 'id') {
                       <span class="text-[11px] text-sky-800">
                         <?= htmlspecialchars($L['referral_recorded_hint'] ?? 'Data rekomendasi ini telah terhubung dengan berkas admisi calon siswa.') ?>
                       </span>
-                      <a href="status.php?cek=<?= urlencode($searchQuery) ?>&phone=<?= urlencode($searchPhone) ?>&lang=<?= $currLang ?>&edit_referral=1#tahap-referral" class="text-xs text-ccsOrange font-semibold hover:underline inline-flex items-center gap-1">
+                      <a href="status.php?cek=<?= urlencode($searchQuery) ?>&phone=<?= urlencode($searchPhone) ?>&lang=<?= $currLang ?>&edit_referral=1#step-3" class="text-xs text-ccsOrange font-semibold hover:underline inline-flex items-center gap-1">
                         <i class="fas fa-edit"></i> <?= htmlspecialchars($L['btn_edit_referral'] ?? 'Ubah Referral') ?>
                       </a>
                     </div>
                   </div>
                 <?php else: ?>
                   <!-- Form Input Referral Terpisah -->
-                  <form method="POST" action="status.php?cek=<?= urlencode($searchQuery) ?>&phone=<?= urlencode($searchPhone) ?>&lang=<?= $currLang ?>#tahap-referral" class="space-y-3.5">
+                  <form method="POST" action="status.php?cek=<?= urlencode($searchQuery) ?>&phone=<?= urlencode($searchPhone) ?>&lang=<?= $currLang ?>#step-3" class="space-y-3.5">
                     <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
                     <input type="hidden" name="target_app_no" value="<?= htmlspecialchars($currentApplicant['application_number']) ?>">
 
@@ -2182,282 +2260,360 @@ function formatTanggalIndo($dateStr, $lang = 'id') {
                       >
                         <i class="fas fa-save"></i> <?= htmlspecialchars($L['btn_save_referral'] ?? 'Simpan Referral') ?>
                       </button>
-                      <button 
-                        type="submit" 
-                        name="action_skip_referral" 
-                        value="1"
-                        class="px-4 py-2 text-xs font-medium border border-gray-300 rounded-md text-gray-600 hover:bg-gray-100 transition flex items-center gap-1.5"
-                      >
-                        <i class="fas fa-forward text-gray-400"></i> <?= htmlspecialchars($L['btn_skip_referral'] ?? 'Lewati Tahap Ini') ?>
-                      </button>
+                      <?php if ($overallStatus !== 'approved' && !$isAdvancedStage): ?>
+                        <button 
+                          type="submit" 
+                          name="action_skip_referral" 
+                          value="1"
+                          class="px-4 py-2 text-xs font-medium border border-gray-300 rounded-md text-gray-600 hover:bg-gray-100 transition flex items-center gap-1.5"
+                        >
+                          <i class="fas fa-forward text-gray-400"></i> <?= htmlspecialchars($L['btn_skip_referral'] ?? 'Lewati Tahap Ini') ?>
+                        </button>
+                      <?php endif; ?>
+                      <?php if (!empty($_GET['edit_referral']) && $hasReferral): ?>
+                        <a 
+                          href="status.php?cek=<?= urlencode($searchQuery) ?>&phone=<?= urlencode($searchPhone) ?>&lang=<?= $currLang ?>#step-3"
+                          class="px-3 py-2 text-xs text-gray-500 hover:text-gray-800 transition"
+                        >
+                          <?= htmlspecialchars($L['btn_cancel'] ?? 'Batal') ?>
+                        </a>
+                      <?php endif; ?>
                     </div>
                   </form>
                 <?php endif; ?>
+
+                <!-- Navigasi Bawah Tab 3 -->
+                <div class="flex items-center justify-between pt-3 border-t border-gray-100 flex-wrap gap-2 text-xs">
+                  <button type="button" onclick="switchTab(2)" class="px-3 py-1.5 rounded border border-gray-300 text-gray-600 hover:bg-gray-50 flex items-center gap-1.5 transition">
+                    <i class="fas fa-arrow-left"></i> Tahap 2: Biaya Formulir
+                  </button>
+                  <button type="button" onclick="switchTab(4)" class="thm-btn px-4 py-1.5 flex items-center gap-1.5 font-semibold text-xs">
+                    Tahap 4: Biodata Lengkap &rarr;
+                  </button>
+                </div>
+
               </div>
             </div>
 
-          <!-- ───────────────────────────────────────────────────────────── -->
-          <!-- KONDISI B: SUDAH VERIFIED (FORMULIR BIODATA LENGKAP TERBUKA)   -->
-          <!-- ───────────────────────────────────────────────────────────── -->
-          <?php else: ?>
-            <?php if (empty($currentApplicant['is_form_completed'])): ?>
-              <div class="border-t border-gray-200 pt-5 space-y-5">
-                <div class="border-b border-gray-200 pb-3">
-                  <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-xs font-semibold bg-emerald-50 text-emerald-800 mb-1 border border-emerald-200">
-                    <i class="fas fa-check-circle text-emerald-600"></i> <?= htmlspecialchars($L['fullform_badge']) ?>
-                  </span>
-                  <h2 class="text-xl font-bold text-ccsHeading"><?= htmlspecialchars($L['fullform_title']) ?></h2>
-                  <p class="text-xs text-gray-500 mt-0.5"><?= htmlspecialchars($L['fullform_subtitle']) ?></p>
-                </div>
-
-                <form method="POST" action="status.php?cek=<?= urlencode($searchQuery) ?>&phone=<?= urlencode($searchPhone) ?>&lang=<?= $currLang ?>" class="space-y-6">
-                  <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
-                  <input type="hidden" name="action_complete_form" value="1">
-                  <input type="hidden" name="target_app_no" value="<?= htmlspecialchars($currentApplicant['application_number']) ?>">
-
-                  <!-- Bagian 1: Data Calon Siswa -->
-                  <div class="space-y-4">
-                    <h3 class="text-xs font-bold text-ccsHeading uppercase tracking-wider border-b border-gray-100 pb-2">
-                      <?= htmlspecialchars($L['sec1_student']) ?>
-                    </h3>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-                      <div class="sm:col-span-2">
-                        <label class="school-label"><?= htmlspecialchars($L['lbl_student_name']) ?> <span class="text-rose-500">*</span></label>
-                        <input type="text" name="student_name" required value="<?= htmlspecialchars($currentApplicant['student_name'] ?? '') ?>" class="school-input">
-                      </div>
-                      <div>
-                        <label class="school-label"><?= htmlspecialchars($L['lbl_nickname']) ?></label>
-                        <input type="text" name="student_nickname" value="<?= htmlspecialchars($currentApplicant['student_nickname'] ?? '') ?>" class="school-input">
-                      </div>
-                      <div>
-                        <label class="school-label"><?= htmlspecialchars($L['lbl_gender']) ?> <span class="text-rose-500">*</span></label>
-                        <select name="student_gender" required class="school-select">
-                          <option value="male" <?= ($currentApplicant['student_gender'] ?? '') === 'male' ? 'selected' : '' ?>><?= htmlspecialchars($L['gender_male']) ?></option>
-                          <option value="female" <?= ($currentApplicant['student_gender'] ?? '') === 'female' ? 'selected' : '' ?>><?= htmlspecialchars($L['gender_female']) ?></option>
-                        </select>
-                      </div>
-                      <div>
-                        <label class="school-label"><?= htmlspecialchars($L['lbl_birth_place']) ?></label>
-                        <input type="text" name="student_birth_place" value="<?= htmlspecialchars($currentApplicant['student_birth_place'] ?? '') ?>" class="school-input">
-                      </div>
-                      <div>
-                        <label class="school-label"><?= htmlspecialchars($L['lbl_birth_date']) ?> <span class="text-rose-500">*</span></label>
-                        <input type="date" name="student_birth_date" required value="<?= htmlspecialchars($currentApplicant['student_birth_date'] ?? '') ?>" class="school-input">
-                      </div>
-                      <div>
-                        <label class="school-label"><?= htmlspecialchars($L['lbl_religion']) ?></label>
-                        <select name="student_religion" class="school-select">
-                          <option value="">-- <?= htmlspecialchars($L['lbl_religion']) ?> --</option>
-                          <?php foreach (['Kristen', 'Katolik', 'Islam', 'Buddha', 'Hindu', 'Konghucu', 'Lainnya'] as $rel): ?>
-                            <option value="<?= $rel ?>" <?= ($currentApplicant['student_religion'] ?? '') === $rel ? 'selected' : '' ?>><?= $rel ?></option>
-                          <?php endforeach; ?>
-                        </select>
-                      </div>
-                      <div>
-                        <label class="school-label"><?= htmlspecialchars($L['lbl_nationality']) ?></label>
-                        <select name="student_nationality" class="school-select">
-                          <option value="WNI" <?= ($currentApplicant['student_nationality'] ?? 'WNI') === 'WNI' ? 'selected' : '' ?>>WNI</option>
-                          <option value="WNA" <?= ($currentApplicant['student_nationality'] ?? '') === 'WNA' ? 'selected' : '' ?>>WNA</option>
-                        </select>
-                      </div>
-                      <div class="sm:col-span-2">
-                        <label class="school-label"><?= htmlspecialchars($L['lbl_prev_school']) ?></label>
-                        <input type="text" name="student_previous_school" value="<?= htmlspecialchars($currentApplicant['student_previous_school'] ?? '') ?>" class="school-input">
-                      </div>
-                      <div class="sm:col-span-2">
-                        <label class="school-label"><?= htmlspecialchars($L['lbl_domicile']) ?></label>
-                        <textarea name="student_domicile_address" rows="2" class="school-textarea"><?= htmlspecialchars($currentApplicant['student_domicile_address'] ?? '') ?></textarea>
-                      </div>
+            <!-- ─── TAB 4: BIODATA LENGKAP ──────────────────────────────── -->
+            <div id="panel-tab-4" class="tab-pane hidden space-y-4">
+              <div id="formulir-biodata" class="bg-white border border-gray-200 rounded-md p-5 sm:p-6 space-y-5 shadow-xs scroll-mt-28">
+                
+                <div class="flex items-center justify-between border-b border-gray-200 pb-3 flex-wrap gap-2">
+                  <div class="flex items-center gap-2.5">
+                    <div class="w-8 h-8 rounded-full bg-orange-100 text-ccsOrange flex items-center justify-center text-sm font-bold">
+                      <i class="fas fa-user-edit"></i>
                     </div>
-                  </div>
-
-                  <!-- Bagian 2: Data Orang Tua -->
-                  <div class="space-y-4 pt-4 border-t border-gray-200">
-                    <h3 class="text-xs font-bold text-ccsHeading uppercase tracking-wider border-b border-gray-100 pb-2">
-                      <?= htmlspecialchars($L['sec2_parent']) ?>
-                    </h3>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-                      <div class="sm:col-span-2">
-                        <label class="school-label"><?= htmlspecialchars($L['lbl_parent_full']) ?> <span class="text-rose-500">*</span></label>
-                        <input type="text" name="parent_name" required value="<?= htmlspecialchars($currentApplicant['parent_name'] ?? '') ?>" class="school-input">
-                      </div>
-                      <div>
-                        <label class="school-label"><?= htmlspecialchars($L['lbl_parent_phone']) ?> <span class="text-rose-500">*</span></label>
-                        <input type="tel" name="parent_phone" required value="<?= htmlspecialchars($currentApplicant['parent_phone'] ?? '') ?>" class="school-input">
-                      </div>
-                      <div>
-                        <label class="school-label"><?= htmlspecialchars($L['lbl_parent_email']) ?> <span class="text-rose-500">*</span></label>
-                        <input type="email" name="parent_email" required value="<?= htmlspecialchars($currentApplicant['parent_email'] ?? '') ?>" class="school-input">
-                      </div>
-                      <div>
-                        <label class="school-label"><?= htmlspecialchars($L['lbl_nik']) ?></label>
-                        <input type="text" name="parent_nik" value="<?= htmlspecialchars($currentApplicant['parent_nik'] ?? '') ?>" class="school-input">
-                      </div>
-                      <div>
-                        <label class="school-label"><?= htmlspecialchars($L['lbl_occupation']) ?></label>
-                        <input type="text" name="parent_occupation" value="<?= htmlspecialchars($currentApplicant['parent_occupation'] ?? '') ?>" class="school-input">
-                      </div>
-                      <div class="sm:col-span-2">
-                        <label class="school-label"><?= htmlspecialchars($L['lbl_notes']) ?></label>
-                        <?php 
-                          $cleanFormNotes = trim(preg_replace('/\[SCHEDULE_META\]:.*$/s', '', $currentApplicant['additional_notes'] ?? ''));
-                        ?>
-                        <textarea name="additional_notes" rows="2" class="school-textarea"><?= htmlspecialchars($cleanFormNotes) ?></textarea>
-                      </div>
-                    </div>
-                  </div>
-
-                  <!-- Bagian 3: Pilihan Jadwal Tes Penempatan & Wawancara Orang Tua -->
-                  <div class="space-y-4 pt-4 border-t border-gray-200">
-                    <div class="border-b border-gray-100 pb-2">
-                      <h3 class="text-xs font-bold text-ccsHeading uppercase tracking-wider">
-                        <?= htmlspecialchars($L['sec3_schedule']) ?>
+                    <div>
+                      <h3 class="text-sm font-bold text-ccsHeading uppercase tracking-wider">
+                        <?= htmlspecialchars($L['stepper_step4_title'] ?? '4. Biodata Lengkap') ?>
                       </h3>
-                      <p class="text-[11px] text-gray-500 mt-0.5 leading-relaxed">
-                        <?= htmlspecialchars($L['sec3_schedule_desc']) ?>
+                      <p class="text-[11px] text-gray-500">
+                        <?= htmlspecialchars($L['fullform_subtitle'] ?? 'Data Lengkap Calon Siswa & Orang Tua/Wali') ?>
                       </p>
                     </div>
-
-                    <!-- Checkbox Jadwal Hari Sama -->
-                    <div class="flex items-center gap-2.5 p-3 bg-blue-50/70 border border-blue-200 rounded-md">
-                      <input 
-                        type="checkbox" 
-                        id="sameDayScheduleToggle" 
-                        name="same_day_schedule" 
-                        value="1" 
-                        checked 
-                        onchange="toggleSameDaySchedule(this.checked)"
-                        class="w-4 h-4 text-ccsHeading rounded border-gray-300 focus:ring-ccsHeading cursor-pointer"
-                      >
-                      <label for="sameDayScheduleToggle" class="text-xs font-semibold text-ccsHeading cursor-pointer select-none">
-                        <?= htmlspecialchars($L['lbl_same_day_toggle']) ?>
-                      </label>
-                    </div>
-
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-                      <!-- Kolom 1: Tes Penempatan Siswa -->
-                      <div class="p-3.5 bg-slate-50 border border-slate-200 rounded-md space-y-3">
-                        <div class="font-bold text-ccsHeading flex items-center gap-1.5 pb-1.5 border-b border-slate-200 text-xs">
-                          <i class="fas fa-graduation-cap text-ccsOrange"></i>
-                          <span><?= htmlspecialchars($L['test_schedule_badge']) ?></span>
-                        </div>
-                        <div>
-                          <label class="school-label"><?= htmlspecialchars($L['lbl_test_date']) ?> <span class="text-rose-500">*</span></label>
-                          <input 
-                            type="date" 
-                            name="test_date" 
-                            id="testDateInput" 
-                            required 
-                            min="<?= date('Y-m-d', strtotime('+1 day')) ?>"
-                            value="<?= htmlspecialchars($currentApplicant['test_date'] ?? date('Y-m-d', strtotime('+3 days'))) ?>" 
-                            onchange="syncInterviewDate(this.value)"
-                            class="school-input"
-                          >
-                        </div>
-                        <div>
-                          <label class="school-label"><?= htmlspecialchars($L['lbl_test_session']) ?> <span class="text-rose-500">*</span></label>
-                          <select name="test_session" required class="school-select">
-                            <option value="Sesi 1 (08:30 - 10:00 WIB)" <?= ($currentApplicant['test_session'] ?? '') === 'Sesi 1 (08:30 - 10:00 WIB)' ? 'selected' : '' ?>><?= $L['session_opt_1'] ?></option>
-                            <option value="Sesi 2 (10:30 - 12:00 WIB)" <?= ($currentApplicant['test_session'] ?? '') === 'Sesi 2 (10:30 - 12:00 WIB)' ? 'selected' : '' ?>><?= $L['session_opt_2'] ?></option>
-                            <option value="Sesi 3 (13:00 - 14:30 WIB)" <?= ($currentApplicant['test_session'] ?? '') === 'Sesi 3 (13:00 - 14:30 WIB)' ? 'selected' : '' ?>><?= $L['session_opt_3'] ?></option>
-                            <option value="Sesi 4 (15:00 - 16:30 WIB)" <?= ($currentApplicant['test_session'] ?? '') === 'Sesi 4 (15:00 - 16:30 WIB)' ? 'selected' : '' ?>><?= $L['session_opt_4'] ?></option>
-                          </select>
-                        </div>
-                      </div>
-
-                      <!-- Kolom 2: Wawancara Orang Tua -->
-                      <div class="p-3.5 bg-slate-50 border border-slate-200 rounded-md space-y-3">
-                        <div class="font-bold text-ccsHeading flex items-center gap-1.5 pb-1.5 border-b border-slate-200 text-xs">
-                          <i class="fas fa-users text-ccsHeading"></i>
-                          <span><?= htmlspecialchars($L['interview_schedule_badge']) ?></span>
-                        </div>
-                        <div>
-                          <label class="school-label"><?= htmlspecialchars($L['lbl_interview_date']) ?> <span class="text-rose-500">*</span></label>
-                          <input 
-                            type="date" 
-                            name="interview_date" 
-                            id="interviewDateInput" 
-                            required 
-                            min="<?= date('Y-m-d', strtotime('+1 day')) ?>"
-                            value="<?= htmlspecialchars($currentApplicant['interview_date'] ?? date('Y-m-d', strtotime('+3 days'))) ?>" 
-                            readonly 
-                            class="school-input bg-gray-100 cursor-not-allowed"
-                          >
-                        </div>
-                        <div>
-                          <label class="school-label"><?= htmlspecialchars($L['lbl_interview_session']) ?> <span class="text-rose-500">*</span></label>
-                          <select name="interview_session" required class="school-select">
-                            <option value="Sesi 1 (08:30 - 10:00 WIB)" <?= ($currentApplicant['interview_session'] ?? '') === 'Sesi 1 (08:30 - 10:00 WIB)' ? 'selected' : '' ?>><?= $L['session_opt_1'] ?></option>
-                            <option value="Sesi 2 (10:30 - 12:00 WIB)" <?= ($currentApplicant['interview_session'] ?? '') === 'Sesi 2 (10:30 - 12:00 WIB)' ? 'selected' : '' ?>><?= $L['session_opt_2'] ?></option>
-                            <option value="Sesi 3 (13:00 - 14:30 WIB)" <?= ($currentApplicant['interview_session'] ?? '') === 'Sesi 3 (13:00 - 14:30 WIB)' ? 'selected' : '' ?>><?= $L['session_opt_3'] ?></option>
-                            <option value="Sesi 4 (15:00 - 16:30 WIB)" <?= ($currentApplicant['interview_session'] ?? '') === 'Sesi 4 (15:00 - 16:30 WIB)' ? 'selected' : '' ?>><?= $L['session_opt_4'] ?></option>
-                          </select>
-                        </div>
-                      </div>
-
-                      <div class="sm:col-span-2">
-                        <label class="school-label"><?= htmlspecialchars($L['lbl_schedule_notes']) ?></label>
-                        <input type="text" name="schedule_notes" value="<?= htmlspecialchars($currentApplicant['schedule_notes'] ?? '') ?>" placeholder="Misal: Hadir didampingi ayah dan ibu" class="school-input">
-                      </div>
-                    </div>
                   </div>
-
-                  <div class="pt-2">
-                    <button 
-                      type="submit" 
-                      class="thm-btn w-full sm:w-auto"
-                    >
-                      <i class="fas fa-save mr-1"></i> <?= htmlspecialchars($L['btn_save_fullform']) ?>
-                    </button>
-                  </div>
-                </form>
-              </div>
-
-            <?php else: ?>
-              <!-- TANDA TERIMA FORMULIR LENGKAP & JADWAL TERKONFIRMASI -->
-              <div class="space-y-4">
-                <div class="bg-white border border-gray-200 rounded-md p-6 text-center space-y-3">
-                  <div class="w-12 h-12 rounded-full bg-emerald-50 text-emerald-700 mx-auto flex items-center justify-center text-2xl border border-emerald-200">
-                    <i class="fas fa-check"></i>
-                  </div>
-                  <h2 class="text-xl font-bold text-ccsHeading"><?= htmlspecialchars($L['receipt_title']) ?></h2>
-                  <p class="text-xs text-gray-500 max-w-md mx-auto"><?= htmlspecialchars($L['receipt_desc']) ?></p>
-
-                  <div class="p-4 bg-slate-50 rounded-md border border-slate-200 max-w-sm mx-auto text-left text-xs space-y-1.5 text-gray-700">
-                    <div><strong><?= htmlspecialchars($L['lbl_code']) ?>:</strong> <span class="font-mono text-ccsHeading font-bold"><?= htmlspecialchars($currentApplicant['application_number']) ?></span></div>
-                    <div><strong><?= htmlspecialchars($L['lbl_level_selected']) ?>:</strong> <?= htmlspecialchars($currentApplicant['level_name'] ?? $currentApplicant['preferred_grade'] ?? '') ?></div>
-                    <div><strong>Status:</strong> <span class="text-emerald-700 font-semibold"><i class="fas fa-check-circle mr-1"></i> <?= htmlspecialchars($L['receipt_status']) ?></span></div>
-                  </div>
-
-                  <p class="text-xs text-gray-400 mt-1 max-w-md mx-auto">
-                    <?= htmlspecialchars($L['receipt_contact_soon']) ?>
-                  </p>
+                  <?php if ($isFormDone): ?>
+                    <span class="px-2.5 py-1 rounded text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200 inline-flex items-center gap-1.5">
+                      <i class="fas fa-check-circle text-emerald-600"></i> Biodata Lengkap
+                    </span>
+                  <?php elseif ($feeStatus === 'verified'): ?>
+                    <span class="px-2.5 py-1 rounded text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-200 inline-flex items-center gap-1.5">
+                      <i class="fas fa-edit text-amber-600"></i> Siap Diisi
+                    </span>
+                  <?php else: ?>
+                    <span class="px-2.5 py-1 rounded text-xs font-semibold bg-slate-100 text-slate-600 border border-slate-300 inline-flex items-center gap-1.5">
+                      <i class="fas fa-lock text-slate-400"></i> Terkunci (Pending Biaya)
+                    </span>
+                  <?php endif; ?>
                 </div>
 
-                <!-- KARTU JADWAL TES & WAWANCARA TERKONFIRMASI -->
-                <div class="bg-white border border-gray-200 rounded-md p-5 space-y-4 shadow-xs">
-                  <div class="flex items-center justify-between flex-wrap gap-2 pb-3 border-b border-gray-200">
-                    <div class="flex items-center gap-2">
-                      <div class="w-8 h-8 rounded-full bg-blue-50 text-ccsHeading flex items-center justify-center border border-blue-200 text-sm">
-                        <i class="far fa-calendar-alt"></i>
-                      </div>
-                      <div>
-                        <h3 class="text-sm font-bold text-ccsHeading"><?= htmlspecialchars($L['confirmed_schedule_title']) ?></h3>
-                        <p class="text-[11px] text-gray-500 font-mono"><?= htmlspecialchars($currentApplicant['application_number']) ?> &bull; <?= htmlspecialchars($currentApplicant['student_name']) ?></p>
-                      </div>
+                <?php if ($feeStatus !== 'verified'): ?>
+                  <!-- Status Terkunci Karena Belum Lunas -->
+                  <div class="p-6 text-center space-y-3 bg-slate-50/70 border border-slate-200 rounded-md">
+                    <div class="w-12 h-12 rounded-full bg-slate-200 text-slate-500 mx-auto flex items-center justify-center text-xl">
+                      <i class="fas fa-lock"></i>
                     </div>
-
-                    <button 
-                      type="button" 
-                      onclick="toggleRescheduleForm()" 
-                      class="px-3 py-1.5 rounded border border-ccsOrange text-ccsOrange hover:bg-orange-50 text-xs font-semibold transition flex items-center gap-1.5"
-                    >
-                      <i class="fas fa-calendar-check"></i>
-                      <span><?= htmlspecialchars($L['btn_reschedule']) ?></span>
+                    <div class="space-y-1">
+                      <h4 class="text-sm font-bold text-gray-800">Tahap 4 Masih Terkunci</h4>
+                      <p class="text-xs text-gray-500 max-w-md mx-auto">
+                        Formulir biodata lengkap calon siswa akan terbuka secara otomatis setelah bukti pembayaran biaya formulir diverifikasi lunas oleh staf Admissions.
+                      </p>
+                    </div>
+                    <button type="button" onclick="switchTab(2)" class="thm-btn text-xs py-2 px-5 inline-flex items-center gap-1.5 font-semibold">
+                      Buka Tahap 2: Biaya Formulir &rarr;
                     </button>
                   </div>
 
-                  <!-- Detail Jadwal 2 Kolom -->
+                <?php elseif (empty($currentApplicant['is_form_completed'])): ?>
+                  <!-- Formulir Pengisian Biodata (Belum Selesai) -->
+                  <form method="POST" action="status.php?cek=<?= urlencode($searchQuery) ?>&phone=<?= urlencode($searchPhone) ?>&lang=<?= $currLang ?>#step-4" class="space-y-6">
+                    <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
+                    <input type="hidden" name="action_complete_form" value="1">
+                    <input type="hidden" name="target_app_no" value="<?= htmlspecialchars($currentApplicant['application_number']) ?>">
+
+                    <!-- Bagian 1: Data Calon Siswa -->
+                    <div class="space-y-3">
+                      <h4 class="text-xs font-bold text-ccsHeading uppercase tracking-wider border-b border-gray-100 pb-2">
+                        <?= htmlspecialchars($L['sec1_student']) ?>
+                      </h4>
+                      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                        <div class="sm:col-span-2">
+                          <label class="school-label"><?= htmlspecialchars($L['lbl_student_name']) ?> <span class="text-rose-500">*</span></label>
+                          <input type="text" name="student_name" required value="<?= htmlspecialchars($currentApplicant['student_name'] ?? '') ?>" class="school-input">
+                        </div>
+                        <div>
+                          <label class="school-label"><?= htmlspecialchars($L['lbl_nickname']) ?></label>
+                          <input type="text" name="student_nickname" value="<?= htmlspecialchars($currentApplicant['student_nickname'] ?? '') ?>" class="school-input">
+                        </div>
+                        <div>
+                          <label class="school-label"><?= htmlspecialchars($L['lbl_gender']) ?> <span class="text-rose-500">*</span></label>
+                          <select name="student_gender" required class="school-select">
+                            <option value="male" <?= ($currentApplicant['student_gender'] ?? '') === 'male' ? 'selected' : '' ?>><?= htmlspecialchars($L['gender_male']) ?></option>
+                            <option value="female" <?= ($currentApplicant['student_gender'] ?? '') === 'female' ? 'selected' : '' ?>><?= htmlspecialchars($L['gender_female']) ?></option>
+                          </select>
+                        </div>
+                        <div>
+                          <label class="school-label"><?= htmlspecialchars($L['lbl_birth_place']) ?></label>
+                          <input type="text" name="student_birth_place" value="<?= htmlspecialchars($currentApplicant['student_birth_place'] ?? '') ?>" class="school-input">
+                        </div>
+                        <div>
+                          <label class="school-label"><?= htmlspecialchars($L['lbl_birth_date']) ?> <span class="text-rose-500">*</span></label>
+                          <input type="date" name="student_birth_date" required value="<?= htmlspecialchars($currentApplicant['student_birth_date'] ?? '') ?>" class="school-input">
+                        </div>
+                        <div>
+                          <label class="school-label"><?= htmlspecialchars($L['lbl_religion']) ?></label>
+                          <select name="student_religion" class="school-select">
+                            <option value="">-- <?= htmlspecialchars($L['lbl_religion']) ?> --</option>
+                            <?php foreach (['Kristen', 'Katolik', 'Islam', 'Buddha', 'Hindu', 'Konghucu', 'Lainnya'] as $rel): ?>
+                              <option value="<?= $rel ?>" <?= ($currentApplicant['student_religion'] ?? '') === $rel ? 'selected' : '' ?>><?= $rel ?></option>
+                            <?php endforeach; ?>
+                          </select>
+                        </div>
+                        <div>
+                          <label class="school-label"><?= htmlspecialchars($L['lbl_nationality']) ?></label>
+                          <select name="student_nationality" class="school-select">
+                            <option value="WNI" <?= ($currentApplicant['student_nationality'] ?? 'WNI') === 'WNI' ? 'selected' : '' ?>>WNI</option>
+                            <option value="WNA" <?= ($currentApplicant['student_nationality'] ?? '') === 'WNA' ? 'selected' : '' ?>>WNA</option>
+                          </select>
+                        </div>
+                        <div class="sm:col-span-2">
+                          <label class="school-label"><?= htmlspecialchars($L['lbl_prev_school']) ?></label>
+                          <input type="text" name="student_previous_school" value="<?= htmlspecialchars($currentApplicant['student_previous_school'] ?? '') ?>" class="school-input">
+                        </div>
+                        <div class="sm:col-span-2">
+                          <label class="school-label"><?= htmlspecialchars($L['lbl_domicile']) ?></label>
+                          <textarea name="student_domicile_address" rows="2" class="school-textarea"><?= htmlspecialchars($currentApplicant['student_domicile_address'] ?? '') ?></textarea>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Bagian 2: Data Orang Tua -->
+                    <div class="space-y-3 pt-3 border-t border-gray-200">
+                      <h4 class="text-xs font-bold text-ccsHeading uppercase tracking-wider border-b border-gray-100 pb-2">
+                        <?= htmlspecialchars($L['sec2_parent']) ?>
+                      </h4>
+                      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                        <div class="sm:col-span-2">
+                          <label class="school-label"><?= htmlspecialchars($L['lbl_parent_full']) ?> <span class="text-rose-500">*</span></label>
+                          <input type="text" name="parent_name" required value="<?= htmlspecialchars($currentApplicant['parent_name'] ?? '') ?>" class="school-input">
+                        </div>
+                        <div>
+                          <label class="school-label"><?= htmlspecialchars($L['lbl_parent_phone']) ?> <span class="text-rose-500">*</span></label>
+                          <input type="tel" name="parent_phone" required value="<?= htmlspecialchars($currentApplicant['parent_phone'] ?? '') ?>" class="school-input">
+                        </div>
+                        <div>
+                          <label class="school-label"><?= htmlspecialchars($L['lbl_parent_email']) ?> <span class="text-rose-500">*</span></label>
+                          <input type="email" name="parent_email" required value="<?= htmlspecialchars($currentApplicant['parent_email'] ?? '') ?>" class="school-input">
+                        </div>
+                        <div>
+                          <label class="school-label"><?= htmlspecialchars($L['lbl_nik']) ?></label>
+                          <input type="text" name="parent_nik" value="<?= htmlspecialchars($currentApplicant['parent_nik'] ?? '') ?>" class="school-input">
+                        </div>
+                        <div>
+                          <label class="school-label"><?= htmlspecialchars($L['lbl_occupation']) ?></label>
+                          <input type="text" name="parent_occupation" value="<?= htmlspecialchars($currentApplicant['parent_occupation'] ?? '') ?>" class="school-input">
+                        </div>
+                        <div class="sm:col-span-2">
+                          <label class="school-label"><?= htmlspecialchars($L['lbl_notes']) ?></label>
+                          <?php 
+                            $cleanFormNotes = trim(preg_replace('/[SCHEDULE_META]:.*$/s', '', $currentApplicant['additional_notes'] ?? ''));
+                            $cleanFormNotes = trim(preg_replace('/[REFERRAL]:.*$/s', '', $cleanFormNotes));
+                          ?>
+                          <textarea name="additional_notes" rows="2" class="school-textarea"><?= htmlspecialchars($cleanFormNotes) ?></textarea>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Bagian 3: Pilihan Jadwal Tes Penempatan & Wawancara -->
+                    <div class="space-y-3 pt-3 border-t border-gray-200">
+                      <div class="flex items-center justify-between border-b border-gray-100 pb-2">
+                        <h4 class="text-xs font-bold text-ccsHeading uppercase tracking-wider">
+                          <?= htmlspecialchars($L['sec3_schedule']) ?>
+                        </h4>
+                        <label class="inline-flex items-center gap-1.5 cursor-pointer text-[11px] text-ccsHeading font-medium select-none">
+                          <input 
+                            type="checkbox" 
+                            id="sameDayScheduleToggle" 
+                            onchange="toggleSameDaySchedule(this.checked)" 
+                            class="rounded border-gray-300 text-ccsOrange focus:ring-ccsOrange h-3.5 w-3.5"
+                          >
+                          <span><?= htmlspecialchars($L['lbl_same_day_sched']) ?></span>
+                        </label>
+                      </div>
+
+                      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                        <div class="p-3 bg-slate-50 border border-slate-200 rounded-md space-y-2">
+                          <span class="font-bold text-ccsHeading block"><?= htmlspecialchars($L['box_test_title']) ?></span>
+                          <div>
+                            <label class="school-label"><?= htmlspecialchars($L['lbl_test_date']) ?> <span class="text-rose-500">*</span></label>
+                            <input 
+                              type="date" 
+                              name="test_date" 
+                              id="testDateInput" 
+                              required 
+                              onchange="syncInterviewDate(this.value)" 
+                              class="school-input"
+                            >
+                          </div>
+                          <div>
+                            <label class="school-label"><?= htmlspecialchars($L['lbl_test_session']) ?> <span class="text-rose-500">*</span></label>
+                            <select name="test_session" required class="school-select">
+                              <option value="Sesi 1 (08:30 - 10:00 WIB)"><?= $L['session_opt_1'] ?></option>
+                              <option value="Sesi 2 (10:30 - 12:00 WIB)"><?= $L['session_opt_2'] ?></option>
+                              <option value="Sesi 3 (13:00 - 14:30 WIB)"><?= $L['session_opt_3'] ?></option>
+                            </select>
+                          </div>
+                        </div>
+
+                        <div class="p-3 bg-slate-50 border border-slate-200 rounded-md space-y-2">
+                          <span class="font-bold text-ccsHeading block"><?= htmlspecialchars($L['box_interview_title']) ?></span>
+                          <div>
+                            <label class="school-label"><?= htmlspecialchars($L['lbl_interview_date']) ?> <span class="text-rose-500">*</span></label>
+                            <input 
+                              type="date" 
+                              name="interview_date" 
+                              id="interviewDateInput" 
+                              required 
+                              class="school-input"
+                            >
+                          </div>
+                          <div>
+                            <label class="school-label"><?= htmlspecialchars($L['lbl_interview_session']) ?> <span class="text-rose-500">*</span></label>
+                            <select name="interview_session" required class="school-select">
+                              <option value="Sesi 1 (08:30 - 10:00 WIB)"><?= $L['session_opt_1'] ?></option>
+                              <option value="Sesi 2 (10:30 - 12:00 WIB)"><?= $L['session_opt_2'] ?></option>
+                              <option value="Sesi 3 (13:00 - 14:30 WIB)"><?= $L['session_opt_3'] ?></option>
+                              <option value="Sesi 4 (15:00 - 16:30 WIB)"><?= $L['session_opt_4'] ?></option>
+                            </select>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="pt-2">
+                      <button 
+                        type="submit" 
+                        class="thm-btn w-full sm:w-auto px-8 py-2.5 text-xs font-semibold flex items-center justify-center gap-2"
+                      >
+                        <i class="fas fa-save mr-1"></i> <?= htmlspecialchars($L['btn_save_fullform']) ?>
+                      </button>
+                    </div>
+                  </form>
+
+                <?php else: ?>
+                  <!-- Ringkasan Arsip Biodata yang Telah Diserahkan -->
+                  <div class="space-y-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                      <div class="p-3 bg-slate-50 border border-slate-200 rounded-md">
+                        <span class="text-[10px] text-gray-500 uppercase block font-mono">Nama Lengkap Siswa:</span>
+                        <span class="font-bold text-gray-900"><?= htmlspecialchars($currentApplicant['student_name']) ?></span>
+                      </div>
+                      <div class="p-3 bg-slate-50 border border-slate-200 rounded-md">
+                        <span class="text-[10px] text-gray-500 uppercase block font-mono">Nama Panggilan / Gender:</span>
+                        <span class="font-semibold text-gray-900"><?= htmlspecialchars($currentApplicant['student_nickname'] ?? '-') ?> (<?= ($currentApplicant['student_gender'] ?? '') === 'male' ? 'Laki-laki' : 'Perempuan' ?>)</span>
+                      </div>
+                      <div class="p-3 bg-slate-50 border border-slate-200 rounded-md">
+                        <span class="text-[10px] text-gray-500 uppercase block font-mono">Tempat, Tanggal Lahir:</span>
+                        <span class="font-semibold text-gray-900"><?= htmlspecialchars($currentApplicant['student_birth_place'] ?? '-') ?>, <?= formatTanggalIndo($currentApplicant['student_birth_date'] ?? null, $currLang) ?></span>
+                      </div>
+                      <div class="p-3 bg-slate-50 border border-slate-200 rounded-md">
+                        <span class="text-[10px] text-gray-500 uppercase block font-mono">Agama / Kewarganegaraan:</span>
+                        <span class="font-semibold text-gray-900"><?= htmlspecialchars($currentApplicant['student_religion'] ?? '-') ?> / <?= htmlspecialchars($currentApplicant['student_nationality'] ?? 'WNI') ?></span>
+                      </div>
+                      <div class="p-3 bg-slate-50 border border-slate-200 rounded-md sm:col-span-2">
+                        <span class="text-[10px] text-gray-500 uppercase block font-mono">Alamat Domisili:</span>
+                        <span class="font-semibold text-gray-900"><?= htmlspecialchars($currentApplicant['student_domicile_address'] ?? '-') ?></span>
+                      </div>
+                      <div class="p-3 bg-slate-50 border border-slate-200 rounded-md sm:col-span-2">
+                        <span class="text-[10px] text-gray-500 uppercase block font-mono">Data Orang Tua / Kontak:</span>
+                        <span class="font-semibold text-gray-900"><?= htmlspecialchars($currentApplicant['parent_name'] ?? '-') ?> &bull; <?= htmlspecialchars($currentApplicant['parent_phone'] ?? '-') ?> &bull; <?= htmlspecialchars($currentApplicant['parent_email'] ?? '-') ?></span>
+                      </div>
+                    </div>
+                  </div>
+                <?php endif; ?>
+
+                <!-- Navigasi Bawah Tab 4 -->
+                <div class="flex items-center justify-between pt-3 border-t border-gray-100 flex-wrap gap-2 text-xs">
+                  <button type="button" onclick="switchTab(3)" class="px-3 py-1.5 rounded border border-gray-300 text-gray-600 hover:bg-gray-50 flex items-center gap-1.5 transition">
+                    <i class="fas fa-arrow-left"></i> Tahap 3: Referral
+                  </button>
+                  <button type="button" onclick="switchTab(5)" class="thm-btn px-4 py-1.5 flex items-center gap-1.5 font-semibold text-xs">
+                    Tahap 5: Observasi & Review &rarr;
+                  </button>
+                </div>
+
+              </div>
+            </div>
+
+            <!-- ─── TAB 5: OBSERVASI & REVIEW (JADWAL) ─────────────────── -->
+            <div id="panel-tab-5" class="tab-pane hidden space-y-4">
+              <div id="arsip-jadwal" class="bg-white border border-gray-200 rounded-md p-5 sm:p-6 space-y-4 shadow-xs scroll-mt-28">
+                
+                <div class="flex items-center justify-between border-b border-gray-200 pb-3 flex-wrap gap-2">
+                  <div class="flex items-center gap-2.5">
+                    <div class="w-8 h-8 rounded-full bg-blue-50 text-ccsHeading flex items-center justify-center text-sm font-bold border border-blue-200">
+                      <i class="far fa-calendar-check"></i>
+                    </div>
+                    <div>
+                      <h3 class="text-sm font-bold text-ccsHeading uppercase tracking-wider">
+                        <?= htmlspecialchars($L['stepper_step5_title'] ?? '5. Observasi & Review') ?>
+                      </h3>
+                      <p class="text-[11px] text-gray-500">
+                        Jadwal Tes Penempatan Siswa & Wawancara Orang Tua
+                      </p>
+                    </div>
+                  </div>
+                  <?php if (!empty($currentApplicant['test_date']) || !empty($currentApplicant['interview_date'])): ?>
+                    <span class="px-2.5 py-1 rounded text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200 inline-flex items-center gap-1.5">
+                      <i class="fas fa-check-circle text-emerald-600"></i> Terkonfirmasi
+                    </span>
+                  <?php else: ?>
+                    <span class="px-2.5 py-1 rounded text-xs font-semibold bg-slate-100 text-slate-600 border border-slate-300 inline-flex items-center gap-1.5">
+                      <i class="fas fa-lock text-slate-400"></i> Menunggu Berkas
+                    </span>
+                  <?php endif; ?>
+                </div>
+
+                <?php if (empty($currentApplicant['test_date']) && empty($currentApplicant['interview_date']) && !$isFormDone): ?>
+                  <!-- Status Terkunci Karena Belum Isi Biodata -->
+                  <div class="p-6 text-center space-y-3 bg-slate-50/70 border border-slate-200 rounded-md">
+                    <div class="w-12 h-12 rounded-full bg-slate-200 text-slate-500 mx-auto flex items-center justify-center text-xl">
+                      <i class="fas fa-calendar-times"></i>
+                    </div>
+                    <div class="space-y-1">
+                      <h4 class="text-sm font-bold text-gray-800">Jadwal Belum Ditentukan</h4>
+                      <p class="text-xs text-gray-500 max-w-md mx-auto">
+                        Jadwal observasi dan wawancara akan diproses setelah formulir biodata lengkap pada Tahap 4 selesai diisi.
+                      </p>
+                    </div>
+                    <button type="button" onclick="switchTab(4)" class="thm-btn text-xs py-2 px-5 inline-flex items-center gap-1.5 font-semibold">
+                      Buka Tahap 4: Biodata Lengkap &rarr;
+                    </button>
+                  </div>
+
+                <?php else: ?>
+                  <!-- Detail Jadwal Terkonfirmasi -->
                   <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                     <!-- Tes Penempatan -->
                     <div class="p-3.5 bg-slate-50 border border-slate-200 rounded-md space-y-2">
@@ -2514,111 +2670,213 @@ function formatTanggalIndo($dateStr, $lang = 'id') {
                     </div>
                   </div>
 
-                  <!-- Info Lokasi & Catatan -->
+                  <!-- Info Lokasi Kampus -->
                   <div class="p-3 bg-amber-50/70 border border-amber-200 rounded-md text-xs text-amber-900 flex items-start gap-2.5">
                     <i class="fas fa-map-marker-alt text-amber-600 shrink-0 mt-0.5"></i>
                     <div>
-                      <span class="font-semibold block"><?= htmlspecialchars($L['schedule_location']) ?></span>
-                      <?php if (!empty($currentApplicant['schedule_notes'])): ?>
-                        <span class="text-[11px] text-amber-800 block mt-1"><?= htmlspecialchars($L['schedule_notes_label'] ?? 'Catatan Jadwal:') ?> <?= htmlspecialchars($currentApplicant['schedule_notes']) ?></span>
-                      <?php endif; ?>
+                      <strong class="block mb-0.5"><?= htmlspecialchars($L['schedule_location_title'] ?? 'Lokasi Pelaksanaan Observasi & Wawancara:') ?></strong>
+                      <span><?= htmlspecialchars($L['schedule_location_desc'] ?? 'Kampus Chung Chung Christian School, Surabaya. Harap hadir 15 menit sebelum sesi dimulai.') ?></span>
                     </div>
                   </div>
 
-                  <!-- FORM RESCHEDULE (TERSEMBUNYI, DITAMPILKAN KETIKA KLIK UBAH JADWAL) -->
-                  <div id="rescheduleFormContainer" class="hidden border-t border-gray-200 pt-4 mt-2">
-                    <form method="POST" action="status.php?cek=<?= urlencode($searchQuery) ?>&phone=<?= urlencode($searchPhone) ?>&lang=<?= $currLang ?>" class="space-y-4">
-                      <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
-                      <input type="hidden" name="action_update_schedule" value="1">
-                      <input type="hidden" name="target_app_no" value="<?= htmlspecialchars($currentApplicant['application_number']) ?>">
+                  <?php if ($overallStatus === 'pending' || $overallStatus === 'in_review'): ?>
+                    <div class="pt-1">
+                      <button 
+                        type="button" 
+                        onclick="toggleRescheduleForm()" 
+                        class="px-3.5 py-1.5 rounded border border-ccsOrange text-ccsOrange hover:bg-orange-50 text-xs font-semibold transition inline-flex items-center gap-1.5"
+                      >
+                        <i class="fas fa-calendar-check"></i>
+                        <span><?= htmlspecialchars($L['btn_reschedule']) ?></span>
+                      </button>
+                    </div>
 
-                      <div class="border-b border-gray-100 pb-2 flex items-center justify-between">
-                        <h4 class="text-xs font-bold text-ccsHeading uppercase tracking-wider">
-                          <?= htmlspecialchars($L['reschedule_modal_title'] ?? 'Formulir Perubahan Jadwal') ?>
-                        </h4>
-                        <button type="button" onclick="toggleRescheduleForm()" class="text-xs text-gray-400 hover:text-gray-600">
-                          <i class="fas fa-times"></i>
-                        </button>
-                      </div>
+                    <!-- Formulir Pengajuan Jadwal Baru (Reschedule) -->
+                    <div id="rescheduleFormContainer" class="hidden border-t border-gray-200 pt-4 mt-2">
+                      <form method="POST" action="status.php?cek=<?= urlencode($searchQuery) ?>&phone=<?= urlencode($searchPhone) ?>&lang=<?= $currLang ?>#step-5" class="space-y-4">
+                        <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
+                        <input type="hidden" name="action_reschedule" value="1">
+                        <input type="hidden" name="target_app_no" value="<?= htmlspecialchars($currentApplicant['application_number']) ?>">
 
-                      <div class="flex items-center gap-2.5 p-2.5 bg-blue-50/70 border border-blue-200 rounded-md">
-                        <input 
-                          type="checkbox" 
-                          id="sameDayScheduleToggleResched" 
-                          name="same_day_schedule" 
-                          value="1" 
-                          checked 
-                          onchange="toggleSameDaySchedule(this.checked, 'Resched')"
-                          class="w-4 h-4 text-ccsHeading rounded border-gray-300 focus:ring-ccsHeading cursor-pointer"
-                        >
-                        <label for="sameDayScheduleToggleResched" class="text-xs font-semibold text-ccsHeading cursor-pointer select-none">
-                          <?= htmlspecialchars($L['lbl_same_day_toggle']) ?>
-                        </label>
-                      </div>
-
-                      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                        <div class="p-3 bg-slate-50 border border-slate-200 rounded-md space-y-2.5">
-                          <label class="school-label"><?= htmlspecialchars($L['lbl_test_date']) ?> <span class="text-rose-500">*</span></label>
-                          <input 
-                            type="date" 
-                            name="test_date" 
-                            id="testDateInputResched" 
-                            required 
-                            min="<?= date('Y-m-d', strtotime('+1 day')) ?>"
-                            value="<?= htmlspecialchars($currentApplicant['test_date'] ?? date('Y-m-d', strtotime('+3 days'))) ?>" 
-                            onchange="syncInterviewDate(this.value, 'Resched')"
-                            class="school-input"
-                          >
-                          <label class="school-label"><?= htmlspecialchars($L['lbl_test_session']) ?> <span class="text-rose-500">*</span></label>
-                          <select name="test_session" required class="school-select">
-                            <option value="Sesi 1 (08:30 - 10:00 WIB)" <?= ($currentApplicant['test_session'] ?? '') === 'Sesi 1 (08:30 - 10:00 WIB)' ? 'selected' : '' ?>><?= $L['session_opt_1'] ?></option>
-                            <option value="Sesi 2 (10:30 - 12:00 WIB)" <?= ($currentApplicant['test_session'] ?? '') === 'Sesi 2 (10:30 - 12:00 WIB)' ? 'selected' : '' ?>><?= $L['session_opt_2'] ?></option>
-                            <option value="Sesi 3 (13:00 - 14:30 WIB)" <?= ($currentApplicant['test_session'] ?? '') === 'Sesi 3 (13:00 - 14:30 WIB)' ? 'selected' : '' ?>><?= $L['session_opt_3'] ?></option>
-                            <option value="Sesi 4 (15:00 - 16:30 WIB)" <?= ($currentApplicant['test_session'] ?? '') === 'Sesi 4 (15:00 - 16:30 WIB)' ? 'selected' : '' ?>><?= $L['session_opt_4'] ?></option>
-                          </select>
+                        <div class="flex items-center justify-between pb-1 border-b border-gray-100">
+                          <h4 class="text-xs font-bold text-ccsHeading uppercase tracking-wide">
+                            <?= htmlspecialchars($L['resched_form_title'] ?? 'Ajukan Perubahan Jadwal Observasi & Wawancara') ?>
+                          </h4>
+                          <label class="inline-flex items-center gap-1.5 cursor-pointer text-[11px] text-ccsHeading select-none">
+                            <input 
+                              type="checkbox" 
+                              id="sameDayScheduleToggleResched" 
+                              onchange="toggleSameDaySchedule(this.checked, 'Resched')" 
+                              class="rounded border-gray-300 text-ccsOrange focus:ring-ccsOrange h-3 w-3"
+                            >
+                            <span><?= htmlspecialchars($L['lbl_same_day_sched']) ?></span>
+                          </label>
                         </div>
 
-                        <div class="p-3 bg-slate-50 border border-slate-200 rounded-md space-y-2.5">
-                          <label class="school-label"><?= htmlspecialchars($L['lbl_interview_date']) ?> <span class="text-rose-500">*</span></label>
-                          <input 
-                            type="date" 
-                            name="interview_date" 
-                            id="interviewDateInputResched" 
-                            required 
-                            min="<?= date('Y-m-d', strtotime('+1 day')) ?>"
-                            value="<?= htmlspecialchars($currentApplicant['interview_date'] ?? date('Y-m-d', strtotime('+3 days'))) ?>" 
-                            readonly 
-                            class="school-input bg-gray-100 cursor-not-allowed"
-                          >
-                          <label class="school-label"><?= htmlspecialchars($L['lbl_interview_session']) ?> <span class="text-rose-500">*</span></label>
-                          <select name="interview_session" required class="school-select">
-                            <option value="Sesi 1 (08:30 - 10:00 WIB)" <?= ($currentApplicant['interview_session'] ?? '') === 'Sesi 1 (08:30 - 10:00 WIB)' ? 'selected' : '' ?>><?= $L['session_opt_1'] ?></option>
-                            <option value="Sesi 2 (10:30 - 12:00 WIB)" <?= ($currentApplicant['interview_session'] ?? '') === 'Sesi 2 (10:30 - 12:00 WIB)' ? 'selected' : '' ?>><?= $L['session_opt_2'] ?></option>
-                            <option value="Sesi 3 (13:00 - 14:30 WIB)" <?= ($currentApplicant['interview_session'] ?? '') === 'Sesi 3 (13:00 - 14:30 WIB)' ? 'selected' : '' ?>><?= $L['session_opt_3'] ?></option>
-                            <option value="Sesi 4 (15:00 - 16:30 WIB)" <?= ($currentApplicant['interview_session'] ?? '') === 'Sesi 4 (15:00 - 16:30 WIB)' ? 'selected' : '' ?>><?= $L['session_opt_4'] ?></option>
-                          </select>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                          <div>
+                            <label class="school-label"><?= htmlspecialchars($L['lbl_test_date']) ?> <span class="text-rose-500">*</span></label>
+                            <input 
+                              type="date" 
+                              name="test_date" 
+                              id="testDateInputResched" 
+                              required 
+                              onchange="syncInterviewDate(this.value, 'Resched')"
+                              value="<?= htmlspecialchars($currentApplicant['test_date'] ?? '') ?>" 
+                              class="school-input"
+                            >
+                            <label class="school-label mt-2"><?= htmlspecialchars($L['lbl_test_session']) ?> <span class="text-rose-500">*</span></label>
+                            <select name="test_session" required class="school-select">
+                              <option value="Sesi 1 (08:30 - 10:00 WIB)" <?= ($currentApplicant['test_session'] ?? '') === 'Sesi 1 (08:30 - 10:00 WIB)' ? 'selected' : '' ?>><?= $L['session_opt_1'] ?></option>
+                              <option value="Sesi 2 (10:30 - 12:00 WIB)" <?= ($currentApplicant['test_session'] ?? '') === 'Sesi 2 (10:30 - 12:00 WIB)' ? 'selected' : '' ?>><?= $L['session_opt_2'] ?></option>
+                              <option value="Sesi 3 (13:00 - 14:30 WIB)" <?= ($currentApplicant['test_session'] ?? '') === 'Sesi 3 (13:00 - 14:30 WIB)' ? 'selected' : '' ?>><?= $L['session_opt_3'] ?></option>
+                            </select>
+                          </div>
+
+                          <div>
+                            <label class="school-label"><?= htmlspecialchars($L['lbl_interview_date']) ?> <span class="text-rose-500">*</span></label>
+                            <input 
+                              type="date" 
+                              name="interview_date" 
+                              id="interviewDateInputResched" 
+                              required 
+                              value="<?= htmlspecialchars($currentApplicant['interview_date'] ?? '') ?>" 
+                              class="school-input"
+                            >
+                            <label class="school-label mt-2"><?= htmlspecialchars($L['lbl_interview_session']) ?> <span class="text-rose-500">*</span></label>
+                            <select name="interview_session" required class="school-select">
+                              <option value="Sesi 1 (08:30 - 10:00 WIB)" <?= ($currentApplicant['interview_session'] ?? '') === 'Sesi 1 (08:30 - 10:00 WIB)' ? 'selected' : '' ?>><?= $L['session_opt_1'] ?></option>
+                              <option value="Sesi 2 (10:30 - 12:00 WIB)" <?= ($currentApplicant['interview_session'] ?? '') === 'Sesi 2 (10:30 - 12:00 WIB)' ? 'selected' : '' ?>><?= $L['session_opt_2'] ?></option>
+                              <option value="Sesi 3 (13:00 - 14:30 WIB)" <?= ($currentApplicant['interview_session'] ?? '') === 'Sesi 3 (13:00 - 14:30 WIB)' ? 'selected' : '' ?>><?= $L['session_opt_3'] ?></option>
+                              <option value="Sesi 4 (15:00 - 16:30 WIB)" <?= ($currentApplicant['interview_session'] ?? '') === 'Sesi 4 (15:00 - 16:30 WIB)' ? 'selected' : '' ?>><?= $L['session_opt_4'] ?></option>
+                            </select>
+                          </div>
+
+                          <div class="sm:col-span-2">
+                            <label class="school-label"><?= htmlspecialchars($L['lbl_schedule_notes']) ?></label>
+                            <input type="text" name="schedule_notes" value="<?= htmlspecialchars($currentApplicant['schedule_notes'] ?? '') ?>" placeholder="Alasan perubahan atau catatan khusus" class="school-input">
+                          </div>
                         </div>
 
-                        <div class="sm:col-span-2">
-                          <label class="school-label"><?= htmlspecialchars($L['lbl_schedule_notes']) ?></label>
-                          <input type="text" name="schedule_notes" value="<?= htmlspecialchars($currentApplicant['schedule_notes'] ?? '') ?>" placeholder="Alasan perubahan atau catatan khusus" class="school-input">
+                        <div class="flex items-center gap-2 pt-1">
+                          <button type="submit" class="thm-btn text-xs py-2 px-4">
+                            <i class="fas fa-save mr-1"></i> Simpan Jadwal Baru
+                          </button>
+                          <button type="button" onclick="toggleRescheduleForm()" class="px-3 py-2 text-xs border border-gray-300 rounded text-gray-600 hover:bg-gray-50">
+                            Batal
+                          </button>
                         </div>
-                      </div>
+                      </form>
+                    </div>
+                  <?php endif; ?>
+                <?php endif; ?>
 
-                      <div class="flex items-center gap-2 pt-1">
-                        <button type="submit" class="thm-btn text-xs py-2 px-4">
-                          <i class="fas fa-save mr-1"></i> Simpan Jadwal Baru
-                        </button>
-                        <button type="button" onclick="toggleRescheduleForm()" class="px-3 py-2 text-xs border border-gray-300 rounded text-gray-600 hover:bg-gray-50">
-                          Batal
-                        </button>
-                      </div>
-                    </form>
-                  </div>
+                <!-- Navigasi Bawah Tab 5 -->
+                <div class="flex items-center justify-between pt-3 border-t border-gray-100 flex-wrap gap-2 text-xs">
+                  <button type="button" onclick="switchTab(4)" class="px-3 py-1.5 rounded border border-gray-300 text-gray-600 hover:bg-gray-50 flex items-center gap-1.5 transition">
+                    <i class="fas fa-arrow-left"></i> Tahap 4: Biodata Lengkap
+                  </button>
+                  <button type="button" onclick="switchTab(6)" class="thm-btn px-4 py-1.5 flex items-center gap-1.5 font-semibold text-xs">
+                    Tahap 6: Hasil Seleksi &rarr;
+                  </button>
                 </div>
+
               </div>
-            <?php endif; ?>
-          <?php endif; ?>
+            </div>
+
+            <!-- ─── TAB 6: HASIL SELEKSI ────────────────────────────────── -->
+            <div id="panel-tab-6" class="tab-pane hidden space-y-4">
+              <div id="kartu-diterima" class="bg-white border border-gray-200 rounded-md p-6 sm:p-8 text-center space-y-4 shadow-xs scroll-mt-28">
+                
+                <?php if ($overallStatus === 'approved'): ?>
+                  <div class="w-14 h-14 rounded-full bg-emerald-50 text-emerald-700 mx-auto flex items-center justify-center text-2xl border border-emerald-200">
+                    <i class="fas fa-graduation-cap"></i>
+                  </div>
+
+                  <div class="space-y-1">
+                    <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200 mb-1">
+                      <i class="fas fa-check-circle text-emerald-600"></i> <?= htmlspecialchars($L['approved_card_badge']) ?>
+                    </div>
+                    <h2 class="text-xl sm:text-2xl font-bold text-ccsHeading">
+                      <?= htmlspecialchars($L['approved_card_title']) ?>
+                    </h2>
+                    <p class="text-xs sm:text-sm text-gray-600 max-w-xl mx-auto leading-relaxed pt-1">
+                      <?= sprintf(
+                          $L['approved_card_desc'],
+                          htmlspecialchars($currentApplicant['student_name']),
+                          htmlspecialchars($currentApplicant['level_name'] ?? $currentApplicant['preferred_grade'] ?? '-')
+                      ) ?>
+                    </p>
+                  </div>
+
+                  <div class="p-4 bg-slate-50 rounded-md border border-slate-200 max-w-md mx-auto text-left text-xs space-y-2 text-gray-700">
+                    <div class="flex justify-between items-center pb-2 border-b border-slate-200/80">
+                      <span class="text-gray-500"><?= htmlspecialchars($L['lbl_code']) ?>:</span>
+                      <span class="font-mono text-ccsHeading font-bold"><?= htmlspecialchars($currentApplicant['application_number']) ?></span>
+                    </div>
+                    <div class="flex justify-between items-center pb-2 border-b border-slate-200/80">
+                      <span class="text-gray-500"><?= htmlspecialchars($L['lbl_student']) ?>:</span>
+                      <span class="font-semibold text-gray-900"><?= htmlspecialchars($currentApplicant['student_name']) ?></span>
+                    </div>
+                    <div class="flex justify-between items-center pb-2 border-b border-slate-200/80">
+                      <span class="text-gray-500"><?= htmlspecialchars($L['lbl_level_selected']) ?>:</span>
+                      <span class="font-medium text-gray-900"><?= htmlspecialchars($currentApplicant['level_name'] ?? $currentApplicant['preferred_grade'] ?? '-') ?></span>
+                    </div>
+                    <div class="flex justify-between items-center <?= !empty($currentApplicant['admin_notes']) ? 'pb-2 border-b border-slate-200/80' : '' ?>">
+                      <span class="text-gray-500">Status Seleksi:</span>
+                      <span class="text-emerald-700 font-bold inline-flex items-center gap-1">
+                        <i class="fas fa-check-circle"></i> <?= htmlspecialchars($L['approved_card_status']) ?>
+                      </span>
+                    </div>
+                    <?php if (!empty($currentApplicant['admin_notes'])): ?>
+                      <div class="pt-1">
+                        <span class="text-gray-500 block mb-1"><?= htmlspecialchars($L['approved_card_admin_notes']) ?></span>
+                        <div class="p-2.5 bg-white rounded border border-slate-200 text-gray-800 italic text-[11px] leading-relaxed">
+                          &ldquo;<?= nl2br(htmlspecialchars($currentApplicant['admin_notes'])) ?>&rdquo;
+                        </div>
+                      </div>
+                    <?php endif; ?>
+                  </div>
+
+                  <p class="text-xs text-gray-500 max-w-md mx-auto leading-relaxed pt-1">
+                    <?= htmlspecialchars($L['approved_card_email_notice']) ?>
+                  </p>
+
+                <?php elseif ($overallStatus === 'rejected'): ?>
+                  <div class="w-14 h-14 rounded-full bg-rose-50 text-rose-700 mx-auto flex items-center justify-center text-2xl border border-rose-200">
+                    <i class="fas fa-times-circle"></i>
+                  </div>
+                  <div class="space-y-1">
+                    <h2 class="text-xl font-bold text-gray-900"><?= htmlspecialchars($L['callout_title_rejected']) ?></h2>
+                    <p class="text-xs text-gray-600 max-w-md mx-auto leading-relaxed"><?= htmlspecialchars($L['callout_text_rejected']) ?></p>
+                  </div>
+
+                <?php else: ?>
+                  <div class="w-14 h-14 rounded-full bg-slate-50 text-slate-600 mx-auto flex items-center justify-center text-2xl border border-slate-200">
+                    <i class="fas fa-hourglass-half text-ccsOrange"></i>
+                  </div>
+                  <div class="space-y-1 max-w-md mx-auto">
+                    <span class="px-3 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-800 border border-blue-200 inline-block mb-1">
+                      Tahap Penilaian Berkas & Observasi
+                    </span>
+                    <h3 class="text-lg font-bold text-ccsHeading">Hasil Seleksi Sedang Dalam Evaluasi</h3>
+                    <p class="text-xs text-gray-500 leading-relaxed pt-1">
+                      Seluruh hasil observasi siswa dan wawancara orang tua sedang ditinjau oleh Dewan Akademik CCS. Keputusan penerimaan resmi akan diperbarui pada halaman ini dan dikonfirmasi melalui email resmi sekolah.
+                    </p>
+                  </div>
+                <?php endif; ?>
+
+                <!-- Navigasi Bawah Tab 6 -->
+                <div class="flex items-center justify-start pt-3 border-t border-gray-100 flex-wrap gap-2 text-xs">
+                  <button type="button" onclick="switchTab(5)" class="px-3 py-1.5 rounded border border-gray-300 text-gray-600 hover:bg-gray-50 flex items-center gap-1.5 transition">
+                    <i class="fas fa-arrow-left"></i> Tahap 5: Observasi & Review
+                  </button>
+                </div>
+
+              </div>
+            </div>
+
+          </div>
 
         </div>
       <?php endif; ?>
@@ -2814,26 +3072,96 @@ function formatTanggalIndo($dateStr, $lang = 'id') {
       }
     }
 
-    // Auto-scroll halus ke tempat unggah jika ada hash atau target
-    window.addEventListener('load', function() {
-      var hash = window.location.hash;
-      var target = null;
-      if (hash) {
-        try {
-          target = document.querySelector(hash);
-        } catch(e) {}
-      }
-      <?php if ($currentApplicant): ?>
-      if (!target) {
-        target = document.getElementById('tempat-unggah') || document.getElementById('cek-status');
-      }
-      <?php endif; ?>
+    // ─── TABBED STEPPER SWITCHER ─────────────────────────────────────────────
+    function switchTab(tabNum) {
+      tabNum = parseInt(tabNum, 10);
+      if (isNaN(tabNum) || tabNum < 1 || tabNum > 6) tabNum = 1;
 
-      if (target) {
-        setTimeout(function() {
-          target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }, 250);
+      // 1. Sembunyikan semua tab pane
+      var panes = document.querySelectorAll('.tab-pane');
+      for (var i = 0; i < panes.length; i++) {
+        panes[i].classList.add('hidden');
       }
+
+      // 2. Tampilkan tab pane terpilih
+      var targetPane = document.getElementById('panel-tab-' + tabNum);
+      if (targetPane) {
+        targetPane.classList.remove('hidden');
+      }
+
+      // 3. Update styling tombol stepper desktop & mobile
+      for (var j = 1; j <= 6; j++) {
+        var circle = document.getElementById('step-circle-' + j);
+        var title = document.getElementById('step-title-' + j);
+        var mobBtn = document.getElementById('mob-step-tab-btn-' + j);
+        var mobPill = document.getElementById('mob-active-pill-' + j);
+
+        if (j === tabNum) {
+          if (circle) circle.classList.add('tab-active-circle');
+          if (title) title.classList.add('tab-active-title');
+
+          if (mobBtn) {
+            mobBtn.classList.add('bg-white', 'border-2', 'border-ccsOrange', 'shadow-xs');
+            mobBtn.classList.remove('bg-slate-100/70', 'border-slate-200');
+          }
+          if (mobPill) mobPill.classList.remove('hidden');
+        } else {
+          if (circle) circle.classList.remove('tab-active-circle');
+          if (title) title.classList.remove('tab-active-title');
+
+          if (mobBtn) {
+            mobBtn.classList.remove('bg-white', 'border-2', 'border-ccsOrange', 'shadow-xs');
+            mobBtn.classList.add('bg-slate-100/70', 'border-slate-200');
+          }
+          if (mobPill) mobPill.classList.add('hidden');
+        }
+      }
+
+      // 4. Update baris indikator arsip
+      var defaultTab = window.APP_DEFAULT_TAB || 1;
+      var viewingBar = document.getElementById('viewing-archived-bar');
+      var viewingTabNum = document.getElementById('viewing-tab-num');
+      if (viewingBar && viewingTabNum) {
+        if (tabNum !== defaultTab) {
+          viewingTabNum.textContent = tabNum;
+          viewingBar.classList.remove('hidden');
+        } else {
+          viewingBar.classList.add('hidden');
+        }
+      }
+
+      // 5. Update URL Hash tanpa trigger lompatan mendadak
+      if (history.replaceState) {
+        history.replaceState(null, null, '#step-' + tabNum);
+      }
+    }
+
+    // Auto-inisialisasi tab pada saat halaman selesai dimuat
+    window.addEventListener('load', function() {
+      <?php if ($currentApplicant): ?>
+      var defaultTab = <?= (int)$defaultTab ?>;
+      window.APP_DEFAULT_TAB = defaultTab;
+
+      var hash = window.location.hash;
+      if (hash) {
+        if (hash.startsWith('#step-')) {
+          var n = parseInt(hash.replace('#step-', ''), 10);
+          if (n >= 1 && n <= 6) defaultTab = n;
+        } else if (hash === '#tahap-referral') {
+          defaultTab = 3;
+        } else if (hash === '#tempat-unggah') {
+          defaultTab = 2;
+        } else if (hash === '#formulir-biodata') {
+          defaultTab = 4;
+        } else if (hash === '#arsip-jadwal') {
+          defaultTab = 5;
+        } else if (hash === '#kartu-diterima') {
+          defaultTab = 6;
+        }
+      }
+
+      switchTab(defaultTab);
+      <?php endif; ?>
     });
   </script>
 

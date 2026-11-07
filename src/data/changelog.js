@@ -9,9 +9,95 @@
 
 export const SYSTEM_RELEASES = [
   {
-    version: '0.6.4',
+    version: '0.7.1',
     date: '2026-11-07',
     isLatest: true,
+    summary: {
+      id: 'Perapian antarmuka Step 1 (Registrasi Awal): menghapus tombol cetak bukti registrasi agar alur tetap ringkas, bersih, dan konsisten dengan kaidah minimalist design.',
+      en: 'Interface refinement on Step 1 (Initial Registration): removed the print registration proof button to keep the workflow clean, uncluttered, and strictly compliant with minimalist design standards.',
+      zh: '第 1 步（初始注册）界面精简：移除打印登记证明按钮，保持界面纯粹克制，严格符合极简设计标准。'
+    },
+    sections: {
+      removed: [
+        {
+          id: 'Menghapus tombol "Cetak Bukti Registrasi" pada kartu Tahap 1 di status.php untuk menjaga kerapian dan kesederhanaan tampilan informasi admisi.',
+          en: 'Removed the "Cetak Bukti Registrasi" print button from Stage 1 card on status.php to keep admission layout clean, concise, and distraction-free.',
+          zh: '移除 status.php 第 1 阶段卡片中的“打印登记凭证”按钮，去除多余操作杂音，维护界面纯粹与整洁。'
+        }
+      ]
+    }
+  },
+  {
+    version: '0.7.0',
+    date: '2026-11-07',
+    isLatest: false,
+    summary: {
+      id: 'Perombakan arsitektur portal pelacakan pendaftaran menjadi Interactive Tabbed Stepper minimalis: setiap lingkaran tahap dapat diklik untuk berganti tampilan secara instan tanpa reload, navigasi antar tahap yang mulus, dan tampilan data terfokus pada setiap fase admisi.',
+      en: 'Architectural overhaul of applicant tracking portal into a minimalist Interactive Tabbed Stepper: each step circle acts as an interactive tab switching views instantly without reload, smooth inter-stage navigation, and focused phase data.',
+      zh: '新生报名追踪门户全面重构为极简交互式分步标签页（Interactive Tabbed Stepper）：各步骤节点支持无刷新即时切换展示，阶段间无缝跳转，提供极致简洁优雅的各环节数据概览。'
+    },
+    sections: {
+      added: [
+        {
+          id: 'Sistem Tab Navigator Interaktif 6 Tahap pada status.php: mengklik nomor tahap di stepper langsung mengganti panel kartu di bawahnya secara dinamis dengan animasi halus (fade-in) tanpa reload halaman.',
+          en: 'Interactive 6-Stage Tab Navigator on status.php: clicking any step circle dynamically switches the active card panel below with a smooth fade-in animation without reloading.',
+          zh: 'status.php 全新支持 6 阶段交互式分步选项卡系统：点击顶部任一步骤即可无刷新即时平滑切换至对应的卡片内容面板。'
+        },
+        {
+          id: 'Panel mandiri untuk masing-masing 6 tahapan admisi (Tahap 1 Bukti Registrasi, Tahap 2 Pembayaran Formulir & Struk, Tahap 3 Referral, Tahap 4 Biodata Lengkap, Tahap 5 Jadwal Observasi & Wawancara, Tahap 6 Keputusan Hasil Seleksi).',
+          en: 'Dedicated panels for each of the 6 admission stages (Step 1 Registration Slip, Step 2 Form Fee & Receipt, Step 3 Referral, Step 4 Complete Profile, Step 5 Observation & Interview Schedule, Step 6 Selection Result).',
+          zh: '为 6 个招生阶段分别构建专属独立面板（第 1 步初始登记回执、第 2 步表格缴费与凭证、第 3 步推荐人、第 4 步详细档案、第 5 步评估与面试日程、第 6 步录取结果通知）。'
+        },
+        {
+          id: 'Baris navigasi pintar & deteksi URL hash (#step-1 s/d #step-6) yang secara cerdas mengingat dan membuka langsung tab sesuai status terkini atau aksi terakhir pendaftar.',
+          en: 'Smart navigation bar & URL hash detection (#step-1 to #step-6) intelligently auto-opening the relevant tab based on applicant current status or latest action.',
+          zh: '智能导航指示栏与 URL 锚点探测（#step-1 至 #step-6），智能根据当前状态或最新提交动作自动高亮并定位目标阶段。'
+        }
+      ],
+      changed: [
+        {
+          id: 'Penyederhanaan desain (minimalist design) pada seluruh kartu status: menghapus teks berlebihan dan menyajikan informasi ringkas, data terstruktur yang rapi, dan kontras visual yang elegan.',
+          en: 'Minimalist design simplification across all status cards: removed verbose redundant text, delivering concise information, structured data tables, and dignified visual contrast.',
+          zh: '遵循极简设计规范（Minimalist Design）深度精简各卡片排版：彻底剔除冗余修饰文本，呈现清晰凝练的结构化数据与高端雅致的视觉质感。'
+        }
+      ]
+    }
+  },
+  {
+    version: '0.6.5',
+    date: '2026-11-07',
+    isLatest: false,
+    summary: {
+      id: 'Perbaikan aksesibilitas tahap referral: kartu referral kini tetap dapat diakses, diisi, dan diubah kapan saja bahkan setelah calon siswa resmi diterima, disertai stepper interaktif dengan tautan langsung ke setiap tahap.',
+      en: 'Fixed referral stage accessibility: referral card is now persistently accessible, fillable, and editable at any time even after official admission, with interactive stepper anchor links.',
+      zh: '修复推荐人环节的访问支持：在学生正式录取后推荐人卡片仍永久保留并支持随时补充或修改，步进条全面支持点击直达对应阶段。'
+    },
+    sections: {
+      fixed: [
+        {
+          id: 'Perbaikan status visual Tahap 3 (Referral) pada stepper: ketika siswa telah berada di tahap lanjut (sudah diterima / biodata lengkap) namun belum mengisi referral, status tidak lagi tertahan di warna oranye aktif melainkan tampil elegan sebagai "Dilewati (Opsional)".',
+          en: 'Fixed visual state of Step 3 (Referral) in stepper: when applicants are at advanced stages (accepted / completed profile) without referral, it no longer stays stuck on active orange, displaying elegantly as "Skipped (Optional)".',
+          zh: '修复步进条第 3 步（推荐人）的视觉状态：当学生已进入后续流程（已录取或档案已填完）且未填推荐人时，不再异常停留在橙色活跃状态，而是优雅展示为“已跳过（选填）”。'
+        },
+        {
+          id: 'Perbaikan hilangnya kartu referral setelah siswa resmi diterima atau saat mengisi biodata: kartu informasi referral kini diposisikan mandiri sehingga tetap terlihat dan dapat diisi/diubah di semua tahapan status pendaftaran.',
+          en: 'Fixed missing referral card upon official admission or during profile entry: referral card is now persistently positioned so parents can view, fill, or edit referral across all admission stages.',
+          zh: '修复学生被录取后或填写档案时推荐人卡片消失的问题：推荐人卡片现已独立全局展示，家长在任何阶段均可随时查看或补录推荐人。'
+        }
+      ],
+      added: [
+        {
+          id: 'Tautan interaktif langsung pada setiap lingkaran dan judul stepper (desktop & mobile) untuk melakukan navigasi / smooth-scroll cepat ke bagian tahapan terkait (#tahap-referral, #kartu-diterima, dll.).',
+          en: 'Direct interactive links on every stepper circle and label (desktop & mobile) enabling quick navigation / smooth-scroll to corresponding stage cards (#tahap-referral, #kartu-diterima, etc.).',
+          zh: '在步进条各节点（桌面与移动端）添加交互式锚点链接，支持点击一键平滑滚动至对应卡片（#tahap-referral、#kartu-diterima 等）。'
+        }
+      ]
+    }
+  },
+  {
+    version: '0.6.4',
+    date: '2026-11-07',
+    isLatest: false,
     summary: {
       id: 'Penyempurnaan alur pendaftaran siswa: penambahan tahap ke-3 (Referral Opsional) dalam alur stepper 6 tahap di portal pendaftar dengan kartu mandiri, opsi simpan/lewati tahap, serta integrasi API Next.js.',
       en: 'Refined student admission flow: added dedicated Step 3 (Optional Referral) in the 6-stage applicant stepper with standalone card, save/skip actions, and Next.js public API integration.',
