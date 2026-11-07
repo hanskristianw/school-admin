@@ -21,8 +21,9 @@
 
 ## Semantic Versioning (SemVer) & Release Guidelines Rule
 - **STRICT DIRECTIVE**: Sistem ini masih berada dalam fase pengembangan aktif (*initial development / in-progress*). Seluruh penomoran versi rilis **WAJIB menggunakan skema `0.x.y`** dan dilarang meloncat ke `1.x.x` sebelum sistem dinyatakan resmi selesai, matang, dan stabil (General Availability / GA).
+- **Daily Single Version Rule (Aturan 1 Versi Per Hari)**: Dilarang cepat-cepat menaikkan nomor versi program. Jika perubahan, penambahan fitur, atau perbaikan bug dilakukan pada **hari/tanggal yang sama**, gunakan **hanya 1 nomor versi tunggal** untuk hari tersebut. Seluruh penambahan fitur (`added`), penyesuaian (`changed`), dan perbaikan bug (`fixed`) pada hari yang sama digabungkan (*consolidated*) ke dalam satu entri versi rilis hari itu. Jangan membuat versi pecahan beruntun (`0.6.1`, `0.6.2`, `0.6.3`, dll.) dalam hari yang sama.
 - **Kaidah Penomoran: `0.MINOR.PATCH`**:
-  - **MINOR (`0.Y.0`)**: Dinaikkan saat ada penambahan fitur baru atau modul program yang signifikan (misal: rilis modul baru, penambahan dialog pelaporan bug terpadu, integrasi layanan eksternal).
-  - **PATCH (`0.y.Z`)**: Dinaikkan saat perbaikan bug (bug fixes), hotfix, perapian UI/layout, atau pembenahan teks bahasa/i18n (misal dari `0.5.0` ke `0.5.1`).
+  - **MINOR (`0.Y.0`)**: Dinaikkan saat ada penambahan fitur baru atau modul program yang signifikan untuk hari rilis baru (misal: rilis modul baru, penambahan dialog pelaporan bug terpadu, integrasi layanan eksternal).
+  - **PATCH (`0.y.Z`)**: Dinaikkan saat rilis perbaikan kendala (*bug fixes*), *hotfix*, penyesuaian tata letak UI, atau pembenahan teks bahasa/i18n pada hari rilis baru jika tidak ada fitur mayor.
   - **MAJOR (`1.0.0`)**: Hanya dideklarasikan ketika seluruh modul utama sistem sekolah telah selesai secara komprehensif, teruji penuh, dan ditutup masa pengembangannya untuk dipakai operasional resmi.
 - Setiap rilis baru atau perubahan nomor versi pada `SYSTEM_RELEASES` di `src/data/changelog.js`, agen **WAJIB menyelaraskan nomor versi di `package.json`**.

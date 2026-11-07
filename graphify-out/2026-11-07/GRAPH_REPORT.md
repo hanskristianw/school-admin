@@ -1,16 +1,16 @@
 # Graph Report - school-admin  (2026-11-07)
 
 ## Corpus Check
-- 464 files · ~800,144 words
+- 466 files · ~802,619 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 2745 nodes · 2821 edges · 536 communities (325 shown, 211 thin omitted)
+- 2753 nodes · 2827 edges · 537 communities (324 shown, 213 thin omitted)
 - Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 9 edges (avg confidence: 0.67)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `5ff52ecd`
+- Built from commit: `04083ab1`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -188,7 +188,6 @@
 - Module 239
 - Module 240
 - Module 241
-- Module 242
 - Module 243
 - Module 244
 - Module 245
@@ -412,6 +411,8 @@
 - qrcode
 - @radix-ui/react-slot
 - @tiptap/extension-font-family
+- route.js
+- route.js
 
 ## God Nodes (most connected - your core abstractions)
 1. `jspdf` - 39 edges
@@ -440,7 +441,7 @@
 ## Import Cycles
 - None detected.
 
-## Communities (536 total, 211 thin omitted)
+## Communities (537 total, 213 thin omitted)
 
 ### Community 0 - "Admission Management"
 Cohesion: 0.08
@@ -507,8 +508,8 @@ Cohesion: 0.33
 Nodes (8): DAY_ID, DAYS, extractHM(), formatWeekLabel(), getMonday(), parseRange(), toISO(), WeeklyOverviewPage()
 
 ### Community 16 - "Third-party Libraries"
-Cohesion: 0.14
-Nodes (14): 11.1 Tables, `uniform`, `uniform_po_settings`, `uniform_purchase`, `uniform_purchase_item`, `uniform_purchase_receipt`, `uniform_purchase_receipt_item`, `uniform_sale` (+6 more)
+Cohesion: 0.11
+Nodes (18): 11.1 Tables, 11.2 ERD / Relationships (Uniform & Stock Domain), 11.3 Initial Stock & Inventory Ledger Workflows (`/stock/uniform/initial`), 11.4 POS Uniform Sales Workflows (`/sales/uniform`), 11. Uniform & Stock Management Domain (`/sales/uniform`, `/stock/uniform/add`, `/stock/uniform/initial`, `/stock/uniform/po-settings`, `/data/uniform`, `/data/uniform-size`), `uniform`, `uniform_po_settings`, `uniform_purchase` (+10 more)
 
 ### Community 17 - "Attendance Report API"
 Cohesion: 0.38
@@ -860,7 +861,7 @@ Nodes (7): 13. COLOR & MATERIAL RULES, Background Confidence Rule, Background-im
 
 ### Community 133 - "Module 133"
 Cohesion: 0.15
-Nodes (13): bcryptjs, @googleapis/chat, @hookform/resolvers, lucide-react, dependencies, bcryptjs, @googleapis/chat, @hookform/resolvers (+5 more)
+Nodes (13): class-variance-authority, @googleapis/chat, @hookform/resolvers, lucide-react, dependencies, class-variance-authority, @googleapis/chat, @hookform/resolvers (+5 more)
 
 ### Community 135 - "Module 135"
 Cohesion: 0.29
@@ -993,10 +994,6 @@ Nodes (5): **1. MYP Year Level Selection**, **2. Criterion Grades (A, B, C, D)**
 ### Community 241 - "Module 241"
 Cohesion: 0.70
 Nodes (4): calculateDuration(), formatWibTime(), getWibDate(), VendorChecklistDashboardPage()
-
-### Community 242 - "Module 242"
-Cohesion: 0.40
-Nodes (5): 6.1 Tables, 6.2 ERD / Relationships (Assessment & Grading), 6. Assessment & Grading Domain (`/data/topic-new` / Reports), `assessment_grade_strands`, `assessment_grades`
 
 ### Community 243 - "Module 243"
 Cohesion: 0.60
@@ -1139,8 +1136,8 @@ Cohesion: 0.67
 Nodes (5): buildWeeklyOverviewDocx(), compositeStampAndSignature(), fitAspect(), getImageDimensions(), POST()
 
 ### Community 289 - "bcryptjs"
-Cohesion: 0.40
-Nodes (4): 1. Development Phase Versioning (`0.x.y`), 2. Increment Rules: `0.MINOR.PATCH`, 3. Synchronized Version Files, Semantic Versioning (SemVer) & Release Guidelines
+Cohesion: 0.33
+Nodes (5): 1. Development Phase Versioning (`0.x.y`), 2. Increment Rules: `0.MINOR.PATCH`, 3. Daily Single Version Rule (Aturan 1 Versi Per Hari), 4. Synchronized Version Files, Semantic Versioning (SemVer) & Release Guidelines
 
 ### Community 290 - "Panduan Pemasangan: Sistem Persewaan Lapangan CCS di cPanel / Hostinger"
 Cohesion: 0.22
@@ -1167,8 +1164,8 @@ Cohesion: 0.57
 Nodes (6): extractScheduleMeta(), GET(), POST(), resolveCurrentFormFee(), supabaseAdmin, verifyAuth()
 
 ### Community 377 - "SKILL.md"
-Cohesion: 0.18
-Nodes (10): 10.1 Tables, 10.2 ERD / Relationships (Duty & Devotion Schedule Domain), 10. Duty, Greeter & Devotion Schedule Domain (`/data/door_greeter`), 11.2 ERD / Relationships (Uniform & Stock Domain), 11.3 Initial Stock & Inventory Ledger Workflows (`/stock/uniform/initial`), 11.4 POS Uniform Sales Workflows (`/sales/uniform`), 11. Uniform & Stock Management Domain (`/sales/uniform`, `/stock/uniform/add`, `/stock/uniform/initial`, `/stock/uniform/po-settings`, `/data/uniform`, `/data/uniform-size`), Database Schema & Relationships (+2 more)
+Cohesion: 0.17
+Nodes (11): 10.1 Tables, 10.2 ERD / Relationships (Duty & Devotion Schedule Domain), 10. Duty, Greeter & Devotion Schedule Domain (`/data/door_greeter`), 6.1 Tables, 6.2 ERD / Relationships (Assessment & Grading), 6. Assessment & Grading Domain (`/data/topic-new` / Reports), `assessment_grade_strands`, `assessment_grades` (+3 more)
 
 ### Community 388 - "page.jsx"
 Cohesion: 0.38
@@ -1187,19 +1184,19 @@ Cohesion: 0.40
 Nodes (3): ALLOWED_EXTS, ALLOWED_TYPES, supabaseAdmin
 
 ## Knowledge Gaps
-- **1330 isolated node(s):** `extends`, `next/core-web-vitals`, `$schema`, `style`, `rsc` (+1325 more)
+- **1333 isolated node(s):** `extends`, `next/core-web-vitals`, `$schema`, `style`, `rsc` (+1328 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **211 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **213 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `jspdf` connect `Admission Management` to `Module 145`, `Module 133`, `@googleapis/chat`?**
-  _High betweenness centrality (0.006) - this node is a cross-community bridge._
 - **Why does `dependencies` connect `Module 133` to `Admission Management`, `Package Dependencies & Config`, `next-auth`, `DDL`, `📁 **Project Structure**`, `react-dom`, `Module 134`, `pdf-lib`, `@radix-ui/react-select`, `react-hook-form`, `React UI Components`, `class-variance-authority`, `@tiptap/extension-table-cell`, `@tiptap/extension-table-header`, `@tiptap/extension-table-row`, `@tiptap/extension-task-item`, `@tiptap/extension-task-list`, `@tiptap/extension-text-align`, `docx`, `@tiptap/extension-text-style`, `@tiptap/extension-underline`, `@tiptap/pm`, `Module 154`, `Module 155`, `@tiptap/react`, `@tiptap/starter-kit`, `xlsx`, `**3. Assessment System**`, `SKILL.md`, `exceljs`, `clsx`, `dotenv`, `googleapis`, `zod`, `Appendix B - Canonical Sources (read these before reinventing)`, `Analysis & Synthesis Instructions`, `**3. Assessment System**`, `9. AI TELLS (Forbidden Patterns)`, `12. THE COMBINATORIAL VARIATION ENGINE`, `📁 **Project Structure**`, `html5-qrcode`, `11. REDESIGN PROTOCOL`, `33. CATEGORY-SPECIFIC BIAS`, `qrcode`, `@radix-ui/react-slot`, `Module 239`, `@tiptap/extension-font-family`, `jsonwebtoken`, `jspdf-autotable`, `@sparticuz/chromium-min`, `@supabase/supabase-js`, `react-easy-crop`?**
-  _High betweenness centrality (0.006) - this node is a cross-community bridge._
+  _High betweenness centrality (0.005) - this node is a cross-community bridge._
+- **Why does `jspdf` connect `Admission Management` to `Module 145`, `Module 133`, `@googleapis/chat`?**
+  _High betweenness centrality (0.005) - this node is a cross-community bridge._
 - **What connects `extends`, `next/core-web-vitals`, `$schema` to the rest of the system?**
-  _1330 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _1333 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `Admission Management` be split into smaller, more focused modules?**
   _Cohesion score 0.07667900581702802 - nodes in this community are weakly interconnected._
 - **Should `Package Dependencies & Config` be split into smaller, more focused modules?**

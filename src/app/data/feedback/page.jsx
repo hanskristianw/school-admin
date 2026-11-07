@@ -21,7 +21,8 @@ import {
   faTrashAlt,
   faCopy,
   faSpinner,
-  faHeadset
+  faHeadset,
+  faChevronDown
 } from '@fortawesome/free-solid-svg-icons'
 
 export default function SystemFeedbackPage() {
@@ -47,6 +48,27 @@ export default function SystemFeedbackPage() {
   // Changelog filter states
   const [selectedCategory, setSelectedCategory] = useState('all') // 'all' | 'added' | 'changed' | 'fixed'
   const [searchQuery, setSearchQuery] = useState('')
+
+  // Expandable version cards state (per version)
+  const [expandedVersions, setExpandedVersions] = useState({})
+
+  const toggleVersion = (version) => {
+    setExpandedVersions(prev => ({
+      ...prev,
+      [version]: !prev[version]
+    }))
+  }
+
+  const handleToggleAllVersions = () => {
+    const isAnyExpanded = filteredReleases.some(r => expandedVersions[r.version])
+    if (isAnyExpanded) {
+      setExpandedVersions({})
+    } else {
+      const all = {}
+      filteredReleases.forEach(r => { all[r.version] = true })
+      setExpandedVersions(all)
+    }
+  }
 
   // Notification Recipients Manager Modal (Admin only)
   const [showRecipientsModal, setShowRecipientsModal] = useState(false)
@@ -381,30 +403,70 @@ export default function SystemFeedbackPage() {
             </p>
           </div>
         ) : (
-          <div className="space-y-6">
-            {filteredReleases.map((release, relIdx) => {
-              const formattedDate = new Date(release.date).toLocaleDateString(dateLocale, {
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric'
-              })
+          <div className="space-y-4">
+          {/* Controls: Releases Count & Expand/Collapse All */}
+        {filteredReleases.length > 0 && (
+          <div className="flex items-center justify-between text-xs font-mono mb-3 px-1">
+            <span style={{ color: textSecondary }}>
+              {filteredReleases.length} {tr('feedback.releaseVersionsCount', { id: 'versi rilis', en: 'versions', zh: '个版本' })}
+            </span>
+            <button
+              type="button"
+              onClick={handleToggleAllVersions}
+              className="text-[11px] font-mono hover:underline cursor-pointer flex items-center gap-1.5 transition-colors"
+              style={{ color: textSecondary }}
+            >
+              <FontAwesomeIcon icon={faChevronDown} className={`text-[10px] transition-transform ${filteredReleases.some(r => expandedVersions[r.version]) ? 'rotate-180' : ''}`} />
+              <span>
+                {filteredReleases.some(r => expandedVersions[r.version])
+                  ? tr('feedback.collapseAll', { id: 'Tutup Semua Detail', en: 'Collapse All Details', zh: '折叠全部详情' })
+                  : tr('feedback.expandAll', { id: 'Buka Semua Detail', en: 'Buka Semua Detail', zh: '展开全部详情' })}
+              </span>
+            </button>
+          </div>
+        )}
 
-              const summaryText = release.summary?.[lang] || release.summary?.id || ''
-              const sections = release.filteredSections || release.sections || {}
-              const addedItems = sections.added || []
-              const changedItems = sections.changed || []
-              const fixedItems = sections.fixed || []
+        <div className="space-y-4">
+          {filteredReleases.map((release, relIdx) => {
+            const formattedDate = new Date(release.date).toLocaleDateString(dateLocale, {
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric'
+            })
 
-              return (
-                <article
-                  key={release.version ? `${release.version}-${relIdx}` : relIdx}
-                  className="rounded border p-6 transition-all shadow-xs"
-                  style={{ background: cardBg, borderColor, borderRadius: '8px' }}
+            const summaryText = release.summary?.[lang] || release.summary?.id || ''
+            const sections = release.filteredSections || release.sections || {}
+            const addedItems = sections.added || []
+            const changedItems = sections.changed || []
+            const fixedItems = sections.fixed || []
+
+            const isExpanded = searchQuery.trim().length > 0 ? true : !!expandedVersions[release.version]
+
+            return (
+              <article
+                key={release.version ? `${release.version}-${relIdx}` : relIdx}
+                className="rounded border transition-all shadow-xs overflow-hidden"
+                style={{ background: cardBg, borderColor, borderRadius: '8px' }}
+              >
+                {/* Header Dropdown (Clickable to Expand / Collapse) */}
+                <div
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => toggleVersion(release.version)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault()
+                      toggleVersion(release.version)
+                    }
+                  }}
+                  className="p-5 sm:p-6 w-full text-left cursor-pointer transition-colors select-none group"
+                  style={{
+                    background: isExpanded ? (isDark ? 'rgba(255, 255, 255, 0.02)' : 'rgba(0, 0, 0, 0.01)') : 'transparent'
+                  }}
                 >
-                  {/* Version Header */}
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b pb-4 mb-4" style={{ borderColor }}>
-                    <div className="flex items-center gap-3">
-                      <span className="text-xl font-bold font-mono tracking-tight" style={{ color: textPrimary }}>
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <span className="text-xl font-bold font-mono tracking-tight group-hover:text-blue-500 transition-colors" style={{ color: textPrimary }}>
                         [{release.version}]
                       </span>
                       {release.isLatest && (
@@ -420,22 +482,83 @@ export default function SystemFeedbackPage() {
                           {tr('feedback.badgeLatestRelease', { id: 'Rilis Terbaru', en: 'Latest Release', zh: '最新版本' })}
                         </span>
                       )}
+
+                      {/* Category Badges Preview */}
+                      <div className="flex items-center gap-1.5 text-[10.5px] font-mono font-semibold">
+                        {addedItems.length > 0 && (
+                          <span
+                            className="px-1.5 py-0.5 rounded border"
+                            style={{
+                              background: isDark ? 'rgba(16, 185, 129, 0.12)' : '#ECFDF5',
+                              borderColor: isDark ? 'rgba(16, 185, 129, 0.3)' : '#A7F3D0',
+                              color: isDark ? '#34D399' : '#065F46'
+                            }}
+                          >
+                            +{addedItems.length} Added
+                          </span>
+                        )}
+                        {changedItems.length > 0 && (
+                          <span
+                            className="px-1.5 py-0.5 rounded border"
+                            style={{
+                              background: isDark ? 'rgba(59, 130, 246, 0.12)' : '#EFF6FF',
+                              borderColor: isDark ? 'rgba(59, 130, 246, 0.3)' : '#BFDBFE',
+                              color: isDark ? '#60A5FA' : '#1D4ED8'
+                            }}
+                          >
+                            ~{changedItems.length} Changed
+                          </span>
+                        )}
+                        {fixedItems.length > 0 && (
+                          <span
+                            className="px-1.5 py-0.5 rounded border"
+                            style={{
+                              background: isDark ? 'rgba(245, 158, 11, 0.12)' : '#FFFBEB',
+                              borderColor: isDark ? 'rgba(245, 158, 11, 0.3)' : '#FDE68A',
+                              color: isDark ? '#FBBF24' : '#B45309'
+                            }}
+                          >
+                            ✓{fixedItems.length} Fixed
+                          </span>
+                        )}
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2 text-xs font-mono" style={{ color: textSecondary }}>
-                      <FontAwesomeIcon icon={faCalendarAlt} className="text-[11px]" />
-                      <span>{formattedDate}</span>
+
+                    <div className="flex items-center gap-3 self-end sm:self-auto">
+                      <div className="flex items-center gap-2 text-xs font-mono" style={{ color: textSecondary }}>
+                        <FontAwesomeIcon icon={faCalendarAlt} className="text-[11px]" />
+                        <span>{formattedDate}</span>
+                      </div>
+
+                      {/* Dropdown Downward Arrow Button */}
+                      <div
+                        className="w-7 h-7 rounded-full flex items-center justify-center border transition-all duration-200 shrink-0"
+                        style={{
+                          borderColor,
+                          background: isExpanded ? (isDark ? '#27272A' : '#F4F4F5') : 'transparent',
+                          color: isExpanded ? (isDark ? '#60A5FA' : '#2563EB') : textSecondary
+                        }}
+                        title={isExpanded ? tr('feedback.hideDetails', 'Tutup Detail') : tr('feedback.viewDetails', 'Lihat Detail')}
+                      >
+                        <FontAwesomeIcon
+                          icon={faChevronDown}
+                          className={`text-xs transition-transform duration-200 ${isExpanded ? 'rotate-180 text-blue-500' : 'rotate-0'}`}
+                        />
+                      </div>
                     </div>
                   </div>
 
-                  {/* Summary */}
+                  {/* Summary preview */}
                   {summaryText && (
-                    <p className="text-xs leading-relaxed mb-5" style={{ color: textSecondary }}>
+                    <p className="text-xs leading-relaxed mt-2.5" style={{ color: textSecondary, margin: 0 }}>
                       {summaryText}
                     </p>
                   )}
+                </div>
 
-                  {/* Keep a Changelog Standard Sections */}
-                  <div className="space-y-4">
+                {/* Expandable Detailed Sections */}
+                {isExpanded && (
+                  <div className="px-5 sm:px-6 pb-6 pt-3 border-t space-y-4" style={{ borderColor }}>
                     {/* Added */}
                     {addedItems.length > 0 && (
                       <div>
@@ -508,9 +631,11 @@ export default function SystemFeedbackPage() {
                       </div>
                     )}
                   </div>
-                </article>
-              )
-            })}
+                )}
+              </article>
+            )
+          })}
+        </div>
           </div>
         )}
       </div>

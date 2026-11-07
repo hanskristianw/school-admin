@@ -5991,8 +5991,8 @@
       "source_location": "L38",
       "_origin": "ast",
       "id": "package_dependencies_bcryptjs",
-      "community": 133,
-      "community_name": "Module 133",
+      "community": 155,
+      "community_name": "Module 155",
       "norm_label": "bcryptjs"
     },
     {
@@ -6002,8 +6002,8 @@
       "source_location": "L38",
       "_origin": "ast",
       "id": "bcryptjs",
-      "community": 133,
-      "community_name": "Module 133",
+      "community": 155,
+      "community_name": "Module 155",
       "norm_label": "bcryptjs"
     },
     {
@@ -6035,8 +6035,8 @@
       "source_location": "L40",
       "_origin": "ast",
       "id": "package_dependencies_class_variance_authority",
-      "community": 155,
-      "community_name": "Module 155",
+      "community": 133,
+      "community_name": "Module 133",
       "norm_label": "class-variance-authority"
     },
     {
@@ -6046,8 +6046,8 @@
       "source_location": "L40",
       "_origin": "ast",
       "id": "class_variance_authority",
-      "community": 155,
-      "community_name": "Module 155",
+      "community": 133,
+      "community_name": "Module 133",
       "norm_label": "class-variance-authority"
     },
     {
@@ -9728,7 +9728,7 @@
       "label": "POST()",
       "file_type": "code",
       "source_file": "src/app/api/public/vendor-checklist/route.js",
-      "source_location": "L192",
+      "source_location": "L206",
       "_origin": "ast",
       "id": "src_app_api_public_vendor_checklist_route_post",
       "community": 142,
@@ -10031,6 +10031,83 @@
       "community": 333,
       "community_name": "3. DEFAULT ARCHITECTURE & CONVENTIONS",
       "norm_label": "get()"
+    },
+    {
+      "label": "route.js",
+      "file_type": "code",
+      "source_file": "src/app/api/vendor-checklist/facility-reports/[id]/photo/route.js",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "src_app_api_vendor_checklist_facility_reports_id_photo_route",
+      "community": 538,
+      "community_name": "route.js",
+      "norm_label": "route.js"
+    },
+    {
+      "label": "supabaseAdmin",
+      "file_type": "code",
+      "source_file": "src/app/api/vendor-checklist/facility-reports/[id]/photo/route.js",
+      "source_location": "L6",
+      "_origin": "ast",
+      "id": "src_app_api_vendor_checklist_facility_reports_id_photo_route_supabaseadmin",
+      "community": 538,
+      "community_name": "route.js",
+      "norm_label": "supabaseadmin"
+    },
+    {
+      "label": "GET()",
+      "file_type": "code",
+      "source_file": "src/app/api/vendor-checklist/facility-reports/[id]/photo/route.js",
+      "source_location": "L13",
+      "_origin": "ast",
+      "id": "src_app_api_vendor_checklist_facility_reports_id_photo_route_get",
+      "community": 538,
+      "community_name": "route.js",
+      "norm_label": "get()"
+    },
+    {
+      "label": "route.js",
+      "file_type": "code",
+      "source_file": "src/app/api/vendor-checklist/facility-reports/route.js",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "src_app_api_vendor_checklist_facility_reports_route",
+      "community": 537,
+      "community_name": "route.js",
+      "norm_label": "route.js"
+    },
+    {
+      "label": "supabaseAdmin",
+      "file_type": "code",
+      "source_file": "src/app/api/vendor-checklist/facility-reports/route.js",
+      "source_location": "L6",
+      "_origin": "ast",
+      "id": "src_app_api_vendor_checklist_facility_reports_route_supabaseadmin",
+      "community": 537,
+      "community_name": "route.js",
+      "norm_label": "supabaseadmin"
+    },
+    {
+      "label": "GET()",
+      "file_type": "code",
+      "source_file": "src/app/api/vendor-checklist/facility-reports/route.js",
+      "source_location": "L11",
+      "_origin": "ast",
+      "id": "src_app_api_vendor_checklist_facility_reports_route_get",
+      "community": 537,
+      "community_name": "route.js",
+      "norm_label": "get()"
+    },
+    {
+      "label": "PATCH()",
+      "file_type": "code",
+      "source_file": "src/app/api/vendor-checklist/facility-reports/route.js",
+      "source_location": "L76",
+      "_origin": "ast",
+      "id": "src_app_api_vendor_checklist_facility_reports_route_patch",
+      "community": 537,
+      "community_name": "route.js",
+      "norm_label": "patch()"
     },
     {
       "label": "route.js",
@@ -14216,7 +14293,7 @@
       "label": "getWibDate()",
       "file_type": "code",
       "source_file": "src/app/data/vendor-checklist/page.jsx",
-      "source_location": "L76",
+      "source_location": "L80",
       "_origin": "ast",
       "id": "src_app_data_vendor_checklist_page_getwibdate",
       "community": 241,
@@ -14227,7 +14304,7 @@
       "label": "formatWibTime()",
       "file_type": "code",
       "source_file": "src/app/data/vendor-checklist/page.jsx",
-      "source_location": "L81",
+      "source_location": "L85",
       "_origin": "ast",
       "id": "src_app_data_vendor_checklist_page_formatwibtime",
       "community": 241,
@@ -14238,7 +14315,7 @@
       "label": "calculateDuration()",
       "file_type": "code",
       "source_file": "src/app/data/vendor-checklist/page.jsx",
-      "source_location": "L91",
+      "source_location": "L95",
       "_origin": "ast",
       "id": "src_app_data_vendor_checklist_page_calculateduration",
       "community": 241,
@@ -14249,7 +14326,7 @@
       "label": "VendorChecklistDashboardPage()",
       "file_type": "code",
       "source_file": "src/app/data/vendor-checklist/page.jsx",
-      "source_location": "L109",
+      "source_location": "L113",
       "_origin": "ast",
       "id": "src_app_data_vendor_checklist_page_vendorchecklistdashboardpage",
       "community": 241,
@@ -15921,7 +15998,7 @@
       "label": "SYSTEM_RELEASES",
       "file_type": "code",
       "source_file": "src/data/changelog.js",
-      "source_location": "L10",
+      "source_location": "L11",
       "_origin": "ast",
       "id": "src_data_changelog_system_releases",
       "community": 430,
@@ -16996,15 +17073,26 @@
       "norm_label": "2. increment rules: `0.minor.patch`"
     },
     {
-      "label": "3. Synchronized Version Files",
+      "label": "3. Daily Single Version Rule (Aturan 1 Versi Per Hari)",
       "file_type": "document",
       "source_file": ".agents/rules/versioning.md",
       "source_location": "L17",
       "_origin": "ast",
-      "id": "agents_rules_versioning_3_synchronized_version_files",
+      "id": "agents_rules_versioning_3_daily_single_version_rule_aturan_1_versi_per_hari",
       "community": 289,
       "community_name": "bcryptjs",
-      "norm_label": "3. synchronized version files"
+      "norm_label": "3. daily single version rule (aturan 1 versi per hari)"
+    },
+    {
+      "label": "4. Synchronized Version Files",
+      "file_type": "document",
+      "source_file": ".agents/rules/versioning.md",
+      "source_location": "L21",
+      "_origin": "ast",
+      "id": "agents_rules_versioning_4_synchronized_version_files",
+      "community": 289,
+      "community_name": "bcryptjs",
+      "norm_label": "4. synchronized version files"
     },
     {
       "label": "SKILL.md",
@@ -23657,8 +23745,8 @@
       "source_location": "L1035",
       "_origin": "ast",
       "id": "database_schema_6_assessment_grading_domain_data_topic_new_reports",
-      "community": 242,
-      "community_name": "Module 242",
+      "community": 377,
+      "community_name": "SKILL.md",
       "norm_label": "6. assessment & grading domain (`/data/topic-new` / reports)"
     },
     {
@@ -23668,8 +23756,8 @@
       "source_location": "L1039",
       "_origin": "ast",
       "id": "database_schema_6_1_tables",
-      "community": 242,
-      "community_name": "Module 242",
+      "community": 377,
+      "community_name": "SKILL.md",
       "norm_label": "6.1 tables"
     },
     {
@@ -23679,8 +23767,8 @@
       "source_location": "L1041",
       "_origin": "ast",
       "id": "database_schema_assessment_grades",
-      "community": 242,
-      "community_name": "Module 242",
+      "community": 377,
+      "community_name": "SKILL.md",
       "norm_label": "`assessment_grades`"
     },
     {
@@ -23690,8 +23778,8 @@
       "source_location": "L1064",
       "_origin": "ast",
       "id": "database_schema_assessment_grade_strands",
-      "community": 242,
-      "community_name": "Module 242",
+      "community": 377,
+      "community_name": "SKILL.md",
       "norm_label": "`assessment_grade_strands`"
     },
     {
@@ -23701,8 +23789,8 @@
       "source_location": "L1075",
       "_origin": "ast",
       "id": "database_schema_6_2_erd_relationships_assessment_grading",
-      "community": 242,
-      "community_name": "Module 242",
+      "community": 377,
+      "community_name": "SKILL.md",
       "norm_label": "6.2 erd / relationships (assessment & grading)"
     },
     {
@@ -23987,8 +24075,8 @@
       "source_location": "L1515",
       "_origin": "ast",
       "id": "database_schema_11_uniform_stock_management_domain_sales_uniform_stock_uniform_add_stock_uniform_initial_stock_uniform_po_settings_data_uniform_data_uniform_size",
-      "community": 377,
-      "community_name": "SKILL.md",
+      "community": 16,
+      "community_name": "Third-party Libraries",
       "norm_label": "11. uniform & stock management domain (`/sales/uniform`, `/stock/uniform/add`, `/stock/uniform/initial`, `/stock/uniform/po-settings`, `/data/uniform`, `/data/uniform-size`)"
     },
     {
@@ -24152,8 +24240,8 @@
       "source_location": "L1724",
       "_origin": "ast",
       "id": "database_schema_11_2_erd_relationships_uniform_stock_domain",
-      "community": 377,
-      "community_name": "SKILL.md",
+      "community": 16,
+      "community_name": "Third-party Libraries",
       "norm_label": "11.2 erd / relationships (uniform & stock domain)"
     },
     {
@@ -24163,8 +24251,8 @@
       "source_location": "L1806",
       "_origin": "ast",
       "id": "database_schema_11_3_initial_stock_inventory_ledger_workflows_stock_uniform_initial",
-      "community": 377,
-      "community_name": "SKILL.md",
+      "community": 16,
+      "community_name": "Third-party Libraries",
       "norm_label": "11.3 initial stock & inventory ledger workflows (`/stock/uniform/initial`)"
     },
     {
@@ -24174,8 +24262,8 @@
       "source_location": "L1829",
       "_origin": "ast",
       "id": "database_schema_11_4_pos_uniform_sales_workflows_sales_uniform",
-      "community": 377,
-      "community_name": "SKILL.md",
+      "community": 16,
+      "community_name": "Third-party Libraries",
       "norm_label": "11.4 pos uniform sales workflows (`/sales/uniform`)"
     },
     {
@@ -39435,7 +39523,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/app/api/public/vendor-checklist/route.js",
-      "source_location": "L192",
+      "source_location": "L206",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_api_public_vendor_checklist_route",
@@ -39492,7 +39580,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/app/api/public/vendor-checklist/route.js",
-      "source_location": "L208",
+      "source_location": "L222",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_api_public_vendor_checklist_route_post",
@@ -39504,7 +39592,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/app/api/public/vendor-checklist/route.js",
-      "source_location": "L141",
+      "source_location": "L155",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_api_public_vendor_checklist_route_get",
@@ -39516,7 +39604,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/app/api/public/vendor-checklist/route.js",
-      "source_location": "L288",
+      "source_location": "L302",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_api_public_vendor_checklist_route_post",
@@ -39741,6 +39829,61 @@
       "_origin": "ast",
       "source": "src_app_api_vendor_checklist_id_photo_route",
       "target": "src_app_api_vendor_checklist_id_photo_route_supabaseadmin",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/vendor-checklist/facility-reports/[id]/photo/route.js",
+      "source_location": "L13",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_api_vendor_checklist_facility_reports_id_photo_route",
+      "target": "src_app_api_vendor_checklist_facility_reports_id_photo_route_get",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/vendor-checklist/facility-reports/[id]/photo/route.js",
+      "source_location": "L6",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_api_vendor_checklist_facility_reports_id_photo_route",
+      "target": "src_app_api_vendor_checklist_facility_reports_id_photo_route_supabaseadmin",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/vendor-checklist/facility-reports/route.js",
+      "source_location": "L11",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_api_vendor_checklist_facility_reports_route",
+      "target": "src_app_api_vendor_checklist_facility_reports_route_get",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/vendor-checklist/facility-reports/route.js",
+      "source_location": "L76",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_api_vendor_checklist_facility_reports_route",
+      "target": "src_app_api_vendor_checklist_facility_reports_route_patch",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/vendor-checklist/facility-reports/route.js",
+      "source_location": "L6",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_api_vendor_checklist_facility_reports_route",
+      "target": "src_app_api_vendor_checklist_facility_reports_route_supabaseadmin",
       "confidence_score": 1.0
     },
     {
@@ -46301,7 +46444,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/app/data/vendor-checklist/page.jsx",
-      "source_location": "L91",
+      "source_location": "L95",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_vendor_checklist_page",
@@ -46312,7 +46455,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/app/data/vendor-checklist/page.jsx",
-      "source_location": "L81",
+      "source_location": "L85",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_vendor_checklist_page",
@@ -46323,7 +46466,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/app/data/vendor-checklist/page.jsx",
-      "source_location": "L76",
+      "source_location": "L80",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_vendor_checklist_page",
@@ -46334,7 +46477,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/app/data/vendor-checklist/page.jsx",
-      "source_location": "L109",
+      "source_location": "L113",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_vendor_checklist_page",
@@ -46346,7 +46489,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/app/data/vendor-checklist/page.jsx",
-      "source_location": "L121",
+      "source_location": "L125",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_vendor_checklist_page_vendorchecklistdashboardpage",
@@ -46358,7 +46501,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/app/data/vendor-checklist/page.jsx",
-      "source_location": "L897",
+      "source_location": "L1053",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_vendor_checklist_page_vendorchecklistdashboardpage",
@@ -46370,7 +46513,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/app/data/vendor-checklist/page.jsx",
-      "source_location": "L875",
+      "source_location": "L1031",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_vendor_checklist_page_vendorchecklistdashboardpage",
@@ -48022,7 +48165,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/data/changelog.js",
-      "source_location": "L10",
+      "source_location": "L11",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_data_changelog",
@@ -49005,7 +49148,18 @@
       "weight": 1.0,
       "_origin": "ast",
       "source": "agents_rules_versioning_semantic_versioning_semver_release_guidelines",
-      "target": "agents_rules_versioning_3_synchronized_version_files",
+      "target": "agents_rules_versioning_3_daily_single_version_rule_aturan_1_versi_per_hari",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": ".agents/rules/versioning.md",
+      "source_location": "L21",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "agents_rules_versioning_semantic_versioning_semver_release_guidelines",
+      "target": "agents_rules_versioning_4_synchronized_version_files",
       "confidence_score": 1.0
     },
     {
@@ -61733,5 +61887,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "5ff52ecdda39cf5ce175c9aa8532635160d5819c"
+  "built_at_commit": "04083ab1c10d93a911e2648079bc0b462fe3fafc"
 }

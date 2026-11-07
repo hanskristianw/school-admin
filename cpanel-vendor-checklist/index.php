@@ -582,9 +582,17 @@ $roomParam = htmlspecialchars(trim($_GET['room'] ?? ''));
     }
 
     .main-logo {
-      width: 128px !important;
+      width: 78px !important;
+      max-height: 42px !important;
+      object-fit: contain;
       height: auto !important;
       display: block;
+    }
+    @media (min-width: 640px) {
+      .main-logo {
+        width: 110px !important;
+        max-height: 52px !important;
+      }
     }
 
     .thm-btn {
@@ -679,7 +687,7 @@ $roomParam = htmlspecialchars(trim($_GET['room'] ?? ''));
   <!-- 2. NAVBAR DENGAN LOGO RESMI CCS                                         -->
   <!-- ═══════════════════════════════════════════════════════════════════════ -->
   <header class="bg-white sticky top-0 z-50 shadow-sm">
-    <div class="max-w-4xl mx-auto px-4 sm:px-6 h-[72px] sm:h-[76px] flex items-center justify-between">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 h-[56px] sm:h-[68px] flex items-center justify-between">
       <a href="https://ccs.sch.id/" class="flex items-center">
         <img 
           src="https://ccs.sch.id/assets/images/logo-cccs.png" 
@@ -761,7 +769,7 @@ $roomParam = htmlspecialchars(trim($_GET['room'] ?? ''));
         <div class="space-y-1.5 pt-1">
           <button 
             type="button" 
-            onclick="closeMobileNavDrawer(); showScannerSection();"
+            onclick="closeMobileNavDrawer(); goToNextRoomScan();"
             class="w-full text-left px-3.5 py-3 rounded-xl font-bold text-xs text-gray-700 hover:bg-orange-50 hover:text-ccsOrange transition flex items-center justify-between group active:scale-98"
           >
             <div class="flex items-center gap-3">
@@ -778,39 +786,22 @@ $roomParam = htmlspecialchars(trim($_GET['room'] ?? ''));
 
           <button 
             type="button" 
-            onclick="closeMobileNavDrawer(); navToActiveComplaints();"
-            class="w-full text-left px-3.5 py-3 rounded-xl font-bold text-xs text-gray-700 hover:bg-red-50 hover:text-red-700 transition flex items-center justify-between group active:scale-98"
+            onclick="closeMobileNavDrawer(); openComplaintCenter('active');"
+            class="w-full text-left px-3.5 py-3 rounded-xl font-bold text-xs text-gray-700 hover:bg-amber-50 hover:text-amber-800 transition flex items-center justify-between group active:scale-98"
           >
             <div class="flex items-center gap-3">
-              <div class="w-8 h-8 rounded-lg bg-red-100 text-red-600 flex items-center justify-center text-xs font-bold group-hover:scale-105 transition">
-                <i class="fas fa-exclamation-triangle"></i>
+              <div class="w-8 h-8 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center text-xs font-bold group-hover:scale-105 transition">
+                <i class="fas fa-tasks"></i>
               </div>
               <div>
                 <div class="flex items-center gap-1.5">
-                  <span data-i18n="nav_active_complaints">Komplain Aktif</span>
+                  <span data-i18n="nav_complaint_center">Penanganan Komplain</span>
                   <span id="drawerComplaintsCountBadge" class="hidden px-1.5 py-0.5 rounded-full text-[10px] font-extrabold bg-red-500 text-white">0</span>
                 </div>
-                <div class="text-[10px] font-normal text-gray-400" data-i18n="nav_active_complaints_sub">Perlu perbaikan / kebersihan</div>
+                <div class="text-[10px] font-normal text-gray-400" data-i18n="nav_complaint_center_sub">Komplain aktif & history selesai</div>
               </div>
             </div>
-            <i class="fas fa-chevron-right text-[10px] text-gray-300 group-hover:text-red-600"></i>
-          </button>
-
-          <button 
-            type="button" 
-            onclick="closeMobileNavDrawer(); showHistorySection();"
-            class="w-full text-left px-3.5 py-3 rounded-xl font-bold text-xs text-gray-700 hover:bg-emerald-50 hover:text-emerald-700 transition flex items-center justify-between group active:scale-98"
-          >
-            <div class="flex items-center gap-3">
-              <div class="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center text-xs font-bold group-hover:scale-105 transition">
-                <i class="fas fa-history"></i>
-              </div>
-              <div>
-                <div data-i18n="nav_history_complaints">Riwayat Komplain Selesai</div>
-                <div class="text-[10px] font-normal text-gray-400" data-i18n="nav_history_complaints_sub">Arsip komplain yang ditangani</div>
-              </div>
-            </div>
-            <i class="fas fa-chevron-right text-[10px] text-gray-300 group-hover:text-emerald-600"></i>
+            <i class="fas fa-chevron-right text-[10px] text-gray-300 group-hover:text-amber-600"></i>
           </button>
 
           <button 
@@ -845,40 +836,66 @@ $roomParam = htmlspecialchars(trim($_GET['room'] ?? ''));
   <main class="max-w-xl mx-auto px-4 sm:px-6 py-6 sm:py-8 flex-1 w-full space-y-6">
 
     <!-- Active Role Header Indicator (Clean Mobile-First Header) -->
-    <div id="activeRoleBar" class="hidden bg-white rounded-2xl p-3.5 border border-gray-100 shadow-sm flex items-center justify-between gap-2.5">
-      <div class="flex items-center gap-3 min-w-0">
-        <div id="activeRoleIcon" class="w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold bg-orange-100 text-ccsOrange shrink-0 shadow-xs">
-          <i class="fas fa-broom"></i>
+    <div id="activeRoleBar" class="hidden bg-white rounded-2xl p-4 border border-gray-100 shadow-sm space-y-3">
+      <div class="flex items-start justify-between gap-3">
+        <div class="flex items-start gap-3 min-w-0">
+          <div id="activeRoleIcon" class="w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold bg-orange-100 text-ccsOrange shrink-0 shadow-xs mt-0.5">
+            <i class="fas fa-broom"></i>
+          </div>
+          <div class="min-w-0">
+            <div id="activeRoleCategoryText" class="text-[10px] font-bold text-gray-400 uppercase tracking-wider leading-tight">
+              Petugas Kebersihan
+            </div>
+            <div class="text-sm font-extrabold text-ccsHeading truncate leading-tight mt-0.5">
+              <span id="activeCleanerNameText">Darul Cleaning</span>
+            </div>
+            <!-- Button Ganti Nama di bawah nama petugas -->
+            <div class="mt-1.5">
+              <button 
+                id="btnChangeCleanerQuick"
+                type="button"
+                onclick="promptSwitchCleanerModal()" 
+                class="hidden px-2.5 py-1 rounded-lg bg-orange-50 hover:bg-orange-100 border border-orange-200 text-ccsOrange text-[11px] font-bold items-center gap-1.5 transition active:scale-95"
+                title="Ganti Nama Petugas"
+              >
+                <i class="fas fa-user-edit text-[10px]"></i>
+                <span data-i18n="change_worker">Ganti Nama</span>
+              </button>
+            </div>
+          </div>
         </div>
-        <div class="min-w-0">
-          <div id="activeRoleCategoryText" class="text-[10px] font-bold text-gray-400 uppercase tracking-wider leading-tight">
-            Petugas Kebersihan
-          </div>
-          <div class="text-sm font-extrabold text-ccsHeading truncate leading-tight mt-0.5">
-            <span id="activeCleanerNameText">Darul Cleaning</span>
-          </div>
+        <div class="flex items-center gap-1.5 shrink-0">
+          <button 
+            type="button" 
+            onclick="resetRole()" 
+            class="px-2.5 py-1.5 rounded-xl border border-gray-200 text-gray-500 hover:text-ccsNavy hover:bg-gray-50 text-xs font-semibold flex items-center gap-1 transition active:scale-95"
+            title="Ganti Peran"
+          >
+            <i class="fas fa-sync-alt text-[10px]"></i>
+            <span class="hidden sm:inline" data-i18n="switch_role">Ganti Peran</span>
+          </button>
         </div>
       </div>
-      <div class="flex items-center gap-1.5 shrink-0">
-        <button 
-          id="btnChangeCleanerQuick"
-          type="button"
-          onclick="promptSwitchCleanerModal()" 
-          class="hidden px-2.5 py-1.5 rounded-xl bg-orange-50 hover:bg-orange-100 border border-orange-200 text-ccsOrange text-xs font-bold items-center gap-1 transition active:scale-95"
-          title="Ganti Nama Petugas"
+
+      <!-- Card Notifikasi Komplain Ruangan (DIBAWAH BUTTON GANTI NAMA) -->
+      <div id="scannerActiveComplaintsAlert" class="hidden pt-2.5 border-t border-gray-100">
+        <div 
+          onclick="openComplaintCenter('active')" 
+          class="bg-gradient-to-r from-red-50 to-amber-50 border border-red-200 hover:border-red-400 rounded-xl p-3 flex items-center justify-between cursor-pointer transition shadow-2xs group active:scale-98"
         >
-          <i class="fas fa-user-edit text-[10px]"></i>
-          <span data-i18n="change_worker">Ganti</span>
-        </button>
-        <button 
-          type="button"
-          onclick="resetRole()" 
-          class="px-2.5 py-1.5 rounded-xl border border-gray-200 text-gray-500 hover:text-ccsNavy hover:bg-gray-50 text-xs font-semibold flex items-center gap-1 transition active:scale-95"
-          title="Ganti Peran"
-        >
-          <i class="fas fa-sync-alt text-[10px]"></i>
-          <span class="hidden sm:inline" data-i18n="switch_role">Ganti Peran</span>
-        </button>
+          <div class="flex items-center gap-3">
+            <div class="w-8 h-8 rounded-xl bg-red-100 text-red-600 flex items-center justify-center text-xs font-bold shrink-0">
+              <i class="fas fa-exclamation-triangle"></i>
+            </div>
+            <div>
+              <p class="text-xs font-bold text-gray-800">
+                <span id="scannerComplaintsAlertCount">0</span> <span data-i18n="active_complaints_count_text">Komplain Ruangan Perlu Ditangani</span>
+              </p>
+              <p class="text-[10px] text-gray-500" data-i18n="tap_to_open_complaints">Ketuk untuk membuka menu penanganan komplain →</p>
+            </div>
+          </div>
+          <i class="fas fa-chevron-right text-xs text-gray-400 group-hover:text-red-600 transition"></i>
+        </div>
       </div>
     </div>
 
@@ -1054,42 +1071,6 @@ $roomParam = htmlspecialchars(trim($_GET['room'] ?? ''));
             </div>
           </div>
         </div>
-
-        <!-- 2C. DAFTAR KOMPLAIN FASILITAS AKTIF (KHUSUS PERAN CLEANER) -->
-        <div id="cleanerComplaintsSection" class="hidden pt-5 border-t border-gray-100 space-y-3">
-          <div class="flex items-center justify-between">
-            <div class="flex items-center gap-2">
-              <div class="w-8 h-8 rounded-xl bg-red-100 text-red-600 flex items-center justify-center text-xs shrink-0 font-bold">
-                <i class="fas fa-exclamation-triangle"></i>
-              </div>
-              <div>
-                <h3 class="text-xs sm:text-sm font-bold text-gray-800" data-i18n="active_complaints_title">Daftar Komplain Ruangan Aktif</h3>
-                <p class="text-[10px] sm:text-[11px] text-gray-500" data-i18n="active_complaints_subtitle">Ruangan yang membutuhkan penanganan kebersihan / fasilitas</p>
-              </div>
-            </div>
-            <button type="button" onclick="loadActiveComplaints(true)" class="p-1.5 text-gray-400 hover:text-ccsOrange transition rounded-lg hover:bg-gray-50" title="Muat Ulang">
-              <i class="fas fa-sync-alt text-xs" id="refreshComplaintsIcon"></i>
-            </button>
-          </div>
-
-          <div id="cleanerComplaintsList" class="space-y-3">
-            <!-- Dynamic Complaints Cards -->
-          </div>
-
-          <!-- Tombol Akses Riwayat Komplain Selesai -->
-          <div class="pt-2 text-center">
-            <button 
-              type="button" 
-              onclick="showHistorySection()" 
-              class="w-full py-2.5 px-3 bg-emerald-50 hover:bg-emerald-100/80 border border-emerald-200 text-emerald-800 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 shadow-2xs active:scale-98"
-            >
-              <i class="fas fa-history text-emerald-600"></i>
-              <span data-i18n="view_resolved_history">Lihat Riwayat Komplain yang Sudah Selesai</span>
-              <i class="fas fa-arrow-right text-[10px] text-emerald-500"></i>
-            </button>
-          </div>
-        </div>
-
       </div>
     </div>
 
@@ -1126,8 +1107,7 @@ $roomParam = htmlspecialchars(trim($_GET['room'] ?? ''));
         </div>
       </div>
 
-      <!-- Alert Komplain Aktif Khusus Ruangan Ini -->
-      <div id="cleanerRoomComplaintAlert" class="hidden"></div>
+      <!-- Alert Komplain Ruangan dipindah ke Menu Khusus Penanganan Komplain -->
 
       <!-- Identitas Petugas Cleaner (Dropdown dari users role Cleaning) -->
       <div class="bg-white rounded-2xl p-5 sm:p-6 border border-gray-100 shadow-sm space-y-3">
@@ -1305,42 +1285,59 @@ $roomParam = htmlspecialchars(trim($_GET['room'] ?? ''));
 
     </div>
 
-    <!-- ─── SECTION 5: RIWAYAT KOMPLAIN SELESAI (RESOLVED HISTORY) ───────── -->
-    <div id="cleanerHistorySection" class="hidden space-y-4">
-      <!-- Header Riwayat -->
-      <div class="bg-white rounded-2xl p-5 sm:p-6 border border-gray-100 shadow-sm flex items-start justify-between gap-3">
-        <div>
-          <div class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 mb-1.5">
-            <i class="fas fa-check-double text-xs"></i>
-            <span data-i18n="history_badge">Arsip Selesai</span>
-          </div>
-          <h2 class="text-base sm:text-lg font-bold text-ccsHeading" data-i18n="history_title">Riwayat Komplain Fasilitas Selesai</h2>
-          <p class="text-xs text-gray-500 mt-0.5" data-i18n="history_subtitle">Daftar keluhan fasilitas yang telah ditangani dan diverifikasi dengan foto bukti penyelesaian.</p>
+    <!-- ─── SECTION 5: MENU KHUSUS PENANGANAN KOMPLAIN (2 TAB) ──────────── -->
+    <div id="cleanerComplaintCenterSection" class="hidden space-y-4">
+      
+      <!-- Segmented Tab Navigation: Tab 1 (Komplain Aktif) vs Tab 2 (History Komplain) -->
+      <div class="flex items-center gap-2">
+        <div class="flex-1 bg-gray-100/90 p-1.5 rounded-2xl border border-gray-200/80 flex gap-1.5 shadow-2xs">
+          <button 
+            type="button" 
+            id="tabBtnActiveComplaints"
+            onclick="switchComplaintTab('active')" 
+            class="flex-1 py-2.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-xs bg-white text-red-700"
+          >
+            <i class="fas fa-exclamation-triangle text-red-500"></i>
+            <span data-i18n="tab_active_complaints">Komplain Aktif</span>
+            <span id="tabActiveCountBadge" class="hidden px-1.5 py-0.5 rounded-full text-[10px] font-extrabold bg-red-500 text-white leading-none">0</span>
+          </button>
+
+          <button 
+            type="button" 
+            id="tabBtnResolvedComplaints"
+            onclick="switchComplaintTab('resolved')" 
+            class="flex-1 py-2.5 px-3 rounded-xl text-xs font-semibold text-gray-500 hover:text-gray-800 transition-all flex items-center justify-center gap-1.5"
+          >
+            <i class="fas fa-history text-emerald-600"></i>
+            <span data-i18n="tab_resolved_history">History Komplain</span>
+            <span id="tabResolvedCountBadge" class="hidden px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-gray-200 text-gray-700 leading-none">0</span>
+          </button>
         </div>
+
         <button 
           type="button" 
-          onclick="loadResolvedComplaints(true)" 
-          class="p-2 text-gray-400 hover:text-ccsOrange transition rounded-xl hover:bg-gray-50 shrink-0" 
-          title="Muat Ulang"
+          onclick="refreshComplaintCenter(true)" 
+          class="w-11 h-11 bg-white hover:bg-gray-50 border border-gray-200 text-gray-500 hover:text-ccsOrange rounded-2xl flex items-center justify-center transition shadow-2xs shrink-0 active:scale-95" 
+          title="Muat Ulang Data"
         >
-          <i class="fas fa-sync-alt text-sm" id="refreshHistoryIcon"></i>
+          <i class="fas fa-sync-alt text-xs" id="refreshComplaintCenterIcon"></i>
         </button>
       </div>
 
-      <!-- Quick Back to Scanner Button -->
-      <button 
-        type="button" 
-        onclick="showScannerSection()" 
-        class="thm-btn thm-btn--outline w-full py-2.5 text-xs font-bold rounded-xl flex items-center justify-center gap-2 shadow-2xs active:scale-95 transition"
-      >
-        <i class="fas fa-qrcode"></i>
-        <span data-i18n="back_to_scanner">Kembali ke Scan Ruangan</span>
-      </button>
-
-      <!-- History List Container -->
-      <div id="cleanerHistoryList" class="space-y-3">
-        <!-- Injected via JavaScript -->
+      <!-- Panel Tab 1: Komplain Aktif List -->
+      <div id="tabPanelActiveComplaints" class="space-y-3">
+        <div id="cleanerComplaintsList" class="space-y-3">
+          <!-- Injected via JavaScript -->
+        </div>
       </div>
+
+      <!-- Panel Tab 2: History Komplain List -->
+      <div id="tabPanelResolvedComplaints" class="hidden space-y-3">
+        <div id="cleanerHistoryList" class="space-y-3">
+          <!-- Injected via JavaScript -->
+        </div>
+      </div>
+
     </div>
 
   </main>
@@ -1538,7 +1535,7 @@ $roomParam = htmlspecialchars(trim($_GET['room'] ?? ''));
         complaint_for_room: 'Terdapat komplain untuk ruangan',
         complaint_detail_heading: 'Detail Keluhan / Masalah',
         resolve_modal_title: 'Selesaikan Komplain Fasilitas',
-        resolve_complaint_btn: 'Tangani & Selesaikan',
+        resolve_complaint_btn: 'Tangani',
         resolution_notes_label: 'Catatan Penanganan',
         resolution_notes_placeholder: 'Tuliskan tindakan yang dilakukan (misal: sudah dipel ulang, fasilitas diperbaiki)...',
         resolution_photo_label: 'Foto Bukti Penyelesaian',
@@ -1563,7 +1560,20 @@ $roomParam = htmlspecialchars(trim($_GET['room'] ?? ''));
         resolved_by_label: 'Diselesaikan oleh:',
         resolution_notes_text: 'Catatan Penanganan:',
         view_problem_photo: 'Foto Kendala',
-        view_solution_photo: 'Foto Hasil Selesai'
+        view_solution_photo: 'Foto Hasil Selesai',
+        complaint_center_badge: 'Khusus Petugas Kebersihan',
+        complaint_center_title: 'Penanganan Komplain Fasilitas',
+        complaint_center_subtitle: 'Pusat tindak lanjut keluhan fasilitas dari pengguna ruangan sekolah.',
+        tab_active_complaints: 'Komplain Aktif',
+        tab_resolved_history: 'History Komplain',
+        nav_complaint_center: 'Penanganan Komplain',
+        nav_complaint_center_sub: 'Komplain aktif & history selesai',
+        complaints_short: 'Komplain',
+        back_to_scanner: 'Kembali ke Scan Ruangan & Checklist',
+        active_complaints_count_text: 'Komplain Ruangan Perlu Ditangani',
+        tap_to_open_complaints: 'Ketuk untuk membuka menu penanganan komplain →',
+        no_active_complaints_title: 'Tidak Ada Komplain Aktif',
+        no_active_complaints_desc: 'Semua ruangan dalam kondisi bersih dan fasilitas berfungsi normal.'
       },
       en: {
         portal_title: 'Room Portal',
@@ -1621,7 +1631,7 @@ $roomParam = htmlspecialchars(trim($_GET['room'] ?? ''));
         cleaner_auto_remember_hint: 'Your name will be automatically remembered for upcoming rooms.',
         logged_in_cleaner: 'Active Cleaning Staff:',
         auto_selected: 'Auto-selected',
-        change_worker: 'Change Staff',
+        change_worker: 'Change Name',
         active_worker: 'Staff',
         prompt_select_worker: 'Please select your cleaning staff name first.',
         cleaner_required_title: 'Select Cleaning Staff Name First',
@@ -1659,7 +1669,20 @@ $roomParam = htmlspecialchars(trim($_GET['room'] ?? ''));
         resolved_by_label: 'Resolved by:',
         resolution_notes_text: 'Resolution Notes:',
         view_problem_photo: 'Problem Photo',
-        view_solution_photo: 'Resolution Photo'
+        view_solution_photo: 'Resolution Photo',
+        complaint_center_badge: 'Cleaning Staff Only',
+        complaint_center_title: 'Facility Complaints Center',
+        complaint_center_subtitle: 'Follow up on room facility complaints reported by school users.',
+        tab_active_complaints: 'Active Complaints',
+        tab_resolved_history: 'Resolved History',
+        nav_complaint_center: 'Complaint Handling',
+        nav_complaint_center_sub: 'Active & resolved complaints',
+        complaints_short: 'Complaints',
+        back_to_scanner: 'Back to Room Scanner & Checklist',
+        active_complaints_count_text: 'Room Complaints Need Attention',
+        tap_to_open_complaints: 'Tap to open complaint handling menu →',
+        no_active_complaints_title: 'No Active Complaints',
+        no_active_complaints_desc: 'All rooms are clean and facilities are in good condition.'
       }
     };
 
@@ -1681,8 +1704,17 @@ $roomParam = htmlspecialchars(trim($_GET['room'] ?? ''));
 
       const savedWorkerName = localStorage.getItem('ccs_vendor_worker_name');
 
-      // Inisialisasi Alur Opsi A
-      if (currentRoomToken) {
+      // Inisialisasi Alur:
+      // PERATURAN MUTLAK: Peran Reporter (Komplain) TIDAK PERNAH mengingat ruangan sebelumnya.
+      if (currentRole === 'reporter') {
+        currentRoomToken = '';
+        currentRoomData = null;
+        if (window.history.replaceState) {
+          const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
+          window.history.replaceState({ path: cleanUrl }, '', cleanUrl);
+        }
+        selectRole('reporter', false);
+      } else if (currentRoomToken) {
         if (currentRole === 'cleaner') {
           // Jika sudah peran cleaner tapi belum pernah pilih nama, buka role selection agar nama dipilih dulu
           if (!savedWorkerName) {
@@ -1690,8 +1722,6 @@ $roomParam = htmlspecialchars(trim($_GET['room'] ?? ''));
           } else {
             selectRole('cleaner', false);
           }
-        } else if (currentRole === 'reporter') {
-          selectRole('reporter', false);
         } else {
           // Belum memilih peran tapi sudah scan QR ruangan
           showRoleSelectionSection();
@@ -1703,8 +1733,6 @@ $roomParam = htmlspecialchars(trim($_GET['room'] ?? ''));
           } else {
             selectRole('cleaner', false);
           }
-        } else if (currentRole === 'reporter') {
-          selectRole(currentRole, false);
         } else {
           showRoleSelectionSection();
         }
@@ -1721,6 +1749,9 @@ $roomParam = htmlspecialchars(trim($_GET['room'] ?? ''));
       }
       if (activeComplaintsList && activeComplaintsList.length > 0) {
         renderComplaintsList(activeComplaintsList);
+      }
+      if (resolvedComplaintsList && resolvedComplaintsList.length > 0) {
+        renderResolvedHistoryList(resolvedComplaintsList);
       }
     }
 
@@ -1859,11 +1890,19 @@ $roomParam = htmlspecialchars(trim($_GET['room'] ?? ''));
         }
         if (btnQuickChange) {
           btnQuickChange.classList.remove('hidden');
-          btnQuickChange.classList.add('flex');
+          btnQuickChange.classList.add('inline-flex');
+        }
+        const scannerAlert = document.getElementById('scannerActiveComplaintsAlert');
+        if (scannerAlert) {
+          if (activeComplaintsList && activeComplaintsList.length > 0) {
+            scannerAlert.classList.remove('hidden');
+          } else {
+            scannerAlert.classList.add('hidden');
+          }
         }
       } else {
         if (icon) {
-          icon.className = 'w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold bg-teal-100 text-ccsTeal shrink-0 shadow-xs';
+          icon.className = 'w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold bg-teal-100 text-ccsTeal shrink-0 shadow-xs mt-0.5';
           icon.innerHTML = '<i class="fas fa-bullhorn"></i>';
         }
         if (categoryText) {
@@ -1875,7 +1914,11 @@ $roomParam = htmlspecialchars(trim($_GET['room'] ?? ''));
         }
         if (btnQuickChange) {
           btnQuickChange.classList.add('hidden');
-          btnQuickChange.classList.remove('flex');
+          btnQuickChange.classList.remove('inline-flex');
+        }
+        const scannerAlert = document.getElementById('scannerActiveComplaintsAlert');
+        if (scannerAlert) {
+          scannerAlert.classList.add('hidden');
         }
       }
     }
@@ -1969,7 +2012,7 @@ $roomParam = htmlspecialchars(trim($_GET['room'] ?? ''));
       document.getElementById('loadingCard').classList.add('hidden');
       document.getElementById('scannerSection').classList.add('hidden');
       document.getElementById('cleanerFormSection').classList.add('hidden');
-      document.getElementById('cleanerHistorySection')?.classList.add('hidden');
+      document.getElementById('cleanerComplaintCenterSection')?.classList.add('hidden');
       document.getElementById('reporterFormSection').classList.add('hidden');
       document.getElementById('activeRoleBar').classList.add('hidden');
       document.getElementById('roleSelectionSection').classList.remove('hidden');
@@ -1987,12 +2030,30 @@ $roomParam = htmlspecialchars(trim($_GET['room'] ?? ''));
 
       document.getElementById('roleSelectionSection').classList.add('hidden');
 
-      if (currentRoomToken) {
-        if (role === 'cleaner') {
-          loadRoomForCleaner(currentRoomToken);
-        } else {
-          loadRoomForReporter(currentRoomToken);
+      // PERATURAN MUTLAK: Mode Komplain (Reporter) TIDAK BOLEH mengingat ruangan sebelumnya.
+      // Setiap masuk komplain, user WAJIB scan QR code ruangan secara langsung.
+      if (role === 'reporter') {
+        currentRoomToken = '';
+        currentRoomData = null;
+        selectedReporterBlob = null;
+        if (window.history.replaceState) {
+          const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
+          window.history.replaceState({ path: cleanUrl }, '', cleanUrl);
         }
+        // Reset preview form komplain
+        const repDesc = document.getElementById('reporterIssueDesc');
+        if (repDesc) repDesc.value = '';
+        const repImg = document.getElementById('reporterImgPreview');
+        if (repImg) repImg.src = '';
+        document.getElementById('reporterPreviewBox')?.classList.add('hidden');
+        document.getElementById('reporterUploadPlaceholder')?.classList.remove('hidden');
+
+        showScannerSection();
+        return;
+      }
+
+      if (currentRoomToken) {
+        loadRoomForCleaner(currentRoomToken);
       } else {
         showScannerSection();
       }
@@ -2002,6 +2063,14 @@ $roomParam = htmlspecialchars(trim($_GET['room'] ?? ''));
       stopScanner();
       currentRole = null;
       localStorage.removeItem('ccs_portal_role');
+      currentRoomToken = '';
+      currentRoomData = null;
+      selectedCleanerBlob = null;
+      selectedReporterBlob = null;
+      if (window.history.replaceState) {
+        const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
+        window.history.replaceState({ path: cleanUrl }, '', cleanUrl);
+      }
       showRoleSelectionSection();
     }
 
@@ -2024,7 +2093,7 @@ $roomParam = htmlspecialchars(trim($_GET['room'] ?? ''));
     function showScannerSection() {
       document.getElementById('loadingCard').classList.add('hidden');
       document.getElementById('cleanerFormSection').classList.add('hidden');
-      document.getElementById('cleanerHistorySection')?.classList.add('hidden');
+      document.getElementById('cleanerComplaintCenterSection')?.classList.add('hidden');
       document.getElementById('reporterFormSection').classList.add('hidden');
       document.getElementById('roleSelectionSection').classList.add('hidden');
       document.getElementById('scannerSection').classList.remove('hidden');
@@ -2093,10 +2162,18 @@ $roomParam = htmlspecialchars(trim($_GET['room'] ?? ''));
         const match = token.match(/room=([a-zA-Z0-9_-]+)/);
         if (match) token = match[1];
       } else if (token.startsWith('http')) {
-        const url = new URL(token);
-        token = url.searchParams.get('room') || token;
+        try {
+          const url = new URL(token);
+          token = url.searchParams.get('room') || token;
+        } catch(e) {}
       }
-      window.location.href = `?room=${encodeURIComponent(token)}`;
+      
+      currentRoomToken = token;
+      if (currentRole === 'reporter') {
+        loadRoomForReporter(token);
+      } else {
+        loadRoomForCleaner(token);
+      }
     }
 
     function handleManualToken() {
@@ -2109,7 +2186,12 @@ $roomParam = htmlspecialchars(trim($_GET['room'] ?? ''));
         });
         return;
       }
-      window.location.href = `?room=${encodeURIComponent(input)}`;
+      currentRoomToken = input;
+      if (currentRole === 'reporter') {
+        loadRoomForReporter(input);
+      } else {
+        loadRoomForCleaner(input);
+      }
     }
 
     // ─── CLEANER FLOW (FETCH ROOM & RENDER CHECKLIST) ──────────────────────
@@ -2119,7 +2201,7 @@ $roomParam = htmlspecialchars(trim($_GET['room'] ?? ''));
       document.getElementById('scannerSection').classList.add('hidden');
       document.getElementById('reporterFormSection').classList.add('hidden');
       document.getElementById('cleanerFormSection').classList.add('hidden');
-      document.getElementById('cleanerHistorySection')?.classList.add('hidden');
+      document.getElementById('cleanerComplaintCenterSection')?.classList.add('hidden');
 
       try {
         const res = await fetch(`index.php?action=fetch_room&room_token=${encodeURIComponent(token)}`);
@@ -2545,7 +2627,7 @@ $roomParam = htmlspecialchars(trim($_GET['room'] ?? ''));
       document.getElementById('loadingCard').classList.remove('hidden');
       document.getElementById('scannerSection').classList.add('hidden');
       document.getElementById('cleanerFormSection').classList.add('hidden');
-      document.getElementById('cleanerHistorySection')?.classList.add('hidden');
+      document.getElementById('cleanerComplaintCenterSection')?.classList.add('hidden');
       document.getElementById('reporterFormSection').classList.add('hidden');
 
       try {
@@ -2673,9 +2755,9 @@ $roomParam = htmlspecialchars(trim($_GET['room'] ?? ''));
           text: isEN 
             ? 'Thank you for your report. The school operations team will inspect and follow up shortly.' 
             : 'Terima kasih atas laporan Anda. Tim operasional sekolah akan segera memeriksa dan menindaklanjuti kendala di ruangan ini.',
-          confirmButtonText: isEN ? 'Scan Another Room' : 'Scan Ruangan Lain'
+          confirmButtonText: isEN ? '<i class="fas fa-qrcode mr-1"></i> Scan Another Room' : '<i class="fas fa-qrcode mr-1"></i> Scan Ruangan Lain'
         }).then(() => {
-          window.location.href = 'index.php';
+          goToNextRoomScan();
         });
 
       } catch (err) {
@@ -2725,37 +2807,82 @@ $roomParam = htmlspecialchars(trim($_GET['room'] ?? ''));
       if (drawer) drawer.classList.add('hidden');
     }
 
-    function showHistorySection() {
+    // ─── PUSAT PENANGANAN KOMPLAIN CLEANING (2 TAB) ────────────────────────
+    let activeComplaintTab = 'active';
+
+    function openComplaintCenter(defaultTab = 'active') {
       stopScanner();
       document.getElementById('loadingCard')?.classList.add('hidden');
       document.getElementById('scannerSection')?.classList.add('hidden');
       document.getElementById('cleanerFormSection')?.classList.add('hidden');
       document.getElementById('reporterFormSection')?.classList.add('hidden');
       document.getElementById('roleSelectionSection')?.classList.add('hidden');
-      document.getElementById('cleanerHistorySection')?.classList.remove('hidden');
+      document.getElementById('cleanerComplaintCenterSection')?.classList.remove('hidden');
 
-      loadResolvedComplaints();
+      switchComplaintTab(defaultTab);
+      refreshComplaintCenter();
+    }
+
+    function switchComplaintTab(tab) {
+      activeComplaintTab = tab;
+      const btnActive = document.getElementById('tabBtnActiveComplaints');
+      const btnResolved = document.getElementById('tabBtnResolvedComplaints');
+      const panelActive = document.getElementById('tabPanelActiveComplaints');
+      const panelResolved = document.getElementById('tabPanelResolvedComplaints');
+
+      if (tab === 'active') {
+        if (panelActive) panelActive.classList.remove('hidden');
+        if (panelResolved) panelResolved.classList.add('hidden');
+
+        if (btnActive) {
+          btnActive.className = 'flex-1 py-2.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-xs bg-white text-red-700';
+        }
+        if (btnResolved) {
+          btnResolved.className = 'flex-1 py-2.5 px-3 rounded-xl text-xs font-semibold text-gray-500 hover:text-gray-800 transition-all flex items-center justify-center gap-1.5';
+        }
+      } else {
+        if (panelActive) panelActive.classList.add('hidden');
+        if (panelResolved) panelResolved.classList.remove('hidden');
+
+        if (btnResolved) {
+          btnResolved.className = 'flex-1 py-2.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-xs bg-white text-emerald-800';
+        }
+        if (btnActive) {
+          btnActive.className = 'flex-1 py-2.5 px-3 rounded-xl text-xs font-semibold text-gray-500 hover:text-gray-800 transition-all flex items-center justify-center gap-1.5';
+        }
+      }
+    }
+
+    async function refreshComplaintCenter(showSpin = false) {
+      const icon = document.getElementById('refreshComplaintCenterIcon');
+      if (showSpin && icon) icon.classList.add('fa-spin');
+      
+      await Promise.all([
+        loadActiveComplaints(false),
+        loadResolvedComplaints(false)
+      ]);
+
+      if (showSpin && icon) icon.classList.remove('fa-spin');
+    }
+
+    // Backward-compatibility aliases
+    function showHistorySection() {
+      openComplaintCenter('resolved');
     }
 
     function navToActiveComplaints() {
-      showScannerSection();
-      setTimeout(() => {
-        document.getElementById('cleanerComplaintsSection')?.scrollIntoView({ behavior: 'smooth' });
-      }, 150);
+      openComplaintCenter('active');
     }
 
     let resolvedComplaintsList = [];
 
     async function loadResolvedComplaints(showSpin = false) {
-      const icon = document.getElementById('refreshHistoryIcon');
-      if (showSpin && icon) icon.classList.add('fa-spin');
       const container = document.getElementById('cleanerHistoryList');
       const isEN = currentLang === 'en';
 
       try {
         const res = await fetch('index.php?action=fetch_resolved_reports');
         const data = await res.json();
-        if (showSpin && icon) icon.classList.remove('fa-spin');
 
         if (!data.success) {
           if (container) {
@@ -2770,8 +2897,15 @@ $roomParam = htmlspecialchars(trim($_GET['room'] ?? ''));
 
         resolvedComplaintsList = data.reports || [];
         renderResolvedHistoryList(resolvedComplaintsList);
+
+        const resolvedCount = resolvedComplaintsList.length;
+        const tabResolvedBadge = document.getElementById('tabResolvedCountBadge');
+        if (tabResolvedBadge) {
+          tabResolvedBadge.textContent = resolvedCount;
+          if (resolvedCount > 0) tabResolvedBadge.classList.remove('hidden');
+          else tabResolvedBadge.classList.add('hidden');
+        }
       } catch (err) {
-        if (showSpin && icon) icon.classList.remove('fa-spin');
         console.warn('Error fetching resolved complaints:', err);
       }
     }
@@ -2875,7 +3009,7 @@ $roomParam = htmlspecialchars(trim($_GET['room'] ?? ''));
       }
 
       document.getElementById('cleanerFormSection').classList.add('hidden');
-      document.getElementById('cleanerHistorySection')?.classList.add('hidden');
+      document.getElementById('cleanerComplaintCenterSection')?.classList.add('hidden');
       document.getElementById('reporterFormSection').classList.add('hidden');
       document.getElementById('loadingCard').classList.add('hidden');
 
@@ -2913,20 +3047,17 @@ $roomParam = htmlspecialchars(trim($_GET['room'] ?? ''));
     }
 
     async function loadActiveComplaints(showSpin = false) {
-      const icon = document.getElementById('refreshComplaintsIcon');
-      if (showSpin && icon) icon.classList.add('fa-spin');
       const container = document.getElementById('cleanerComplaintsList');
       const isEN = currentLang === 'en';
 
       try {
         const res = await fetch('index.php?action=fetch_active_reports');
         const data = await res.json();
-        if (showSpin && icon) icon.classList.remove('fa-spin');
 
         if (!data.success) {
           if (container) {
             container.innerHTML = `
-              <div class="p-3 text-center text-xs text-gray-400 bg-gray-50 rounded-xl border border-gray-100">
+              <div class="p-4 text-center text-xs text-gray-400 bg-white rounded-2xl border border-gray-100">
                 ${isEN ? 'Failed to load complaints' : 'Gagal memuat daftar komplain'}
               </div>
             `;
@@ -2937,21 +3068,51 @@ $roomParam = htmlspecialchars(trim($_GET['room'] ?? ''));
         activeComplaintsList = data.reports || [];
         renderComplaintsList(activeComplaintsList);
 
-        // Update badge on navbar and drawer
+        const count = activeComplaintsList.length;
+
+        // Badge di Tab 1 (Komplain Aktif)
+        const tabActiveBadge = document.getElementById('tabActiveCountBadge');
+        if (tabActiveBadge) {
+          tabActiveBadge.textContent = count;
+          if (count > 0) tabActiveBadge.classList.remove('hidden');
+          else tabActiveBadge.classList.add('hidden');
+        }
+
+        // Badge di Drawer Navigation
         const countBadge = document.getElementById('drawerComplaintsCountBadge');
+        if (countBadge) {
+          countBadge.textContent = count;
+          if (count > 0) countBadge.classList.remove('hidden');
+          else countBadge.classList.add('hidden');
+        }
+
+        // Dot di Hamburger Menu Button
         const dotBadge = document.getElementById('navActiveBadgeDot');
-        if (activeComplaintsList.length > 0) {
-          if (countBadge) {
-            countBadge.textContent = activeComplaintsList.length;
-            countBadge.classList.remove('hidden');
+        if (dotBadge) {
+          if (count > 0) dotBadge.classList.remove('hidden');
+          else dotBadge.classList.add('hidden');
+        }
+
+        // Badge di Role Bar Header
+        const roleBarBadge = document.getElementById('roleBarComplaintsBadge');
+        if (roleBarBadge) {
+          roleBarBadge.textContent = count;
+          if (count > 0) roleBarBadge.classList.remove('hidden');
+          else roleBarBadge.classList.add('hidden');
+        }
+
+        // Alert di Halaman Scanner
+        const scannerAlert = document.getElementById('scannerActiveComplaintsAlert');
+        const scannerCount = document.getElementById('scannerComplaintsAlertCount');
+        if (scannerAlert && scannerCount) {
+          scannerCount.textContent = count;
+          if (count > 0 && currentRole === 'cleaner') {
+            scannerAlert.classList.remove('hidden');
+          } else {
+            scannerAlert.classList.add('hidden');
           }
-          if (dotBadge) dotBadge.classList.remove('hidden');
-        } else {
-          if (countBadge) countBadge.classList.add('hidden');
-          if (dotBadge) dotBadge.classList.add('hidden');
         }
       } catch (err) {
-        if (showSpin && icon) icon.classList.remove('fa-spin');
         console.warn('Error loading active complaints:', err);
       }
     }
@@ -2963,10 +3124,15 @@ $roomParam = htmlspecialchars(trim($_GET['room'] ?? ''));
 
       if (!reports || reports.length === 0) {
         container.innerHTML = `
-          <div class="p-4 text-center bg-emerald-50/70 border border-emerald-200 rounded-xl">
-            <i class="fas fa-check-circle text-emerald-600 text-lg mb-1"></i>
-            <p class="text-xs font-semibold text-emerald-800">
-              ${isEN ? 'No active facility complaints. All rooms are in good condition!' : 'Tidak ada komplain aktif saat ini. Semua ruangan dalam kondisi baik!'}
+          <div class="p-6 text-center bg-white border border-gray-100 rounded-2xl shadow-xs">
+            <div class="w-12 h-12 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center text-xl mx-auto mb-2">
+              <i class="fas fa-check-circle"></i>
+            </div>
+            <p class="text-xs font-bold text-gray-800">
+              ${isEN ? 'No Active Facility Complaints' : 'Tidak Ada Komplain Aktif'}
+            </p>
+            <p class="text-[11px] text-gray-400 mt-1">
+              ${isEN ? 'All rooms are clean and in good condition.' : 'Semua ruangan dalam kondisi bersih dan fasilitas berfungsi normal.'}
             </p>
           </div>
         `;
@@ -2974,36 +3140,32 @@ $roomParam = htmlspecialchars(trim($_GET['room'] ?? ''));
       }
 
       container.innerHTML = reports.map(r => `
-        <div class="bg-gradient-to-br from-red-50/90 to-amber-50/40 border-2 border-red-200 rounded-2xl p-4 space-y-2.5 shadow-2xs hover:shadow-xs transition">
+        <div class="bg-white border-2 border-red-200 rounded-2xl p-4 sm:p-5 space-y-3 shadow-2xs hover:shadow-xs transition">
           <div>
-            <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-red-100 text-red-800 mb-1.5 border border-red-200">
-              <i class="fas fa-exclamation-circle text-red-600"></i>
-              <span>${isEN ? 'Complaint for room:' : 'Terdapat komplain untuk ruangan'} <strong class="underline decoration-red-400 decoration-2">${escapeHtml(r.room_name)}</strong></span>
+            <div class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-red-100 text-red-800 border border-red-200">
+              <i class="fas fa-door-open text-red-600"></i>
+              <span>${escapeHtml(r.room_name || 'Ruangan')}</span>
             </div>
-            <p class="text-xs font-bold text-gray-800 leading-snug">${escapeHtml(r.issue_description)}</p>
-            <div class="text-[11px] text-gray-500 mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5">
-              <span><i class="fas fa-user text-gray-400 mr-1"></i>${escapeHtml(r.reporter_name || 'Pengguna Ruangan')}</span>
-              ${r.reporter_contact ? `<span><i class="fas fa-phone text-gray-400 mr-1"></i>${escapeHtml(r.reporter_contact)}</span>` : ''}
-              <span><i class="fas fa-clock text-gray-400 mr-1"></i>${formatTimeAgo(r.created_at)}</span>
+            <h4 class="text-sm font-bold text-gray-800 leading-snug mt-1.5">${escapeHtml(r.issue_description)}</h4>
+            <div class="text-[11px] text-gray-500 flex items-center gap-1.5 mt-1 font-medium">
+              <i class="fas fa-user text-gray-400 text-[10px]"></i>
+              <span class="font-semibold text-gray-700">${escapeHtml(r.reporter_name || 'Pengguna Ruangan')}</span>
+              <span>•</span>
+              <span>${formatTimeAgo(r.created_at)}</span>
             </div>
           </div>
-          <div class="pt-2 border-t border-red-100/80 flex flex-wrap items-center gap-2">
+
+          <div class="space-y-2 pt-2 border-t border-gray-100">
             ${r.photo_file ? `
-              <button type="button" onclick="previewComplaintPhoto('${r.photo_file}', '${escapeHtml(r.room_name)}')" class="px-3 py-1.5 text-xs font-semibold text-ccsNavy bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition flex items-center gap-1.5 shadow-2xs">
+              <button type="button" onclick="previewComplaintPhoto('${r.photo_file}', '${escapeHtml(r.room_name)}')" class="w-full py-2.5 px-3 text-xs font-bold text-ccsNavy bg-sky-50 hover:bg-sky-100/80 border border-sky-200 rounded-xl transition flex items-center justify-center gap-2 shadow-2xs active:scale-98">
                 <i class="fas fa-image text-sky-600"></i>
                 <span>${isEN ? 'View Photo' : 'Lihat Foto'}</span>
               </button>
             ` : ''}
-            <button type="button" onclick="openResolveComplaintModal(${JSON.stringify(r).replace(/"/g, '&quot;')}, '${escapeHtml(r.room_name)}')" class="flex-1 sm:flex-none px-4 py-1.5 text-xs font-bold text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 rounded-xl shadow-xs transition flex items-center justify-center gap-1.5 active:scale-95">
-              <i class="fas fa-tools"></i>
-              <span>${isEN ? 'Resolve Complaint' : 'Tangani & Selesaikan'}</span>
+            <button type="button" onclick="openResolveComplaintModal(${JSON.stringify(r).replace(/"/g, '&quot;')}, '${escapeHtml(r.room_name)}')" class="w-full py-2.5 px-3 text-xs font-bold text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 rounded-xl shadow-xs transition flex items-center justify-center gap-2 active:scale-98">
+              <i class="fas fa-check-circle"></i>
+              <span>${isEN ? 'Resolve' : 'Tangani'}</span>
             </button>
-            ${r.room_token ? `
-              <button type="button" onclick="loadRoomForCleaner('${r.room_token}')" class="px-3 py-1.5 text-xs font-semibold text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition flex items-center gap-1 shadow-2xs" title="${isEN ? 'Open Room' : 'Buka Ruangan'}">
-                <i class="fas fa-door-open text-gray-400"></i>
-                <span>${isEN ? 'Room' : 'Ruangan'}</span>
-              </button>
-            ` : ''}
           </div>
         </div>
       `).join('');
@@ -3051,7 +3213,7 @@ $roomParam = htmlspecialchars(trim($_GET['room'] ?? ''));
                 <div class="pt-2 border-t border-gray-100 flex justify-end">
                   <button type="button" onclick="openResolveComplaintModal(${JSON.stringify(r).replace(/"/g, '&quot;')}, '${escapeHtml(currentRoomData?.name || '')}')" class="w-full sm:w-auto px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold text-xs rounded-xl shadow-xs transition flex items-center justify-center gap-1.5 active:scale-95">
                     <i class="fas fa-check-circle"></i>
-                    <span>${isEN ? 'Resolve This Complaint' : 'Tangani & Selesaikan Komplain Ini'}</span>
+                    <span>${isEN ? 'Resolve' : 'Tangani'}</span>
                   </button>
                 </div>
               </div>
@@ -3203,8 +3365,8 @@ $roomParam = htmlspecialchars(trim($_GET['room'] ?? ''));
           showConfirmButton: false
         });
 
-        // Muat ulang daftar komplain aktif pada index
-        loadActiveComplaints(false);
+        // Muat ulang komplain aktif & history pada menu komplain
+        refreshComplaintCenter(false);
 
         // Jika sedang di dalam ruangan, muat ulang data ruangan
         if (currentRoomToken) {

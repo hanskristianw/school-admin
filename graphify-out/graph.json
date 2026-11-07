@@ -11807,7 +11807,7 @@
       "label": "SystemFeedbackPage()",
       "file_type": "code",
       "source_file": "src/app/data/feedback/page.jsx",
-      "source_location": "L27",
+      "source_location": "L28",
       "_origin": "ast",
       "id": "src_app_data_feedback_page_systemfeedbackpage",
       "community": 426,
@@ -13482,8 +13482,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_app_data_topic_new_components_googleclassroomconnector",
-      "community": 536,
-      "community_name": "GoogleClassroomConnector.jsx",
+      "community": 145,
+      "community_name": "Module 145",
       "norm_label": "googleclassroomconnector.jsx"
     },
     {
@@ -13493,8 +13493,8 @@
       "source_location": "L22",
       "_origin": "ast",
       "id": "src_app_data_topic_new_components_googleclassroomconnector_googleclassroomicon",
-      "community": 536,
-      "community_name": "GoogleClassroomConnector.jsx",
+      "community": 145,
+      "community_name": "Module 145",
       "norm_label": "googleclassroomicon()"
     },
     {
@@ -13504,8 +13504,8 @@
       "source_location": "L39",
       "_origin": "ast",
       "id": "src_app_data_topic_new_components_googleclassroomconnector_google_classroom_scopes",
-      "community": 536,
-      "community_name": "GoogleClassroomConnector.jsx",
+      "community": 145,
+      "community_name": "Module 145",
       "norm_label": "google_classroom_scopes"
     },
     {
@@ -13515,8 +13515,8 @@
       "source_location": "L48",
       "_origin": "ast",
       "id": "src_app_data_topic_new_components_googleclassroomconnector_getstoredclassroomtoken",
-      "community": 536,
-      "community_name": "GoogleClassroomConnector.jsx",
+      "community": 145,
+      "community_name": "Module 145",
       "norm_label": "getstoredclassroomtoken()"
     },
     {
@@ -13526,8 +13526,8 @@
       "source_location": "L59",
       "_origin": "ast",
       "id": "src_app_data_topic_new_components_googleclassroomconnector_setstoredclassroomtoken",
-      "community": 536,
-      "community_name": "GoogleClassroomConnector.jsx",
+      "community": 145,
+      "community_name": "Module 145",
       "norm_label": "setstoredclassroomtoken()"
     },
     {
@@ -13537,8 +13537,8 @@
       "source_location": "L66",
       "_origin": "ast",
       "id": "src_app_data_topic_new_components_googleclassroomconnector_clearstoredclassroomtoken",
-      "community": 536,
-      "community_name": "GoogleClassroomConnector.jsx",
+      "community": 145,
+      "community_name": "Module 145",
       "norm_label": "clearstoredclassroomtoken()"
     },
     {
@@ -13548,8 +13548,8 @@
       "source_location": "L76",
       "_origin": "ast",
       "id": "src_app_data_topic_new_components_googleclassroomconnector_refreshclassroomtoken",
-      "community": 536,
-      "community_name": "GoogleClassroomConnector.jsx",
+      "community": 145,
+      "community_name": "Module 145",
       "norm_label": "refreshclassroomtoken()"
     },
     {
@@ -13559,8 +13559,8 @@
       "source_location": "L103",
       "_origin": "ast",
       "id": "src_app_data_topic_new_components_googleclassroomconnector_getvalidclassroomtoken",
-      "community": 536,
-      "community_name": "GoogleClassroomConnector.jsx",
+      "community": 145,
+      "community_name": "Module 145",
       "norm_label": "getvalidclassroomtoken()"
     },
     {
@@ -13570,8 +13570,8 @@
       "source_location": "L120",
       "_origin": "ast",
       "id": "src_app_data_topic_new_components_googleclassroomconnector_authorizegoogleclassroom",
-      "community": 536,
-      "community_name": "GoogleClassroomConnector.jsx",
+      "community": 145,
+      "community_name": "Module 145",
       "norm_label": "authorizegoogleclassroom()"
     },
     {
@@ -13581,8 +13581,8 @@
       "source_location": "L203",
       "_origin": "ast",
       "id": "src_app_data_topic_new_components_googleclassroomconnector_extractclassroomlinks",
-      "community": 536,
-      "community_name": "GoogleClassroomConnector.jsx",
+      "community": 145,
+      "community_name": "Module 145",
       "norm_label": "extractclassroomlinks()"
     },
     {
@@ -13592,8 +13592,8 @@
       "source_location": "L214",
       "_origin": "ast",
       "id": "src_app_data_topic_new_components_googleclassroomconnector_googleclassroomconnector",
-      "community": 536,
-      "community_name": "GoogleClassroomConnector.jsx",
+      "community": 145,
+      "community_name": "Module 145",
       "norm_label": "googleclassroomconnector()"
     },
     {
@@ -15998,7 +15998,7 @@
       "label": "SYSTEM_RELEASES",
       "file_type": "code",
       "source_file": "src/data/changelog.js",
-      "source_location": "L10",
+      "source_location": "L11",
       "_origin": "ast",
       "id": "src_data_changelog_system_releases",
       "community": 430,
@@ -17073,15 +17073,26 @@
       "norm_label": "2. increment rules: `0.minor.patch`"
     },
     {
-      "label": "3. Synchronized Version Files",
+      "label": "3. Daily Single Version Rule (Aturan 1 Versi Per Hari)",
       "file_type": "document",
       "source_file": ".agents/rules/versioning.md",
       "source_location": "L17",
       "_origin": "ast",
-      "id": "agents_rules_versioning_3_synchronized_version_files",
+      "id": "agents_rules_versioning_3_daily_single_version_rule_aturan_1_versi_per_hari",
       "community": 289,
       "community_name": "bcryptjs",
-      "norm_label": "3. synchronized version files"
+      "norm_label": "3. daily single version rule (aturan 1 versi per hari)"
+    },
+    {
+      "label": "4. Synchronized Version Files",
+      "file_type": "document",
+      "source_file": ".agents/rules/versioning.md",
+      "source_location": "L21",
+      "_origin": "ast",
+      "id": "agents_rules_versioning_4_synchronized_version_files",
+      "community": 289,
+      "community_name": "bcryptjs",
+      "norm_label": "4. synchronized version files"
     },
     {
       "label": "SKILL.md",
@@ -23734,8 +23745,8 @@
       "source_location": "L1035",
       "_origin": "ast",
       "id": "database_schema_6_assessment_grading_domain_data_topic_new_reports",
-      "community": 242,
-      "community_name": "Module 242",
+      "community": 377,
+      "community_name": "SKILL.md",
       "norm_label": "6. assessment & grading domain (`/data/topic-new` / reports)"
     },
     {
@@ -23745,8 +23756,8 @@
       "source_location": "L1039",
       "_origin": "ast",
       "id": "database_schema_6_1_tables",
-      "community": 242,
-      "community_name": "Module 242",
+      "community": 377,
+      "community_name": "SKILL.md",
       "norm_label": "6.1 tables"
     },
     {
@@ -23756,8 +23767,8 @@
       "source_location": "L1041",
       "_origin": "ast",
       "id": "database_schema_assessment_grades",
-      "community": 242,
-      "community_name": "Module 242",
+      "community": 377,
+      "community_name": "SKILL.md",
       "norm_label": "`assessment_grades`"
     },
     {
@@ -23767,8 +23778,8 @@
       "source_location": "L1064",
       "_origin": "ast",
       "id": "database_schema_assessment_grade_strands",
-      "community": 242,
-      "community_name": "Module 242",
+      "community": 377,
+      "community_name": "SKILL.md",
       "norm_label": "`assessment_grade_strands`"
     },
     {
@@ -23778,8 +23789,8 @@
       "source_location": "L1075",
       "_origin": "ast",
       "id": "database_schema_6_2_erd_relationships_assessment_grading",
-      "community": 242,
-      "community_name": "Module 242",
+      "community": 377,
+      "community_name": "SKILL.md",
       "norm_label": "6.2 erd / relationships (assessment & grading)"
     },
     {
@@ -24064,8 +24075,8 @@
       "source_location": "L1515",
       "_origin": "ast",
       "id": "database_schema_11_uniform_stock_management_domain_sales_uniform_stock_uniform_add_stock_uniform_initial_stock_uniform_po_settings_data_uniform_data_uniform_size",
-      "community": 377,
-      "community_name": "SKILL.md",
+      "community": 16,
+      "community_name": "Third-party Libraries",
       "norm_label": "11. uniform & stock management domain (`/sales/uniform`, `/stock/uniform/add`, `/stock/uniform/initial`, `/stock/uniform/po-settings`, `/data/uniform`, `/data/uniform-size`)"
     },
     {
@@ -24229,8 +24240,8 @@
       "source_location": "L1724",
       "_origin": "ast",
       "id": "database_schema_11_2_erd_relationships_uniform_stock_domain",
-      "community": 377,
-      "community_name": "SKILL.md",
+      "community": 16,
+      "community_name": "Third-party Libraries",
       "norm_label": "11.2 erd / relationships (uniform & stock domain)"
     },
     {
@@ -24240,8 +24251,8 @@
       "source_location": "L1806",
       "_origin": "ast",
       "id": "database_schema_11_3_initial_stock_inventory_ledger_workflows_stock_uniform_initial",
-      "community": 377,
-      "community_name": "SKILL.md",
+      "community": 16,
+      "community_name": "Third-party Libraries",
       "norm_label": "11.3 initial stock & inventory ledger workflows (`/stock/uniform/initial`)"
     },
     {
@@ -24251,8 +24262,8 @@
       "source_location": "L1829",
       "_origin": "ast",
       "id": "database_schema_11_4_pos_uniform_sales_workflows_sales_uniform",
-      "community": 377,
-      "community_name": "SKILL.md",
+      "community": 16,
+      "community_name": "Third-party Libraries",
       "norm_label": "11.4 pos uniform sales workflows (`/sales/uniform`)"
     },
     {
@@ -41827,7 +41838,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/app/data/feedback/page.jsx",
-      "source_location": "L27",
+      "source_location": "L28",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_feedback_page",
@@ -48154,7 +48165,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/data/changelog.js",
-      "source_location": "L10",
+      "source_location": "L11",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_data_changelog",
@@ -49137,7 +49148,18 @@
       "weight": 1.0,
       "_origin": "ast",
       "source": "agents_rules_versioning_semantic_versioning_semver_release_guidelines",
-      "target": "agents_rules_versioning_3_synchronized_version_files",
+      "target": "agents_rules_versioning_3_daily_single_version_rule_aturan_1_versi_per_hari",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": ".agents/rules/versioning.md",
+      "source_location": "L21",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "agents_rules_versioning_semantic_versioning_semver_release_guidelines",
+      "target": "agents_rules_versioning_4_synchronized_version_files",
       "confidence_score": 1.0
     },
     {
@@ -61865,5 +61887,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "c055e234118803e1db9dba68ed344791addbef35"
+  "built_at_commit": "04083ab1c10d93a911e2648079bc0b462fe3fafc"
 }
