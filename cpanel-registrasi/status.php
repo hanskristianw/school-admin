@@ -86,20 +86,36 @@ $i18n = [
         'stepper_step2_sub_review' => 'Verifikasi Struk',
         'stepper_step2_sub_rejected' => 'Bukti Ditolak',
         'stepper_step2_sub_done' => 'Lunas Terverifikasi',
-        'stepper_step3_title' => '3. Biodata Lengkap',
-        'stepper_step3_sub_locked' => 'Menunggu Pelunasan',
-        'stepper_step3_sub_fill' => 'Lengkapi Biodata',
-        'stepper_step3_sub_done' => 'Biodata Lengkap',
-        'stepper_step4_title' => '4. Observasi & Review',
-        'stepper_step4_sub_locked' => 'Menunggu Berkas',
-        'stepper_step4_sub_process' => 'Peninjauan Berkas',
-        'stepper_step4_sub_done' => 'Observasi Selesai',
-        'stepper_step5_title' => '5. Hasil Seleksi',
-        'stepper_step5_sub_locked' => 'Tahap Akhir',
-        'stepper_step5_sub_approved' => 'Resmi Diterima!',
-        'stepper_step5_sub_rejected' => 'Belum Lolos Seleksi',
+        'stepper_step3_title' => '3. Referral (Opsional)',
+        'stepper_step3_sub_fill' => 'Isi Rekomendasi',
+        'stepper_step3_sub_done' => 'Referral Tercatat',
+        'stepper_step3_sub_skipped' => 'Dilewati (Opsional)',
+        'stepper_step4_title' => '4. Biodata Lengkap',
+        'stepper_step4_sub_locked' => 'Menunggu Pelunasan',
+        'stepper_step4_sub_fill' => 'Lengkapi Biodata',
+        'stepper_step4_sub_done' => 'Biodata Lengkap',
+        'stepper_step5_title' => '5. Observasi & Review',
+        'stepper_step5_sub_locked' => 'Menunggu Berkas',
+        'stepper_step5_sub_process' => 'Peninjauan Berkas',
+        'stepper_step5_sub_done' => 'Observasi Selesai',
+        'stepper_step6_title' => '6. Hasil Seleksi',
+        'stepper_step6_sub_locked' => 'Tahap Akhir',
+        'stepper_step6_sub_approved' => 'Resmi Diterima!',
+        'stepper_step6_sub_rejected' => 'Belum Lolos Seleksi',
 
         // Callout Kotak Posisi Saat Ini
+        'callout_title_referral' => 'Posisi Anda Saat Ini: Tahap 3 — Informasi Referral (Opsional)',
+        'callout_text_referral' => 'Silakan masukkan nama orang tua dan siswa CCS yang mereferensikan Anda, atau lewati tahap ini jika tidak ada.',
+        'referral_card_title' => 'Tahap 3: Informasi Referral / Rekomendasi CCS (Opsional)',
+        'referral_card_subtitle' => 'Rekomendasi dari keluarga besar, orang tua siswa, atau siswa aktif Chung Chung Christian School',
+        'referral_badge_recorded' => 'Tercatat',
+        'referral_badge_skipped' => 'Dilewati (Opsional)',
+        'referral_badge_open' => 'Bisa Diisi / Dilewati',
+        'lbl_referral_recorded' => 'Nama Orang Tua & Siswa CCS yang Merekomendasikan:',
+        'referral_recorded_hint' => 'Data rekomendasi ini telah terhubung dengan berkas admisi calon siswa.',
+        'btn_edit_referral' => 'Ubah Referral',
+        'btn_save_referral' => 'Simpan Referral',
+        'btn_skip_referral' => 'Lewati Tahap Ini',
         'callout_title_fee_upload' => 'Posisi Anda Saat Ini: Tahap 2 — Menunggu Bukti Pembayaran Formulir',
         'callout_text_fee_upload' => 'Pendaftaran awal berhasil diajukan. Silakan lakukan transfer biaya formulir ke rekening resmi Bank Mayapada di bawah, lalu unggah struk bukti bayar pada formulir yang tersedia.',
         'callout_title_fee_wait' => 'Posisi Anda Saat Ini: Tahap 2 — Menunggu Verifikasi Struk Pembayaran',
@@ -278,20 +294,36 @@ $i18n = [
         'stepper_step2_sub_review' => 'Verifying Payment',
         'stepper_step2_sub_rejected' => 'Receipt Rejected',
         'stepper_step2_sub_done' => 'Payment Verified',
-        'stepper_step3_title' => '3. Complete Profile',
-        'stepper_step3_sub_locked' => 'Locked (Pending Fee)',
-        'stepper_step3_sub_fill' => 'Fill Candidate Profile',
-        'stepper_step3_sub_done' => 'Profile Completed',
-        'stepper_step4_title' => '4. Observation',
-        'stepper_step4_sub_locked' => 'Waiting Profile',
-        'stepper_step4_sub_process' => 'Document Review',
-        'stepper_step4_sub_done' => 'Observation Done',
-        'stepper_step5_title' => '5. Final Admission',
-        'stepper_step5_sub_locked' => 'Final Stage',
-        'stepper_step5_sub_approved' => 'Officially Accepted!',
-        'stepper_step5_sub_rejected' => 'Not Accepted',
+        'stepper_step3_title' => '3. Referral (Optional)',
+        'stepper_step3_sub_fill' => 'Enter Referral',
+        'stepper_step3_sub_done' => 'Referral Recorded',
+        'stepper_step3_sub_skipped' => 'Skipped (Optional)',
+        'stepper_step4_title' => '4. Complete Profile',
+        'stepper_step4_sub_locked' => 'Locked (Pending Fee)',
+        'stepper_step4_sub_fill' => 'Fill Candidate Profile',
+        'stepper_step4_sub_done' => 'Profile Completed',
+        'stepper_step5_title' => '5. Observation',
+        'stepper_step5_sub_locked' => 'Waiting Profile',
+        'stepper_step5_sub_process' => 'Document Review',
+        'stepper_step5_sub_done' => 'Observation Done',
+        'stepper_step6_title' => '6. Final Admission',
+        'stepper_step6_sub_locked' => 'Final Stage',
+        'stepper_step6_sub_approved' => 'Officially Accepted!',
+        'stepper_step6_sub_rejected' => 'Not Accepted',
 
         // Callout Current Position
+        'callout_title_referral' => 'Current Position: Stage 3 — Referral Information (Optional)',
+        'callout_text_referral' => 'Please enter the name of the CCS parent & student who referred you, or skip this step if none.',
+        'referral_card_title' => 'Stage 3: Referral / CCS Recommendation (Optional)',
+        'referral_card_subtitle' => 'Recommendation from current students, parents, or staff of Chung Chung Christian School',
+        'referral_badge_recorded' => 'Recorded',
+        'referral_badge_skipped' => 'Skipped (Optional)',
+        'referral_badge_open' => 'Open / Optional',
+        'lbl_referral_recorded' => 'Referring Parent & Student Name:',
+        'referral_recorded_hint' => 'This recommendation has been attached to the student application record.',
+        'btn_edit_referral' => 'Edit Referral',
+        'btn_save_referral' => 'Save Referral',
+        'btn_skip_referral' => 'Skip This Step',
         'callout_title_fee_upload' => 'Current Position: Stage 2 — Awaiting Form Fee Transfer Receipt',
         'callout_text_fee_upload' => 'Initial registration recorded. Please transfer the form fee to the official Bank Mayapada account below and upload your transfer receipt.',
         'callout_title_fee_wait' => 'Current Position: Stage 2 — Verifying Payment Receipt',
@@ -470,20 +502,36 @@ $i18n = [
         'stepper_step2_sub_review' => '凭证核实中',
         'stepper_step2_sub_rejected' => '凭证被驳回',
         'stepper_step2_sub_done' => '已核实缴费',
-        'stepper_step3_title' => '3. 完善档案',
-        'stepper_step3_sub_locked' => '锁定 (待缴费)',
-        'stepper_step3_sub_fill' => '请完善学生档案',
-        'stepper_step3_sub_done' => '档案已录入',
-        'stepper_step4_title' => '4. 观察审核',
-        'stepper_step4_sub_locked' => '待档案录入',
-        'stepper_step4_sub_process' => '资料审核中',
-        'stepper_step4_sub_done' => '评估已完成',
-        'stepper_step5_title' => '5. 录取结果',
-        'stepper_step5_sub_locked' => '最终结果',
-        'stepper_step5_sub_approved' => '正式录取！',
-        'stepper_step5_sub_rejected' => '未予录取',
+        'stepper_step3_title' => '3. 推荐人 (选填)',
+        'stepper_step3_sub_fill' => '填写推荐人',
+        'stepper_step3_sub_done' => '推荐人已记录',
+        'stepper_step3_sub_skipped' => '已跳过 (选填)',
+        'stepper_step4_title' => '4. 完善档案',
+        'stepper_step4_sub_locked' => '锁定 (待缴费)',
+        'stepper_step4_sub_fill' => '请完善学生档案',
+        'stepper_step4_sub_done' => '档案已录入',
+        'stepper_step5_title' => '5. 观察审核',
+        'stepper_step5_sub_locked' => '待档案录入',
+        'stepper_step5_sub_process' => '资料审核中',
+        'stepper_step5_sub_done' => '评估已完成',
+        'stepper_step6_title' => '6. 录取结果',
+        'stepper_step6_sub_locked' => '最终结果',
+        'stepper_step6_sub_approved' => '正式录取！',
+        'stepper_step6_sub_rejected' => '未予录取',
 
         // Callout Current Position
+        'callout_title_referral' => '当前所处阶段：第 3 步 — 推荐人信息（选填）',
+        'callout_text_referral' => '请输入向您推荐 CCS 的在校家长与学生姓名，若无推荐人可直接点击“跳过”。',
+        'referral_card_title' => '第 3 步：推荐人 / 介绍人信息（选填）',
+        'referral_card_subtitle' => '来自崇崇基督教学校在读学生、家长或教职工的入学推荐',
+        'referral_badge_recorded' => '已记录',
+        'referral_badge_skipped' => '已跳过（选填）',
+        'referral_badge_open' => '可填写 / 可跳过',
+        'lbl_referral_recorded' => '推荐家长与学生姓名：',
+        'referral_recorded_hint' => '该推荐信息已与当前学生的报名档案成功关联。',
+        'btn_edit_referral' => '修改推荐人',
+        'btn_save_referral' => '保存推荐人',
+        'btn_skip_referral' => '跳过此步骤',
         'callout_title_fee_upload' => '当前所处阶段：第 2 步 — 等待上传转账付款凭证',
         'callout_text_fee_upload' => '初步申请已登记成功。请向下方官方 Bank Mayapada 银行账户转账报名费，并在下方表单中上传转账凭证。',
         'callout_title_fee_wait' => '当前所处阶段：第 2 步 — 凭证正在核查中',
@@ -737,6 +785,60 @@ if (isset($_GET['action']) && $_GET['action'] === 'view_proof') {
 $flashMsg = '';
 $flashType = '';
 
+// ─── 4B. PROSES SIMPAN / UPDATE REFERRAL (OPSIONAL) ──────────────────────────
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action_save_referral'])) {
+    $csrf = $_POST['csrf_token'] ?? '';
+    $targetAppNo = trim($_POST['target_app_no'] ?? ($_SESSION['applicant_app_no'] ?? ''));
+
+    if ($csrf !== $_SESSION['csrf_token']) {
+        $flashMsg = 'Sesi formulir kadaluarsa. Silakan muat ulang halaman.';
+        $flashType = 'error';
+    } elseif (empty($targetAppNo)) {
+        $flashMsg = 'Nomor registrasi pendaftar tidak ditemukan.';
+        $flashType = 'error';
+    } else {
+        $referralName = trim($_POST['referral_name'] ?? '');
+        $payload = [
+            'action' => 'save_referral',
+            'application_number' => $targetAppNo,
+            'referral_name' => $referralName
+        ];
+
+        $res = callNextJsApi('POST', [], $payload);
+
+        if (!empty($res['success'])) {
+            $_SESSION['applicant_referral_name'] = $referralName;
+            unset($_SESSION['referral_skipped_' . $targetAppNo]);
+            if (isset($currentApplicant) && is_array($currentApplicant)) {
+                $currentApplicant['referral_name'] = $referralName;
+            }
+            $flashMsg = !empty($referralName) ? 'Data referral berhasil disimpan!' : 'Data referral telah diperbarui.';
+            $flashType = 'success';
+        } else {
+            $flashMsg = 'Gagal menyimpan data referral: ' . ($res['message'] ?? 'Error');
+            $flashType = 'error';
+        }
+    }
+}
+
+// ─── 4C. PROSES LEWATI TAHAP REFERRAL ─────────────────────────────────────────
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action_skip_referral'])) {
+    $csrf = $_POST['csrf_token'] ?? '';
+    $targetAppNo = trim($_POST['target_app_no'] ?? ($_SESSION['applicant_app_no'] ?? ''));
+
+    if ($csrf !== $_SESSION['csrf_token']) {
+        $flashMsg = 'Sesi formulir kadaluarsa. Silakan muat ulang halaman.';
+        $flashType = 'error';
+    } elseif (empty($targetAppNo)) {
+        $flashMsg = 'Nomor registrasi pendaftar tidak ditemukan.';
+        $flashType = 'error';
+    } else {
+        $_SESSION['referral_skipped_' . $targetAppNo] = true;
+        $flashMsg = 'Tahap referral dilewati. Anda dapat mengisinya kembali sewaktu-waktu jika ada pembaruan.';
+        $flashType = 'info';
+    }
+}
+
 // ─── 5. PROSES UPLOAD BUKTI TRANSFER ─────────────────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action_upload_proof'])) {
     $csrf = $_POST['csrf_token'] ?? '';
@@ -979,6 +1081,18 @@ function getCircleBadge($step) {
             'circle' => 'bg-rose-500 text-white shadow-md ring-4 ring-rose-200',
             'icon' => 'fas fa-exclamation text-sm',
             'subClass' => 'text-rose-700 font-bold'
+        ];
+    } elseif ($st === 'skipped') {
+        return [
+            'circle' => 'bg-slate-400 text-white shadow-sm ring-4 ring-slate-100',
+            'icon' => 'fas fa-forward text-xs',
+            'subClass' => 'text-slate-500 font-medium'
+        ];
+    } elseif ($st === 'active_referral') {
+        return [
+            'circle' => 'bg-ccsOrange text-white shadow-md ring-4 ring-orange-200',
+            'icon' => 'fas fa-users text-sm',
+            'subClass' => 'text-ccsOrange font-bold'
         ];
     } else {
         // locked
@@ -1427,52 +1541,65 @@ function formatTanggalIndo($dateStr, $lang = 'id') {
               $s2 = ['state' => 'waiting_upload', 'title' => $L['stepper_step2_title'], 'sub' => $L['stepper_step2_sub_upload']];
           }
 
-          // 3. Formulir Biodata
-          if ($isFormDone) {
+          // 3. Referral (Opsional)
+          $appNoKey = $currentApplicant['application_number'] ?? '';
+          $hasReferral = !empty($currentApplicant['referral_name']);
+          $isReferralSkipped = !empty($_SESSION['referral_skipped_' . $appNoKey]);
+
+          if ($hasReferral) {
               $s3 = ['state' => 'done', 'title' => $L['stepper_step3_title'], 'sub' => $L['stepper_step3_sub_done']];
-          } elseif ($feeStatus === 'verified') {
-              $s3 = ['state' => 'active_fill', 'title' => $L['stepper_step3_title'], 'sub' => $L['stepper_step3_sub_fill']];
+          } elseif ($isReferralSkipped) {
+              $s3 = ['state' => 'skipped', 'title' => $L['stepper_step3_title'], 'sub' => $L['stepper_step3_sub_skipped']];
           } else {
-              $s3 = ['state' => 'locked', 'title' => $L['stepper_step3_title'], 'sub' => $L['stepper_step3_sub_locked']];
+              $s3 = ['state' => 'active_referral', 'title' => $L['stepper_step3_title'], 'sub' => $L['stepper_step3_sub_fill']];
           }
 
-          // 4. Observasi & Review
-          if ($overallStatus === 'approved' || $overallStatus === 'rejected') {
+          // 4. Formulir Biodata
+          if ($isFormDone) {
               $s4 = ['state' => 'done', 'title' => $L['stepper_step4_title'], 'sub' => $L['stepper_step4_sub_done']];
-          } elseif ($isFormDone) {
-              $s4 = ['state' => 'in_review', 'title' => $L['stepper_step4_title'], 'sub' => $L['stepper_step4_sub_process']];
+          } elseif ($feeStatus === 'verified') {
+              $s4 = ['state' => 'active_fill', 'title' => $L['stepper_step4_title'], 'sub' => $L['stepper_step4_sub_fill']];
           } else {
               $s4 = ['state' => 'locked', 'title' => $L['stepper_step4_title'], 'sub' => $L['stepper_step4_sub_locked']];
           }
 
-          // 5. Hasil Penerimaan
-          if ($overallStatus === 'approved') {
-              $s5 = ['state' => 'approved', 'title' => $L['stepper_step5_title'], 'sub' => $L['stepper_step5_sub_approved']];
-          } elseif ($overallStatus === 'rejected') {
-              $s5 = ['state' => 'rejected', 'title' => $L['stepper_step5_title'], 'sub' => $L['stepper_step5_sub_rejected']];
+          // 5. Observasi & Review
+          if ($overallStatus === 'approved' || $overallStatus === 'rejected') {
+              $s5 = ['state' => 'done', 'title' => $L['stepper_step5_title'], 'sub' => $L['stepper_step5_sub_done']];
+          } elseif ($isFormDone) {
+              $s5 = ['state' => 'in_review', 'title' => $L['stepper_step5_title'], 'sub' => $L['stepper_step5_sub_process']];
           } else {
               $s5 = ['state' => 'locked', 'title' => $L['stepper_step5_title'], 'sub' => $L['stepper_step5_sub_locked']];
           }
 
-          $allSteps = [$s1, $s2, $s3, $s4, $s5];
-
-          // Persentase garis track desktop
-          if ($s5['state'] === 'approved' || $s5['state'] === 'rejected') {
-              $progressPct = 100;
-          } elseif ($s4['state'] === 'in_review' || $s4['state'] === 'done') {
-              $progressPct = 75;
-          } elseif ($s3['state'] === 'done' || $s3['state'] === 'active_fill') {
-              $progressPct = 50;
-          } elseif ($s2['state'] === 'done') {
-              $progressPct = 50;
-          } elseif ($s2['state'] === 'waiting_review') {
-              $progressPct = 37.5;
+          // 6. Hasil Penerimaan
+          if ($overallStatus === 'approved') {
+              $s6 = ['state' => 'approved', 'title' => $L['stepper_step6_title'], 'sub' => $L['stepper_step6_sub_approved']];
+          } elseif ($overallStatus === 'rejected') {
+              $s6 = ['state' => 'rejected', 'title' => $L['stepper_step6_title'], 'sub' => $L['stepper_step6_sub_rejected']];
           } else {
-              $progressPct = 25;
+              $s6 = ['state' => 'locked', 'title' => $L['stepper_step6_title'], 'sub' => $L['stepper_step6_sub_locked']];
           }
 
-          // Callout Box Content
-          if ($s5['state'] === 'approved') {
+          $allSteps = [$s1, $s2, $s3, $s4, $s5, $s6];
+
+          // Persentase garis track desktop (6 Tahap)
+          if ($s6['state'] === 'approved' || $s6['state'] === 'rejected') {
+              $progressPct = 100;
+          } elseif ($s5['state'] === 'in_review' || $s5['state'] === 'done') {
+              $progressPct = 80;
+          } elseif ($s4['state'] === 'done' || $s4['state'] === 'active_fill') {
+              $progressPct = 60;
+          } elseif ($s3['state'] === 'done' || $s3['state'] === 'skipped') {
+              $progressPct = 40;
+          } elseif ($s2['state'] === 'done' || $s2['state'] === 'waiting_review') {
+              $progressPct = 30;
+          } else {
+              $progressPct = 16.6;
+          }
+
+          // Callout Box Content (6 Tahap)
+          if ($s6['state'] === 'approved') {
               $callout = [
                   'title' => $L['callout_title_approved'],
                   'text' => $L['callout_text_approved'],
@@ -1481,7 +1608,7 @@ function formatTanggalIndo($dateStr, $lang = 'id') {
                   'iconBg' => 'bg-emerald-200/80',
                   'titleClass' => 'text-emerald-950 font-bold'
               ];
-          } elseif ($s5['state'] === 'rejected') {
+          } elseif ($s6['state'] === 'rejected') {
               $callout = [
                   'title' => $L['callout_title_rejected'],
                   'text' => $L['callout_text_rejected'],
@@ -1490,7 +1617,7 @@ function formatTanggalIndo($dateStr, $lang = 'id') {
                   'iconBg' => 'bg-rose-200/80',
                   'titleClass' => 'text-rose-950 font-bold'
               ];
-          } elseif ($s4['state'] === 'in_review') {
+          } elseif ($s5['state'] === 'in_review') {
               $callout = [
                   'title' => $L['callout_title_review'],
                   'text' => $L['callout_text_review'],
@@ -1499,11 +1626,20 @@ function formatTanggalIndo($dateStr, $lang = 'id') {
                   'iconBg' => 'bg-sky-200/80',
                   'titleClass' => 'text-sky-950 font-bold'
               ];
-          } elseif ($s3['state'] === 'active_fill') {
+          } elseif ($s4['state'] === 'active_fill') {
               $callout = [
                   'title' => $L['callout_title_fill'],
                   'text' => $L['callout_text_fill'],
                   'icon' => 'fas fa-edit text-orange-700 text-lg',
+                  'boxClass' => 'bg-orange-50 border-orange-300 text-orange-950',
+                  'iconBg' => 'bg-orange-200/80',
+                  'titleClass' => 'text-orange-950 font-bold'
+              ];
+          } elseif ($s2['state'] === 'waiting_review' && $s3['state'] === 'active_referral') {
+              $callout = [
+                  'title' => $L['callout_title_referral'],
+                  'text' => $L['callout_text_referral'],
+                  'icon' => 'fas fa-users text-orange-700 text-lg',
                   'boxClass' => 'bg-orange-50 border-orange-300 text-orange-950',
                   'iconBg' => 'bg-orange-200/80',
                   'titleClass' => 'text-orange-950 font-bold'
@@ -1663,8 +1799,8 @@ function formatTanggalIndo($dateStr, $lang = 'id') {
                 <div class="h-full bg-emerald-500 rounded-full transition-all duration-700" style="width: <?= $progressPct ?>%;"></div>
               </div>
 
-              <!-- Grid 5 Lingkaran -->
-              <div class="grid grid-cols-5 gap-2 relative z-10 text-center">
+              <!-- Grid 6 Lingkaran (Termasuk Tahap Referral Opsional) -->
+              <div class="grid grid-cols-6 gap-2 relative z-10 text-center">
                 <?php foreach ($allSteps as $idx => $step): 
                   $b = getCircleBadge($step);
                 ?>
@@ -1683,11 +1819,11 @@ function formatTanggalIndo($dateStr, $lang = 'id') {
               </div>
             </div>
 
-            <!-- TAMPILAN MOBILE: LIST VERTIKAL 5 TAHAP DENGAN INDIKATOR -->
+            <!-- TAMPILAN MOBILE: LIST VERTIKAL 6 TAHAP DENGAN INDIKATOR -->
             <div class="sm:hidden space-y-2.5 pt-1">
               <?php foreach ($allSteps as $idx => $step): 
                 $b = getCircleBadge($step);
-                $isActive = in_array($step['state'], ['waiting_upload', 'waiting_review', 'active_fill', 'in_review', 'approved']);
+                $isActive = in_array($step['state'], ['waiting_upload', 'waiting_review', 'active_referral', 'active_fill', 'in_review', 'approved']);
               ?>
                 <div class="flex items-center gap-3 p-2.5 rounded-md <?= $isActive ? 'bg-white border-2 border-ccsOrange/50 shadow-xs' : 'bg-slate-100/70 border border-slate-200' ?>">
                   <div class="w-9 h-9 rounded-full flex items-center justify-center shrink-0 <?= $b['circle'] ?>">
@@ -1879,25 +2015,6 @@ function formatTanggalIndo($dateStr, $lang = 'id') {
                 <input type="hidden" name="action_upload_proof" value="1">
                 <input type="hidden" name="target_app_no" value="<?= htmlspecialchars($currentApplicant['application_number']) ?>">
 
-                <!-- Input Textbox Referral (Nama Orang Tua & Siswa) -->
-                <div class="space-y-1.5 text-left bg-slate-50 border border-slate-200 rounded-lg p-3 sm:p-4">
-                  <label for="referral_name" class="block text-xs font-bold text-ccsHeading">
-                    <?= htmlspecialchars($L['lbl_referral']) ?>
-                    <span class="text-gray-400 font-normal ml-1">(<?= htmlspecialchars($L['opt_optional']) ?>)</span>
-                  </label>
-                  <input 
-                    type="text" 
-                    name="referral_name" 
-                    id="referral_name" 
-                    value="<?= htmlspecialchars($currentApplicant['referral_name'] ?? ($_SESSION['applicant_referral_name'] ?? '')) ?>"
-                    placeholder="<?= htmlspecialchars($L['ph_referral']) ?>"
-                    class="w-full px-3.5 py-2.5 rounded-md border border-gray-300 text-xs text-ccsHeading focus:outline-none focus:border-ccsOrange transition shadow-xs bg-white"
-                  >
-                  <p class="text-[11px] text-gray-500">
-                    <?= htmlspecialchars($L['hint_referral']) ?>
-                  </p>
-                </div>
-
                 <!-- Hidden file input triggered by custom interactive area -->
                 <input 
                   type="file" 
@@ -1980,6 +2097,103 @@ function formatTanggalIndo($dateStr, $lang = 'id') {
                   </a>
                 </div>
               <?php endif; ?>
+
+              <!-- ═══════════════════════════════════════════════════════════════ -->
+              <!-- TAHAP 3: INFORMASI REFERRAL (OPSIONAL) — KARTU TERSENDIRI       -->
+              <!-- ═══════════════════════════════════════════════════════════════ -->
+              <div id="tahap-referral" class="bg-white border border-gray-200 rounded-md p-5 sm:p-6 space-y-4 shadow-xs scroll-mt-28">
+                <div class="flex items-center justify-between border-b border-gray-200 pb-3 flex-wrap gap-2">
+                  <div class="flex items-center gap-2.5">
+                    <div class="w-8 h-8 rounded-full bg-orange-100 text-ccsOrange flex items-center justify-center text-sm font-bold">
+                      <i class="fas fa-users"></i>
+                    </div>
+                    <div>
+                      <h3 class="text-sm font-bold text-ccsHeading uppercase tracking-wider">
+                        <?= htmlspecialchars($L['referral_card_title'] ?? 'Tahap 3: Informasi Referral (Opsional)') ?>
+                      </h3>
+                      <p class="text-[11px] text-gray-500">
+                        <?= htmlspecialchars($L['referral_card_subtitle'] ?? 'Rekomendasi dari keluarga besar, orang tua, atau siswa Chung Chung Christian School') ?>
+                      </p>
+                    </div>
+                  </div>
+                  <?php if ($hasReferral): ?>
+                    <span class="px-2.5 py-1 rounded text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200 inline-flex items-center gap-1.5">
+                      <i class="fas fa-check-circle text-emerald-600"></i> <?= htmlspecialchars($L['referral_badge_recorded'] ?? 'Tercatat') ?>
+                    </span>
+                  <?php elseif ($isReferralSkipped): ?>
+                    <span class="px-2.5 py-1 rounded text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-300 inline-flex items-center gap-1.5">
+                      <i class="fas fa-forward text-slate-500"></i> <?= htmlspecialchars($L['referral_badge_skipped'] ?? 'Dilewati (Opsional)') ?>
+                    </span>
+                  <?php else: ?>
+                    <span class="px-2.5 py-1 rounded text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-200 inline-flex items-center gap-1.5">
+                      <i class="fas fa-edit text-amber-600"></i> <?= htmlspecialchars($L['referral_badge_open'] ?? 'Bisa Diisi / Dilewati') ?>
+                    </span>
+                  <?php endif; ?>
+                </div>
+
+                <?php if ($hasReferral && empty($_GET['edit_referral'])): ?>
+                  <!-- Tampilan Jika Referral Sudah Terisi -->
+                  <div class="p-4 rounded-lg bg-sky-50/60 border border-sky-200 text-xs space-y-2">
+                    <span class="text-gray-500 block text-[11px] font-medium uppercase font-mono">
+                      <?= htmlspecialchars($L['lbl_referral_recorded'] ?? 'Nama Orang Tua & Siswa CCS yang Merekomendasikan:') ?>
+                    </span>
+                    <div class="text-sm font-bold text-ccsHeading font-sans">
+                      <?= htmlspecialchars($currentApplicant['referral_name']) ?>
+                    </div>
+                    <div class="pt-2 flex items-center justify-between border-t border-sky-200/70">
+                      <span class="text-[11px] text-sky-800">
+                        <?= htmlspecialchars($L['referral_recorded_hint'] ?? 'Data rekomendasi ini telah terhubung dengan berkas admisi calon siswa.') ?>
+                      </span>
+                      <a href="status.php?cek=<?= urlencode($searchQuery) ?>&phone=<?= urlencode($searchPhone) ?>&lang=<?= $currLang ?>&edit_referral=1#tahap-referral" class="text-xs text-ccsOrange font-semibold hover:underline inline-flex items-center gap-1">
+                        <i class="fas fa-edit"></i> <?= htmlspecialchars($L['btn_edit_referral'] ?? 'Ubah Referral') ?>
+                      </a>
+                    </div>
+                  </div>
+                <?php else: ?>
+                  <!-- Form Input Referral Terpisah -->
+                  <form method="POST" action="status.php?cek=<?= urlencode($searchQuery) ?>&phone=<?= urlencode($searchPhone) ?>&lang=<?= $currLang ?>#tahap-referral" class="space-y-3.5">
+                    <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
+                    <input type="hidden" name="target_app_no" value="<?= htmlspecialchars($currentApplicant['application_number']) ?>">
+
+                    <div class="space-y-1.5 text-left">
+                      <label for="ref_name_input" class="block text-xs font-bold text-ccsHeading">
+                        <?= htmlspecialchars($L['lbl_referral']) ?>
+                        <span class="text-gray-400 font-normal ml-1">(<?= htmlspecialchars($L['opt_optional']) ?>)</span>
+                      </label>
+                      <input 
+                        type="text" 
+                        name="referral_name" 
+                        id="ref_name_input" 
+                        value="<?= htmlspecialchars($currentApplicant['referral_name'] ?? ($_SESSION['applicant_referral_name'] ?? '')) ?>"
+                        placeholder="<?= htmlspecialchars($L['ph_referral']) ?>"
+                        class="w-full px-3.5 py-2.5 rounded-md border border-gray-300 text-xs text-ccsHeading focus:outline-none focus:border-ccsOrange transition shadow-xs bg-white"
+                      >
+                      <p class="text-[11px] text-gray-500">
+                        <?= htmlspecialchars($L['hint_referral']) ?>
+                      </p>
+                    </div>
+
+                    <div class="flex flex-wrap items-center gap-2.5 pt-1">
+                      <button 
+                        type="submit" 
+                        name="action_save_referral" 
+                        value="1"
+                        class="thm-btn px-6 py-2 text-xs font-semibold flex items-center gap-1.5"
+                      >
+                        <i class="fas fa-save"></i> <?= htmlspecialchars($L['btn_save_referral'] ?? 'Simpan Referral') ?>
+                      </button>
+                      <button 
+                        type="submit" 
+                        name="action_skip_referral" 
+                        value="1"
+                        class="px-4 py-2 text-xs font-medium border border-gray-300 rounded-md text-gray-600 hover:bg-gray-100 transition flex items-center gap-1.5"
+                      >
+                        <i class="fas fa-forward text-gray-400"></i> <?= htmlspecialchars($L['btn_skip_referral'] ?? 'Lewati Tahap Ini') ?>
+                      </button>
+                    </div>
+                  </form>
+                <?php endif; ?>
+              </div>
             </div>
 
           <!-- ───────────────────────────────────────────────────────────── -->

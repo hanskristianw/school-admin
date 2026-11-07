@@ -726,6 +726,71 @@ export async function POST(request) {
       })
     }
 
+    // ─── TAHAP 3 (OPSIONAL): SIMPAN / PERBARUI REFERRAL ──────────
+    if (action === 'save_referral' || action === 'update_referral') {
+      const { application_number, referral_name, referral } = body
+
+      if (!application_number) {
+        return NextResponse.json(
+          { success: false, message: 'Nomor registrasi pendaftar wajib disertakan' },
+          { status: 400 }
+        )
+      }
+
+      const refName = (referral_name !== undefined ? referral_name : referral)?.trim() || null
+
+      let updatePayload = {
+        referral_name: refName
+      }
+
+      let { data: updated, error: updateErr } = await supabaseAdmin
+        .from('student_applications')
+        .update(updatePayload)
+        .eq('application_number', application_number)
+        .select()
+
+      // Fallback jika kolom referral_name belum ada di schema cache Supabase
+      if (updateErr && (updateErr.message?.includes('referral_name') || updateErr.message?.includes('schema cache') || updateErr.message?.includes('column'))) {
+        const { data: curr } = await supabaseAdmin
+          .from('student_applications')
+          .select('additional_notes')
+          .eq('application_number', application_number)
+          .single()
+
+        const baseNotes = (curr?.additional_notes || '').replace(/\[REFERRAL\]:.*$/s, '').trim()
+        const newNotes = refName 
+          ? (baseNotes ? baseNotes + '\n[REFERRAL]: ' + refName : '[REFERRAL]: ' + refName)
+          : baseNotes
+
+        const retry = await supabaseAdmin
+          .from('student_applications')
+          .update({ additional_notes: newNotes })
+          .eq('application_number', application_number)
+          .select()
+
+        updated = retry.data
+        updateErr = retry.error
+      }
+
+      if (updateErr) {
+        console.error('Error saving referral in Supabase:', updateErr)
+        return NextResponse.json(
+          { success: false, message: updateErr.message },
+          { status: 500 }
+        )
+      }
+
+      const formatted = Array.isArray(updated) 
+        ? updated.map(extractScheduleMeta) 
+        : (updated ? extractScheduleMeta(updated) : updated)
+
+      return NextResponse.json({
+        success: true,
+        message: 'Data referral berhasil disimpan',
+        data: formatted
+      })
+    }
+
     // ─── TAHAP 3: ADMIN APPROVE / TOLAK PEMBAYARAN FORMULIR ────
     if (action === 'admin_verify') {
       const { application_id, application_number, status, admin_notes } = body

@@ -9,9 +9,117 @@
 
 export const SYSTEM_RELEASES = [
   {
-    version: '0.6.1',
+    version: '0.6.4',
     date: '2026-11-07',
     isLatest: true,
+    summary: {
+      id: 'Penyempurnaan alur pendaftaran siswa: penambahan tahap ke-3 (Referral Opsional) dalam alur stepper 6 tahap di portal pendaftar dengan kartu mandiri, opsi simpan/lewati tahap, serta integrasi API Next.js.',
+      en: 'Refined student admission flow: added dedicated Step 3 (Optional Referral) in the 6-stage applicant stepper with standalone card, save/skip actions, and Next.js public API integration.',
+      zh: '优化新生报名流程：在申请状态追踪中新增独立的第 3 步“推荐人（选填）”流程卡片（升级为 6 步进度条），支持一键保存或跳过，并全面打通 Next.js API 接口。'
+    },
+    sections: {
+      added: [
+        {
+          id: 'Tahap ke-3 khusus "Referral (Opsional)" pada diagram alur (stepper) 6 tahap di portal status pendaftaran (cpanel-registrasi/status.php) pada tampilan desktop maupun mobile.',
+          en: 'Dedicated Step 3 "Referral (Optional)" in the 6-step applicant status stepper (cpanel-registrasi/status.php) across both desktop and mobile views.',
+          zh: '在报名进度追踪页（cpanel-registrasi/status.php）全新升级 6 步步进条，并在桌面端与移动端新增独立的第 3 步“推荐人（选填）”。'
+        },
+        {
+          id: 'Kartu mandiri informasi referral (#tahap-referral) dengan form input nama orang tua & siswa yang merekomendasikan, tombol "Simpan Referral", dan tombol "Lewati Tahap Ini".',
+          en: 'Standalone referral card (#tahap-referral) with referring parent & student input, "Save Referral" button, and "Skip This Step" button.',
+          zh: '独立的推荐人信息卡片（#tahap-referral），配备推荐家长与学生姓名输入框、一键“保存推荐人”按钮以及“跳过此步骤”按钮。'
+        },
+        {
+          id: 'Handler API Next.js action "save_referral" dan "update_referral" di /api/public/admission dengan dukungan fallback database otomatis.',
+          en: 'Next.js API endpoint handler for "save_referral" and "update_referral" in /api/public/admission with automatic database schema fallback.',
+          zh: '在 /api/public/admission 中新增 "save_referral" 与 "update_referral" 接口处理，支持字段兼容与自动降级保障。'
+        }
+      ],
+      changed: [
+        {
+          id: 'Pemisahan input referral dari formulir unggah bukti transfer biaya formulir agar proses pembayaran tetap ringkas dan tahap referral dapat diisi secara opsional.',
+          en: 'Separated referral input from the form fee payment receipt upload form, ensuring clean upload UX and an optional dedicated referral step.',
+          zh: '将推荐人输入框从转账凭证上传表单中剥离为独立选填步骤，保证缴费上传流程清爽简洁。'
+        }
+      ]
+    }
+  },
+  {
+    version: '0.6.3',
+    date: '2026-11-07',
+    isLatest: false,
+    summary: {
+      id: 'Perapian total antarmuka mobile portal vendor & penguncian kamera scan QR jika nama petugas kebersihan belum dipilih.',
+      en: 'Complete mobile UI overhaul for vendor portal & strict scanner camera lock when cleaner staff name is not selected.',
+      zh: '外包服务门户移动端排版全面重构，并对未选择具体保洁员姓名的状态强制锁定摄像头扫码权限。'
+    },
+    sections: {
+      added: [
+        {
+          id: 'Mekanisme proteksi kunci kamera: Jika status peran adalah Petugas Kebersihan namun nama belum dipilih, kamera scanner otomatis dinonaktifkan (kamera mati) dan digantikan kartu peringatan interaktif untuk memilih nama terlebih dahulu.',
+          en: 'Strict scanner lock protection: If role is Cleaning Staff but no individual name is selected, camera is completely disabled and replaced with an interactive prompt to select staff identity first.',
+          zh: '摄像头权限硬锁定保护机制：若当前角色为保洁员但尚未选择具体员工姓名，摄像头保持关闭状态并展示醒目警示卡，必须选定姓名后方可解锁并开启扫描。'
+        }
+      ],
+      changed: [
+        {
+          id: 'Perombakan total header bar mobile: menghapus banner bertumpuk yang menyebabkan teks terpotong ("Petugas Kek" & "D Auto"), menggantikannya dengan 1 header ringkas berarsitektur mobile-first yang rapi dan elegan.',
+          en: 'Complete mobile header overhaul: removed redundant stacked banners that caused severe text truncation ("Petugas Kek" & "D Auto"), unifying into a single elegant mobile-first header.',
+          zh: '移动端顶部状态栏全面精简重构：彻底移除双层重叠横幅，杜绝“Petugas Kek”等文字被截断与排版挤压问题，升级为标准移动端极简卡片。'
+        },
+        {
+          id: 'Penyelarasan tombol aksi header menjadi tombol pil ringkas "[Ganti]" dan tombol ikon ganti peran yang ergonomis untuk layar HP semua ukuran.',
+          en: 'Streamlined header action buttons into a compact pill "[Change]" button and ergonomic icon role-switch button tailored for all smartphone screen sizes.',
+          zh: '将操作按钮精简为紧凑型药丸状“[更换]”按钮及标准图标按钮，完美适应各种小屏手机尺寸。'
+        }
+      ]
+    }
+  },
+  {
+    version: '0.6.2',
+    date: '2026-11-07',
+    isLatest: false,
+    summary: {
+      id: 'Penyempurnaan alur pemilihan nama petugas kebersihan (cleaner): dropdown nama langsung di kartu peran, pre-render instan, banner info petugas aktif di scanner, dan auto-select permanen di perangkat.',
+      en: 'Refined cleaning staff name selection workflow: name dropdown directly on role card, instant pre-rendering, active cleaner banner on scanner, and persistent device auto-selection.',
+      zh: '优化保洁员身份选择流程：在角色卡片直观提供姓名下拉选择、即时静态预渲染、扫码界面展示当前保洁员横幅并实现设备端永久自动选中。'
+    },
+    sections: {
+      added: [
+        {
+          id: 'Dropdown pemilihan nama petugas kebersihan langsung di dalam kartu Petugas Kebersihan pada layar pemilihan peran, sehingga petugas dapat memilih namanya sebelum masuk ke scanner ruangan.',
+          en: 'Cleaning staff name selector directly within the Cleaner role card, allowing staff to pick their identity before entering the room scanner.',
+          zh: '在角色选择界面的保洁员卡片内直接提供姓名下拉菜单，方便员工在进入教室扫码前完成身份确认。'
+        },
+        {
+          id: 'Banner info "Petugas Kebersihan Aktif" lengkap dengan badge status "Auto-selected" dan dropdown ganti nama instan tepat di atas viewfinder kamera QR scanner.',
+          en: '"Active Cleaning Staff" banner with an "Auto-selected" status badge and quick-switch dropdown positioned directly above the QR scanner viewfinder.',
+          zh: '在二维码扫描取景框正上方新增“当前在线保洁员”横幅，附带“自动选中”标记并支持一键快速切换人员。'
+        },
+        {
+          id: 'Tombol "Ganti Nama" pada Active Role Bar atas untuk memudahkan pergantian nama petugas kapan saja tanpa harus mereset peran.',
+          en: 'Quick "Change Staff" button on the top Active Role Bar allowing easy staff identity switching without resetting the active role.',
+          zh: '在顶部已选角色导航条中新增“更换姓名”快捷按钮，无需重置角色即可无缝切换保洁人员。'
+        }
+      ],
+      changed: [
+        {
+          id: 'Pilihan nama petugas kini otomatis diingat secara permanen (localStorage) dan tersinkronisasi otomatis (auto-selected) di semua layar (kartu peran, banner scanner, dan formulir ruangan).',
+          en: 'Selected cleaner name is now permanently remembered in localStorage and auto-selected across all views (role card, scanner banner, and room checklist form).',
+          zh: '所选保洁员姓名现已永久持久化至本地缓存（localStorage），并在所有界面（角色卡、扫码横幅、教室巡检表单）实现全自动匹配选中。'
+        },
+        {
+          id: 'Penyediaan data awal petugas kebersihan (pre-rendered array) di sisi PHP sehingga opsi dropdown langsung muncul secara instan tanpa menunggu respons cURL API.',
+          en: 'Pre-rendered default cleaner dataset in PHP ensuring dropdown options populate instantly without waiting for API cURL latency.',
+          zh: '在 PHP 服务端直接内嵌保洁员花名册预渲染数据，确保下拉列表秒开无延迟，避免依赖外部 API 响应等待。'
+        }
+      ]
+    }
+  },
+  {
+    version: '0.6.1',
+    date: '2026-11-07',
+    isLatest: false,
     summary: {
       id: 'Penambahan input referral (orang tua & siswa yang merekomendasikan) saat pembayaran biaya formulir di portal pendaftar dan integrasi penuh pada sistem Next.js.',
       en: 'Added referral input (referring parent & student name) during form fee payment on applicant portal with full Next.js admin integration.',

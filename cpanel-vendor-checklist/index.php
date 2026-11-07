@@ -24,6 +24,23 @@ if (file_exists(__DIR__ . '/config.php')) {
 if (!defined('API_SECRET_TOKEN')) define('API_SECRET_TOKEN', getenv('COURT_RENTAL_SECRET_KEY') ?: 'ccs_court_auth_2026_x7k9p2m4');
 if (!defined('NEXTJS_API_URL')) define('NEXTJS_API_URL', 'https://www.manageccs.online/api/public/vendor-checklist');
 
+// Daftar Petugas Cleaning Default (Role ID 14) untuk Pre-render Cepat Tanpa Menunggu cURL
+$DEFAULT_CLEANERS = [
+    ['user_id' => 447, 'name' => 'Andrean Driver'],
+    ['user_id' => 445, 'name' => 'Budi Taman'],
+    ['user_id' => 439, 'name' => 'Darul Cleaning'],
+    ['user_id' => 438, 'name' => 'Davit Cleaning'],
+    ['user_id' => 436, 'name' => 'Evi Cleaning'],
+    ['user_id' => 448, 'name' => 'Fadil Kolam'],
+    ['user_id' => 442, 'name' => 'Fitria Cleaning'],
+    ['user_id' => 441, 'name' => 'Juhariya Cleaning'],
+    ['user_id' => 437, 'name' => 'Raditya Cleaning'],
+    ['user_id' => 466, 'name' => 'Rahmani .'],
+    ['user_id' => 444, 'name' => 'Risky Cleaning'],
+    ['user_id' => 443, 'name' => 'Suhadi Cleaning'],
+    ['user_id' => 446, 'name' => 'Toni Taman']
+];
+
 define('UPLOAD_DIR', __DIR__ . '/uploads');
 
 // Inisialisasi & proteksi folder uploads
@@ -531,24 +548,42 @@ $roomParam = htmlspecialchars(trim($_GET['room'] ?? ''));
   <!-- ═══════════════════════════════════════════════════════════════════════ -->
   <main class="max-w-xl mx-auto px-4 sm:px-6 py-6 sm:py-8 flex-1 w-full space-y-6">
 
-    <!-- Active Role Header Indicator (Visible when a role is selected) -->
-    <div id="activeRoleBar" class="hidden bg-white rounded-xl p-3 border border-gray-100 shadow-xs flex items-center justify-between">
-      <div class="flex items-center gap-2.5">
-        <div id="activeRoleIcon" class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold bg-orange-100 text-ccsOrange">
+    <!-- Active Role Header Indicator (Clean Mobile-First Header) -->
+    <div id="activeRoleBar" class="hidden bg-white rounded-2xl p-3.5 border border-gray-100 shadow-sm flex items-center justify-between gap-2.5">
+      <div class="flex items-center gap-3 min-w-0">
+        <div id="activeRoleIcon" class="w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold bg-orange-100 text-ccsOrange shrink-0 shadow-xs">
           <i class="fas fa-broom"></i>
         </div>
-        <div>
-          <div class="text-[10px] text-gray-400 uppercase tracking-wider font-semibold" data-i18n="active_role_label">Peran Saat Ini</div>
-          <div id="activeRoleText" class="text-xs font-bold text-ccsHeading">Petugas Kebersihan</div>
+        <div class="min-w-0">
+          <div id="activeRoleCategoryText" class="text-[10px] font-bold text-gray-400 uppercase tracking-wider leading-tight">
+            Petugas Kebersihan
+          </div>
+          <div class="text-sm font-extrabold text-ccsHeading truncate leading-tight mt-0.5">
+            <span id="activeCleanerNameText">Darul Cleaning</span>
+          </div>
         </div>
       </div>
-      <button 
-        onclick="resetRole()" 
-        class="text-xs font-semibold text-ccsNavy hover:text-ccsOrange border border-gray-200 hover:border-ccsOrange px-3 py-1 rounded-full transition flex items-center gap-1.5"
-      >
-        <i class="fas fa-sync-alt text-[10px]"></i>
-        <span data-i18n="switch_role">Ganti Peran</span>
-      </button>
+      <div class="flex items-center gap-1.5 shrink-0">
+        <button 
+          id="btnChangeCleanerQuick"
+          type="button"
+          onclick="promptSwitchCleanerModal()" 
+          class="hidden px-2.5 py-1.5 rounded-xl bg-orange-50 hover:bg-orange-100 border border-orange-200 text-ccsOrange text-xs font-bold items-center gap-1 transition active:scale-95"
+          title="Ganti Nama Petugas"
+        >
+          <i class="fas fa-user-edit text-[10px]"></i>
+          <span data-i18n="change_worker">Ganti</span>
+        </button>
+        <button 
+          type="button"
+          onclick="resetRole()" 
+          class="px-2.5 py-1.5 rounded-xl border border-gray-200 text-gray-500 hover:text-ccsNavy hover:bg-gray-50 text-xs font-semibold flex items-center gap-1 transition active:scale-95"
+          title="Ganti Peran"
+        >
+          <i class="fas fa-sync-alt text-[10px]"></i>
+          <span class="hidden sm:inline" data-i18n="switch_role">Ganti Peran</span>
+        </button>
+      </div>
     </div>
 
     <!-- Loading State Card -->
@@ -577,23 +612,54 @@ $roomParam = htmlspecialchars(trim($_GET['room'] ?? ''));
 
         <!-- Card: Cleaner (Petugas Kebersihan) -->
         <div 
-          onclick="selectRole('cleaner')" 
-          class="bg-white rounded-2xl p-5 border-2 border-gray-100 hover:border-ccsOrange transition-all duration-300 shadow-xs hover:shadow-md cursor-pointer flex flex-col justify-between group relative overflow-hidden"
+          class="bg-white rounded-2xl p-5 border-2 border-orange-200 hover:border-ccsOrange transition-all duration-300 shadow-xs hover:shadow-md flex flex-col justify-between group relative overflow-hidden"
         >
           <div class="absolute top-0 right-0 w-16 h-16 bg-orange-50 rounded-bl-full -mr-4 -mt-4 transition-transform group-hover:scale-110"></div>
           <div>
-            <div class="w-12 h-12 rounded-2xl bg-orange-100 text-ccsOrange flex items-center justify-center text-xl mb-4 group-hover:scale-105 transition-transform">
+            <div class="w-12 h-12 rounded-2xl bg-orange-100 text-ccsOrange flex items-center justify-center text-xl mb-3 group-hover:scale-105 transition-transform">
               <i class="fas fa-broom"></i>
             </div>
             <div class="flex items-center gap-2 mb-1">
               <h3 class="text-base font-bold text-ccsHeading" data-i18n="role_cleaner_name">Petugas Kebersihan</h3>
               <span class="text-[10px] font-semibold bg-orange-50 text-ccsOrange px-2 py-0.5 rounded-full" data-i18n="role_cleaner_badge">Cleaner</span>
             </div>
-            <p class="text-xs text-gray-500 line-clamp-3 mb-4" data-i18n="role_cleaner_desc">
+            <p class="text-xs text-gray-500 line-clamp-2 mb-3" data-i18n="role_cleaner_desc">
               Checklist pengerjaan kebersihan ruangan & unggah foto before / after.
             </p>
+
+            <!-- Dropdown Pemilihan Nama Petugas Kebersihan -->
+            <div class="pt-2.5 border-t border-orange-100/70 mb-3 text-left">
+              <div class="flex items-center justify-between mb-1">
+                <label class="block text-[11px] font-bold text-gray-700 uppercase tracking-wider" data-i18n="select_your_name">
+                  Pilih Nama Anda:
+                </label>
+                <span id="roleWorkerSavedBadge" class="hidden text-[10px] text-emerald-600 font-semibold flex items-center gap-1 bg-emerald-50 px-1.5 py-0.5 rounded">
+                  <i class="fas fa-check"></i> <span data-i18n="auto_saved">Tersimpan</span>
+                </span>
+              </div>
+              <div class="relative">
+                <select 
+                  id="roleWorkerNameSelect" 
+                  onchange="handleGlobalCleanerChange(this.value)"
+                  class="w-full px-3 py-2.5 text-xs border border-orange-200 rounded-xl bg-orange-50/40 text-gray-800 font-semibold focus:border-ccsOrange focus:ring-2 focus:ring-ccsOrange/20 outline-none appearance-none cursor-pointer"
+                >
+                  <option value="" data-i18n="cleaner_placeholder">-- Pilih nama Anda --</option>
+                </select>
+                <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-ccsOrange">
+                  <i class="fas fa-chevron-down text-xs"></i>
+                </div>
+              </div>
+              <p class="text-[10px] text-gray-400 mt-1" data-i18n="cleaner_auto_remember_hint">
+                Pilihan nama otomatis diingat untuk semua ruangan berikutnya.
+              </p>
+            </div>
           </div>
-          <button class="thm-btn w-full text-xs py-2.5 group-hover:bg-ccsNavy group-hover:border-ccsNavy">
+
+          <button 
+            type="button" 
+            onclick="handleEnterCleaner()" 
+            class="thm-btn w-full text-xs py-2.5 group-hover:bg-ccsNavy group-hover:border-ccsNavy shadow-xs"
+          >
             <i class="fas fa-check-circle mr-1"></i>
             <span data-i18n="role_cleaner_btn">Masuk sebagai Cleaner</span>
           </button>
@@ -628,31 +694,71 @@ $roomParam = htmlspecialchars(trim($_GET['room'] ?? ''));
 
     <!-- ─── SECTION 2: QR SCANNER SECTION ───────────────────────────────── -->
     <div id="scannerSection" class="hidden">
-      <div class="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm space-y-5">
-        <div class="text-center">
-          <div id="scannerIconBox" class="w-12 h-12 rounded-full bg-orange-100 text-ccsOrange font-bold flex items-center justify-center text-xl mx-auto mb-3">
-            <i class="fas fa-qrcode"></i>
+      <div class="bg-white rounded-2xl p-5 sm:p-6 border border-gray-100 shadow-sm space-y-4">
+
+        <!-- 2A. KOTAK KUNCI: JIKA PETUGAS BELUM PILIH NAMA (KAMERA WAJIB MATI) -->
+        <div id="cleanerLockBox" class="hidden bg-gradient-to-br from-amber-50 to-orange-50 border-2 border-amber-300 rounded-2xl p-6 text-center space-y-4">
+          <div class="w-14 h-14 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center text-2xl mx-auto shadow-xs">
+            <i class="fas fa-user-lock"></i>
           </div>
-          <h2 id="scannerHeading" class="text-lg font-bold text-ccsHeading" data-i18n="scan_heading">Scan QR Code Ruangan</h2>
-          <p id="scannerSubHeading" class="text-xs text-gray-500 mt-1" data-i18n="scan_subtitle">Arahkan kamera ke stiker barcode di pintu ruangan sekolah</p>
+          <div>
+            <h3 class="text-base font-extrabold text-ccsHeading" data-i18n="cleaner_required_title">
+              Pilih Nama Petugas Terlebih Dahulu
+            </h3>
+            <p class="text-xs text-gray-600 mt-1.5 max-w-sm mx-auto" data-i18n="cleaner_required_subtitle">
+              Kamera scanner tidak dapat digunakan sebelum Anda memilih identitas nama petugas kebersihan yang bertugas.
+            </p>
+          </div>
+          <div class="max-w-xs mx-auto">
+            <label class="block text-[11px] font-bold text-gray-700 uppercase tracking-wider mb-1.5 text-left" data-i18n="select_your_name">
+              Pilih Nama Anda:
+            </label>
+            <div class="relative">
+              <select 
+                id="scannerLockWorkerSelect" 
+                onchange="handleSelectCleanerAndUnlock(this.value)"
+                class="w-full px-4 py-3 text-xs font-bold border-2 border-amber-300 rounded-xl bg-white text-gray-800 focus:border-ccsOrange focus:ring-2 focus:ring-ccsOrange/20 outline-none shadow-xs appearance-none cursor-pointer"
+              >
+                <option value="" data-i18n="cleaner_placeholder">-- Pilih nama Anda --</option>
+              </select>
+              <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-amber-600">
+                <i class="fas fa-chevron-down text-xs"></i>
+              </div>
+            </div>
+            <p class="text-[10px] text-gray-400 mt-2 text-left" data-i18n="cleaner_lock_hint">
+              Setelah dipilih, kamera scanner akan aktif & nama diingat permanen di HP ini.
+            </p>
+          </div>
         </div>
 
-        <div id="qrReader" class="overflow-hidden rounded-xl border border-gray-200 bg-gray-900 min-h-[240px]"></div>
+        <!-- 2B. KOTAK SCANNER AKTIF (Hanya aktif jika nama sudah dipilih / mode pelapor) -->
+        <div id="scannerActiveBox" class="space-y-4">
+          <div class="text-center">
+            <div id="scannerIconBox" class="w-12 h-12 rounded-full bg-orange-100 text-ccsOrange font-bold flex items-center justify-center text-xl mx-auto mb-2">
+              <i class="fas fa-qrcode"></i>
+            </div>
+            <h2 id="scannerHeading" class="text-lg font-bold text-ccsHeading" data-i18n="scan_heading">Scan QR Code Ruangan</h2>
+            <p id="scannerSubHeading" class="text-xs text-gray-500 mt-1" data-i18n="scan_subtitle">Arahkan kamera ke stiker barcode di pintu ruangan sekolah</p>
+          </div>
 
-        <div class="pt-4 border-t border-gray-100 text-center">
-          <p class="text-xs text-gray-400 mb-2 font-medium" data-i18n="manual_token_label">Atau masukkan kode token ruangan:</p>
-          <div class="flex gap-2">
-            <input 
-              type="text" 
-              id="manualRoomToken" 
-              placeholder="Contoh: rm_a1b2c3d4" 
-              class="flex-1 px-4 py-2.5 text-xs border border-gray-200 rounded-xl focus:border-ccsNavy focus:ring-2 focus:ring-ccsNavy/10 font-mono uppercase outline-none"
-            >
-            <button onclick="handleManualToken()" class="thm-btn py-2 px-5 text-xs">
-              <span data-i18n="open_btn">Buka</span>
-            </button>
+          <div id="qrReader" class="overflow-hidden rounded-xl border border-gray-200 bg-gray-900 min-h-[240px]"></div>
+
+          <div class="pt-4 border-t border-gray-100 text-center">
+            <p class="text-xs text-gray-400 mb-2 font-medium" data-i18n="manual_token_label">Atau masukkan kode token ruangan:</p>
+            <div class="flex gap-2">
+              <input 
+                type="text" 
+                id="manualRoomToken" 
+                placeholder="Contoh: rm_a1b2c3d4" 
+                class="flex-1 px-4 py-2.5 text-xs border border-gray-200 rounded-xl focus:border-ccsNavy focus:ring-2 focus:ring-ccsNavy/10 font-mono uppercase outline-none"
+              >
+              <button onclick="handleManualToken()" class="thm-btn py-2 px-5 text-xs">
+                <span data-i18n="open_btn">Buka</span>
+              </button>
+            </div>
           </div>
         </div>
+
       </div>
     </div>
 
@@ -700,6 +806,7 @@ $roomParam = htmlspecialchars(trim($_GET['room'] ?? ''));
           <div class="relative">
             <select 
               id="workerNameSelect" 
+              onchange="handleGlobalCleanerChange(this.value)"
               class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:border-ccsNavy focus:ring-2 focus:ring-ccsNavy/10 text-sm outline-none transition bg-white appearance-none cursor-pointer"
             >
               <option value="" data-i18n="cleaner_loading">-- Memuat daftar petugas... --</option>
@@ -939,7 +1046,17 @@ $roomParam = htmlspecialchars(trim($_GET['room'] ?? ''));
         alert_select_cleaner: 'Silakan pilih nama petugas kebersihan terlebih dahulu.',
         alert_take_photo: 'Silakan ambil foto bukti terlebih dahulu menggunakan kamera.',
         alert_enter_desc: 'Silakan isi deskripsi kendala kerusakan ruangan terlebih dahulu.',
-        alert_enter_name: 'Silakan isi nama pelapor terlebih dahulu.'
+        alert_enter_name: 'Silakan isi nama pelapor terlebih dahulu.',
+        select_your_name: 'Pilih Nama Anda:',
+        cleaner_auto_remember_hint: 'Pilihan nama otomatis diingat untuk semua ruangan berikutnya.',
+        logged_in_cleaner: 'Petugas Kebersihan Aktif:',
+        auto_selected: 'Tersimpan Otomatis',
+        change_worker: 'Ganti Nama',
+        active_worker: 'Petugas',
+        prompt_select_worker: 'Silakan pilih nama petugas kebersihan terlebih dahulu.',
+        cleaner_required_title: 'Pilih Nama Petugas Terlebih Dahulu',
+        cleaner_required_subtitle: 'Kamera scanner tidak dapat digunakan sebelum Anda memilih identitas nama petugas kebersihan yang bertugas.',
+        cleaner_lock_hint: 'Setelah dipilih, kamera scanner akan aktif & nama diingat permanen di HP ini.'
       },
       en: {
         portal_title: 'Room Portal',
@@ -992,7 +1109,17 @@ $roomParam = htmlspecialchars(trim($_GET['room'] ?? ''));
         alert_select_cleaner: 'Please select your cleaning staff name first.',
         alert_take_photo: 'Please take photo evidence using the camera first.',
         alert_enter_desc: 'Please provide a description of the issue or damage.',
-        alert_enter_name: 'Please enter reporter name first.'
+        alert_enter_name: 'Please enter reporter name first.',
+        select_your_name: 'Select Your Name:',
+        cleaner_auto_remember_hint: 'Your name will be automatically remembered for upcoming rooms.',
+        logged_in_cleaner: 'Active Cleaning Staff:',
+        auto_selected: 'Auto-selected',
+        change_worker: 'Change Staff',
+        active_worker: 'Staff',
+        prompt_select_worker: 'Please select your cleaning staff name first.',
+        cleaner_required_title: 'Select Cleaning Staff Name First',
+        cleaner_required_subtitle: 'Camera scanner is disabled until you select your cleaning staff identity.',
+        cleaner_lock_hint: 'Once selected, the scanner camera will activate and remember your name on this phone.'
       }
     };
 
@@ -1001,7 +1128,7 @@ $roomParam = htmlspecialchars(trim($_GET['room'] ?? ''));
     let currentRoomToken = '<?= $roomParam ?>';
     let currentRoomData = null;
     let currentChecklist = null;
-    let cleanersList = [];
+    let cleanersList = <?= json_encode($DEFAULT_CLEANERS ?? []) ?>;
 
     let selectedCleanerBlob = null;
     let selectedReporterBlob = null;
@@ -1009,12 +1136,20 @@ $roomParam = htmlspecialchars(trim($_GET['room'] ?? ''));
 
     document.addEventListener('DOMContentLoaded', () => {
       applyLanguage(currentLang);
+      populateCleanerSelect();
       fetchCleaners();
+
+      const savedWorkerName = localStorage.getItem('ccs_vendor_worker_name');
 
       // Inisialisasi Alur Opsi A
       if (currentRoomToken) {
         if (currentRole === 'cleaner') {
-          selectRole('cleaner', false);
+          // Jika sudah peran cleaner tapi belum pernah pilih nama, buka role selection agar nama dipilih dulu
+          if (!savedWorkerName) {
+            showRoleSelectionSection();
+          } else {
+            selectRole('cleaner', false);
+          }
         } else if (currentRole === 'reporter') {
           selectRole('reporter', false);
         } else {
@@ -1022,7 +1157,13 @@ $roomParam = htmlspecialchars(trim($_GET['room'] ?? ''));
           showRoleSelectionSection();
         }
       } else {
-        if (currentRole === 'cleaner' || currentRole === 'reporter') {
+        if (currentRole === 'cleaner') {
+          if (!savedWorkerName) {
+            showRoleSelectionSection();
+          } else {
+            selectRole('cleaner', false);
+          }
+        } else if (currentRole === 'reporter') {
           selectRole(currentRole, false);
         } else {
           showRoleSelectionSection();
@@ -1077,38 +1218,204 @@ $roomParam = htmlspecialchars(trim($_GET['room'] ?? ''));
       try {
         const res = await fetch('index.php?action=fetch_cleaners');
         const data = await res.json();
-        if (data.success && Array.isArray(data.cleaners)) {
+        if (data.success && Array.isArray(data.cleaners) && data.cleaners.length > 0) {
           cleanersList = data.cleaners;
           populateCleanerSelect();
         }
       } catch (e) {
-        console.warn('Gagal memuat daftar cleaners:', e);
+        console.warn('Gagal memuat update daftar cleaners dari server:', e);
       }
     }
 
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
     function populateCleanerSelect() {
-      const sel = document.getElementById('workerNameSelect');
-      if (!sel) return;
-
       const dict = I18N[currentLang] || I18N.id;
-      sel.innerHTML = `<option value="">${dict.cleaner_placeholder}</option>`;
+      const placeholder = dict.cleaner_placeholder || '-- Pilih nama Anda --';
+      const saved = localStorage.getItem('ccs_vendor_worker_name') || '';
 
-      cleanersList.forEach(c => {
-        const opt = document.createElement('option');
-        opt.value = c.name;
-        opt.textContent = c.name;
-        sel.appendChild(opt);
+      const dropdownIds = ['roleWorkerNameSelect', 'scannerLockWorkerSelect', 'workerNameSelect'];
+
+      dropdownIds.forEach(id => {
+        const sel = document.getElementById(id);
+        if (!sel) return;
+
+        let html = `<option value="">${placeholder}</option>`;
+        cleanersList.forEach(c => {
+          const isSelected = (saved && c.name === saved) ? 'selected' : '';
+          html += `<option value="${escapeHtml(c.name)}" ${isSelected}>${escapeHtml(c.name)}</option>`;
+        });
+
+        sel.innerHTML = html;
+        if (saved) {
+          sel.value = saved;
+        }
       });
 
-      // Restore dari localStorage
-      const saved = localStorage.getItem('ccs_vendor_worker_name');
-      if (saved) {
-        sel.value = saved;
+      syncAllCleanerDropdowns(saved);
+    }
+
+    function syncAllCleanerDropdowns(selectedName) {
+      const current = selectedName || localStorage.getItem('ccs_vendor_worker_name') || '';
+
+      // 1. Sinkronkan nilai semua dropdown
+      ['roleWorkerNameSelect', 'scannerLockWorkerSelect', 'workerNameSelect'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el && el.value !== current) {
+          el.value = current;
+        }
+      });
+
+      // 2. Badge tersimpan di role card
+      const savedBadge = document.getElementById('roleWorkerSavedBadge');
+      if (savedBadge) {
+        if (current) savedBadge.classList.remove('hidden');
+        else savedBadge.classList.add('hidden');
       }
 
-      sel.addEventListener('change', (e) => {
-        if (e.target.value) {
-          localStorage.setItem('ccs_vendor_worker_name', e.target.value);
+      // 3. Update tampilan mobile header (Active Role Bar)
+      updateActiveRoleBarHeader(current);
+    }
+
+    function updateActiveRoleBarHeader(workerName) {
+      const bar = document.getElementById('activeRoleBar');
+      const icon = document.getElementById('activeRoleIcon');
+      const categoryText = document.getElementById('activeRoleCategoryText');
+      const cleanerNameEl = document.getElementById('activeCleanerNameText');
+      const btnQuickChange = document.getElementById('btnChangeCleanerQuick');
+      const dict = I18N[currentLang] || I18N.id;
+      const isEN = currentLang === 'en';
+
+      if (!currentRole) {
+        if (bar) bar.classList.add('hidden');
+        return;
+      }
+
+      if (bar) bar.classList.remove('hidden');
+
+      if (currentRole === 'cleaner') {
+        if (icon) {
+          icon.className = 'w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold bg-orange-100 text-ccsOrange shrink-0 shadow-xs';
+          icon.innerHTML = '<i class="fas fa-broom"></i>';
+        }
+        if (categoryText) {
+          categoryText.textContent = dict.role_cleaner_name || 'Petugas Kebersihan';
+        }
+        const saved = workerName || localStorage.getItem('ccs_vendor_worker_name');
+        if (cleanerNameEl) {
+          cleanerNameEl.textContent = saved || (isEN ? 'Name Not Selected' : 'Nama Belum Dipilih');
+          cleanerNameEl.className = saved ? 'text-ccsHeading font-extrabold' : 'text-amber-600 font-semibold italic';
+        }
+        if (btnQuickChange) {
+          btnQuickChange.classList.remove('hidden');
+          btnQuickChange.classList.add('flex');
+        }
+      } else {
+        if (icon) {
+          icon.className = 'w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold bg-teal-100 text-ccsTeal shrink-0 shadow-xs';
+          icon.innerHTML = '<i class="fas fa-bullhorn"></i>';
+        }
+        if (categoryText) {
+          categoryText.textContent = dict.role_reporter_badge || 'Reporter';
+        }
+        if (cleanerNameEl) {
+          cleanerNameEl.textContent = dict.role_reporter_name || 'Pelapor Fasilitas';
+          cleanerNameEl.className = 'text-ccsHeading font-extrabold';
+        }
+        if (btnQuickChange) {
+          btnQuickChange.classList.add('hidden');
+          btnQuickChange.classList.remove('flex');
+        }
+      }
+    }
+
+    function handleGlobalCleanerChange(name) {
+      if (!name) return;
+      localStorage.setItem('ccs_vendor_worker_name', name);
+      syncAllCleanerDropdowns(name);
+    }
+
+    function handleSelectCleanerAndUnlock(name) {
+      if (!name) return;
+      localStorage.setItem('ccs_vendor_worker_name', name);
+      syncAllCleanerDropdowns(name);
+      showScannerSection(); // Unlocks and starts camera immediately!
+    }
+
+    function handleEnterCleaner() {
+      const isEN = currentLang === 'en';
+      const roleSelect = document.getElementById('roleWorkerNameSelect');
+      let selected = (roleSelect ? roleSelect.value.trim() : '') || localStorage.getItem('ccs_vendor_worker_name') || '';
+
+      if (!selected) {
+        Swal.fire({
+          icon: 'warning',
+          title: isEN ? 'Select Your Name' : 'Pilih Nama Petugas',
+          text: isEN ? 'Please select your cleaning staff name from the dropdown list before proceeding.' : 'Silakan pilih nama petugas kebersihan Anda dari daftar dropdown terlebih dahulu sebelum masuk ke scanner kamera.',
+          confirmButtonText: isEN ? 'OK, I Will Select' : 'Baik, Saya Pilih'
+        }).then(() => {
+          if (roleSelect) {
+            roleSelect.focus();
+            roleSelect.classList.add('ring-2', 'ring-ccsOrange');
+            setTimeout(() => roleSelect.classList.remove('ring-2', 'ring-ccsOrange'), 2000);
+          }
+        });
+        return;
+      }
+
+      localStorage.setItem('ccs_vendor_worker_name', selected);
+      selectRole('cleaner', true);
+    }
+
+    function promptSwitchCleanerModal() {
+      const isEN = currentLang === 'en';
+      const saved = localStorage.getItem('ccs_vendor_worker_name') || '';
+      let optionsHtml = cleanersList.map(c => `
+        <option value="${escapeHtml(c.name)}" ${c.name === saved ? 'selected' : ''}>${escapeHtml(c.name)}</option>
+      `).join('');
+
+      Swal.fire({
+        title: isEN ? 'Switch Cleaning Staff' : 'Ganti Nama Petugas',
+        html: `
+          <p class="text-xs text-gray-500 mb-3">${isEN ? 'Select the active cleaning staff name:' : 'Pilih nama petugas kebersihan yang bertugas saat ini:'}</p>
+          <div class="relative">
+            <select id="swalWorkerSelect" class="w-full p-3 text-sm font-bold border-2 border-orange-300 rounded-xl outline-none focus:ring-2 focus:ring-orange-200 bg-white">
+              <option value="">${isEN ? '-- Select your name --' : '-- Pilih nama Anda --'}</option>
+              ${optionsHtml}
+            </select>
+          </div>
+        `,
+        showCancelButton: true,
+        confirmButtonText: isEN ? 'Save & Switch' : 'Simpan & Ganti',
+        cancelButtonText: isEN ? 'Cancel' : 'Batal',
+        preConfirm: () => {
+          const val = document.getElementById('swalWorkerSelect').value;
+          if (!val) {
+            Swal.showValidationMessage(isEN ? 'Please select a name' : 'Silakan pilih salah satu nama');
+            return false;
+          }
+          return val;
+        }
+      }).then(result => {
+        if (result.isConfirmed && result.value) {
+          handleGlobalCleanerChange(result.value);
+          // Jika tadi kamera terkunci, buka sekarang
+          showScannerSection();
+          Swal.fire({
+            icon: 'success',
+            title: isEN ? 'Staff Updated!' : 'Petugas Diperbarui!',
+            text: isEN ? `Logged in as: ${result.value}` : `Petugas aktif: ${result.value}`,
+            timer: 1500,
+            showConfirmButton: false
+          });
         }
       });
     }
@@ -1122,6 +1429,7 @@ $roomParam = htmlspecialchars(trim($_GET['room'] ?? ''));
       document.getElementById('reporterFormSection').classList.add('hidden');
       document.getElementById('activeRoleBar').classList.add('hidden');
       document.getElementById('roleSelectionSection').classList.remove('hidden');
+      syncAllCleanerDropdowns();
     }
 
     function selectRole(role, saveStorage = true) {
@@ -1130,22 +1438,8 @@ $roomParam = htmlspecialchars(trim($_GET['room'] ?? ''));
         localStorage.setItem('ccs_portal_role', role);
       }
 
-      // Update Active Role Indicator Bar
-      const bar = document.getElementById('activeRoleBar');
-      const icon = document.getElementById('activeRoleIcon');
-      const text = document.getElementById('activeRoleText');
-      const dict = I18N[currentLang] || I18N.id;
-
-      bar.classList.remove('hidden');
-      if (role === 'cleaner') {
-        icon.className = 'w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold bg-orange-100 text-ccsOrange';
-        icon.innerHTML = '<i class="fas fa-broom"></i>';
-        text.textContent = dict.role_cleaner_name;
-      } else {
-        icon.className = 'w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold bg-teal-100 text-ccsTeal';
-        icon.innerHTML = '<i class="fas fa-bullhorn"></i>';
-        text.textContent = dict.role_reporter_name;
-      }
+      updateActiveRoleBarHeader();
+      syncAllCleanerDropdowns();
 
       document.getElementById('roleSelectionSection').classList.add('hidden');
 
@@ -1161,6 +1455,7 @@ $roomParam = htmlspecialchars(trim($_GET['room'] ?? ''));
     }
 
     function resetRole() {
+      stopScanner();
       currentRole = null;
       localStorage.removeItem('ccs_portal_role');
       showRoleSelectionSection();
@@ -1175,10 +1470,10 @@ $roomParam = htmlspecialchars(trim($_GET['room'] ?? ''));
 
       if (currentRole === 'reporter') {
         sub.textContent = dict.scan_reporter_sub;
-        if (iconBox) iconBox.className = 'w-12 h-12 rounded-full bg-teal-100 text-ccsTeal font-bold flex items-center justify-center text-xl mx-auto mb-3';
+        if (iconBox) iconBox.className = 'w-12 h-12 rounded-full bg-teal-100 text-ccsTeal font-bold flex items-center justify-center text-xl mx-auto mb-2';
       } else {
         sub.textContent = dict.scan_cleaner_sub;
-        if (iconBox) iconBox.className = 'w-12 h-12 rounded-full bg-orange-100 text-ccsOrange font-bold flex items-center justify-center text-xl mx-auto mb-3';
+        if (iconBox) iconBox.className = 'w-12 h-12 rounded-full bg-orange-100 text-ccsOrange font-bold flex items-center justify-center text-xl mx-auto mb-2';
       }
     }
 
@@ -1186,9 +1481,33 @@ $roomParam = htmlspecialchars(trim($_GET['room'] ?? ''));
       document.getElementById('loadingCard').classList.add('hidden');
       document.getElementById('cleanerFormSection').classList.add('hidden');
       document.getElementById('reporterFormSection').classList.add('hidden');
+      document.getElementById('roleSelectionSection').classList.add('hidden');
       document.getElementById('scannerSection').classList.remove('hidden');
-      updateScannerText();
 
+      const savedWorker = localStorage.getItem('ccs_vendor_worker_name');
+      const lockBox = document.getElementById('cleanerLockBox');
+      const activeBox = document.getElementById('scannerActiveBox');
+
+      // SYARAT MUTLAK: Jika peran Cleaner tapi nama belum pernah dipilih, KAMERA HARUS DILARANG NYALA!
+      if (currentRole === 'cleaner' && !savedWorker) {
+        stopScanner();
+        if (lockBox) lockBox.classList.remove('hidden');
+        if (activeBox) activeBox.classList.add('hidden');
+        updateActiveRoleBarHeader();
+        return;
+      }
+
+      // Jika Cleaner sudah punya nama ATAU sebagai Reporter -> Buka kamera
+      if (lockBox) lockBox.classList.add('hidden');
+      if (activeBox) activeBox.classList.remove('hidden');
+      updateScannerText();
+      updateActiveRoleBarHeader();
+
+      startCameraScanner();
+    }
+
+    function startCameraScanner() {
+      stopScanner();
       try {
         qrScanner = new Html5Qrcode("qrReader");
         qrScanner.start(

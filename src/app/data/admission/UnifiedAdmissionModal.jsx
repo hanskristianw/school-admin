@@ -754,7 +754,7 @@ export default function UnifiedAdmissionModal({
                   </div>
                 ) : (
                   <p className="text-xs italic" style={{ color: textSecondary }}>
-                    Pendaftar tidak mengisi informasi referral saat pembayaran biaya formulir.
+                    Pendaftar tidak mengisi informasi referral (tahap opsional dilewati).
                   </p>
                 )}
               </div>
