@@ -3839,7 +3839,7 @@ if (healthData) {
   if (isMypReport) {
     autoTable(doc, {
       startY: hy,
-      head: [['MTH', 'EYE', 'EAR', 'DENT', 'TD', 'GDA', 'HB', 'BW', 'NAIL', 'HAIR']],
+      head: [['MTH', 'EYE', 'EAR', 'DENT', 'BP', 'RBG', 'HB', 'CV', 'NAIL', 'HAIR']],
       body: healthData.physicalChecks.length > 0 ? healthData.physicalChecks.map(r => [
         r.month || '',
         r.eye || '',
@@ -3859,7 +3859,7 @@ if (healthData) {
       margin: { left: ml, right: pw - ml - hHalfW },
     });
   } else {
-    // PYP Health Report (Nursery: Sem 1 = Telinga, Rambut, Kuku, Gigi; Sem 2 = None. Non-Nursery: Sem 1 = Mata, Telinga, Gigi, TD; Sem 2 = Telinga)
+    // PYP Health Report (Nursery: Sem 1 = Ear, Hair, Nails, Dental; Sem 2 = None. Non-Nursery: Sem 1 = Eye, Ear, Dental, BP; Sem 2 = Ear)
     const isSemester2 = semesterLabel?.includes('2') || String(healthData?.semester) === '2' || String(reportFilters?.semester) === '2';
     const isNursery = Boolean(healthData?.isNursery || healthData?.is_nursery);
     let pcHead, pcRows, pcColStyles;
@@ -3867,10 +3867,10 @@ if (healthData) {
     if (isNursery) {
       if (isSemester2) {
         pcHead = [['STATUS']];
-        pcRows = [['Tidak ada pemeriksaan fisik pada Semester 2']];
+        pcRows = [['No physical examination in Semester 2']];
         pcColStyles = { 0: { halign: 'center', textColor: [107, 114, 128], fontStyle: 'italic' } };
       } else {
-        pcHead = [['MONTH', 'TELINGA', 'RAMBUT', 'KUKU', 'GIGI']];
+        pcHead = [['MONTH', 'EAR', 'HAIR', 'NAILS', 'DENTAL']];
         pcRows = healthData.physicalChecks.length > 0 ? healthData.physicalChecks.map(r => [
           r.month || '',
           r.ear || '',
@@ -3881,7 +3881,7 @@ if (healthData) {
         pcColStyles = { 0: { halign: 'center' }, 1: { halign: 'center' }, 2: { halign: 'center' }, 3: { halign: 'center' }, 4: { halign: 'center' } };
       }
     } else {
-      pcHead = isSemester2 ? [['MONTH', 'TELINGA']] : [['MONTH', 'MATA', 'TELINGA', 'GIGI', 'TD']];
+      pcHead = isSemester2 ? [['MONTH', 'EAR']] : [['MONTH', 'EYE', 'EAR', 'DENTAL', 'BP']];
       pcRows = healthData.physicalChecks.length > 0 ? healthData.physicalChecks.map(r => (
         isSemester2
           ? [r.month || '', r.ear || '']

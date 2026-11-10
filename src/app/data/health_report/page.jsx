@@ -34,7 +34,7 @@ function DocumentTable({
   onAdd,
   onUpdate,
   onRequestDelete,
-  addLabel = '+ Baris',
+  addLabel = '+ Add Row',
   isDark,
   tokens
 }) {
@@ -98,9 +98,9 @@ function DocumentTable({
         className="px-3 py-1.5 text-center font-bold text-white text-xs tracking-wider flex items-center justify-between"
         style={{ background: '#2563EB' }}
       >
-        <span className="w-12"></span>
+        <span className="w-16"></span>
         <span className="font-bold tracking-wider uppercase text-xs">{title}</span>
-        <div className="w-12 text-right">
+        <div className="w-16 text-right">
           {!newRow && (
             <button
               onClick={() =>
@@ -110,7 +110,7 @@ function DocumentTable({
               title={addLabel}
             >
               <FontAwesomeIcon icon={faPlus} className="mr-1" />
-              Baris
+              Row
             </button>
           )}
         </div>
@@ -146,7 +146,7 @@ function DocumentTable({
                   width: '65px'
                 }}
               >
-                Aksi
+                Action
               </th>
             </tr>
           </thead>
@@ -158,7 +158,7 @@ function DocumentTable({
                   className="py-4 text-center text-xs font-mono"
                   style={{ color: tokens.textSecondary }}
                 >
-                  Belum ada data. Klik &ldquo;+ Baris&rdquo; untuk menambahkan.
+                  No records yet. Click &ldquo;+ Row&rdquo; to add data.
                 </td>
               </tr>
             )}
@@ -222,14 +222,14 @@ function DocumentTable({
                           onClick={saveEdit}
                           disabled={saving}
                           className="px-1.5 py-0.5 rounded text-[10px] font-bold text-white bg-green-600 hover:bg-green-700"
-                          title="Simpan"
+                          title="Save"
                         >
                           <FontAwesomeIcon icon={faCheck} />
                         </button>
                         <button
                           onClick={cancelEdit}
                           className="px-1.5 py-0.5 rounded text-[10px] border text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800"
-                          title="Batal"
+                          title="Cancel"
                         >
                           <FontAwesomeIcon icon={faTimes} />
                         </button>
@@ -246,7 +246,7 @@ function DocumentTable({
                         <button
                           onClick={() => onRequestDelete(row.id)}
                           className="text-red-500 hover:text-red-700 p-0.5"
-                          title="Hapus"
+                          title="Delete"
                         >
                           <FontAwesomeIcon icon={faTrash} className="text-[11px]" />
                         </button>
@@ -305,14 +305,14 @@ function DocumentTable({
                       onClick={saveNew}
                       disabled={saving}
                       className="px-1.5 py-0.5 rounded text-[10px] font-bold text-white bg-green-600 hover:bg-green-700"
-                      title="Tambah"
+                      title="Add"
                     >
                       <FontAwesomeIcon icon={faCheck} />
                     </button>
                     <button
                       onClick={() => setNewRow(null)}
                       className="px-1.5 py-0.5 rounded text-[10px] border text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800"
-                      title="Batal"
+                      title="Cancel"
                     >
                       <FontAwesomeIcon icon={faTimes} />
                     </button>
@@ -666,7 +666,7 @@ export default function HealthReportPage() {
         prev.map((s) => (String(s.user_id) === String(selStudent) ? { ...s, allergy: reportForm.allergy } : s))
       )
       setEditingAllergy(false)
-      showToast('Alergi diperbarui.')
+      showToast('Allergy updated.')
     } catch (e) {
       showToast(e.message, 'error')
     } finally {
@@ -688,7 +688,7 @@ export default function HealthReportPage() {
         .eq('id', healthReport.id)
       if (error) throw error
       setHealthReport((p) => ({ ...p, notes: reportForm.notes }))
-      showToast('Catatan disimpan.')
+      showToast('Notes saved.')
     } catch (e) {
       showToast(e.message, 'error')
     } finally {
@@ -706,10 +706,10 @@ export default function HealthReportPage() {
         .single()
       if (error) throw error
       setter((p) => [...p, row])
-      showToast('Data ditambahkan.')
+      showToast('Record added.')
     } catch (e) {
       if (e.message?.includes('head_circumference')) {
-        showToast('Kolom head_circumference belum ada di database. Silakan jalankan script migrasi di Supabase SQL Editor.', 'error')
+        showToast('Column head_circumference does not exist in database yet. Please run migration in Supabase SQL Editor.', 'error')
       } else {
         showToast(e.message, 'error')
       }
@@ -722,10 +722,10 @@ export default function HealthReportPage() {
       const { error } = await supabase.from(table).update(data).eq('id', id)
       if (error) throw error
       setter((p) => p.map((r) => (r.id === id ? { ...r, ...data } : r)))
-      showToast('Data diperbarui.')
+      showToast('Record updated.')
     } catch (e) {
       if (e.message?.includes('head_circumference')) {
-        showToast('Kolom head_circumference belum ada di database. Silakan jalankan script migrasi di Supabase SQL Editor.', 'error')
+        showToast('Column head_circumference does not exist in database yet. Please run migration in Supabase SQL Editor.', 'error')
       } else {
         showToast(e.message, 'error')
       }
@@ -740,7 +740,7 @@ export default function HealthReportPage() {
       const { error } = await supabase.from(table).delete().eq('id', id)
       if (error) throw error
       setter((p) => p.filter((r) => r.id !== id))
-      showToast('Data dihapus.')
+      showToast('Record deleted.')
     } catch (e) {
       showToast(e.message, 'error')
     } finally {
@@ -768,7 +768,7 @@ export default function HealthReportPage() {
   const handlePreviewReport = async () => {
     const stu = students.find((s) => String(s.user_id) === String(selStudent))
     if (!stu) {
-      showToast('Siswa belum dipilih.', 'error')
+      showToast('Please select a student first.', 'error')
       return
     }
 
@@ -788,7 +788,7 @@ export default function HealthReportPage() {
         })
       } catch (err) {
         console.error('Error generating PYP PDF in health report:', err)
-        showToast(err?.message || 'Gagal menghasilkan report PDF PYP', 'error')
+        showToast(err?.message || 'Failed to generate PYP PDF report', 'error')
       } finally {
         setLoadingReport(false)
       }
@@ -797,7 +797,7 @@ export default function HealthReportPage() {
 
     // ── If MYP Curriculum: direct to generateStudentReportHTML ──
     if (!stu?.detail_siswa_id) {
-      showToast('ID siswa tidak ditemukan.', 'error')
+      showToast('Student ID not found.', 'error')
       return
     }
     await generateStudentReportHTML({
@@ -843,57 +843,57 @@ export default function HealthReportPage() {
   const growthColumns = useMemo(() => {
     if (reportType === 'PYP') {
       if (isNursery) {
-        // Nursery: BB, TB, dan HC (Head Circumference / Lingkar Kepala) untuk Sem 1 & Sem 2
+        // Nursery: WEIGHT, HEIGHT, and HC (Head Circumference) for Sem 1 & Sem 2
         return [
           { key: 'month', label: 'MONTH', type: 'select', width: '75px' },
-          { key: 'weight', label: 'BB (kg)', type: 'number', width: '85px' },
-          { key: 'height', label: 'TB (cm)', type: 'number', width: '85px' },
+          { key: 'weight', label: 'WEIGHT (kg)', type: 'number', width: '85px' },
+          { key: 'height', label: 'HEIGHT (cm)', type: 'number', width: '85px' },
           { key: 'head_circumference', label: 'HC (cm)', type: 'number', width: '85px' }
         ]
       }
       return [
         { key: 'month', label: 'MONTH', type: 'select', width: '75px' },
-        { key: 'weight', label: 'BB (kg)', type: 'number', width: '110px' },
-        { key: 'height', label: 'TB (cm)', type: 'number', width: '110px' }
+        { key: 'weight', label: 'WEIGHT (kg)', type: 'number', width: '110px' },
+        { key: 'height', label: 'HEIGHT (cm)', type: 'number', width: '110px' }
       ]
     }
     return [
       { key: 'month', label: 'MONTH', type: 'select', width: '75px' },
-      { key: 'height', label: 'TB (cm)', type: 'number', width: '110px' },
-      { key: 'weight', label: 'BB (kg)', type: 'number', width: '110px' }
+      { key: 'height', label: 'HEIGHT (cm)', type: 'number', width: '110px' },
+      { key: 'weight', label: 'WEIGHT (kg)', type: 'number', width: '110px' }
     ]
   }, [reportType, isNursery])
 
   const physicalColumns = useMemo(() => {
     if (reportType === 'PYP') {
       if (isNursery) {
-        // Nursery: Semester 1 = Telinga, Rambut, Kuku, Gigi. Semester 2 = Tidak ada pemeriksaan fisik
+        // Nursery: Semester 1 = Ear, Hair, Nails, Dental. Semester 2 = No physical examination
         if (String(selSem) === '2') {
           return []
         }
         return [
           { key: 'month', label: 'MONTH', type: 'select', width: '75px' },
-          { key: 'ear', label: 'TELINGA' },
-          { key: 'hair', label: 'RAMBUT' },
-          { key: 'nails', label: 'KUKU' },
-          { key: 'dental', label: 'GIGI' }
+          { key: 'ear', label: 'EAR' },
+          { key: 'hair', label: 'HAIR' },
+          { key: 'nails', label: 'NAILS' },
+          { key: 'dental', label: 'DENTAL' }
         ]
       }
 
       // PYP Non-Nursery (Primary / SD)
-      // Semester 2 PYP tidak ada pemeriksaan Mata, Gigi, dan Tensi (TD) - hanya Telinga
+      // Semester 2 PYP has only Ear examination (no Eye, Dental, or BP)
       if (String(selSem) === '2') {
         return [
           { key: 'month', label: 'MONTH', type: 'select', width: '75px' },
-          { key: 'ear', label: 'TELINGA' }
+          { key: 'ear', label: 'EAR' }
         ]
       }
       return [
         { key: 'month', label: 'MONTH', type: 'select', width: '75px' },
-        { key: 'eye', label: 'MATA (Ka/Ki)' },
-        { key: 'ear', label: 'TELINGA' },
-        { key: 'dental', label: 'GIGI' },
-        { key: 'blood_pressure', label: 'TD', width: '85px' }
+        { key: 'eye', label: 'EYE' },
+        { key: 'ear', label: 'EAR' },
+        { key: 'dental', label: 'DENTAL' },
+        { key: 'blood_pressure', label: 'BP', width: '85px' }
       ]
     }
     return [
@@ -901,10 +901,10 @@ export default function HealthReportPage() {
       { key: 'eye', label: 'EYE' },
       { key: 'ear', label: 'EAR' },
       { key: 'dental', label: 'DENTAL' },
-      { key: 'blood_pressure', label: 'TD', width: '75px' },
-      { key: 'gda', label: 'GDA', width: '65px' },
+      { key: 'blood_pressure', label: 'BP', width: '75px' },
+      { key: 'gda', label: 'RBG', width: '65px' },
       { key: 'hb', label: 'HB', width: '65px' },
-      { key: 'color_blindness', label: 'BUTA WARNA' },
+      { key: 'color_blindness', label: 'COLOR VISION' },
       { key: 'nails', label: 'NAILS' },
       { key: 'hair', label: 'HAIR' }
     ]
@@ -964,7 +964,7 @@ export default function HealthReportPage() {
                 spin={loadingReport}
                 className="text-xs"
               />
-              <span>{loadingReport ? 'Memproses...' : 'Preview / Print PDF'}</span>
+              <span>{loadingReport ? 'Processing...' : 'Preview / Print PDF'}</span>
             </button>
           )}
         </div>
@@ -1133,7 +1133,7 @@ export default function HealthReportPage() {
                   borderColor: tokens.borderColor,
                   color: tokens.textPrimary
                 }}
-                title="Siswa Sebelumnya"
+                title="Previous Student"
               >
                 <FontAwesomeIcon icon={faChevronLeft} />
               </button>
@@ -1165,7 +1165,7 @@ export default function HealthReportPage() {
                   borderColor: tokens.borderColor,
                   color: tokens.textPrimary
                 }}
-                title="Siswa Selanjutnya"
+                title="Next Student"
               >
                 <FontAwesomeIcon icon={faChevronRight} />
               </button>
@@ -1191,7 +1191,7 @@ export default function HealthReportPage() {
             style={{ color: tokens.accentColor }}
           />
           <div className="text-xs font-mono" style={{ color: tokens.textSecondary }}>
-            Memuat lembar rapor kesehatan {reportType} siswa...
+            Loading student {reportType} health report card...
           </div>
         </div>
       )}
@@ -1211,7 +1211,7 @@ export default function HealthReportPage() {
             style={{ fontSize: '32px', color: tokens.textSecondary, marginBottom: '12px' }}
           />
           <p className="text-xs font-mono" style={{ color: tokens.textSecondary, margin: 0 }}>
-            Pilih Kelas dan Siswa di toolbar atas untuk membuka lembar kerja Health Report Card.
+            Select a Class and Student in the top toolbar to open the Health Report Card.
           </p>
         </div>
       )}
@@ -1276,7 +1276,7 @@ export default function HealthReportPage() {
                     <div className="flex items-center gap-1.5 flex-1">
                       <input
                         type="text"
-                        placeholder="Contoh: Kacang, Udang, dsb..."
+                        placeholder="e.g. Peanuts, Shrimp, Dust, etc."
                         value={reportForm.allergy}
                         onChange={(e) =>
                           setReportForm((p) => ({ ...p, allergy: e.target.value }))
@@ -1293,7 +1293,7 @@ export default function HealthReportPage() {
                         onClick={saveAllergy}
                         disabled={savingAllergy}
                         className="px-2 py-0.5 rounded text-[11px] font-bold text-white bg-green-600 hover:bg-green-700"
-                        title="Simpan"
+                        title="Save"
                       >
                         <FontAwesomeIcon icon={faCheck} />
                       </button>
@@ -1303,7 +1303,7 @@ export default function HealthReportPage() {
                           setEditingAllergy(false)
                         }}
                         className="px-2 py-0.5 rounded text-[11px] border text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800"
-                        title="Batal"
+                        title="Cancel"
                       >
                         <FontAwesomeIcon icon={faTimes} />
                       </button>
@@ -1323,7 +1323,7 @@ export default function HealthReportPage() {
                       <button
                         onClick={() => setEditingAllergy(true)}
                         className="text-blue-600 hover:text-blue-800 dark:text-blue-400 p-0.5"
-                        title="Ubah Alergi"
+                        title="Edit Allergy"
                       >
                         <FontAwesomeIcon icon={faEdit} className="text-[11px]" />
                       </button>
@@ -1360,10 +1360,10 @@ export default function HealthReportPage() {
                     <FontAwesomeIcon icon={faInbox} className="text-gray-400 text-sm" />
                   </div>
                   <p className="text-xs font-semibold" style={{ color: tokens.textPrimary }}>
-                    Tidak Ada Pemeriksaan Fisik
+                    No Physical Examination
                   </p>
                   <p className="text-[11px] mt-1 max-w-xs" style={{ color: tokens.textSecondary }}>
-                    Khusus kelas Nursery, pemeriksaan fisik (telinga, rambut, kuku, gigi) hanya diadakan pada Semester 1.
+                    For Nursery classes, physical examination (ear, hair, nails, dental) is conducted only in Semester 1.
                   </p>
                 </div>
               </div>
@@ -1413,8 +1413,8 @@ export default function HealthReportPage() {
           <DocumentTable
             title="IMMUNIZATION"
             columns={[
-              { key: 'type', label: 'TYPE (Jenis Vaksin / Imunisasi)' },
-              { key: 'date', label: 'DATE (Tanggal)', type: 'date', width: '140px' }
+              { key: 'type', label: 'TYPE' },
+              { key: 'date', label: 'DATE', type: 'date', width: '140px' }
             ]}
             rows={immunizations}
             onAdd={(d) => addRow('health_immunization', d, setImmunizations)}
@@ -1438,8 +1438,8 @@ export default function HealthReportPage() {
             columns={[
               { key: 'month', label: 'MONTH', type: 'select', width: '75px' },
               { key: 'date_day', label: 'DATE', type: 'number', width: '60px' },
-              { key: 'chronology', label: 'CHRONOLOGY (Kronologi Kejadian)' },
-              { key: 'treatment', label: 'TREATMENT (Tindakan / Penanganan)' }
+              { key: 'chronology', label: 'CHRONOLOGY' },
+              { key: 'treatment', label: 'TREATMENT' }
             ]}
             rows={healthRecords}
             onAdd={(d) => addRow('health_record', d, setHealthRecords)}
@@ -1478,13 +1478,13 @@ export default function HealthReportPage() {
                   className="text-[10px] font-semibold px-2 py-0.5 rounded bg-blue-700 hover:bg-blue-800 text-white transition-colors"
                 >
                   <FontAwesomeIcon icon={savingNotes ? faSpinner : faSave} spin={savingNotes} className="mr-1" />
-                  {savingNotes ? 'Menyimpan...' : 'Simpan Notes'}
+                  {savingNotes ? 'Saving...' : 'Save Notes'}
                 </button>
               </div>
               <div className="p-3 flex-1">
                 <textarea
                   className="w-full h-full min-h-[90px] text-xs resize-none outline-none font-sans p-2 rounded border"
-                  placeholder="Ketik catatan kesehatan atau observasi medis siswa untuk dicetak di rapor..."
+                  placeholder="Enter student health notes or medical observations to be printed on the report card..."
                   value={reportForm.notes}
                   onChange={(e) => setReportForm((p) => ({ ...p, notes: e.target.value }))}
                   style={{
@@ -1510,7 +1510,7 @@ export default function HealthReportPage() {
 
               <div className="my-6">
                 <div className="text-[10px] uppercase tracking-wider font-mono text-gray-400 dark:text-gray-500 mb-8">
-                  [ Tanda Tangan &amp; Cap Sekolah ]
+                  [ Signature &amp; School Stamp ]
                 </div>
                 <div
                   className="w-48 mx-auto border-b"
@@ -1530,7 +1530,7 @@ export default function HealthReportPage() {
       <Modal
         isOpen={deleteModal.isOpen}
         onClose={() => setDeleteModal({ isOpen: false, table: '', id: null, title: '', setter: null })}
-        title="Hapus Baris Data"
+        title="Delete Record"
         size="sm"
         containerStyle={{
           background: tokens.cardBg,
@@ -1552,10 +1552,10 @@ export default function HealthReportPage() {
             </div>
             <div>
               <div className="text-sm font-semibold mb-1" style={{ color: tokens.textPrimary }}>
-                Konfirmasi Hapus
+                Confirm Deletion
               </div>
               <div className="text-xs" style={{ color: tokens.textSecondary }}>
-                Hapus baris data dari {deleteModal.title}? Tindakan ini tidak dapat dibatalkan.
+                Delete this record from {deleteModal.title}? This action cannot be undone.
               </div>
             </div>
           </div>
@@ -1573,14 +1573,14 @@ export default function HealthReportPage() {
                 color: tokens.textPrimary
               }}
             >
-              Batal
+              Cancel
             </button>
             <button
               onClick={confirmDelete}
               className="px-3.5 py-1.5 rounded text-xs font-semibold text-white transition-opacity"
               style={{ background: '#ef4444' }}
             >
-              Hapus
+              Delete
             </button>
           </div>
         </div>

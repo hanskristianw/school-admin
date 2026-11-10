@@ -2014,13 +2014,13 @@ export const renderPypHealthReportPage = async (doc, {
 
     if (isNursery) {
       if (isSemester2) {
-        // Nursery Semester 2: Tidak ada pemeriksaan fisik
+        // Nursery Semester 2: No physical examination
         pcHead = [['STATUS']]
-        pcRows = [['Tidak ada pemeriksaan fisik pada Semester 2']]
+        pcRows = [['No physical examination in Semester 2']]
         pcColStyles = { 0: { halign: 'center', textColor: [107, 114, 128], fontStyle: 'italic' } }
       } else {
-        // Nursery Semester 1: Telinga, Rambut, Kuku, Gigi
-        pcHead = [['MONTH', 'TELINGA', 'RAMBUT', 'KUKU', 'GIGI']]
+        // Nursery Semester 1: Ear, Hair, Nails, Dental
+        pcHead = [['MONTH', 'EAR', 'HAIR', 'NAILS', 'DENTAL']]
         pcRows = healthData?.physicalChecks && healthData.physicalChecks.length > 0
           ? healthData.physicalChecks.map(r => [
               r.month || '',
@@ -2041,7 +2041,7 @@ export const renderPypHealthReportPage = async (doc, {
     } else {
       // PYP Non-Nursery (Primary / SD)
       if (isSemester2) {
-        pcHead = [['MONTH', 'TELINGA']]
+        pcHead = [['MONTH', 'EAR']]
         pcRows = healthData?.physicalChecks && healthData.physicalChecks.length > 0
           ? healthData.physicalChecks.map(r => [r.month || '', r.ear || ''])
           : [['', '']]
@@ -2050,7 +2050,7 @@ export const renderPypHealthReportPage = async (doc, {
           1: { halign: 'center' }
         }
       } else {
-        pcHead = [['MONTH', 'MATA', 'TELINGA', 'GIGI', 'TD']]
+        pcHead = [['MONTH', 'EYE', 'EAR', 'DENTAL', 'BP']]
         pcRows = healthData?.physicalChecks && healthData.physicalChecks.length > 0
           ? healthData.physicalChecks.map(r => [
               r.month || '',

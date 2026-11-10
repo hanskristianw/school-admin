@@ -1,16 +1,16 @@
-# Graph Report - school-admin  (2026-11-07)
+# Graph Report - school-admin  (2026-11-10)
 
 ## Corpus Check
-- 466 files · ~803,187 words
+- 466 files · ~803,397 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 2753 nodes · 2827 edges · 537 communities (324 shown, 213 thin omitted)
+- 2530 nodes · 2682 edges · 436 communities (295 shown, 141 thin omitted)
 - Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 9 edges (avg confidence: 0.67)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `04083ab1`
+- Built from commit: `2ba68850`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -188,6 +188,7 @@
 - Module 239
 - Module 240
 - Module 241
+- 6.1 Tables
 - Module 243
 - Module 244
 - Module 245
@@ -263,6 +264,7 @@
 - tasteskill: Anti-Slop Frontend Skill
 - CORE DIRECTIVE: AWWWARDS-LEVEL DESIGN ENGINEERING
 - 22. STYLE VARIATION ENGINE
+- Protocol: Premium Utilitarian Minimalism UI Architect
 - 11. COMPONENT EXECUTION GUIDELINES
 - 18. EXTRA CREATIVITY & IMPLEMENTATION EDGE
 - 9. AI TELLS (Forbidden Patterns)
@@ -277,40 +279,20 @@
 - 4. HERO MINIMALISM RULES
 - 29. ANTI-AI-SLOP RULES
 - 5. IMAGE COUNT & PAGE SLICING
-- 0. BRIEF INFERENCE (Read the Room Before Anything Else)
 - 12. THE BLOCK LIBRARY (Contract - Implementations Land Here Iteratively)
 - 5. CONTEXT-AWARE PROACTIVITY
 - 8. DARK MODE PROTOCOL
-- 21. MOBILE ANTI-AI-TELLS RULE
-- 📁 **Project Structure**
 - browser-image-compression
-- 33. DEFAULT SECTION PACKS
-- 14. HERO MINIMALISM RULES
-- 37. EXAMPLE INTERPRETATIONS
-- 2. PLATFORM MODE RULE
-- 37. EXAMPLE INTERPRETATIONS
-- 15. DEFAULT SITE PACKS
-- 20. EXAMPLE INTERPRETATIONS
-- add-uniform-unit-junction.sql
-- add-user-theme-column.sql
 - pngjs
 - route.js
 - route.js
 - route.js
 - route.js
-- alter-role-approvers-approver2-nullable.sql
 - route.js
-- index.php
-- change-uniform-sale-to-user-id.sql
 - route.js
-- cleanup-discount-data.sql
-- cleanup-scan-log-columns.sql
 - jsonwebtoken
 - jspdf-autotable
-- SKILL.md
-- driver.js
 - @sparticuz/chromium-min
-- @supabase/supabase-js
 - react-easy-crop
 - next-auth
 - 📁 **Project Structure**
@@ -321,7 +303,6 @@
 - pdf-lib
 - @radix-ui/react-select
 - react-hook-form
-- @fortawesome/react-fontawesome
 - class-variance-authority
 - @tiptap/extension-table-cell
 - @tiptap/extension-table-header
@@ -343,74 +324,9 @@
 - **3. Assessment System**
 - �🏗️ **Database Structure**
 - exceljs
-- class-variance-authority
 - clsx
-- @radix-ui/react-slot
-- add-promo-code-to-applications.sql
 - googleapis
 - changelog.js
-- add-referral-to-student-applications.sql
-- add-resign-date-to-users.sql
-- add-sakit-status-to-kelas-attendance.sql
-- add-semester-to-pyp-unit.sql
-- add-subject-core-and-print-order.sql
-- add-subject-custom-grade-boundaries.sql
-- add-subject-icon.sql
-- add-subject-include-in-print.sql
-- add-temporary-exit-and-unit-principal-approval.sql
-- add-topic-conceptual-understanding.sql
-- add-topic-gc-exploration.sql
-- add-topic-status.sql
-- add-uniform-unit-junction.sql
-- add-user-theme-column.sql
-- alter-role-approvers-approver2-nullable.sql
-- change-uniform-sale-to-user-id.sql
-- cleanup-discount-data.sql
-- cleanup-feedback-schema.sql
-- cleanup-scan-log-columns.sql
-- create-atl-descriptors.sql
-- create-feedback-recipients.sql
-- create-pyp-subject-comment.sql
-- create-pyp-unit-table.sql
-- create-room-facility-reports-table.sql
-- create-special-day-rules.sql
-- create-subject-comment.sql
-- create-user-position-history.sql
-- disable-rls-attendance-scan-log.sql
-- discount-all-years.sql
-- drop-user-username-column.sql
-- extend-school-holidays-per-role-range.sql
-- fix-criterion-descriptors-unique.sql
-- fix-excuse-type-constraint.sql
-- fix-fpb-role-approvers-rls.sql
-- fix-receipt-item-qty-constraint.sql
-- fix-year-rls.sql
-- import-absensi-pin-100-jun2026.sql
-- import-absensi-pin-123-jun2026.sql
-- import-absensi-pin-15-44-45-jun2026.sql
-- import-absensi-pin-42-118-135-jun2026.sql
-- import-absensi-pin-46-jun2026.sql
-- import-absensi-pin-48-jun2026.sql
-- import-absensi-pin-62-jun2026.sql
-- import-absensi-pin-85-jun2026.sql
-- import-attendance-from-mysql.sql
-- import-attendance-jun16-18.sql
-- import-attendance-jun17-18.sql
-- import-attendance-jun18-23.sql
-- import-pyp-ci-list.sql
-- import-pyp-kc-list.sql
-- make-assessment-tanggal-nullable.sql
-- merge-leave-pages.sql
-- remove-unit-from-uniform-size.sql
-- supabase-migration-ai.sql
-- supabase-migration-qr-devicehash.sql
-- supabase-migration-qr-security.sql
-- update-fpb-procurement-status.sql
-- update-leave-quotas-use-year-id.sql
-- update-payment-method-options.sql
-- qrcode
-- @radix-ui/react-slot
-- @tiptap/extension-font-family
 - route.js
 - route.js
 
@@ -429,23 +345,23 @@
 ## Surprising Connections (you probably didn't know these)
 - `PMB Documentation Skill` --related_to--> `School Admin System Documentation`  [INFERRED]
   src/Documentation PMB/SKILL.md → MAIN_DOCUMENTATION.md
-- `generatePsikotestPDF()` --references--> `jspdf`  [EXTRACTED]
-  src/app/data/psikotest/lib/psikotestPdfGenerator.js → package.json
 - `drawPrincipalSignature()` --references--> `jspdf`  [EXTRACTED]
   src/app/data/pyp/lib/pypPdfGenerator.js → package.json
 - `addPageNumbers()` --references--> `jspdf`  [EXTRACTED]
   src/app/data/topic-new/lib/pdfGenerators.js → package.json
 - `buildStudentReportPDF()` --references--> `jspdf`  [EXTRACTED]
   src/app/data/topic-new/lib/pdfGenerators.js → package.json
+- `generateAssessmentPDFFromCard()` --references--> `jspdf`  [EXTRACTED]
+  src/app/data/topic-new/lib/pdfGenerators.js → package.json
 
 ## Import Cycles
 - None detected.
 
-## Communities (537 total, 213 thin omitted)
+## Communities (436 total, 141 thin omitted)
 
 ### Community 0 - "Admission Management"
-Cohesion: 0.08
-Nodes (51): jspdf, jszip, jspdf, jszip, AdmissionManagement(), getEmailStatusLabel(), getEmailTypeLabel(), statusConfig (+43 more)
+Cohesion: 0.06
+Nodes (58): jspdf, jszip, jspdf, jszip, qrcode, qrcode, AdmissionManagement(), getEmailStatusLabel() (+50 more)
 
 ### Community 1 - "Package Dependencies & Config"
 Cohesion: 0.09
@@ -508,8 +424,8 @@ Cohesion: 0.33
 Nodes (8): DAY_ID, DAYS, extractHM(), formatWeekLabel(), getMonday(), parseRange(), toISO(), WeeklyOverviewPage()
 
 ### Community 16 - "Third-party Libraries"
-Cohesion: 0.11
-Nodes (18): 11.1 Tables, 11.2 ERD / Relationships (Uniform & Stock Domain), 11.3 Initial Stock & Inventory Ledger Workflows (`/stock/uniform/initial`), 11.4 POS Uniform Sales Workflows (`/sales/uniform`), 11. Uniform & Stock Management Domain (`/sales/uniform`, `/stock/uniform/add`, `/stock/uniform/initial`, `/stock/uniform/po-settings`, `/data/uniform`, `/data/uniform-size`), `uniform`, `uniform_po_settings`, `uniform_purchase` (+10 more)
+Cohesion: 0.06
+Nodes (34): 1. Tab "Receive" (Terima Barang), 2. Modal: Tambah Item Baru, 2. Tab "History" (Riwayat Transaksi Selesai), 3. Step 2 - Item Yang Dipesan, After Migration, After (New Schema), Before Migration, Before (Old Schema) (+26 more)
 
 ### Community 17 - "Attendance Report API"
 Cohesion: 0.38
@@ -525,11 +441,11 @@ Nodes (3): Select, SelectItem, cn()
 
 ### Community 22 - "Module 22"
 Cohesion: 0.06
-Nodes (34): 1. Tab "Receive" (Terima Barang), 2. Modal: Tambah Item Baru, 2. Tab "History" (Riwayat Transaksi Selesai), 3. Step 2 - Item Yang Dipesan, After Migration, After (New Schema), Before Migration, Before (Old Schema) (+26 more)
+Nodes (33): 1. Bulk Import, 1. `criteria`, 1. Data Entry, 1. Looping Through Strands, 2. Copy from Previous Year, 2. Curriculum Alignment, 2. Rubric Lookup Logic, 2. `strands` (+25 more)
 
 ### Community 23 - "Module 23"
 Cohesion: 0.06
-Nodes (33): 1. Bulk Import, 1. `criteria`, 1. Data Entry, 1. Looping Through Strands, 2. Copy from Previous Year, 2. Curriculum Alignment, 2. Rubric Lookup Logic, 2. `strands` (+25 more)
+Nodes (33): 1. Purchase Receipt - Auto Track Supplier (/stock/uniform/add), 1. Stock Available per Item per Supplier, 1. uniform_stock_txn - Tambah kolom supplier_id, 2. Index untuk Performance, 2. Initial Stock Input (/stock/uniform/initial), 2. Stock Movement by Supplier, 3. Stock Out - Manual Supplier Selection (/sales/uniform/stock-out), 3. Total Stock per Supplier (All Items) (+25 more)
 
 ### Community 24 - "Module 24"
 Cohesion: 0.47
@@ -549,15 +465,15 @@ Nodes (6): DAYS, extractHM(), fmtDate(), formatRangeForInsert(), parseRange(), T
 
 ### Community 30 - "Module 30"
 Cohesion: 0.06
-Nodes (33): 1. Purchase Receipt - Auto Track Supplier (/stock/uniform/add), 1. Stock Available per Item per Supplier, 1. uniform_stock_txn - Tambah kolom supplier_id, 2. Index untuk Performance, 2. Initial Stock Input (/stock/uniform/initial), 2. Stock Movement by Supplier, 3. Stock Out - Manual Supplier Selection (/sales/uniform/stock-out), 3. Total Stock per Supplier (All Items) (+25 more)
+Nodes (31): 1. Restart Development Server, 2. Test Connection, 3. Test Login, 4. ✅ Verifikasi Setup, 5. 🧪 Test Connection, 🧩 Additional Migrations, 🤖 AI (Gemini) Setup, ✨ AI Help in Unit Title (Topic) (+23 more)
 
 ### Community 31 - "Module 31"
 Cohesion: 0.06
-Nodes (31): 1. Restart Development Server, 2. Test Connection, 3. Test Login, 4. ✅ Verifikasi Setup, 5. 🧪 Test Connection, 🧩 Additional Migrations, 🤖 AI (Gemini) Setup, ✨ AI Help in Unit Title (Topic) (+23 more)
+Nodes (30): 10. FINAL PRE-FLIGHT CHECK, 1. ACTIVE BASELINE CONFIGURATION, 2. DEFAULT ARCHITECTURE & CONVENTIONS, 3. DESIGN ENGINEERING DIRECTIVES (Bias Correction), 4. CREATIVE PROACTIVITY (Anti-Slop Implementation), 5. PERFORMANCE GUARDRAILS, 6. TECHNICAL REFERENCE (Dial Definitions), 7. AI TELLS (Forbidden Patterns) (+22 more)
 
 ### Community 32 - "Module 32"
-Cohesion: 0.06
-Nodes (30): 10. FINAL PRE-FLIGHT CHECK, 1. ACTIVE BASELINE CONFIGURATION, 2. DEFAULT ARCHITECTURE & CONVENTIONS, 3. DESIGN ENGINEERING DIRECTIVES (Bias Correction), 4. CREATIVE PROACTIVITY (Anti-Slop Implementation), 5. PERFORMANCE GUARDRAILS, 6. TECHNICAL REFERENCE (Dial Definitions), 7. AI TELLS (Forbidden Patterns) (+22 more)
+Cohesion: 0.07
+Nodes (29): 1. Assessment Card Button, 1. `assessment_grades` (Header/Summary), 1. Prerequisites, 2. `assessment_grade_strands` (Detail per Strand), 2. Grading Modal Layout, 2. User Flow, 3. Calculation Rules, 3. Visual Indicators (+21 more)
 
 ### Community 35 - "Module 35"
 Cohesion: 0.47
@@ -577,7 +493,7 @@ Nodes (3): DARK, LIGHT, ThemeContext
 
 ### Community 39 - "Module 39"
 Cohesion: 0.07
-Nodes (29): 1. Assessment Card Button, 1. `assessment_grades` (Header/Summary), 1. Prerequisites, 2. `assessment_grade_strands` (Detail per Strand), 2. Grading Modal Layout, 2. User Flow, 3. Calculation Rules, 3. Visual Indicators (+21 more)
+Nodes (29): 1. `/data/uniform-size` Page, 2. `/stock/uniform/add` (Purchase Order), 3. Other Affected Pages, After Migration, Backward Compatibility, Before Migration, Best Practices, Breaking Changes (+21 more)
 
 ### Community 41 - "Module 41"
 Cohesion: 0.80
@@ -617,39 +533,39 @@ Nodes (3): UniformSalesPage(), FpbSettingsPage(), userName()
 
 ### Community 53 - "Module 53"
 Cohesion: 0.07
-Nodes (29): 1. `/data/uniform-size` Page, 2. `/stock/uniform/add` (Purchase Order), 3. Other Affected Pages, After Migration, Backward Compatibility, Before Migration, Best Practices, Breaking Changes (+21 more)
-
-### Community 54 - "Module 54"
-Cohesion: 0.07
 Nodes (27): 1. State Management, 2. Delete Draft Function, 3. Void Posted Function, 4. Void Reason Modal, Business Rules, Cleanup Script: `cleanup-voided-purchase-stock.sql`, Database Changes, Delete (Draft Orders) (+19 more)
 
-### Community 55 - "Module 55"
+### Community 54 - "Module 54"
 Cohesion: 0.08
 Nodes (23): 1. `criteria` Table, 2. `strands` Table, 3. `rubrics` Table, Common Mistakes to Avoid, Data Flow in Assessment PDF Generation, Database Queries for Reference, Database Schema, Full criteria tree for a subject (+15 more)
 
-### Community 56 - "Module 56"
+### Community 55 - "Module 55"
 Cohesion: 0.09
 Nodes (22): 1. Tab History - Tampilan Pickup Date, 2. Button "Tandai Diambil", 3. Modal Pickup Date, 4. Tab Laporan Penjualan, 5. Excel Export, Badge Display (History Tab), Benefits, Button Tandai Diambil (+14 more)
 
-### Community 57 - "Module 57"
+### Community 56 - "Module 56"
 Cohesion: 0.09
 Nodes (21): APPENDICES - Real Source-Backed Reference Material, Appendix A - Install Commands per Design System, Appendix B - Canonical Sources (read these before reinventing), Appendix C - Apple Liquid Glass: Honest Web Approximation, Apple Liquid Glass (Apple platforms only), Atlassian, Bootstrap, Carbon (+13 more)
 
-### Community 58 - "Module 58"
-Cohesion: 0.09
-Nodes (22): 2025-08-13, 2025-08-17, 2025-08-17 (Subsequent Updates), 2025-08-20, 2025-08-21, 2025-08-22, 2025-08-23, 2025-08-30 (+14 more)
-
-### Community 59 - "Module 59"
+### Community 57 - "Module 57"
 Cohesion: 0.12
 Nodes (18): public.absen, public.attendance_scan_log, public.attendance_session, public.consultation, public.daftar_door_greeter, public.detail_kelas, public.detail_siswa, public.kelas (+10 more)
 
-### Community 60 - "Module 60"
+### Community 58 - "Module 58"
 Cohesion: 0.10
 Nodes (19): Code Quality, Color and Surfaces, Component Patterns, Content, Design Audit, Fix Priority, How This Works, Iconography (+11 more)
 
-### Community 61 - "Module 61"
+### Community 59 - "Module 59"
 Cohesion: 0.10
 Nodes (19): Database Schema, Features, Format Examples, Frontend Implementation, Function: `generatePONumber()`, Future Enhancements, Integration Points, Manual Reset Procedure (+11 more)
+
+### Community 60 - "Module 60"
+Cohesion: 0.11
+Nodes (18): 1. Define the Atmosphere, 2. Map the Color Palette, 3. Establish Typography Rules, 4. Define the Hero Section, 5. Describe Component Stylings, 6. Define Layout Principles, 7. Define Responsive Rules, 8. Encode Motion Philosophy (+10 more)
+
+### Community 61 - "Module 61"
+Cohesion: 0.11
+Nodes (17): 1. Meta Information & Core Directive, 2. THE "ABSOLUTE ZERO" DIRECTIVE (STRICT ANTI-PATTERNS), 3. THE CREATIVE VARIANCE ENGINE, 4. HAPTIC MICRO-AESTHETICS (COMPONENT MASTERY), 5. MOTION CHOREOGRAPHY (FLUID DYNAMICS), 6. PERFORMANCE GUARDRAILS, 7. EXECUTION PROTOCOL, 8. PRE-OUTPUT CHECKLIST (+9 more)
 
 ### Community 62 - "Module 62"
 Cohesion: 0.83
@@ -685,147 +601,147 @@ Nodes (3): getCroppedBlob(), ImageCropUploader(), loadImage()
 
 ### Community 78 - "Module 78"
 Cohesion: 0.11
-Nodes (18): 1. Define the Atmosphere, 2. Map the Color Palette, 3. Establish Typography Rules, 4. Define the Hero Section, 5. Describe Component Stylings, 6. Define Layout Principles, 7. Define Responsive Rules, 8. Encode Motion Philosophy (+10 more)
-
-### Community 79 - "Module 79"
-Cohesion: 0.11
-Nodes (17): 1. Meta Information & Core Directive, 2. THE "ABSOLUTE ZERO" DIRECTIVE (STRICT ANTI-PATTERNS), 3. THE CREATIVE VARIANCE ENGINE, 4. HAPTIC MICRO-AESTHETICS (COMPONENT MASTERY), 5. MOTION CHOREOGRAPHY (FLUID DYNAMICS), 6. PERFORMANCE GUARDRAILS, 7. EXECUTION PROTOCOL, 8. PRE-OUTPUT CHECKLIST (+9 more)
-
-### Community 80 - "Module 80"
-Cohesion: 0.11
 Nodes (17): aliases, components, hooks, lib, ui, utils, iconLibrary, rsc (+9 more)
 
-### Community 81 - "Module 81"
+### Community 79 - "Module 79"
 Cohesion: 0.12
 Nodes (16): 1. Skill Meta, 2.1 Swiss Industrial Print, 2.2 Tactical Telemetry & CRT Terminal, 2. Visual Archetypes, 3.1 Macro-Typography (Structural Headers), 3.2 Micro-Typography (Data & Telemetry), 3.3 Textural Contrast (Artistic Disruption), 3. Typographic Architecture (+8 more)
 
-### Community 82 - "Module 82"
+### Community 80 - "Module 80"
+Cohesion: 0.12
+Nodes (17): **10. Data Mapping Note**, **11. Attendance (QR Sessions & Scans)**, **12. Student Consultation (BK)**, **13. Room Booking Module**, **14. Uniform Sales Module (NEW)**, **1. Authentication & User Management**, **2. Academic Data Management**, **3. Assessment System** (+9 more)
+
+### Community 81 - "Module 81"
 Cohesion: 0.13
 Nodes (14): 1. Visual Theme & Atmosphere, 2. Color Palette & Roles, 3. Typography Rules, 4. Component Stylings, 5. Hero Section, 6. Layout Principles, 7. Responsive Rules, 8. Motion & Interaction (Code-Phase Intent) (+6 more)
 
-### Community 94 - "Module 94"
+### Community 82 - "Module 82"
 Cohesion: 0.24
 Nodes (14): public.fee_discount, public.school_fee_definition, public.student_fee_payment, public.udp_definition, public.udp_installment_plan, public.v_active_discounts, public.v_active_fees_summary, public.v_school_fee_monthly (+6 more)
 
-### Community 95 - "Module 95"
+### Community 94 - "Module 94"
 Cohesion: 0.13
 Nodes (14): 1. Assessment Form (topic-new/page.jsx), 2. Assessment Grading (handleOpenGrading), 3. Fetch Strands, Benefits, Code Changes, Creating Assessment, Database Changes, Input Nilai (+6 more)
 
-### Community 96 - "Module 96"
+### Community 95 - "Module 95"
 Cohesion: 0.13
 Nodes (14): admission_level, application_discount, Daftar Tabel, DDL, Dokumentasi Schema PMB (Penerimaan Murid Baru), fee_discount, Halaman Terkait, Migration SQL (+6 more)
 
-### Community 97 - "Module 97"
+### Community 96 - "Module 96"
 Cohesion: 0.14
 Nodes (14): 10. SECTION RHYTHM RULE, 12. DENSITY & SPACING DISCIPLINE, 14. IMAGE / MEDIA DIRECTION, 16. MULTI-IMAGE CONSISTENCY RULE, 17. CLARITY CHECK, 19. RESPONSE BEHAVIOR, 1. ACTIVE BASELINE CONFIGURATION, 21. FINAL GOAL (+6 more)
 
-### Community 98 - "Module 98"
+### Community 97 - "Module 97"
 Cohesion: 0.14
 Nodes (14): 2. THE COMBINATORIAL VARIATION ENGINE, Background Character, Background Mode (per-section), Composition Anchor (per-section), CTA Variation, Hero Architecture, Hero Scale (per-page), Motion-Implied Language (+6 more)
 
-### Community 99 - "Module 99"
+### Community 98 - "Module 98"
 Cohesion: 0.14
-Nodes (14): **10. Data Mapping Note**, **11. Attendance (QR Sessions & Scans)**, **12. Student Consultation (BK)**, **13. Room Booking Module**, **14. Uniform Sales Module (NEW)**, **1. Authentication & User Management**, **2. Academic Data Management**, **4. User Profile System** (+6 more)
+Nodes (14): 11.1 Tables, `uniform`, `uniform_po_settings`, `uniform_purchase`, `uniform_purchase_item`, `uniform_purchase_receipt`, `uniform_purchase_receipt_item`, `uniform_sale` (+6 more)
 
-### Community 100 - "Module 100"
+### Community 99 - "Module 99"
 Cohesion: 0.14
 Nodes (13): Active/Current Migrations, Core Attendance System, Database Migrations, 🚀 How to Run Migrations, ⚠️ Important Notes, 📋 Migration Checklist, Other Systems (Unrelated to Attendance), 🔄 Recent Changes (October 2025) (+5 more)
 
-### Community 101 - "Module 101"
-Cohesion: 0.15
-Nodes (13): 15.1 Tables, 15.2 ERD / Relationships (Admissions Domain), 15.3 Admissions Lifecycle & Operational Integration, 15. Student Admission & Enrollment Domain (`/login`, `/admission`, `/admission/status`, `/data/admission`, `/data/admission-level`, `/data/school-fee`), `admission_form_fee`, `admission_level`, `application_discount`, `application_installment` (+5 more)
-
-### Community 102 - "Module 102"
+### Community 100 - "Module 100"
 Cohesion: 0.37
 Nodes (13): public.uniform, public.uniform_purchase, public.uniform_purchase_item, public.uniform_purchase_receipt, public.uniform_purchase_receipt_item, public.uniform_sale, public.uniform_sale_item, public.uniform_size (+5 more)
 
+### Community 101 - "Module 101"
+Cohesion: 0.14
+Nodes (13): **Additional Files:**, **Completed Features:**, **Database Migration Files (Execute in Order):**, **Development:**, **Important Files:**, **Key Business Rules:**, **Key Directories:**, **Key Environment:** (+5 more)
+
+### Community 102 - "Module 102"
+Cohesion: 0.14
+Nodes (14): 2025-08-13, 2025-08-17, 2025-08-17 (Subsequent Updates), 2025-08-20, 2025-08-21, 2025-08-22, 2025-08-23, 2025-08-30 (+6 more)
+
 ### Community 103 - "Module 103"
-Cohesion: 0.13
-Nodes (15): 5.1 Tables, 5.2 ERD / Relationships (Attendance Domain), 5. Attendance & Leave Management Domain (`/data/attendance-settings`, `/data/attendance-leave`, `/data/attendance-form`), `attendance_excuses`, `attendance_notification_log`, `attendance_notify_run_log`, `attendances`, `kelas_attendance` (+7 more)
+Cohesion: 0.15
+Nodes (12): 10.1 Tables, 10.2 ERD / Relationships (Duty & Devotion Schedule Domain), 10. Duty, Greeter & Devotion Schedule Domain (`/data/door_greeter`), 11.2 ERD / Relationships (Uniform & Stock Domain), 11.3 Initial Stock & Inventory Ledger Workflows (`/stock/uniform/initial`), 11.4 POS Uniform Sales Workflows (`/sales/uniform`), 11. Uniform & Stock Management Domain (`/sales/uniform`, `/stock/uniform/add`, `/stock/uniform/initial`, `/stock/uniform/po-settings`, `/data/uniform`, `/data/uniform-size`), 5.2 ERD / Relationships (Attendance Domain) (+4 more)
 
 ### Community 104 - "Module 104"
-Cohesion: 0.17
-Nodes (12): 2.1 Tables, 2.2 ERD / Relationships (Class Domain), 2. Academic & Class Management Domain (`/data/class`), `class_development_areas`, `class_development_criteria`, `detail_kelas`, `detail_siswa`, `kelas` (+4 more)
+Cohesion: 0.15
+Nodes (13): 15.1 Tables, 15.2 ERD / Relationships (Admissions Domain), 15.3 Admissions Lifecycle & Operational Integration, 15. Student Admission & Enrollment Domain (`/login`, `/admission`, `/admission/status`, `/data/admission`, `/data/admission-level`, `/data/school-fee`), `admission_form_fee`, `admission_level`, `application_discount`, `application_installment` (+5 more)
 
 ### Community 105 - "Module 105"
-Cohesion: 0.17
-Nodes (12): 4.10 Quotes & Testimonials, 4.11 Page Theme Lock (Light / Dark Mode Consistency), 4.1 Typography, 4.2 Color Calibration, 4.3 Layout Diversification, 4.4 Materiality, Shadows, Cards, 4.5 Interactive UI States, 4.6 Data & Form Patterns (+4 more)
+Cohesion: 0.15
+Nodes (13): 5.1 Tables, `attendance_excuses`, `attendance_notification_log`, `attendance_notify_run_log`, `attendances`, `kelas_attendance`, `leave_quotas`, `leave_types` (+5 more)
 
 ### Community 106 - "Module 106"
-Cohesion: 0.18
-Nodes (10): **Additional Files:**, **Completed Features:**, **Database Migration Files (Execute in Order):**, **Development:**, **Key Business Rules:**, **Key Environment:**, 📝 Recent Changes (Aug 2025), School Admin System - Complete Documentation (+2 more)
+Cohesion: 0.15
+Nodes (13): **1. MYP Year Level Selection**, **2. Criterion Grades (A, B, C, D)**, **3. Strand Grades**, **4. Final Grade (1-7)**, **Assessment Cards** (`/data/topic-new`), **Database Migrations**, **Grading Modal**, **Grading Workflow** (+5 more)
 
 ### Community 107 - "Module 107"
 Cohesion: 0.17
-Nodes (12): 4.1 Tables, 4.2 ERD / Relationships (Purchasing Domain), 4. Purchasing & Budgeting Domain (/data/fpb), `fpb`, `fpb_approval_steps`, `fpb_approvals`, `fpb_budget_roles`, `fpb_items` (+4 more)
+Nodes (12): 4.10 Quotes & Testimonials, 4.11 Page Theme Lock (Light / Dark Mode Consistency), 4.1 Typography, 4.2 Color Calibration, 4.3 Layout Diversification, 4.4 Materiality, Shadows, Cards, 4.5 Interactive UI States, 4.6 Data & Form Patterns (+4 more)
 
 ### Community 108 - "Module 108"
-Cohesion: 0.20
-Nodes (10): 12.0 Dedicated Pages & Access Roles, 12.1 Tables, 12.2 ERD / Relationships (Incident Reports Domain), 12. Student Incident Reports & Unit Notification Domain (`/data/incident-report`, `/data/incident-report-approval`, `/settings/incident-report`), `cctv_footage_requests`, Domain 13: PYP Master Data Framework, Domain 14: PYP Unit & Junction Tables (Pivot Models), `incident_followups` (+2 more)
+Cohesion: 0.17
+Nodes (12): 2.1 Tables, 2.2 ERD / Relationships (Class Domain), 2. Academic & Class Management Domain (`/data/class`), `class_development_areas`, `class_development_criteria`, `detail_kelas`, `detail_siswa`, `kelas` (+4 more)
 
 ### Community 109 - "Module 109"
-Cohesion: 0.20
-Nodes (10): 10. REFERENCE VOCABULARY (Pattern Names the Agent Should Know), Animation Library Choice, Cards & Containers, Galleries & Media, Hero Paradigms, Layout & Grids, Micro-Interactions & Effects, Navigation & Menus (+2 more)
+Cohesion: 0.17
+Nodes (12): 4.1 Tables, 4.2 ERD / Relationships (Purchasing Domain), 4. Purchasing & Budgeting Domain (/data/fpb), `fpb`, `fpb_approval_steps`, `fpb_approvals`, `fpb_budget_roles`, `fpb_items` (+4 more)
 
 ### Community 110 - "Module 110"
-Cohesion: 0.20
-Nodes (10): 13. OUT OF SCOPE, 14. FINAL PRE-FLIGHT CHECK, 1.A Dial Inference (design read → dial values), 1.B Use-Case Presets, 1.C How the Dials Drive Output, 1. THE THREE DIALS (Core Configuration), 2.A When to reach for a real design system (use official packages), 2.B When the brief is an aesthetic, not a system (+2 more)
+Cohesion: 0.36
+Nodes (9): authorizeGoogleClassroom(), clearStoredClassroomToken(), extractClassroomLinks(), getStoredClassroomToken(), getValidClassroomToken(), GOOGLE_CLASSROOM_SCOPES, GoogleClassroomConnector(), refreshClassroomToken() (+1 more)
 
 ### Community 111 - "Module 111"
 Cohesion: 0.20
-Nodes (9): 1. PYTHON-DRIVEN TRUE RANDOMIZATION (BREAKING THE LOOP), 2. AIDA STRUCTURE & SPACING, 3. HERO ARCHITECTURE & THE 2-LINE IRON RULE, 4. THE GAPLESS BENTO GRID, 5. ADVANCED GSAP MOTION & HOVER PHYSICS, 6. COMPONENT ARSENAL & CREATIVITY, 7. CONTENT, ASSETS & STRICT BANS, 8. MANDATORY PRE-FLIGHT <design_plan> (+1 more)
+Nodes (10): 10. REFERENCE VOCABULARY (Pattern Names the Agent Should Know), Animation Library Choice, Cards & Containers, Galleries & Media, Hero Paradigms, Layout & Grids, Micro-Interactions & Effects, Navigation & Menus (+2 more)
 
 ### Community 112 - "Module 112"
 Cohesion: 0.20
-Nodes (10): 22. STYLE VARIATION ENGINE, Decorative Asset Set, Image Art Direction Bias, Motion-Implied Language, Palette Logic, Signature Component Set, Structure Bias, Texture / Surface Treatment (+2 more)
+Nodes (10): 13. OUT OF SCOPE, 14. FINAL PRE-FLIGHT CHECK, 1.A Dial Inference (design read → dial values), 1.B Use-Case Presets, 1.C How the Dials Drive Output, 1. THE THREE DIALS (Core Configuration), 2.A When to reach for a real design system (use official packages), 2.B When the brief is an aesthetic, not a system (+2 more)
 
 ### Community 113 - "Module 113"
 Cohesion: 0.20
-Nodes (9): 1. Protocol Overview, 2. Absolute Negative Constraints (Banned Elements), 3. Typographic Architecture, 4. Color Palette (Warm Monochrome + Spot Pastels), 5. Component Specifications, 6. Iconography & Imagery Directives, 7. Subtle Motion & Micro-Animations, 8. Execution Protocol (+1 more)
+Nodes (9): 1. PYTHON-DRIVEN TRUE RANDOMIZATION (BREAKING THE LOOP), 2. AIDA STRUCTURE & SPACING, 3. HERO ARCHITECTURE & THE 2-LINE IRON RULE, 4. THE GAPLESS BENTO GRID, 5. ADVANCED GSAP MOTION & HOVER PHYSICS, 6. COMPONENT ARSENAL & CREATIVITY, 7. CONTENT, ASSETS & STRICT BANS, 8. MANDATORY PRE-FLIGHT <design_plan> (+1 more)
 
 ### Community 114 - "Module 114"
 Cohesion: 0.20
-Nodes (10): 3.1 Tables, 3.2 ERD / Relationships (Curriculum Domain), 3. Curriculum & Topics Domain (`/data/topic-new`, `/data/subject`, `/data/subject-group`), `criteria`, `criterion_descriptors`, `rubrics`, `strands`, `subject` (+2 more)
+Nodes (10): 22. STYLE VARIATION ENGINE, Decorative Asset Set, Image Art Direction Bias, Motion-Implied Language, Palette Logic, Signature Component Set, Structure Bias, Texture / Surface Treatment (+2 more)
 
 ### Community 115 - "Module 115"
-Cohesion: 0.22
-Nodes (9): 11. COMPONENT EXECUTION GUIDELINES, 3D Cascading Card Deck, Diagonal Staggered Square Masonry, Hover-Accordion Slice Layout, Off-Grid Editorial Layout, Pristine Gapless Bento Grid, Product UI Panel Stack, Turning Polaroid Arc (+1 more)
+Cohesion: 0.20
+Nodes (9): 1. Protocol Overview, 2. Absolute Negative Constraints (Banned Elements), 3. Typographic Architecture, 4. Color Palette (Warm Monochrome + Spot Pastels), 5. Component Specifications, 6. Iconography & Imagery Directives, 7. Subtle Motion & Micro-Animations, 8. Execution Protocol (+1 more)
 
 ### Community 116 - "Module 116"
-Cohesion: 0.22
-Nodes (9): 18. EXTRA CREATIVITY & IMPLEMENTATION EDGE, Composition variety check, Conversion focus, Cross-section contrast, CTA specificity, Cultural / tonal alignment, Data-viz restraint, Image variety inside one comp (+1 more)
+Cohesion: 0.20
+Nodes (10): 12.0 Dedicated Pages & Access Roles, 12.1 Tables, 12.2 ERD / Relationships (Incident Reports Domain), 12. Student Incident Reports & Unit Notification Domain (`/data/incident-report`, `/data/incident-report-approval`, `/settings/incident-report`), `cctv_footage_requests`, Domain 13: PYP Master Data Framework, Domain 14: PYP Unit & Junction Tables (Pivot Models), `incident_followups` (+2 more)
 
 ### Community 117 - "Module 117"
-Cohesion: 0.22
-Nodes (8): crons, functions, src/app/api/assessment-pdf/route.js, src/app/api/attendance/notify/route.js, src/app/api/duty/notify/route.js, maxDuration, maxDuration, maxDuration
+Cohesion: 0.20
+Nodes (10): 3.1 Tables, 3.2 ERD / Relationships (Curriculum Domain), 3. Curriculum & Topics Domain (`/data/topic-new`, `/data/subject`, `/data/subject-group`), `criteria`, `criterion_descriptors`, `rubrics`, `strands`, `subject` (+2 more)
 
 ### Community 118 - "Module 118"
 Cohesion: 0.22
-Nodes (9): 1.1 Tables, 1.2 ERD / Relationships (User & Unit Domain), 1.3 Tables referencing `users`, 1. User, Role & Unit Management Domain (`/data/user`, `/data/role_management`, `/settings/unit`), `dashboard_type`, `report_settings`, `role`, `unit` (+1 more)
+Nodes (9): 11. COMPONENT EXECUTION GUIDELINES, 3D Cascading Card Deck, Diagonal Staggered Square Masonry, Hover-Accordion Slice Layout, Off-Grid Editorial Layout, Pristine Gapless Bento Grid, Product UI Panel Stack, Turning Polaroid Arc (+1 more)
 
 ### Community 119 - "Module 119"
-Cohesion: 0.25
-Nodes (8): 9.A Visual & CSS, 9. AI TELLS (Forbidden Patterns), 9.B Typography, 9.C Layout & Spacing, 9.D Content & Data ("Jane Doe" Effect), 9.E External Resources & Components, 9.F Production-Test Tells (banned outright), 9.G EM-DASH BAN (the single most-violated Tell)
+Cohesion: 0.22
+Nodes (9): 18. EXTRA CREATIVITY & IMPLEMENTATION EDGE, Composition variety check, Conversion focus, Cross-section contrast, CTA specificity, Cultural / tonal alignment, Data-viz restraint, Image variety inside one comp (+1 more)
 
 ### Community 120 - "Module 120"
-Cohesion: 0.25
-Nodes (8): 12. THE COMBINATORIAL VARIATION ENGINE, Background Character, Hero Architecture, Motion-Implied Language, Section System, Signature Component Set, Theme Paradigm, Typography Character
+Cohesion: 0.22
+Nodes (9): 1.1 Tables, 1.2 ERD / Relationships (User & Unit Domain), 1.3 Tables referencing `users`, 1. User, Role & Unit Management Domain (`/data/user`, `/data/role_management`, `/settings/unit`), `dashboard_type`, `report_settings`, `role`, `unit` (+1 more)
 
 ### Community 121 - "Module 121"
-Cohesion: 0.25
-Nodes (8): 8. ANTI-AI-SLOP RULES, Carousel / marquee slop (layout), Content slop, Data / KPI slop, Density slop, Layout slop, Typography slop, Visual slop
+Cohesion: 0.22
+Nodes (8): crons, functions, src/app/api/assessment-pdf/route.js, src/app/api/attendance/notify/route.js, src/app/api/duty/notify/route.js, maxDuration, maxDuration, maxDuration
 
 ### Community 122 - "Module 122"
 Cohesion: 0.25
-Nodes (8): **Assessment Cards** (`/data/topic-new`), **Database Migrations**, **Grading Modal**, **Grading Workflow**, 🎓 **IB MYP Assessment Grading System**, **Overview**, **Removed Features**, **UI Features**
+Nodes (8): 9.A Visual & CSS, 9. AI TELLS (Forbidden Patterns), 9.B Typography, 9.C Layout & Spacing, 9.D Content & Data ("Jane Doe" Effect), 9.E External Resources & Components, 9.F Production-Test Tells (banned outright), 9.G EM-DASH BAN (the single most-violated Tell)
 
 ### Community 123 - "Module 123"
 Cohesion: 0.25
-Nodes (7): API & Server Routes, Architecture, Data & Business Rules, Development Workflow, Frontend Patterns, School Admin AI Guide, Tips for New Changes
+Nodes (8): 12. THE COMBINATORIAL VARIATION ENGINE, Background Character, Hero Architecture, Motion-Implied Language, Section System, Signature Component Set, Theme Paradigm, Typography Character
 
 ### Community 124 - "Module 124"
-Cohesion: 0.29
-Nodes (7): 11.A Detect the Mode (first action), 11.B Audit Before Touching, 11.C Preservation Rules, 11.D Modernisation Levers (priority order), 11.E Decision Tree: Targeted Evolution vs Full Redesign, 11.F What Never Changes Silently, 11. REDESIGN PROTOCOL
+Cohesion: 0.25
+Nodes (8): 8. ANTI-AI-SLOP RULES, Carousel / marquee slop (layout), Content slop, Data / KPI slop, Density slop, Layout slop, Typography slop, Visual slop
 
 ### Community 125 - "Module 125"
 Cohesion: 0.53
@@ -840,72 +756,72 @@ Cohesion: 0.43
 Nodes (6): calculateDiscResult(), getLineNumber(), getSegment(), getTopTwo(), NORMA_TABLE, SEGMENT_RULES
 
 ### Community 128 - "Module 128"
-Cohesion: 0.29
-Nodes (7): 3.A Stack, 3.B State, 3.C Icons, 3.D Emoji Policy, 3. DEFAULT ARCHITECTURE & CONVENTIONS, 3.E Responsiveness & Layout Mechanics, 3.F Dependency Verification (mandatory)
+Cohesion: 0.25
+Nodes (8): 17.1 Tables, 17.2 ERD / Relationships (Health Report Domain), 17. Health & Medical Report Domain (`/data/health_report`), `health_growth_development`, `health_immunization`, `health_physical_check`, `health_record`, `health_report_card`
 
 ### Community 129 - "Module 129"
-Cohesion: 0.29
-Nodes (7): 6.A Hardware Acceleration, 6.B Reduced Motion (mandatory), 6.C Dark Mode (mandatory for any consumer-facing page), 6.D Core Web Vitals Targets, 6.E DOM Cost, 6.F Z-Index Restraint, 6. PERFORMANCE & ACCESSIBILITY GUARDRAILS
+Cohesion: 0.25
+Nodes (8): 18.1 Key Features & Architecture, 18.2 Tables, 18.3 Storage Buckets, 18. OSIS Election & Live Quick Count Domain (`/data/osis-election`, `/data/osis-election/vote`, `/data/osis-election/live`), `osis-assets` (Public), `osis_candidates`, `osis_elections`, `osis_votes`
 
 ### Community 130 - "bcryptjs"
-Cohesion: 0.29
-Nodes (6): Banned Output Patterns, Baseline, Execution Process, Full-Output Enforcement, Handling Long Outputs, Quick Check
+Cohesion: 0.25
+Nodes (8): 8.1 Tables, 8.2 ERD / Relationships (Room Booking), 8. Room & Booking Management Domain (`/data/room`, `/room/booking`), `room`, `room_blocks`, `room_booking`, `room_facility_reports`, `vendor_room_checklists`
 
 ### Community 131 - "docx"
-Cohesion: 0.29
-Nodes (7): 33. CATEGORY-SPECIFIC BIAS, Commerce, Fintech, Health / Fitness, Productivity, Social, Wellness / Lifestyle
+Cohesion: 0.25
+Nodes (7): API & Server Routes, Architecture, Data & Business Rules, Development Workflow, Frontend Patterns, School Admin AI Guide, Tips for New Changes
 
 ### Community 132 - "Module 132"
-Cohesion: 0.29
-Nodes (7): 13. COLOR & MATERIAL RULES, Background Confidence Rule, Background-image harmony, Gradient Discipline, Materiality, Palette Discipline, Strong guidance
+Cohesion: 0.25
+Nodes (8): 2026-07-16 — Timetable Refactor + Weekly Plan Dates + Weekly Overview, Full Data Flow: Timetable → Weekly Overview, Timetable Exceptions (`timetable_exception`) — New Table, Timetable Refactor (`/data/timetable`), `topic_weekly_plan` — Complete Schema Reference, Weekly Overview (`/data/weekly-overview`) — New Page, `weekly_overview_draft` Table — New, Weekly Plan Dates — `topic_weekly_plan.week_date`
 
 ### Community 133 - "Module 133"
 Cohesion: 0.15
-Nodes (13): bcryptjs, @googleapis/chat, @hookform/resolvers, lucide-react, dependencies, bcryptjs, @googleapis/chat, @hookform/resolvers (+5 more)
+Nodes (13): @fortawesome/react-fontawesome, @hookform/resolvers, lucide-react, dependencies, @fortawesome/react-fontawesome, @hookform/resolvers, lucide-react, @radix-ui/react-slot (+5 more)
 
 ### Community 135 - "Module 135"
 Cohesion: 0.29
-Nodes (7): 4. HERO MINIMALISM RULES, Absolute Hero Rules, Graphic Restraint, Headline Rule, Hero Composition Bias, Pre-output check, Typography Execution
+Nodes (7): 11.A Detect the Mode (first action), 11.B Audit Before Touching, 11.C Preservation Rules, 11.D Modernisation Levers (priority order), 11.E Decision Tree: Targeted Evolution vs Full Redesign, 11.F What Never Changes Silently, 11. REDESIGN PROTOCOL
 
 ### Community 136 - "Module 136"
 Cohesion: 0.29
-Nodes (6): 1. Buat Folder di cPanel File Manager, 2. Unggah File, 3. Konfigurasi `config.php`, 🚀 Cara Pemasangan di cPanel `ccs.sch.id`, 🔐 Manajemen Admin Terpusat, Panduan Pemasangan: Portal Registrasi Siswa Baru CCS di cPanel (`ccs.sch.id`)
+Nodes (7): 3.A Stack, 3.B State, 3.C Icons, 3.D Emoji Policy, 3. DEFAULT ARCHITECTURE & CONVENTIONS, 3.E Responsiveness & Layout Mechanics, 3.F Dependency Verification (mandatory)
 
 ### Community 137 - "Module 137"
 Cohesion: 0.29
-Nodes (5): public.admission_level, public.fee_discount, public.school_fee_definition, public.student_applications, public.udp_definition
+Nodes (7): 6.A Hardware Acceleration, 6.B Reduced Motion (mandatory), 6.C Dark Mode (mandatory for any consumer-facing page), 6.D Core Web Vitals Targets, 6.E DOM Cost, 6.F Z-Index Restraint, 6. PERFORMANCE & ACCESSIBILITY GUARDRAILS
 
 ### Community 138 - "Module 138"
-Cohesion: 0.33
-Nodes (6): 29. ANTI-AI-SLOP RULES, Content slop, Density slop, Layout slop, Typography slop, Visual slop
+Cohesion: 0.29
+Nodes (6): Banned Output Patterns, Baseline, Execution Process, Full-Output Enforcement, Handling Long Outputs, Quick Check
 
 ### Community 139 - "Module 139"
-Cohesion: 0.33
-Nodes (6): 19.1 Tables, 19.2 Storage Buckets, 19. System Changelog, Bug Reporting & Feature Roadmap Domain (`/data/feedback`, `/data/changelog`), `attachments` (Public), `system_feedback`, `system_feedback_recipients`
+Cohesion: 0.29
+Nodes (7): 33. CATEGORY-SPECIFIC BIAS, Commerce, Fintech, Health / Fitness, Productivity, Social, Wellness / Lifestyle
 
 ### Community 140 - "Module 140"
-Cohesion: 0.25
-Nodes (8): 17.1 Tables, 17.2 ERD / Relationships (Health Report Domain), 17. Health & Medical Report Domain (`/data/health_report`), `health_growth_development`, `health_immunization`, `health_physical_check`, `health_record`, `health_report_card`
+Cohesion: 0.29
+Nodes (7): 13. COLOR & MATERIAL RULES, Background Confidence Rule, Background-image harmony, Gradient Discipline, Materiality, Palette Discipline, Strong guidance
 
 ### Community 142 - "2026-07-16 — Timetable Refactor + Weekly Plan Dates + Weekly Overview"
 Cohesion: 0.48
 Nodes (6): GET(), getTodayWIB(), POST(), supabaseAdmin, VALID_SECRETS, verifyAuth()
 
 ### Community 143 - "Module 143"
-Cohesion: 0.33
-Nodes (6): 5. IMAGE COUNT & PAGE SLICING, Continuity Rule, Counting rule, Format, Section size variety, THIS IS THE PRIMARY OUTPUT RULE
+Cohesion: 0.29
+Nodes (7): 4. HERO MINIMALISM RULES, Absolute Hero Rules, Graphic Restraint, Headline Rule, Hero Composition Bias, Pre-output check, Typography Execution
 
 ### Community 144 - "Module 144"
-Cohesion: 0.33
-Nodes (6): **1. Icons Not Showing:**, **2. Teacher Filter Not Working:**, **3. Assessment Date Validation:**, **4. Menu Permissions:**, **5. RLS write blocked on subject-class mapping (detail_kelas)**, 📋 **Common Issues & Solutions**
+Cohesion: 0.29
+Nodes (6): 1. Buat Folder di cPanel File Manager, 2. Unggah File, 3. Konfigurasi `config.php`, 🚀 Cara Pemasangan di cPanel `ccs.sch.id`, 🔐 Manajemen Admin Terpusat, Panduan Pemasangan: Portal Registrasi Siswa Baru CCS di cPanel (`ccs.sch.id`)
 
 ### Community 145 - "Module 145"
-Cohesion: 0.08
-Nodes (55): AssessmentInstructionEditor(), FONT_FAMILIES, FONT_SIZES, FontSize, HIGHLIGHT_COLORS, Indent, plainTextToHtml(), TEXT_COLORS (+47 more)
+Cohesion: 0.10
+Nodes (45): AssessmentInstructionEditor(), FONT_FAMILIES, FONT_SIZES, FontSize, HIGHLIGHT_COLORS, Indent, plainTextToHtml(), TEXT_COLORS (+37 more)
 
 ### Community 146 - "Module 146"
-Cohesion: 0.33
-Nodes (6): Access flow (guards), **Admin (`is_admin = true`):**, 🔐 **Role-Based Access Control**, **Staff (default):**, **Student (`is_student = true`):**, **Teacher (`is_teacher = true`):**
+Cohesion: 0.29
+Nodes (7): 9.1 Tables, 9.2 ERD / Relationships (Timetable & Schedule Domain), 9. Timetable & Schedule Management Domain (`/data/timetable`, `/data/weekly-overview`), `timetable`, `timetable_exception`, `topic_weekly_plan`, `weekly_overview_draft`
 
 ### Community 147 - "�🏗️ **Database Structure**"
 Cohesion: 0.40
@@ -913,15 +829,15 @@ Nodes (4): 🔍 Alur Kerja Petugas (Mobile UI), 🚀 Panduan Pemasangan di Hosti
 
 ### Community 148 - "Module 148"
 Cohesion: 0.29
-Nodes (7): 9.1 Tables, 9.2 ERD / Relationships (Timetable & Schedule Domain), 9. Timetable & Schedule Management Domain (`/data/timetable`, `/data/weekly-overview`), `timetable`, `timetable_exception`, `topic_weekly_plan`, `weekly_overview_draft`
+Nodes (5): public.admission_level, public.fee_discount, public.school_fee_definition, public.student_applications, public.udp_definition
 
 ### Community 149 - "bcryptjs"
 Cohesion: 0.33
-Nodes (6): **Assessment Calendar (View + RPC)**, **Assessment with Relations:**, 📊 **Database Queries Reference**, **Get Teachers Only:**, **Subject with Teacher & Unit:**, **Topics (Units) Queries:**
+Nodes (6): 29. ANTI-AI-SLOP RULES, Content slop, Density slop, Layout slop, Typography slop, Visual slop
 
 ### Community 150 - "Module 150"
 Cohesion: 0.33
-Nodes (5): absen, attendance_scan_log, _backup_absen, _backup_attendance_scan_log, _backup_attendance_session
+Nodes (6): 5. IMAGE COUNT & PAGE SLICING, Continuity Rule, Counting rule, Format, Section size variety, THIS IS THE PRIMARY OUTPUT RULE
 
 ### Community 151 - "Module 151"
 Cohesion: 0.33
@@ -929,51 +845,51 @@ Nodes (6): 16.1 Tables, 16.2 Zero-Friction Fallback Architecture, 16. Athletic D
 
 ### Community 152 - "Module 152"
 Cohesion: 0.33
-Nodes (5): absen, attendance_scan_log, _backup_attendance_session, _backup_session_absen, _backup_session_scan_logs
+Nodes (6): 19.1 Tables, 19.2 Storage Buckets, 19. System Changelog, Bug Reporting & Feature Roadmap Domain (`/data/feedback`, `/data/changelog`), `attachments` (Public), `system_feedback`, `system_feedback_recipients`
 
 ### Community 156 - "**3. Assessment System**"
-Cohesion: 0.53
-Nodes (5): generate_application_number(), student_applications, trigger_generate_application_number, trigger_update_student_applications_timestamp, update_student_applications_timestamp()
+Cohesion: 0.33
+Nodes (5): absen, attendance_scan_log, _backup_absen, _backup_attendance_scan_log, _backup_attendance_session
 
 ### Community 158 - "Module 158"
-Cohesion: 0.47
-Nodes (5): attendance_excuses, trg_attendance_excuses_updated_at, trg_unit_approvers_updated_at, unit_approvers, update_updated_at_column()
+Cohesion: 0.33
+Nodes (5): absen, attendance_scan_log, _backup_attendance_session, _backup_session_absen, _backup_session_scan_logs
 
 ### Community 193 - "Module 193"
-Cohesion: 0.40
-Nodes (5): 7.1 Tables, 7.2 ERD / Relationships (Menu Domain), 7. Menu & Role Permissions Domain (`/data/menu_management`), `menu_permissions`, `menus`
+Cohesion: 0.53
+Nodes (5): generate_application_number(), student_applications, trigger_generate_application_number, trigger_update_student_applications_timestamp, update_student_applications_timestamp()
 
 ### Community 194 - "Module 194"
 Cohesion: 0.50
 Nodes (4): ALLOWED_TYPES, ensureBucket(), POST(), supabaseAdmin
 
 ### Community 229 - "Module 229"
-Cohesion: 0.60
-Nodes (5): public.health_growth_development, public.health_immunization, public.health_physical_check, public.health_record, public.health_report_card
+Cohesion: 0.33
+Nodes (6): **1. Icons Not Showing:**, **2. Teacher Filter Not Working:**, **3. Assessment Date Validation:**, **4. Menu Permissions:**, **5. RLS write blocked on subject-class mapping (detail_kelas)**, 📋 **Common Issues & Solutions**
 
 ### Community 230 - "Module 230"
-Cohesion: 0.40
-Nodes (5): 0.A Read these signals first, 0.B Output a one-line "Design Read" before generating, 0. BRIEF INFERENCE (Read the Room Before Anything Else), 0.C If the brief is ambiguous, ask one question, do not guess, 0.D Anti-Default Discipline
+Cohesion: 0.33
+Nodes (6): Access flow (guards), **Admin (`is_admin = true`):**, 🔐 **Role-Based Access Control**, **Staff (default):**, **Student (`is_student = true`):**, **Teacher (`is_teacher = true`):**
 
 ### Community 231 - "Module 231"
-Cohesion: 0.40
-Nodes (5): 12.A File Location, 12.B Required Frontmatter, 12.C Required Body Sections, 12.D Block-Library Discipline, 12. THE BLOCK LIBRARY (Contract - Implementations Land Here Iteratively)
+Cohesion: 0.33
+Nodes (6): **Assessment Calendar (View + RPC)**, **Assessment with Relations:**, 📊 **Database Queries Reference**, **Get Teachers Only:**, **Subject with Teacher & Unit:**, **Topics (Units) Queries:**
 
 ### Community 232 - "Module 232"
 Cohesion: 0.40
-Nodes (5): 5.A Sticky-Stack - Canonical Skeleton, 5.B Horizontal-Pan - Canonical Skeleton, 5.C Scroll-Reveal Stagger - Canonical Skeleton (lighter alternative), 5. CONTEXT-AWARE PROACTIVITY, 5.D Forbidden Animation Patterns
+Nodes (5): 0.A Read these signals first, 0.B Output a one-line "Design Read" before generating, 0. BRIEF INFERENCE (Read the Room Before Anything Else), 0.C If the brief is ambiguous, ask one question, do not guess, 0.D Anti-Default Discipline
 
 ### Community 233 - "Module 233"
 Cohesion: 0.40
-Nodes (5): 8.A Token Strategy (pick one, stick to it), 8.B Do Not Prescribe Specific Colors Here, 8.C Default Mode, 8.D Test in Both Modes Before Finishing, 8. DARK MODE PROTOCOL
+Nodes (5): 12.A File Location, 12.B Required Frontmatter, 12.C Required Body Sections, 12.D Block-Library Discipline, 12. THE BLOCK LIBRARY (Contract - Implementations Land Here Iteratively)
 
 ### Community 234 - "Module 234"
 Cohesion: 0.40
-Nodes (5): 21. MOBILE ANTI-AI-TELLS RULE, Copy AI tells, Layout AI tells, UI clutter tells, Visual AI tells
+Nodes (5): 5.A Sticky-Stack - Canonical Skeleton, 5.B Horizontal-Pan - Canonical Skeleton, 5.C Scroll-Reveal Stagger - Canonical Skeleton (lighter alternative), 5. CONTEXT-AWARE PROACTIVITY, 5.D Forbidden Animation Patterns
 
 ### Community 235 - "Module 235"
-Cohesion: 0.25
-Nodes (8): 8.1 Tables, 8.2 ERD / Relationships (Room Booking), 8. Room & Booking Management Domain (`/data/room`, `/room/booking`), `room`, `room_blocks`, `room_booking`, `room_facility_reports`, `vendor_room_checklists`
+Cohesion: 0.40
+Nodes (5): 8.A Token Strategy (pick one, stick to it), 8.B Do Not Prescribe Specific Colors Here, 8.C Default Mode, 8.D Test in Both Modes Before Finishing, 8. DARK MODE PROTOCOL
 
 ### Community 236 - "Module 236"
 Cohesion: 0.46
@@ -989,139 +905,99 @@ Nodes (13): docx, docx, make_run(), remove_vmerge(), set_alloc_tc(), set_tc_text
 
 ### Community 240 - "Module 240"
 Cohesion: 0.40
-Nodes (5): **1. MYP Year Level Selection**, **2. Criterion Grades (A, B, C, D)**, **3. Strand Grades**, **4. Final Grade (1-7)**, **Key Components**
+Nodes (5): 21. MOBILE ANTI-AI-TELLS RULE, Copy AI tells, Layout AI tells, UI clutter tells, Visual AI tells
 
 ### Community 241 - "Module 241"
 Cohesion: 0.70
 Nodes (4): calculateDuration(), formatWibTime(), getWibDate(), VendorChecklistDashboardPage()
 
+### Community 242 - "6.1 Tables"
+Cohesion: 0.40
+Nodes (5): 6.1 Tables, 6.2 ERD / Relationships (Assessment & Grading), 6. Assessment & Grading Domain (`/data/topic-new` / Reports), `assessment_grade_strands`, `assessment_grades`
+
 ### Community 243 - "Module 243"
-Cohesion: 0.60
-Nodes (4): incident_followups, incident_report_students, incident_reports, incident_unit_recipients
+Cohesion: 0.40
+Nodes (5): 7.1 Tables, 7.2 ERD / Relationships (Menu Domain), 7. Menu & Role Permissions Domain (`/data/menu_management`), `menu_permissions`, `menus`
 
 ### Community 244 - "Module 244"
-Cohesion: 0.40
-Nodes (4): public.pyp_atls_list, public.pyp_ci_list, public.pyp_kc_list, public.pyp_loi_list
-
-### Community 245 - "Module 245"
-Cohesion: 0.40
-Nodes (4): public.pypatlsunit, public.pypkcunit, public.pyploiunit, public.pypstrandsunit
-
-### Community 246 - "Module 246"
-Cohesion: 0.40
-Nodes (4): fpb_approval_steps, fpb_approvals, fpb_role_approvers, trg_fpb_role_approvers_updated_at
-
-### Community 247 - "Module 247"
 Cohesion: 0.60
 Nodes (4): public.school_fee_definition, public.udp_definition, public.udp_installment_plan, public.v_school_fee_monthly
 
-### Community 248 - "Module 248"
+### Community 245 - "Module 245"
 Cohesion: 0.50
 Nodes (4): 7. DIAL DEFINITIONS (Technical Reference), DESIGN_VARIANCE (Level 1-10), MOTION_INTENSITY (Level 1-10), VISUAL_DENSITY (Level 1-10)
 
-### Community 250 - "Assessment Grading System Documentation"
+### Community 246 - "Module 246"
 Cohesion: 0.50
 Nodes (4): 12-section pack, 33. DEFAULT SECTION PACKS, 4-section pack, 8-section pack
 
-### Community 251 - "Universal Uniform Size Schema Change"
+### Community 247 - "Module 247"
 Cohesion: 0.50
 Nodes (4): 14. HERO MINIMALISM RULES, Absolute Hero Rules, Headline Rule, Hero Cleanliness Rule
 
-### Community 252 - "Delete & Void Purchase Order Implementation"
+### Community 248 - "Module 248"
 Cohesion: 0.50
 Nodes (4): 37. EXAMPLE INTERPRETATIONS, Example 1, Example 2, Example 3
 
-### Community 253 - "IB MYP Criteria, Strands & Rubrics System Documentation"
+### Community 250 - "Assessment Grading System Documentation"
 Cohesion: 0.50
 Nodes (4): 2. PLATFORM MODE RULE, Android-native premium, Cross-platform premium neutral, iOS-native premium
 
-### Community 254 - "Fitur Tanggal Pengambilan Seragam"
+### Community 251 - "Universal Uniform Size Schema Change"
 Cohesion: 0.50
 Nodes (4): 37. EXAMPLE INTERPRETATIONS, Example 1, Example 2, Example 3
 
-### Community 255 - "📌 Changelog"
+### Community 252 - "Delete & Void Purchase Order Implementation"
 Cohesion: 0.50
 Nodes (4): 12-section pack, 15. DEFAULT SITE PACKS, 4-section pack, 8-section pack
 
-### Community 256 - "Sistem Penomoran PO Otomatis"
+### Community 253 - "IB MYP Criteria, Strands & Rubrics System Documentation"
 Cohesion: 0.50
 Nodes (4): 20. EXAMPLE INTERPRETATIONS, Example 1, Example 2, Example 3
 
-### Community 257 - "🎯 **System Modules & Features**"
-Cohesion: 0.50
-Nodes (4): Attendance (QR) Tables, **Core Tables:**, �🏗️ **Database Structure**, Grades (Nilai) Table
+### Community 254 - "Fitur Tanggal Pengambilan Seragam"
+Cohesion: 0.83
+Nodes (3): check_year_date_overlap(), public.year, trg_year_no_overlap
+
+### Community 255 - "📌 Changelog"
+Cohesion: 0.67
+Nodes (3): public.application_discount, trigger_app_discount_updated_at, update_app_discount_timestamp()
+
+### Community 256 - "Sistem Penomoran PO Otomatis"
+Cohesion: 0.67
+Nodes (3): public.application_installment, trigger_app_installment_updated_at, update_app_installment_timestamp()
 
 ### Community 258 - "page.jsx"
-Cohesion: 0.25
-Nodes (8): 18.1 Key Features & Architecture, 18.2 Tables, 18.3 Storage Buckets, 18. OSIS Election & Live Quick Count Domain (`/data/osis-election`, `/data/osis-election/vote`, `/data/osis-election/live`), `osis-assets` (Public), `osis_candidates`, `osis_elections`, `osis_votes`
+Cohesion: 0.67
+Nodes (3): settings, settings_updated_at, update_updated_at_column()
 
 ### Community 260 - "Database Migrations"
-Cohesion: 0.50
-Nodes (4): **Backend & Database:**, **Frontend Stack:**, **Key Technical Notes:**, 🔧 **Technical Implementation**
+Cohesion: 0.67
+Nodes (3): criterion_descriptors, subject, subject_group
 
 ### Community 261 - "5.1 Tables"
-Cohesion: 0.50
-Nodes (3): attendance_notification_log, role, school_holidays
+Cohesion: 0.67
+Nodes (3): generate_topic_weeks(), topic_weekly_plan, trigger_generate_topic_weeks
 
 ### Community 262 - "sendGoogleChatMessage"
 Cohesion: 0.80
 Nodes (4): getCredentials(), getPrivateKey(), getUserIdByEmail(), sendGoogleChatMessage()
 
 ### Community 263 - "3.1 Tables"
-Cohesion: 0.50
-Nodes (3): fpb, fpb_budget_roles, fpb_items
+Cohesion: 0.67
+Nodes (3): absen, attendance_scan_log, attendance_session
 
 ### Community 264 - "4.1 Tables"
-Cohesion: 0.67
-Nodes (3): check_kelas_is_nursery(), kelas, trg_check_kelas_is_nursery
+Cohesion: 0.50
+Nodes (4): Attendance (QR) Tables, **Core Tables:**, �🏗️ **Database Structure**, Grades (Nilai) Table
 
 ### Community 265 - "School Admin System - Complete Documentation"
-Cohesion: 0.83
-Nodes (3): check_year_date_overlap(), public.year, trg_year_no_overlap
+Cohesion: 0.50
+Nodes (4): **Backend & Database:**, **Frontend Stack:**, **Key Technical Notes:**, 🔧 **Technical Implementation**
 
 ### Community 266 - "Protocol: Premium Utilitarian Minimalism UI Architect"
 Cohesion: 0.20
 Nodes (9): 1. Protocol Overview, 2. Absolute Negative Constraints (Banned Elements), 3. Typographic Architecture, 4. Color Palette (Warm Monochrome + Spot Pastels), 5. Component Specifications, 6. Iconography & Imagery Directives, 7. Subtle Motion & Micro-Animations, 8. Execution Protocol (+1 more)
-
-### Community 267 - "School Admin AI Guide"
-Cohesion: 0.67
-Nodes (3): public.application_discount, trigger_app_discount_updated_at, update_app_discount_timestamp()
-
-### Community 268 - "1.1 Tables"
-Cohesion: 0.67
-Nodes (3): public.application_installment, trigger_app_installment_updated_at, update_app_installment_timestamp()
-
-### Community 270 - "clsx"
-Cohesion: 1.00
-Nodes (3): athletic_events, athletic_scores, athletic_teams
-
-### Community 271 - "9.1 Tables"
-Cohesion: 1.00
-Nodes (3): osis_candidates, osis_elections, osis_votes
-
-### Community 272 - "Database Schema & Relationships"
-Cohesion: 0.67
-Nodes (3): settings, settings_updated_at, update_updated_at_column()
-
-### Community 273 - "8.1 Tables"
-Cohesion: 0.67
-Nodes (3): criterion_descriptors, subject, subject_group
-
-### Community 274 - "📋 **Common Issues & Solutions**"
-Cohesion: 0.67
-Nodes (3): generate_topic_weeks(), topic_weekly_plan, trigger_generate_topic_weeks
-
-### Community 275 - "🔐 **Role-Based Access Control**"
-Cohesion: 0.67
-Nodes (3): absen, attendance_scan_log, attendance_session
-
-### Community 277 - "6.1 Tables"
-Cohesion: 0.67
-Nodes (3): **3. Assessment System**, **Admin Workflow**:, **Teacher Workflow**:
-
-### Community 279 - "**Key Components**"
-Cohesion: 0.67
-Nodes (3): **Important Files:**, **Key Directories:**, 📁 **Project Structure**
 
 ### Community 280 - "🚀 **Setup & Deployment**"
 Cohesion: 0.36
@@ -1155,17 +1031,9 @@ Nodes (3): POST(), supabaseAdmin, verifyAuth()
 Cohesion: 0.33
 Nodes (5): Git Push Rule, Mandatory Changelog Maintenance Rule, Project Agent Rules, Semantic Versioning (SemVer) & Release Guidelines Rule, Supabase Query Limit & Batch Operations Rule
 
-### Community 310 - "@googleapis/chat"
-Cohesion: 0.73
-Nodes (4): formatIndonesianDate(), generatePsikotestPDF(), loadImgBase64(), PsikotestManagementPage()
-
 ### Community 368 - "route.js"
 Cohesion: 0.57
 Nodes (6): extractScheduleMeta(), GET(), POST(), resolveCurrentFormFee(), supabaseAdmin, verifyAuth()
-
-### Community 377 - "SKILL.md"
-Cohesion: 0.17
-Nodes (11): 10.1 Tables, 10.2 ERD / Relationships (Duty & Devotion Schedule Domain), 10. Duty, Greeter & Devotion Schedule Domain (`/data/door_greeter`), 6.1 Tables, 6.2 ERD / Relationships (Assessment & Grading), 6. Assessment & Grading Domain (`/data/topic-new` / Reports), `assessment_grade_strands`, `assessment_grades` (+3 more)
 
 ### Community 388 - "page.jsx"
 Cohesion: 0.38
@@ -1184,24 +1052,24 @@ Cohesion: 0.40
 Nodes (3): ALLOWED_EXTS, ALLOWED_TYPES, supabaseAdmin
 
 ## Knowledge Gaps
-- **1333 isolated node(s):** `extends`, `next/core-web-vitals`, `$schema`, `style`, `rsc` (+1328 more)
+- **1240 isolated node(s):** `extends`, `next/core-web-vitals`, `$schema`, `style`, `rsc` (+1235 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **213 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **141 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `dependencies` connect `Module 133` to `Admission Management`, `Package Dependencies & Config`, `next-auth`, `DDL`, `📁 **Project Structure**`, `react-dom`, `Module 134`, `pdf-lib`, `@radix-ui/react-select`, `react-hook-form`, `React UI Components`, `class-variance-authority`, `@tiptap/extension-table-cell`, `@tiptap/extension-table-header`, `@tiptap/extension-table-row`, `@tiptap/extension-task-item`, `@tiptap/extension-task-list`, `@tiptap/extension-text-align`, `docx`, `@tiptap/extension-text-style`, `@tiptap/extension-underline`, `@tiptap/pm`, `Module 154`, `Module 155`, `@tiptap/react`, `@tiptap/starter-kit`, `xlsx`, `**3. Assessment System**`, `SKILL.md`, `exceljs`, `clsx`, `dotenv`, `googleapis`, `zod`, `Appendix B - Canonical Sources (read these before reinventing)`, `Analysis & Synthesis Instructions`, `**3. Assessment System**`, `9. AI TELLS (Forbidden Patterns)`, `12. THE COMBINATORIAL VARIATION ENGINE`, `📁 **Project Structure**`, `html5-qrcode`, `11. REDESIGN PROTOCOL`, `33. CATEGORY-SPECIFIC BIAS`, `qrcode`, `@radix-ui/react-slot`, `Module 239`, `@tiptap/extension-font-family`, `jsonwebtoken`, `jspdf-autotable`, `@sparticuz/chromium-min`, `@supabase/supabase-js`, `react-easy-crop`?**
-  _High betweenness centrality (0.005) - this node is a cross-community bridge._
-- **Why does `jspdf` connect `Admission Management` to `Module 145`, `Module 133`, `@googleapis/chat`?**
-  _High betweenness centrality (0.005) - this node is a cross-community bridge._
+- **Why does `dependencies` connect `Module 133` to `Admission Management`, `Package Dependencies & Config`, `next-auth`, `DDL`, `📁 **Project Structure**`, `react-dom`, `Module 134`, `pdf-lib`, `@radix-ui/react-select`, `react-hook-form`, `React UI Components`, `class-variance-authority`, `@tiptap/extension-table-cell`, `8.1 Tables`, `@tiptap/extension-table-header`, `@tiptap/extension-table-row`, `@tiptap/extension-task-item`, `@tiptap/extension-task-list`, `docx`, `@tiptap/extension-text-align`, `@tiptap/extension-text-style`, `@tiptap/extension-underline`, `Module 154`, `Module 155`, `@tiptap/pm`, `@tiptap/react`, `@tiptap/starter-kit`, `xlsx`, `**3. Assessment System**`, `SKILL.md`, `exceljs`, `clsx`, `dotenv`, `googleapis`, `zod`, `Appendix B - Canonical Sources (read these before reinventing)`, `Analysis & Synthesis Instructions`, `**3. Assessment System**`, `12. THE COMBINATORIAL VARIATION ENGINE`, `📁 **Project Structure**`, `html5-qrcode`, `11. REDESIGN PROTOCOL`, `33. CATEGORY-SPECIFIC BIAS`, `12. THE BLOCK LIBRARY (Contract - Implementations Land Here Iteratively)`, `5. CONTEXT-AWARE PROACTIVITY`, `8. DARK MODE PROTOCOL`, `Module 239`, `jsonwebtoken`, `jspdf-autotable`, `@sparticuz/chromium-min`, `react-easy-crop`?**
+  _High betweenness centrality (0.015) - this node is a cross-community bridge._
+- **Why does `jspdf` connect `Admission Management` to `Module 145`, `Module 133`?**
+  _High betweenness centrality (0.008) - this node is a cross-community bridge._
+- **Why does `react` connect `React UI Components` to `Module 145`, `Module 133`?**
+  _High betweenness centrality (0.002) - this node is a cross-community bridge._
 - **What connects `extends`, `next/core-web-vitals`, `$schema` to the rest of the system?**
-  _1333 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _1240 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `Admission Management` be split into smaller, more focused modules?**
-  _Cohesion score 0.07667900581702802 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.06438631790744467 - nodes in this community are weakly interconnected._
 - **Should `Package Dependencies & Config` be split into smaller, more focused modules?**
   _Cohesion score 0.09090909090909091 - nodes in this community are weakly interconnected._
 - **Should `RLS & Migration Scripts` be split into smaller, more focused modules?**
   _Cohesion score 0.045454545454545456 - nodes in this community are weakly interconnected._
-- **Should `Component Aliases & UI Library` be split into smaller, more focused modules?**
-  _Cohesion score 0.05 - nodes in this community are weakly interconnected._

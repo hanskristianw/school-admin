@@ -10,9 +10,33 @@
 
 export const SYSTEM_RELEASES = [
   {
+    "version": "0.6.1",
+    "date": "2026-11-10",
+    "isLatest": true,
+    "summary": {
+      "id": "Standardisasi penuh bahasa Inggris pada halaman Health Report Card (/data/health_report) serta generator PDF rapor kesehatan PYP dan MYP.",
+      "en": "Full English standardization across the Health Report Card workspace (/data/health_report) and PYP/MYP PDF health report card generators.",
+      "zh": "全面统一健康报告卡工作区（/data/health_report）以及 PYP 与 MYP PDF 健康报告生成器的英文表头与界面标签。"
+    },
+    "sections": {
+      "changed": [
+        {
+          "id": "Menyeragamkan seluruh header kolom tabel, label antarmuka, tombol aksi, placeholder, dan pesan status pada halaman Health Report Card (/data/health_report) ke dalam bahasa Inggris resmi (EYE, EAR, DENTAL, BP, RBG, COLOR VISION, NAILS, HAIR, WEIGHT, HEIGHT, TYPE, DATE, CHRONOLOGY, TREATMENT).",
+          "en": "Standardized all table column headers, UI labels, action buttons, placeholders, and status messages on the Health Report Card page (/data/health_report) into official English (EYE, EAR, DENTAL, BP, RBG, COLOR VISION, NAILS, HAIR, WEIGHT, HEIGHT, TYPE, DATE, CHRONOLOGY, TREATMENT).",
+          "zh": "将健康报告卡页面（/data/health_report）中的所有表格列标题、界面标签、操作按钮、占位提示及状态消息统一规范为英文（EYE、EAR、DENTAL、BP、RBG、COLOR VISION、NAILS、HAIR、WEIGHT、HEIGHT、TYPE、DATE、CHRONOLOGY、TREATMENT）。"
+        },
+        {
+          "id": "Menyeragamkan header tabel Physical Check / Clinical & Physical Check serta teks status pemeriksaan fisik Semester 2 Nursery pada generator PDF rapor PYP dan MYP ke dalam bahasa Inggris.",
+          "en": "Standardized Physical Check / Clinical & Physical Check table headers and Nursery Semester 2 physical examination status text in the PYP and MYP PDF report card generators into English.",
+          "zh": "将 PYP 与 MYP PDF 成绩单生成器中的体格检查（Physical Check / Clinical & Physical Check）表头及托班第二学期无体格检查提示文本统一为英文。"
+        }
+      ]
+    }
+  },
+  {
     "version": "0.6.0",
     "date": "2026-11-07",
-    "isLatest": true,
+    "isLatest": false,
     "summary": {
       "id": "Rilis komprehensif portal checklist kebersihan vendor & pusat penanganan komplain fasilitas ruangan (laci drawer hamburger, 2 tab komplain, upload bukti perbaikan), optimasi logo mobile, serta perombakan alur pendaftaran siswa baru dengan interactive tabbed stepper dan kartu referral mandiri.",
       "en": "Comprehensive release of vendor cleaning checklist & room facility complaint resolution center (slide-over hamburger drawer, 2-tab complaint view, resolution photo proof), mobile logo optimization, and applicant portal overhaul with interactive tabbed stepper and standalone referral step.",
