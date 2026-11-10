@@ -25,6 +25,7 @@ export async function GET(request) {
         photo_file,
         hosting_url,
         status,
+        notes,
         created_at,
         resolved_at,
         resolved_by_name,
@@ -48,23 +49,26 @@ export async function GET(request) {
       return NextResponse.json({ success: false, message: error.message }, { status: 500 })
     }
 
-    const formatted = (reports || []).map(r => ({
-      id: r.id,
-      room_id: r.room_id,
-      room_name: r.room?.room_name || `Ruangan #${r.room_id}`,
-      room_token: r.room?.qr_code_token || '',
-      reporter_name: r.reporter_name,
-      reporter_contact: r.reporter_contact,
-      issue_description: r.issue_description,
-      photo_file: r.photo_file,
-      hosting_url: r.hosting_url,
-      status: r.status,
-      created_at: r.created_at,
-      resolved_at: r.resolved_at,
-      resolved_by_name: r.resolved_by_name,
-      resolution_photo_file: r.resolution_photo_file,
-      resolution_notes: r.resolution_notes
-    }))
+    const formatted = (reports || []).map(r => {
+      const isGeneralQr = !r.room_id || r.notes === 'GENERAL_QR'
+      return {
+        id: r.id,
+        room_id: isGeneralQr ? null : r.room_id,
+        room_name: isGeneralQr ? 'Laporan Umum (QR General)' : (r.room?.room_name || `Ruangan #${r.room_id}`),
+        room_token: isGeneralQr ? '' : (r.room?.qr_code_token || ''),
+        reporter_name: r.reporter_name || 'Anonim',
+        reporter_contact: r.reporter_contact,
+        issue_description: r.issue_description,
+        photo_file: r.photo_file,
+        hosting_url: r.hosting_url,
+        status: r.status,
+        created_at: r.created_at,
+        resolved_at: r.resolved_at,
+        resolved_by_name: r.resolved_by_name,
+        resolution_photo_file: r.resolution_photo_file,
+        resolution_notes: r.resolution_notes
+      }
+    })
 
     return NextResponse.json({ success: true, reports: formatted })
   } catch (err) {

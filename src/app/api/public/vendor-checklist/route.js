@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { getCleanerAssignmentsMap } from '@/app/api/vendor-checklist/assignments/route'
 
 export const dynamic = 'force-dynamic'
 
@@ -29,9 +30,13 @@ function getTodayWIB() {
 }
 
 /**
- * GET: Ambil status checklist ruangan hari ini berdasarkan qr_token ATAU ambil daftar cleaner
- * URL: /api/public/vendor-checklist?room_token=xxx
- * URL: /api/public/vendor-checklist?action=get_cleaners
+ * GET /api/public/vendor-checklist
+ * Mendukung:
+ * - ?action=get_cleaners
+ * - ?action=get_cleaner_rooms&user_id=xxx (atau &worker_name=xxx)
+ * - ?action=get_active_reports
+ * - ?action=get_resolved_reports
+ * - ?room_id=xxx atau ?room_token=xxx
  */
 export async function GET(request) {
   try {
@@ -52,6 +57,7 @@ export async function GET(request) {
           photo_file,
           hosting_url,
           status,
+          notes,
           created_at,
           resolved_at,
           resolved_by_name,
@@ -75,63 +81,166 @@ export async function GET(request) {
         return NextResponse.json({ success: false, message: rErr.message }, { status: 500 })
       }
 
-      const formatted = (reports || []).map(r => ({
-        id: r.id,
-        room_id: r.room_id,
-        room_name: r.room?.room_name || `Ruangan #${r.room_id}`,
-        room_token: r.room?.qr_code_token || '',
-        reporter_name: r.reporter_name,
-        reporter_contact: r.reporter_contact,
-        issue_description: r.issue_description,
-        photo_file: r.photo_file,
-        hosting_url: r.hosting_url,
-        status: r.status,
-        created_at: r.created_at,
-        resolved_at: r.resolved_at,
-        resolved_by_name: r.resolved_by_name,
-        resolution_photo_file: r.resolution_photo_file,
-        resolution_notes: r.resolution_notes
-      }))
+      const formatted = (reports || []).map(r => {
+        const isGeneralQr = !r.room_id || r.notes === 'GENERAL_QR'
+        return {
+          id: r.id,
+          room_id: isGeneralQr ? null : r.room_id,
+          room_name: isGeneralQr ? 'Laporan Umum (QR General)' : (r.room?.room_name || `Ruangan #${r.room_id}`),
+          room_token: isGeneralQr ? '' : (r.room?.qr_code_token || ''),
+          reporter_name: r.reporter_name || 'Anonim',
+          reporter_contact: r.reporter_contact,
+          issue_description: r.issue_description,
+          photo_file: r.photo_file,
+          hosting_url: r.hosting_url,
+          status: r.status,
+          created_at: r.created_at,
+          resolved_at: r.resolved_at,
+          resolved_by_name: r.resolved_by_name,
+          resolution_photo_file: r.resolution_photo_file,
+          resolution_notes: r.resolution_notes
+        }
+      })
 
       return NextResponse.json({ success: true, reports: formatted })
     }
 
-    // 0b. Ambil daftar petugas kebersihan (role_id 14: Cleaning, is_active: true)
+    // 0b. Ambil daftar petugas kebersihan (role_id 14: Cleaning, is_active: true) beserta jumlah ruangan tugasnya
     if (action === 'get_cleaners') {
-      const { data: cleaners, error: cErr } = await supabaseAdmin
-        .from('users')
-        .select('user_id, user_nama_depan, user_nama_belakang, user_role_id')
-        .eq('user_role_id', 14)
-        .eq('is_active', true)
-        .order('user_nama_depan', { ascending: true })
+      const [cleanersRes, maps] = await Promise.all([
+        supabaseAdmin
+          .from('users')
+          .select('user_id, user_nama_depan, user_nama_belakang, user_role_id')
+          .eq('user_role_id', 14)
+          .eq('is_active', true)
+          .order('user_nama_depan', { ascending: true }),
+        getCleanerAssignmentsMap()
+      ])
 
-      if (cErr) {
-        return NextResponse.json({ success: false, message: cErr.message }, { status: 500 })
+      if (cleanersRes.error) {
+        return NextResponse.json({ success: false, message: cleanersRes.error.message }, { status: 500 })
       }
 
-      const list = (cleaners || []).map(u => ({
-        user_id: u.user_id,
-        name: `${u.user_nama_depan || ''} ${u.user_nama_belakang || ''}`.trim()
-      }))
+      const assignmentsMap = maps.byCleanerMap || {}
+
+      const list = (cleanersRes.data || []).map(u => {
+        const fullName = `${u.user_nama_depan || ''} ${u.user_nama_belakang || ''}`.trim()
+        const assignedRoomIds = assignmentsMap[String(u.user_id)] || []
+        return {
+          user_id: u.user_id,
+          name: fullName,
+          full_name: fullName,
+          assigned_room_ids: assignedRoomIds
+        }
+      })
 
       return NextResponse.json({ success: true, cleaners: list })
     }
 
+    // 0c. Ambil daftar ruangan yang di-handle oleh petugas tertentu (Si X -> Ruangan A, B, C, D)
+    //     beserta status checklist hari ini untuk masing-masing ruangan tersebut
+    if (action === 'get_cleaner_rooms') {
+      const userIdParam = searchParams.get('user_id')
+      const workerNameParam = (searchParams.get('worker_name') || '').trim()
+
+      const [cleanersRes, roomsRes, maps] = await Promise.all([
+        supabaseAdmin
+          .from('users')
+          .select('user_id, user_nama_depan, user_nama_belakang')
+          .eq('user_role_id', 14)
+          .eq('is_active', true),
+        supabaseAdmin
+          .from('room')
+          .select('room_id, room_name, qr_code_token, is_active')
+          .eq('is_active', true)
+          .order('room_name', { ascending: true }),
+        getCleanerAssignmentsMap()
+      ])
+
+      if (roomsRes.error) {
+        return NextResponse.json({ success: false, message: roomsRes.error.message }, { status: 500 })
+      }
+
+      const assignmentsMap = maps.byCleanerMap || {}
+
+      let targetUserId = userIdParam ? String(userIdParam) : null
+      let cleanerObj = null
+
+      const allCleaners = (cleanersRes.data || []).map(u => ({
+        user_id: u.user_id,
+        name: `${u.user_nama_depan || ''} ${u.user_nama_belakang || ''}`.trim()
+      }))
+
+      if (targetUserId) {
+        cleanerObj = allCleaners.find(c => String(c.user_id) === targetUserId) || null
+      } else if (workerNameParam) {
+        cleanerObj = allCleaners.find(c => c.name.toLowerCase() === workerNameParam.toLowerCase()) || null
+        if (cleanerObj) targetUserId = String(cleanerObj.user_id)
+      }
+
+      const assignedRoomIds = targetUserId ? (assignmentsMap[targetUserId] || []) : []
+      const allActiveRooms = roomsRes.data || []
+
+      // Filter ruangan yang ditugaskan ke Si X
+      const assignedRooms = allActiveRooms.filter(r => assignedRoomIds.includes(Number(r.room_id)))
+
+      // Ambil status checklist hari ini untuk ruangan-ruangan tersebut
+      const today = getTodayWIB()
+      let checklistsByRoom = {}
+      if (assignedRooms.length > 0) {
+        const rIds = assignedRooms.map(r => r.room_id)
+        const { data: chkData } = await supabaseAdmin
+          .from('vendor_room_checklists')
+          .select('*')
+          .in('room_id', rIds)
+          .eq('check_date', today)
+
+        ;(chkData || []).forEach(c => {
+          checklistsByRoom[c.room_id] = c
+        })
+      }
+
+      const formattedRooms = assignedRooms.map(r => {
+        const chk = checklistsByRoom[r.room_id] || null
+        return {
+          room_id: r.room_id,
+          room_name: r.room_name,
+          room_token: r.qr_code_token || `rm_${r.room_id}`,
+          checklist: chk,
+          status: chk ? chk.status : 'not_started'
+        }
+      })
+
+      return NextResponse.json({
+        success: true,
+        todayDate: today,
+        cleaner: cleanerObj || { user_id: targetUserId, name: workerNameParam },
+        rooms: formattedRooms
+      })
+    }
+
+    // 1. Cari ruangan berdasarkan room_id ATAU room_token
+    const roomIdParam = searchParams.get('room_id')
     const roomToken = searchParams.get('room_token')
 
-    if (!roomToken) {
+    if (!roomIdParam && !roomToken) {
       return NextResponse.json(
-        { success: false, message: 'Parameter room_token diperlukan' },
+        { success: false, message: 'Parameter room_id atau room_token diperlukan' },
         { status: 400 }
       )
     }
 
-    // 1. Cari ruangan berdasarkan token QR
-    const { data: room, error: roomErr } = await supabaseAdmin
+    let roomQuery = supabaseAdmin
       .from('room')
       .select('room_id, room_name, qr_code_token, is_active')
-      .eq('qr_code_token', roomToken)
-      .maybeSingle()
+
+    if (roomIdParam) {
+      roomQuery = roomQuery.eq('room_id', Number(roomIdParam))
+    } else {
+      roomQuery = roomQuery.eq('qr_code_token', roomToken)
+    }
+
+    const { data: room, error: roomErr } = await roomQuery.maybeSingle()
 
     if (roomErr) {
       return NextResponse.json({ success: false, message: roomErr.message }, { status: 500 })
@@ -139,7 +248,7 @@ export async function GET(request) {
 
     if (!room) {
       return NextResponse.json(
-        { success: false, message: 'QR Code ruangan tidak valid atau tidak terdaftar di sistem.' },
+        { success: false, message: 'Ruangan tidak ditemukan di sistem.' },
         { status: 404 }
       )
     }
@@ -164,33 +273,15 @@ export async function GET(request) {
       console.error('[VendorChecklist API] Error fetching checklist:', checkErr)
     }
 
-    // 3. Ambil data komplain aktif untuk ruangan ini jika ada
-    let activeReports = []
-    try {
-      const { data: repData, error: repErr } = await supabaseAdmin
-        .from('room_facility_reports')
-        .select('id, reporter_name, reporter_contact, issue_description, photo_file, hosting_url, status, created_at')
-        .eq('room_id', room.room_id)
-        .in('status', ['pending', 'in_progress'])
-        .order('created_at', { ascending: false })
-
-      if (!repErr && repData) {
-        activeReports = repData
-      }
-    } catch (e) {
-      console.warn('[VendorChecklist API] Error fetching active room reports:', e)
-    }
-
     return NextResponse.json({
       success: true,
       room: {
         id: room.room_id,
         name: room.room_name,
-        token: room.qr_code_token
+        token: room.qr_code_token || `rm_${room.room_id}`
       },
       todayDate: today,
-      checklist: checklist || null,
-      activeReports: activeReports
+      checklist: checklist || null
     })
 
   } catch (err) {
@@ -200,8 +291,14 @@ export async function GET(request) {
 }
 
 /**
- * POST: Simpan aksi checklist dari cPanel PHP
- * Action: 'start_progress' (Before) | 'submit_finish' (After) | 'submit_revision' (Revision) | 'submit_report' (Pelaporan Fasilitas)
+ * POST: Simpan aksi checklist & laporan fasilitas
+ * Actions:
+ * - 'submit_before_after' (Upload Foto Before & After sekaligus untuk ruangan Si X)
+ * - 'start_progress' (Before)
+ * - 'submit_finish' (After)
+ * - 'submit_revision' (Revision)
+ * - 'submit_report' / 'submit_complaint' (Pelaporan Keluhan General QR /report_facility)
+ * - 'resolve_report' (Penyelesaian komplain oleh Cleaner)
  */
 export async function POST(request) {
   try {
@@ -209,9 +306,12 @@ export async function POST(request) {
     const {
       secret_token,
       action,
+      room_id,
       room_token,
       worker_name,
       image_file,
+      image_before_file,
+      image_after_file,
       hosting_url,
       notes,
       reporter_name,
@@ -233,7 +333,110 @@ export async function POST(request) {
       )
     }
 
-    // ── AKSI 5: RESOLVE REPORT / COMPLAINT OLEH PIHAK CLEANING ────────────
+    const today = getTodayWIB()
+    const nowISO = new Date().toISOString()
+
+    // ── AKSI 1: SUBMIT REPORT / COMPLAINT (Dari QR General /report_facility) ──
+    if (action === 'submit_report' || action === 'submit_complaint') {
+      const repName = (reporter_name || '').trim() || 'Anonim'
+      const desc = (issue_description || notes || '').trim()
+
+      if (!desc) {
+        return NextResponse.json({ success: false, message: 'Deskripsi keluhan wajib diisi' }, { status: 400 })
+      }
+
+      let finalPhotoFile = image_file || null
+
+      // Jika dikirim menggunakan image_base64
+      if (!finalPhotoFile && body.image_base64) {
+        try {
+          const base64Data = body.image_base64.replace(/^data:image\/\w+;base64,/, '')
+          const buffer = Buffer.from(base64Data, 'base64')
+          const filePath = `facility-reports/report_${Date.now()}_${Math.random().toString(36).slice(2, 8)}.jpg`
+          const { error: upErr } = await supabaseAdmin.storage
+            .from('attachments')
+            .upload(filePath, buffer, { contentType: 'image/jpeg', upsert: false })
+          if (!upErr) {
+            const { data: pubData } = supabaseAdmin.storage.from('attachments').getPublicUrl(filePath)
+            if (pubData?.publicUrl) finalPhotoFile = pubData.publicUrl
+          }
+        } catch (e) {
+          console.warn('[VendorChecklist API] Failed uploading base64 photo to storage:', e)
+        }
+      }
+
+      if (!finalPhotoFile) {
+        return NextResponse.json(
+          { success: false, message: 'Foto kondisi wajib dilampirkan' },
+          { status: 400 }
+        )
+      }
+
+      // Cari room_id jika kebetulan disertakan (opsional), jika tidak biarkan null (General QR)
+      let targetRoomId = room_id ? Number(room_id) : null
+      if (!targetRoomId && room_token) {
+        const { data: rm } = await supabaseAdmin
+          .from('room')
+          .select('room_id')
+          .eq('qr_code_token', room_token)
+          .maybeSingle()
+        if (rm) targetRoomId = rm.room_id
+      }
+
+      const insertPayload = {
+        room_id: targetRoomId,
+        reporter_name: repName,
+        reporter_contact: reporter_contact?.trim() || null,
+        issue_description: desc,
+        photo_file: finalPhotoFile,
+        hosting_url: hosting_url || null,
+        status: 'pending',
+        notes: targetRoomId ? null : 'GENERAL_QR'
+      }
+
+      let { data: reportData, error: reportErr } = await supabaseAdmin
+        .from('room_facility_reports')
+        .insert(insertPayload)
+        .select()
+        .maybeSingle()
+
+      // Fallback jika ALTER TABLE room_id DROP NOT NULL belum dijalankan di Supabase
+      if (reportErr && reportErr.code === '23502' && !targetRoomId) {
+        const { data: firstRoom } = await supabaseAdmin
+          .from('room')
+          .select('room_id')
+          .order('room_id', { ascending: true })
+          .limit(1)
+          .maybeSingle()
+
+        if (firstRoom?.room_id) {
+          const retryRes = await supabaseAdmin
+            .from('room_facility_reports')
+            .insert({
+              ...insertPayload,
+              room_id: firstRoom.room_id,
+              notes: 'GENERAL_QR'
+            })
+            .select()
+            .maybeSingle()
+          reportData = retryRes.data
+          reportErr = retryRes.error
+        }
+      }
+
+      if (reportErr) {
+        console.error('[VendorChecklist API] Error inserting report:', reportErr)
+        return NextResponse.json({ success: false, message: reportErr.message }, { status: 500 })
+      }
+
+      return NextResponse.json({
+        success: true,
+        message: 'Laporan keluhan fasilitas berhasil dikirim',
+        data: reportData
+      })
+    }
+
+    // ── AKSI 2: RESOLVE REPORT / COMPLAINT OLEH PIHAK CLEANING ────────────
     if (action === 'resolve_report') {
       const reportId = body.report_id
       const workerName = (body.worker_name || '').trim()
@@ -250,7 +453,6 @@ export async function POST(request) {
         return NextResponse.json({ success: false, message: 'Foto bukti penanganan komplain wajib diunggah' }, { status: 400 })
       }
 
-      const nowISO = new Date().toISOString()
       const { data: updData, error: updErr } = await supabaseAdmin
         .from('room_facility_reports')
         .update({
@@ -278,19 +480,21 @@ export async function POST(request) {
       })
     }
 
-    if (!room_token) {
+    // ── UNTUK AKSI CHECKLIST RUANGAN: Cari Ruangan via room_id atau room_token ──
+    if (!room_id && !room_token) {
       return NextResponse.json(
-        { success: false, message: 'Parameter room_token wajib diisi' },
+        { success: false, message: 'Parameter room_id atau room_token wajib diisi' },
         { status: 400 }
       )
     }
 
-    // 1. Verifikasi ruangan
-    const { data: room, error: roomErr } = await supabaseAdmin
-      .from('room')
-      .select('room_id, room_name, is_active')
-      .eq('qr_code_token', room_token)
-      .maybeSingle()
+    let rQuery = supabaseAdmin.from('room').select('room_id, room_name, is_active')
+    if (room_id) {
+      rQuery = rQuery.eq('room_id', Number(room_id))
+    } else {
+      rQuery = rQuery.eq('qr_code_token', room_token)
+    }
+    const { data: room, error: roomErr } = await rQuery.maybeSingle()
 
     if (roomErr || !room) {
       return NextResponse.json(
@@ -299,54 +503,7 @@ export async function POST(request) {
       )
     }
 
-    const today = getTodayWIB()
-    const nowISO = new Date().toISOString()
-
-    // ── AKSI 4: SUBMIT REPORT / COMPLAINT (Pelaporan Fasilitas Ruangan) ───
-    if (action === 'submit_report' || action === 'submit_complaint') {
-      const repName = (reporter_name || worker_name || '').trim()
-      const desc = (issue_description || notes || '').trim()
-
-      if (!repName) {
-        return NextResponse.json({ success: false, message: 'Nama pelapor wajib diisi' }, { status: 400 })
-      }
-      if (!desc) {
-        return NextResponse.json({ success: false, message: 'Deskripsi keluhan wajib diisi' }, { status: 400 })
-      }
-
-      const { data: reportData, error: reportErr } = await supabaseAdmin
-        .from('room_facility_reports')
-        .insert({
-          room_id: room.room_id,
-          reporter_name: repName,
-          reporter_contact: reporter_contact?.trim() || null,
-          issue_description: desc,
-          photo_file: image_file || null,
-          hosting_url: hosting_url || null,
-          status: 'pending'
-        })
-        .select()
-        .maybeSingle()
-
-      if (reportErr) {
-        console.error('[VendorChecklist API] Error inserting report:', reportErr)
-        if (reportErr.code === '42P01') {
-          return NextResponse.json({
-            success: false,
-            message: 'Tabel room_facility_reports belum dibuat di Supabase. Silakan jalankan file migrasi create-room-facility-reports-table.sql.'
-          }, { status: 500 })
-        }
-        throw reportErr
-      }
-
-      return NextResponse.json({
-        success: true,
-        message: 'Laporan kerusakan/keluhan fasilitas berhasil dikirim',
-        data: reportData
-      })
-    }
-
-    // 2. Cek apakah sudah ada checklist untuk hari ini
+    // Cek apakah sudah ada checklist untuk ruangan ini hari ini
     const { data: existing } = await supabaseAdmin
       .from('vendor_room_checklists')
       .select('*')
@@ -354,7 +511,61 @@ export async function POST(request) {
       .eq('check_date', today)
       .maybeSingle()
 
-    // ── AKSI 1: START PROGRESS (Upload Foto Before) ────────────────────────
+    // ── AKSI 3: SUBMIT BEFORE & AFTER SEKALIGUS (1 Halaman Praktis) ──────────
+    if (action === 'submit_before_after') {
+      if (!worker_name?.trim()) {
+        return NextResponse.json({ success: false, message: 'Nama petugas wajib dipilih' }, { status: 400 })
+      }
+      if (!image_before_file || !image_after_file) {
+        return NextResponse.json(
+          { success: false, message: 'Foto Before dan Foto After wajib diunggah keduanya' },
+          { status: 400 }
+        )
+      }
+
+      if (existing) {
+        const { error: updErr } = await supabaseAdmin
+          .from('vendor_room_checklists')
+          .update({
+            vendor_worker_name: worker_name.trim(),
+            image_before_file,
+            image_after_file,
+            hosting_url: hosting_url || existing.hosting_url || null,
+            notes: notes?.trim() || existing.notes || null,
+            status: 'pending_review',
+            start_time: existing.start_time || nowISO,
+            end_time: nowISO,
+            updated_at: nowISO
+          })
+          .eq('id', existing.id)
+
+        if (updErr) throw updErr
+      } else {
+        const { error: insErr } = await supabaseAdmin
+          .from('vendor_room_checklists')
+          .insert({
+            room_id: room.room_id,
+            check_date: today,
+            vendor_worker_name: worker_name.trim(),
+            image_before_file,
+            image_after_file,
+            hosting_url: hosting_url || null,
+            notes: notes?.trim() || null,
+            status: 'pending_review',
+            start_time: nowISO,
+            end_time: nowISO
+          })
+
+        if (insErr) throw insErr
+      }
+
+      return NextResponse.json({
+        success: true,
+        message: 'Foto Before & After berhasil disimpan dan dikirim untuk ditinjau supervisor'
+      })
+    }
+
+    // ── AKSI 4: START PROGRESS (Upload Foto Before saja - kompatibilitas) ───
     if (action === 'start_progress') {
       if (!worker_name?.trim()) {
         return NextResponse.json({ success: false, message: 'Nama petugas wajib diisi' }, { status: 400 })
@@ -364,7 +575,6 @@ export async function POST(request) {
       }
 
       if (existing) {
-        // Jika sudah ada tapi statusnya in_progress, update Before
         const { error: updErr } = await supabaseAdmin
           .from('vendor_room_checklists')
           .update({
@@ -380,7 +590,6 @@ export async function POST(request) {
         if (updErr) throw updErr
         return NextResponse.json({ success: true, message: 'Pekerjaan kebersihan dimulai (Before diupdate)' })
       } else {
-        // Buat record baru
         const { error: insErr } = await supabaseAdmin
           .from('vendor_room_checklists')
           .insert({
@@ -398,7 +607,7 @@ export async function POST(request) {
       }
     }
 
-    // ── AKSI 2: SUBMIT FINISH (Upload Foto After) ──────────────────────────
+    // ── AKSI 5: SUBMIT FINISH (Upload Foto After saja - kompatibilitas) ─────
     if (action === 'submit_finish') {
       if (!existing) {
         return NextResponse.json(
@@ -425,7 +634,7 @@ export async function POST(request) {
       return NextResponse.json({ success: true, message: 'Pekerjaan selesai dan dikirim untuk ditinjau supervisor' })
     }
 
-    // ── AKSI 3: SUBMIT REVISION (Upload Foto Perbaikan) ────────────────────
+    // ── AKSI 6: SUBMIT REVISION (Upload Foto Perbaikan) ────────────────────
     if (action === 'submit_revision') {
       if (!existing) {
         return NextResponse.json({ success: false, message: 'Data checklist tidak ditemukan' }, { status: 404 })
@@ -439,7 +648,7 @@ export async function POST(request) {
         .update({
           image_revision_file: image_file,
           notes: notes?.trim() ? `${existing.notes ? existing.notes + ' | ' : ''}Revisi: ${notes.trim()}` : existing.notes,
-          status: 'pending_review', // kirim ulang untuk dicek lagi
+          status: 'pending_review',
           updated_at: nowISO
         })
         .eq('id', existing.id)

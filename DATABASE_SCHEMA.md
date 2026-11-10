@@ -1236,17 +1236,28 @@ Stores daily room cleaning checklist workflows submitted by cleaning staff via t
 | `created_at` | `TIMESTAMPTZ` | Record creation timestamp |
 | `updated_at` | `TIMESTAMPTZ` | Record last update timestamp |
 
-#### `room_facility_reports`
-Stores reports of damaged or problematic room facilities submitted by room reporters (teachers, students, staff, guests) via the cPanel bilingual portal.
+#### `vendor_cleaner_rooms`
+Many-to-Many junction table mapping cleaning staff (`users` with `user_role_id = 14`) to the rooms (`room`) they are responsible for handling.
 
 | Column Name | Type | Description / Constraint |
 | --- | --- | --- |
 | `id` | `BIGSERIAL` | Primary Key |
-| `room_id` | `INTEGER` | FK to `room(room_id)` |
-| `reporter_name` | `VARCHAR(150)` | Name of the person reporting the issue |
+| `user_id` | `INTEGER` | FK to `users(user_id)` ON DELETE CASCADE |
+| `room_id` | `INTEGER` | FK to `room(room_id)` ON DELETE CASCADE |
+| `created_at` | `TIMESTAMPTZ` | Record creation timestamp |
+| `(user_id, room_id)` | `UNIQUE` | Unique constraint per cleaner and room |
+
+#### `room_facility_reports`
+Stores reports of damaged or problematic facilities submitted by reporters via the General QR portal (`/report_facility`).
+
+| Column Name | Type | Description / Constraint |
+| --- | --- | --- |
+| `id` | `BIGSERIAL` | Primary Key |
+| `room_id` | `INTEGER` | Nullable FK to `room(room_id)` (Optional since General QR is not tied to a single room) |
+| `reporter_name` | `VARCHAR(150)` | Nullable name of the person reporting the issue (Default `'Anonim'` if omitted) |
 | `reporter_contact` | `VARCHAR(100)` | Optional contact (WhatsApp / Email / Phone) |
-| `issue_description` | `TEXT` | Detailed description of the problem or damaged facility |
-| `photo_file` | `TEXT` | Filename of the compressed photo evidence |
+| `issue_description` | `TEXT` | Detailed description of the problem or damaged facility (Required) |
+| `photo_file` | `TEXT` | Optional filename of the compressed photo evidence |
 | `hosting_url` | `TEXT` | Base URL of the cPanel storage server |
 | `status` | `VARCHAR(50)` | Default `'pending'`. Status: `'pending'`, `'in_progress'`, `'resolved'`, `'cancelled'` |
 | `resolved_at` | `TIMESTAMPTZ` | Timestamp when issue was resolved |

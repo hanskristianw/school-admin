@@ -14,12 +14,34 @@ export const SYSTEM_RELEASES = [
     "date": "2026-11-10",
     "isLatest": true,
     "summary": {
-      "id": "Standardisasi penuh bahasa Inggris pada halaman Health Report Card (/data/health_report) serta generator PDF rapor kesehatan PYP dan MYP.",
-      "en": "Full English standardization across the Health Report Card workspace (/data/health_report) and PYP/MYP PDF health report card generators.",
-      "zh": "全面统一健康报告卡工作区（/data/health_report）以及 PYP 与 MYP PDF 健康报告生成器的英文表头与界面标签。"
+      "id": "Perombakan sistem kebersihan vendor & pelaporan fasilitas (pemisahan Portal QR General Pelapor, penugasan ruangan tetap Many-to-Many per petugas cleaning, serta upload foto Before & After 1 halaman di portal cleaner), ditambah standardisasi bahasa Inggris penuh pada Health Report Card.",
+      "en": "Overhaul of the vendor cleaning & facility reporting system (dedicated General QR Reporter Portal, Many-to-Many static room assignments per cleaner, and single-page Before & After photo upload in the cleaner portal), plus full English standardization on Health Report Card.",
+      "zh": "全面重构保洁巡检与设施报修系统（独立的通用二维码报修门户、保洁员与教室多对多固定排班分配、保洁端单页同屏上传前后对比照），并全面统一健康报告卡（Health Report Card）英文标准。"
     },
     "sections": {
+      "added": [
+        {
+          "id": "Portal Pelapor Mandiri berbasis PHP di Hostinger dalam folder khusus terpisah (cpanel-report-facility/index.php untuk https://ccs.sch.id/reportfacility) menggunakan 1 QR Code General: mewajibkan upload Foto Kondisi dan Deskripsi Keluhan, serta Nama Pelapor bersifat opsional (bisa anonim).",
+          "en": "Standalone PHP Facility Reporter Portal for Hostinger in a dedicated folder (cpanel-report-facility/index.php for https://ccs.sch.id/reportfacility) powered by 1 General QR Code: requires Condition Photo upload and Issue Description, while Reporter Name is optional (supports anonymous reporting).",
+          "zh": "基于单一通用二维码的 Hostinger PHP 独立设施报修门户（独立目录 cpanel-report-facility/index.php 对应 https://ccs.sch.id/reportfacility）：必填现场照片与问题描述，报修人姓名为选填（支持匿名报修）。"
+        },
+        {
+          "id": "Pengaturan Petugas Kebersihan langsung per Ruangan (misal: Computer Lab → pilih 1 atau lebih cleaner yang membersihkan) pada tabel /data/vendor-checklist beserta API /api/vendor-checklist/assignments.",
+          "en": "Direct per-room Cleaning Staff assignment (e.g., Computer Lab → assign 1 or more cleaners responsible for cleaning the room) on the /data/vendor-checklist table along with the /api/vendor-checklist/assignments API.",
+          "zh": "在 /data/vendor-checklist 表格中支持按教室直接分配保洁员（如：Computer Lab → 可指定 1 名或多名负责打扫的保洁员），配套 /api/vendor-checklist/assignments 接口。"
+        },
+        {
+          "id": "Generator & Modal Cetak Stiker QR Code General Pelapor (PDF/PNG) pada halaman /data/vendor-checklist dan /data/room.",
+          "en": "General Reporter QR Code Sticker generator & print modal (PDF/PNG) on /data/vendor-checklist and /data/room.",
+          "zh": "在 /data/vendor-checklist 与 /data/room 新增通用报修二维码门贴生成器与 PDF/PNG 打印弹窗。"
+        }
+      ],
       "changed": [
+        {
+          "id": "Merombak portal web PHP cPanel (cpanel-vendor-checklist/index.php & cpanel-report-facility/index.php) menggunakan desain Utilitarian Editorial Minimalist dilengkapi logo resmi Chung Chung Christian School, palet warna Warm Monochrome & Spot Pastels, tipografi editorial Instrument Serif & JetBrains Mono, serta 2 dropdown bertingkat dengan penyimpanan nama cleaner otomatis di localStorage.",
+          "en": "Redesigned the cPanel PHP web portals (cpanel-vendor-checklist/index.php & cpanel-report-facility/index.php) using a Utilitarian Editorial Minimalist aesthetic featuring the official Chung Chung Christian School logo, Warm Monochrome & Spot Pastels palette, Instrument Serif & JetBrains Mono editorial typography, and 2 cascading dropdowns with automatic localStorage cleaner memory.",
+          "zh": "采用极简实用主义编辑风格（Utilitarian Editorial Minimalist）重构 cPanel PHP 门户（cpanel-vendor-checklist/index.php 与 cpanel-report-facility/index.php），配备中中基督学校（CCS）官方校徽、暖色单色与柔和粉彩配色、Instrument Serif 与 JetBrains Mono 字体排版，以及支持 localStorage 自动记忆保洁员姓名的双下拉菜单联动。"
+        },
         {
           "id": "Menyeragamkan seluruh header kolom tabel, label antarmuka, tombol aksi, placeholder, dan pesan status pada halaman Health Report Card (/data/health_report) ke dalam bahasa Inggris resmi (EYE, EAR, DENTAL, BP, RBG, COLOR VISION, NAILS, HAIR, WEIGHT, HEIGHT, TYPE, DATE, CHRONOLOGY, TREATMENT).",
           "en": "Standardized all table column headers, UI labels, action buttons, placeholders, and status messages on the Health Report Card page (/data/health_report) into official English (EYE, EAR, DENTAL, BP, RBG, COLOR VISION, NAILS, HAIR, WEIGHT, HEIGHT, TYPE, DATE, CHRONOLOGY, TREATMENT).",
@@ -29,6 +51,18 @@ export const SYSTEM_RELEASES = [
           "id": "Menyeragamkan header tabel Physical Check / Clinical & Physical Check serta teks status pemeriksaan fisik Semester 2 Nursery pada generator PDF rapor PYP dan MYP ke dalam bahasa Inggris.",
           "en": "Standardized Physical Check / Clinical & Physical Check table headers and Nursery Semester 2 physical examination status text in the PYP and MYP PDF report card generators into English.",
           "zh": "将 PYP 与 MYP PDF 成绩单生成器中的体格检查（Physical Check / Clinical & Physical Check）表头及托班第二学期无体格检查提示文本统一为英文。"
+        },
+        {
+          "id": "Menghapus tombol pintasan antar-halaman Master Ruangan pada halaman /data/vendor-checklist (serta pintasan sebaliknya pada /data/room) agar navigasi terpusat melalui menu utama.",
+          "en": "Removed the cross-page Room Master shortcut button on /data/vendor-checklist (and the reverse shortcut on /data/room) so navigation remains centralized through the main menu.",
+          "zh": "移除 /data/vendor-checklist 页面上的教室主数据跨页快捷按钮（以及 /data/room 上的反向快捷按钮），统一通过主菜单导航。"
+        }
+      ],
+      "fixed": [
+        {
+          "id": "Memperbaiki error 403 Forbidden (Direct access is strictly prohibited) pada portal PHP cPanel (cpanel-report-facility/index.php & cpanel-vendor-checklist/index.php) dengan mendefinisikan konstanta proteksi CCS_VENDOR_LOADED sebelum memuat config.php serta menyelaraskan konstanta API_SECRET_TOKEN dan NEXTJS_API_URL.",
+          "en": "Fixed the 403 Forbidden (Direct access is strictly prohibited) error on the cPanel PHP portals (cpanel-report-facility/index.php & cpanel-vendor-checklist/index.php) by defining the CCS_VENDOR_LOADED guard constant before loading config.php and aligning API_SECRET_TOKEN and NEXTJS_API_URL constants.",
+          "zh": "修复 cPanel PHP 门户（cpanel-report-facility/index.php 与 cpanel-vendor-checklist/index.php）中的 403 Forbidden（Direct access is strictly prohibited）错误，在加载 config.php 前定义 CCS_VENDOR_LOADED 保护常量并统一 API_SECRET_TOKEN 与 NEXTJS_API_URL 常量。"
         }
       ]
     }

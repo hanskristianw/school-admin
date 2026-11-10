@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation'
 import { useTheme } from '@/lib/theme'
 import supabase from '@/lib/supabase'
 import Modal from '@/components/ui/modal'
-import QRCode from 'qrcode'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import {
   faBuilding,
@@ -25,16 +24,13 @@ import {
   faFilePdf
 } from '@fortawesome/free-solid-svg-icons'
 import {
-  generateSingleRoomPDF,
-  generateBatchRoomPDF,
-  getRoomQrDataUrl
+  DEFAULT_GENERAL_REPORT_URL,
+  generateGeneralReporterPDF,
+  getGeneralReportQrDataUrl
 } from './lib/roomPdfGenerator'
 
-const BASE_CHECKLIST_URL = 'https://ccs.sch.id/checklist/'
-
-// Reusable Door Sticker Card Component (CCS 3-color ribbon & styling)
-function DoorStickerCard({ room, qrUrl }) {
-  if (!room) return null
+// Reusable General Reporter Door Sticker Card Component (CCS 3-color ribbon & styling)
+export function GeneralReporterStickerCard({ qrUrl, targetUrl = DEFAULT_GENERAL_REPORT_URL }) {
   return (
     <div className="door-sticker-card p-6 bg-white border-2 border-[#022c46] rounded-2xl text-center mx-auto w-full max-w-sm shadow-xs">
       {/* Pita 3 Warna Khas CCS */}
@@ -50,17 +46,17 @@ function DoorStickerCard({ room, qrUrl }) {
           CHUNG CHUNG CHRISTIAN SCHOOL
         </h2>
         <p className="text-[10px] font-bold tracking-wider text-[#f16101] uppercase mt-0.5">
-          Checklist Kebersihan Ruangan
+          Portal Pelaporan Keluhan &amp; Fasilitas
         </p>
       </div>
 
-      {/* Nama Ruangan */}
+      {/* Judul Umum */}
       <div className="py-2 mb-2">
         <span className="text-[9px] uppercase font-bold text-gray-400 tracking-wider block">
-          Lokasi Ruangan
+          QR Code Umum (General)
         </span>
-        <h1 className="text-xl font-black text-[#0b4877] mt-0.5 tracking-tight break-words">
-          {room.room_name}
+        <h1 className="text-lg font-black text-[#0b4877] mt-0.5 tracking-tight">
+          LAPOR KELUHAN &amp; KEBERSIHAN
         </h1>
       </div>
 
@@ -69,7 +65,7 @@ function DoorStickerCard({ room, qrUrl }) {
         {qrUrl ? (
           <img
             src={qrUrl}
-            alt={`QR ${room.room_name}`}
+            alt="QR Code General Pelapor"
             className="w-44 h-44 mx-auto rounded"
           />
         ) : (
@@ -82,10 +78,13 @@ function DoorStickerCard({ room, qrUrl }) {
       {/* Instruction Footer */}
       <div className="pt-2 border-t border-gray-200 text-center">
         <p className="text-[11px] font-bold text-[#022c46]">
-          Pindai (Scan) QR Sebelum &amp; Sesudah Membersihkan
+          Pindai (Scan) QR untuk Melaporkan Keluhan / Fasilitas
         </p>
-        <p className="text-[9px] font-mono text-gray-400 mt-1">
-          Token: {room.qr_code_token || 'rm_' + room.room_id}
+        <p className="text-[10px] text-gray-500 mt-0.5">
+          Foto Kondisi &amp; Deskripsi Wajib • Nama Pelapor Opsional (Bisa Anonim)
+        </p>
+        <p className="text-[9px] font-mono text-gray-400 mt-1 break-all">
+          {targetUrl}
         </p>
       </div>
     </div>
@@ -110,12 +109,11 @@ export default function RoomMasterPage() {
   const nameRef = useRef(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
 
-  // QR Sticker Modal states
-  const [selectedRoomSticker, setSelectedRoomSticker] = useState(null)
-  const [stickerQrUrl, setStickerQrUrl] = useState('')
-  const [isStickerModalOpen, setIsStickerModalOpen] = useState(false)
-  const [isBatchStickerModalOpen, setIsBatchStickerModalOpen] = useState(false)
-  const [batchQrUrls, setBatchQrUrls] = useState({})
+  // General QR Sticker Modal states
+  const [isGeneralQrModalOpen, setIsGeneralQrModalOpen] = useState(false)
+  const [generalQrUrl, setGeneralQrUrl] = useState('')
+  const [targetReportUrl, setTargetReportUrl] = useState(DEFAULT_GENERAL_REPORT_URL)
+  const [printCopies, setPrintCopies] = useState(1)
   const [copiedUrl, setCopiedUrl] = useState(false)
   const [generatingPdf, setGeneratingPdf] = useState(false)
 
@@ -148,29 +146,7 @@ export default function RoomMasterPage() {
         .select('*')
         .order('room_name')
       if (error) throw error
-
-      // Auto-assign QR tokens for any rooms that don't have one yet
-      const missingTokens = (data || []).filter(r => !r.qr_code_token)
-      if (missingTokens.length > 0) {
-        for (const rm of missingTokens) {
-          const newToken = generateToken()
-          await supabase.from('room').update({ qr_code_token: newToken }).eq('room_id', rm.room_id)
-          rm.qr_code_token = newToken
-        }
-      }
-
       setRooms(data || [])
-
-      // Pre-generate QR data URLs for all rooms
-      const map = {}
-      for (const r of data || []) {
-        try {
-          map[r.room_id] = await getRoomQrDataUrl(r.qr_code_token || 'rm_' + r.room_id)
-        } catch (e) {
-          console.warn('QR gen err:', e)
-        }
-      }
-      setBatchQrUrls(map)
     } catch (e) {
       setError(e.message)
     } finally {
@@ -179,8 +155,16 @@ export default function RoomMasterPage() {
   }
 
   useEffect(() => {
-    if (checked) loadRooms()
+    if (checked) {
+      loadRooms()
+      getGeneralReportQrDataUrl(targetReportUrl).then(setGeneralQrUrl).catch(() => {})
+    }
   }, [checked])
+
+  useEffect(() => {
+    if (!targetReportUrl) return
+    getGeneralReportQrDataUrl(targetReportUrl).then(setGeneralQrUrl).catch(() => {})
+  }, [targetReportUrl])
 
   const resetForm = () => {
     setName('')
@@ -257,91 +241,30 @@ export default function RoomMasterPage() {
     }
   }
 
-  // Open single room QR sticker modal
-  const openStickerModal = async (room) => {
-    setSelectedRoomSticker(room)
-    setIsStickerModalOpen(true)
-    setCopiedUrl(false)
-
-    if (batchQrUrls[room.room_id]) {
-      setStickerQrUrl(batchQrUrls[room.room_id])
-    } else {
-      try {
-        const dataUrl = await getRoomQrDataUrl(room.qr_code_token || 'rm_' + room.room_id)
-        setStickerQrUrl(dataUrl)
-      } catch (err) {
-        console.error('Failed generating QR code:', err)
-      }
-    }
-  }
-
-  // Open batch print modal for all rooms
-  const openBatchStickerModal = async () => {
-    setIsBatchStickerModalOpen(true)
-
-    // Ensure all QR codes are populated
-    const map = { ...batchQrUrls }
-    let updated = false
-    for (const r of rooms) {
-      if (!map[r.room_id]) {
-        try {
-          map[r.room_id] = await getRoomQrDataUrl(r.qr_code_token || 'rm_' + r.room_id)
-          updated = true
-        } catch (err) {
-          console.warn('QR gen err for room', r.room_id, err)
-        }
-      }
-    }
-    if (updated) setBatchQrUrls(map)
-  }
-
-  // Pure jsPDF Handlers (Identical to /data/pyp PDF generation)
-  const handlePrintSinglePdf = async () => {
-    if (!selectedRoomSticker) return
+  const handlePrintGeneralPdf = async () => {
     try {
       setGeneratingPdf(true)
-      await generateSingleRoomPDF(selectedRoomSticker, { action: 'print' })
+      await generateGeneralReporterPDF({
+        targetUrl: targetReportUrl,
+        copies: printCopies,
+        action: 'print'
+      })
     } catch (err) {
-      console.error('PDF error:', err)
       alert('Gagal menghasilkan PDF: ' + err.message)
     } finally {
       setGeneratingPdf(false)
     }
   }
 
-  const handleDownloadSinglePdf = async () => {
-    if (!selectedRoomSticker) return
+  const handleDownloadGeneralPdf = async () => {
     try {
       setGeneratingPdf(true)
-      await generateSingleRoomPDF(selectedRoomSticker, { action: 'download' })
+      await generateGeneralReporterPDF({
+        targetUrl: targetReportUrl,
+        copies: printCopies,
+        action: 'download'
+      })
     } catch (err) {
-      console.error('PDF error:', err)
-      alert('Gagal mengunduh PDF: ' + err.message)
-    } finally {
-      setGeneratingPdf(false)
-    }
-  }
-
-  const handlePrintBatchPdf = async () => {
-    if (!rooms || rooms.length === 0) return
-    try {
-      setGeneratingPdf(true)
-      await generateBatchRoomPDF(rooms, { action: 'print' })
-    } catch (err) {
-      console.error('Batch PDF error:', err)
-      alert('Gagal menghasilkan PDF: ' + err.message)
-    } finally {
-      setGeneratingPdf(false)
-    }
-  }
-
-  const handleDownloadBatchPdf = async () => {
-    if (!rooms || rooms.length === 0) return
-    try {
-      setGeneratingPdf(true)
-      await generateBatchRoomPDF(rooms, { action: 'download' })
-    } catch (err) {
-      console.error('Batch PDF error:', err)
       alert('Gagal mengunduh PDF: ' + err.message)
     } finally {
       setGeneratingPdf(false)
@@ -349,11 +272,10 @@ export default function RoomMasterPage() {
   }
 
   const handleDownloadPng = () => {
-    const url = stickerQrUrl || (selectedRoomSticker ? batchQrUrls[selectedRoomSticker.room_id] : '')
-    if (!url || !selectedRoomSticker) return
+    if (!generalQrUrl) return
     const link = document.createElement('a')
-    link.download = `QR_${selectedRoomSticker.room_name.replace(/[^a-zA-Z0-9_-]/g, '_')}.png`
-    link.href = url
+    link.download = `QR_General_Pelapor_CCS.png`
+    link.href = generalQrUrl
     link.click()
   }
 
@@ -366,8 +288,7 @@ export default function RoomMasterPage() {
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase()
         const matchName = (r.room_name || '').toLowerCase().includes(q)
-        const matchToken = (r.qr_code_token || '').toLowerCase().includes(q)
-        if (!matchName && !matchToken) return false
+        if (!matchName) return false
       }
       return true
     })
@@ -375,7 +296,6 @@ export default function RoomMasterPage() {
 
   const activeCount = useMemo(() => rooms.filter(r => r.is_active !== false).length, [rooms])
   const inactiveCount = useMemo(() => rooms.filter(r => r.is_active === false).length, [rooms])
-  const qrConfiguredCount = useMemo(() => rooms.filter(r => Boolean(r.qr_code_token)).length, [rooms])
 
   if (!checked) return null
 
@@ -411,10 +331,10 @@ export default function RoomMasterPage() {
             </div>
             <div>
               <h1 className="text-xl font-bold tracking-tight" style={{ color: textPrimary, letterSpacing: '-0.02em', margin: 0 }}>
-                Room Master
+                Room Master &amp; QR General Pelapor
               </h1>
               <p className="text-xs" style={{ color: textSecondary, margin: '2px 0 0 0' }}>
-                Master data ruangan dan label QR code pintu.
+                Master daftar ruangan sekolah dan cetak 1 QR Code General khusus untuk pelaporan keluhan fasilitas.
               </p>
             </div>
           </div>
@@ -423,46 +343,24 @@ export default function RoomMasterPage() {
         {/* Top Actions Bar */}
         <div className="flex flex-wrap items-center gap-2">
           <button
-            onClick={() => router.push('/data/vendor-checklist')}
+            onClick={() => setIsGeneralQrModalOpen(true)}
             style={{
-              background: 'transparent',
-              border: `1px solid ${borderColor}`,
-              color: textPrimary,
+              background: isDark ? 'rgba(241, 97, 1, 0.15)' : '#FFF7ED',
+              border: `1px solid ${isDark ? '#EA580C' : '#FDBA74'}`,
+              color: isDark ? '#FB923C' : '#C2410C',
               borderRadius: '6px',
-              padding: '7px 12px',
+              padding: '7px 14px',
               fontSize: '12px',
-              fontWeight: 600,
+              fontWeight: 700,
               cursor: 'pointer',
               display: 'inline-flex',
               alignItems: 'center',
               gap: '6px'
             }}
           >
-            <FontAwesomeIcon icon={faBroom} style={{ color: isDark ? '#60A5FA' : '#0284C7', fontSize: '11px' }} />
-            <span>Checklist Vendor</span>
+            <FontAwesomeIcon icon={faQrcode} style={{ fontSize: '12px' }} />
+            <span>Cetak QR General Pelapor</span>
           </button>
-
-          {rooms.length > 0 && (
-            <button
-              onClick={openBatchStickerModal}
-              style={{
-                background: 'transparent',
-                border: `1px solid ${borderColor}`,
-                color: textPrimary,
-                borderRadius: '6px',
-                padding: '7px 12px',
-                fontSize: '12px',
-                fontWeight: 600,
-                cursor: 'pointer',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px'
-              }}
-            >
-              <FontAwesomeIcon icon={faFilePdf} style={{ fontSize: '11px', color: '#DC2626' }} />
-              <span>Cetak Semua QR (PDF)</span>
-            </button>
-          )}
 
           <button
             onClick={openCreate}
@@ -499,7 +397,7 @@ export default function RoomMasterPage() {
 
         <div style={{ background: cardBg, border: `1px solid ${borderColor}`, borderRadius: '8px', padding: '16px 20px' }}>
           <div className="text-[10px] font-mono tracking-wider uppercase font-semibold flex items-center justify-between">
-            <span style={{ color: isDark ? '#4ADE80' : '#166534' }}>ACTIVE</span>
+            <span style={{ color: isDark ? '#4ADE80' : '#166534' }}>ACTIVE ROOMS</span>
             <span className="w-2 h-2 rounded-full" style={{ background: isDark ? '#4ADE80' : '#166534' }} />
           </div>
           <div className="text-2xl font-bold font-mono tracking-tight mt-1.5" style={{ color: isDark ? '#4ADE80' : '#166534' }}>
@@ -507,13 +405,26 @@ export default function RoomMasterPage() {
           </div>
         </div>
 
-        <div style={{ background: cardBg, border: `1px solid ${borderColor}`, borderRadius: '8px', padding: '16px 20px' }}>
+        <div
+          onClick={() => setIsGeneralQrModalOpen(true)}
+          style={{
+            background: cardBg,
+            border: `1px solid ${borderColor}`,
+            borderRadius: '8px',
+            padding: '16px 20px',
+            cursor: 'pointer'
+          }}
+          className="hover:border-orange-400 transition"
+        >
           <div className="text-[10px] font-mono tracking-wider uppercase font-semibold flex items-center justify-between">
-            <span style={{ color: isDark ? '#60A5FA' : '#0284C7' }}>QR CONFIGURED</span>
-            <span className="w-2 h-2 rounded-full" style={{ background: isDark ? '#60A5FA' : '#0284C7' }} />
+            <span style={{ color: isDark ? '#FB923C' : '#EA580C' }}>QR CODE PELAPOR (GENERAL)</span>
+            <FontAwesomeIcon icon={faQrcode} style={{ color: isDark ? '#FB923C' : '#EA580C' }} />
           </div>
-          <div className="text-2xl font-bold font-mono tracking-tight mt-1.5" style={{ color: isDark ? '#60A5FA' : '#0284C7' }}>
-            {qrConfiguredCount}
+          <div className="text-sm font-bold mt-2 flex items-center justify-between" style={{ color: textPrimary }}>
+            <span>1 QR Untuk Semua Area</span>
+            <span className="text-xs font-mono underline" style={{ color: isDark ? '#60A5FA' : '#0284C7' }}>
+              Lihat &amp; Cetak →
+            </span>
           </div>
         </div>
       </div>
@@ -540,7 +451,7 @@ export default function RoomMasterPage() {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Cari ruangan atau token..."
+              placeholder="Cari nama ruangan..."
               className="w-full pl-8 pr-8 py-1.5 text-xs rounded border outline-none font-medium"
               style={{ background: isDark ? '#18181B' : '#FFFFFF', borderColor, color: textPrimary, borderRadius: '4px' }}
             />
@@ -565,22 +476,21 @@ export default function RoomMasterPage() {
               <tr className="border-b" style={{ background: isDark ? '#141417' : '#F9F9F8', borderColor }}>
                 <th className="px-4 py-3 font-mono font-semibold text-[10px] uppercase tracking-wider" style={{ color: textSecondary, width: '48px' }}>#</th>
                 <th className="px-4 py-3 font-mono font-semibold text-[10px] uppercase tracking-wider" style={{ color: textSecondary }}>Nama Ruangan</th>
-                <th className="px-4 py-3 font-mono font-semibold text-[10px] uppercase tracking-wider" style={{ color: textSecondary }}>Token QR Code</th>
                 <th className="px-4 py-3 font-mono font-semibold text-[10px] uppercase tracking-wider text-center" style={{ color: textSecondary, width: '120px' }}>Status</th>
-                <th className="px-4 py-3 font-mono font-semibold text-[10px] uppercase tracking-wider text-right" style={{ color: textSecondary, width: '220px' }}>Aksi</th>
+                <th className="px-4 py-3 font-mono font-semibold text-[10px] uppercase tracking-wider text-right" style={{ color: textSecondary, width: '180px' }}>Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y" style={{ borderColor }}>
               {loading ? (
                 <tr>
-                  <td colSpan={5} className="text-center py-12" style={{ color: textSecondary }}>
+                  <td colSpan={4} className="text-center py-12" style={{ color: textSecondary }}>
                     <FontAwesomeIcon icon={faRotateRight} className="text-base animate-spin mx-auto mb-2" />
                     <div>Memuat data...</div>
                   </td>
                 </tr>
               ) : filteredRooms.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="text-center py-12" style={{ color: textSecondary }}>
+                  <td colSpan={4} className="text-center py-12" style={{ color: textSecondary }}>
                     <div>Tidak ada ruangan ditemukan.</div>
                   </td>
                 </tr>
@@ -595,11 +505,6 @@ export default function RoomMasterPage() {
                         <FontAwesomeIcon icon={faBuilding} className="text-neutral-400 text-xs" />
                         <span>{r.room_name}</span>
                       </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className="font-mono text-[11px] px-2 py-0.5 rounded bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-700">
-                        {r.qr_code_token || 'rm_' + r.room_id}
-                      </span>
                     </td>
                     <td className="px-4 py-3 text-center">
                       {r.is_active !== false ? (
@@ -636,26 +541,6 @@ export default function RoomMasterPage() {
                     </td>
                     <td className="px-4 py-3 text-right">
                       <div className="flex items-center justify-end gap-1.5">
-                        <button
-                          onClick={() => openStickerModal(r)}
-                          style={{
-                            background: isDark ? 'rgba(59, 130, 246, 0.12)' : '#EFF6FF',
-                            color: isDark ? '#60A5FA' : '#1D4ED8',
-                            border: `1px solid ${isDark ? '#2563EB' : '#BFDBFE'}`,
-                            borderRadius: '4px',
-                            padding: '4px 8px',
-                            fontSize: '11px',
-                            fontWeight: 600,
-                            cursor: 'pointer',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '4px'
-                          }}
-                          title="Cetak Label QR (PDF)"
-                        >
-                          <FontAwesomeIcon icon={faQrcode} style={{ fontSize: '10px' }} />
-                          <span>QR</span>
-                        </button>
                         <button
                           onClick={() => openEdit(r)}
                           style={{
@@ -741,12 +626,6 @@ export default function RoomMasterPage() {
             </label>
           </div>
 
-          {editing && editing.qr_code_token && (
-            <div className="p-2.5 rounded text-xs font-mono" style={{ background: isDark ? '#27272A' : '#F9F9F8', border: `1px solid ${borderColor}`, color: textSecondary }}>
-              Token: <span className="font-bold" style={{ color: textPrimary }}>{editing.qr_code_token}</span>
-            </div>
-          )}
-
           {error && (
             <div className="p-2.5 text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded">
               {error}
@@ -790,25 +669,61 @@ export default function RoomMasterPage() {
         </form>
       </Modal>
 
-      {/* ── MODAL: SINGLE ROOM DOOR STICKER (PURE PDF PREVIEW & PRINT) ── */}
+      {/* ── MODAL: GENERAL REPORTER QR STICKER (PURE PDF PREVIEW & PRINT) ── */}
       <Modal
-        isOpen={isStickerModalOpen}
-        onClose={() => setIsStickerModalOpen(false)}
-        title={`Label Pintu: ${selectedRoomSticker?.room_name || ''}`}
+        isOpen={isGeneralQrModalOpen}
+        onClose={() => setIsGeneralQrModalOpen(false)}
+        title="Label QR Code General — Khusus Pelapor"
         size="md"
       >
         <div className="space-y-4">
-          <DoorStickerCard
-            room={selectedRoomSticker}
-            qrUrl={stickerQrUrl || (selectedRoomSticker ? batchQrUrls[selectedRoomSticker.room_id] : '')}
+          <div className="p-3 rounded-lg border text-xs" style={{ background: isDark ? '#141416' : '#F8FAFC', borderColor }}>
+            <div className="font-semibold mb-1.5" style={{ color: textPrimary }}>
+              Pengaturan URL Tujuan QR Code Pelapor:
+            </div>
+            <input
+              type="text"
+              value={targetReportUrl}
+              onChange={(e) => setTargetReportUrl(e.target.value)}
+              className="w-full px-2.5 py-1.5 text-xs font-mono rounded border outline-none"
+              style={{ background: cardBg, borderColor, color: textPrimary }}
+            />
+            <div className="flex items-center justify-between gap-2 mt-2">
+              <div className="flex flex-wrap gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setTargetReportUrl('https://ccs.sch.id/reportfacility')}
+                  className="text-[10px] font-mono px-2 py-0.5 rounded border hover:opacity-80 cursor-pointer"
+                  style={{ borderColor, color: textSecondary }}
+                >
+                  https://ccs.sch.id/reportfacility
+                </button>
+              </div>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <span className="text-[11px]" style={{ color: textSecondary }}>Jumlah Lembar:</span>
+                <input
+                  type="number"
+                  min={1}
+                  max={50}
+                  value={printCopies}
+                  onChange={(e) => setPrintCopies(Math.max(1, Math.min(50, Number(e.target.value) || 1)))}
+                  className="w-14 px-2 py-1 text-xs font-mono rounded border text-center"
+                  style={{ background: cardBg, borderColor, color: textPrimary }}
+                />
+              </div>
+            </div>
+          </div>
+
+          <GeneralReporterStickerCard
+            qrUrl={generalQrUrl}
+            targetUrl={targetReportUrl}
           />
 
           <div className="flex flex-wrap items-center justify-between gap-2 pt-3 border-t" style={{ borderColor }}>
             <div className="flex items-center gap-2">
               <button
                 onClick={() => {
-                  const url = `${BASE_CHECKLIST_URL}?room=${selectedRoomSticker?.qr_code_token}`
-                  navigator.clipboard.writeText(url)
+                  navigator.clipboard.writeText(targetReportUrl)
                   setCopiedUrl(true)
                   setTimeout(() => setCopiedUrl(false), 2000)
                 }}
@@ -831,7 +746,7 @@ export default function RoomMasterPage() {
               </button>
 
               <a
-                href={`${BASE_CHECKLIST_URL}?room=${selectedRoomSticker?.qr_code_token}`}
+                href={targetReportUrl}
                 target="_blank"
                 rel="noreferrer"
                 style={{
@@ -850,7 +765,7 @@ export default function RoomMasterPage() {
                 }}
               >
                 <FontAwesomeIcon icon={faExternalLinkAlt} />
-                <span>Buka</span>
+                <span>Buka Web CCS</span>
               </a>
             </div>
 
@@ -878,7 +793,7 @@ export default function RoomMasterPage() {
 
               <button
                 type="button"
-                onClick={handleDownloadSinglePdf}
+                onClick={handleDownloadGeneralPdf}
                 disabled={generatingPdf}
                 style={{
                   background: 'transparent',
@@ -898,10 +813,9 @@ export default function RoomMasterPage() {
                 <span>Unduh PDF</span>
               </button>
 
-              {/* Primary Print Button using jsPDF */}
               <button
                 type="button"
-                onClick={handlePrintSinglePdf}
+                onClick={handlePrintGeneralPdf}
                 disabled={generatingPdf}
                 style={{
                   background: textPrimary,
@@ -918,123 +832,12 @@ export default function RoomMasterPage() {
                 }}
               >
                 <FontAwesomeIcon icon={generatingPdf ? faSpinner : faPrint} className={generatingPdf ? 'animate-spin' : ''} />
-                <span>Cetak PDF (1 Lembar)</span>
+                <span>Cetak PDF ({printCopies} Lembar)</span>
               </button>
             </div>
           </div>
         </div>
       </Modal>
-
-      {/* ── MODAL: BATCH ALL ROOMS DOOR STICKERS PRINT (PURE PDF GENERATION) ── */}
-      <Modal
-        isOpen={isBatchStickerModalOpen}
-        onClose={() => setIsBatchStickerModalOpen(false)}
-        title={`Cetak Semua Label Pintu (${rooms.length} Ruangan)`}
-        size="xl"
-      >
-        <div className="space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b" style={{ borderColor }}>
-            <div>
-              <div className="text-xs font-semibold" style={{ color: textPrimary }}>
-                Format Dokumen: 1 Halaman A4 = 1 Label Ruangan (Pristine Vector PDF)
-              </div>
-              <div className="text-[11px] mt-0.5" style={{ color: textSecondary }}>
-                PDF murni tanpa header situs atau scrollbar. Total {rooms.length} halaman siap dicetak atau diunduh.
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={handleDownloadBatchPdf}
-                disabled={generatingPdf}
-                style={{
-                  background: 'transparent',
-                  border: `1px solid ${borderColor}`,
-                  color: textPrimary,
-                  borderRadius: '6px',
-                  padding: '7px 12px',
-                  fontSize: '12px',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '6px'
-                }}
-              >
-                <FontAwesomeIcon icon={faDownload} />
-                <span>Unduh PDF ({rooms.length} Lembar)</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={handlePrintBatchPdf}
-                disabled={generatingPdf}
-                style={{
-                  background: textPrimary,
-                  color: isDark ? '#111111' : '#FFFFFF',
-                  border: 'none',
-                  borderRadius: '6px',
-                  padding: '7px 16px',
-                  fontSize: '12px',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '6px'
-                }}
-              >
-                <FontAwesomeIcon icon={generatingPdf ? faSpinner : faPrint} className={generatingPdf ? 'animate-spin' : ''} />
-                <span>Cetak PDF ({rooms.length} Lembar)</span>
-              </button>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 max-h-[60vh] overflow-y-auto p-1">
-            {rooms.map((room, idx) => (
-              <div
-                key={room.room_id}
-                className="p-3 bg-neutral-50 dark:bg-neutral-800/40 border border-neutral-200 dark:border-neutral-700 rounded-xl text-center"
-              >
-                <div className="text-[10px] font-mono text-neutral-400 mb-2 font-bold">
-                  HALAMAN {idx + 1} DARI {rooms.length}
-                </div>
-                <DoorStickerCard
-                  room={room}
-                  qrUrl={batchQrUrls[room.room_id]}
-                />
-              </div>
-            ))}
-          </div>
-        </div>
-      </Modal>
-
-      {/* ── GLOBAL PRINT STYLES (CLEAN FALLBACK TO ELIMINATE ALL SCROLLBARS & HEADERS) ── */}
-      <style jsx global>{`
-        @media print {
-          /* Hide global navbar, hamburger, and sidebar */
-          nav, header, aside, .sidebar, [class*="ThemedNavbar"], [class*="navbar"], [class*="Sidebar"] {
-            display: none !important;
-          }
-
-          /* Remove all browser scrollbars */
-          * {
-            scrollbar-width: none !important;
-            -ms-overflow-style: none !important;
-          }
-          *::-webkit-scrollbar {
-            display: none !important;
-            width: 0 !important;
-            height: 0 !important;
-          }
-
-          html, body {
-            overflow: visible !important;
-            height: auto !important;
-            background: #ffffff !important;
-          }
-        }
-      `}</style>
     </div>
   )
 }

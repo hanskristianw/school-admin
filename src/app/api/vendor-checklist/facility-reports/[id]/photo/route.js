@@ -38,21 +38,53 @@ export async function GET(request, { params }) {
       )
     }
 
-    const hostingUrl = item.hosting_url || 'https://ccs.sch.id/checklist'
-    const cleanHostingUrl = hostingUrl.replace(/\/index\.php$/i, '').replace(/\/$/, '')
-    const targetUrl = `${cleanHostingUrl}/index.php?action=view_photo&file=${encodeURIComponent(targetFile)}&token=${encodeURIComponent(EXPECTED_SECRET)}`
-
-    const res = await fetch(targetUrl, {
-      method: 'GET',
-      headers: {
-        'User-Agent': 'SchoolAdmin-VendorProxy/1.0'
+    // Jika targetFile sudah berupa URL publik langsung (misal Supabase Storage)
+    if (targetFile.startsWith('http://') || targetFile.startsWith('https://')) {
+      const directRes = await fetch(targetFile)
+      if (!directRes.ok) {
+        return NextResponse.json(
+          { success: false, message: `Gagal mengambil gambar (${directRes.status})` },
+          { status: directRes.status }
+        )
       }
-    })
+      const ct = directRes.headers.get('content-type') || 'image/jpeg'
+      const ab = await directRes.arrayBuffer()
+      return new NextResponse(Buffer.from(ab), {
+        status: 200,
+        headers: {
+          'Content-Type': ct,
+          'Cache-Control': 'private, max-age=3600'
+        }
+      })
+    }
 
-    if (!res.ok) {
+    const hostingUrl = item.hosting_url || 'https://ccs.sch.id/reportfacility'
+    const cleanHostingUrl = hostingUrl.replace(/\/(index|report_facility)\.php$/i, '').replace(/\/$/, '')
+    const candidateUrls = [
+      `${cleanHostingUrl}/index.php?action=view_photo&file=${encodeURIComponent(targetFile)}&token=${encodeURIComponent(EXPECTED_SECRET)}`,
+      `https://ccs.sch.id/reportfacility/index.php?action=view_photo&file=${encodeURIComponent(targetFile)}&token=${encodeURIComponent(EXPECTED_SECRET)}`,
+      `https://ccs.sch.id/checklist/index.php?action=view_photo&file=${encodeURIComponent(targetFile)}&token=${encodeURIComponent(EXPECTED_SECRET)}`,
+      `https://ccs.sch.id/report_facility/index.php?action=view_photo&file=${encodeURIComponent(targetFile)}&token=${encodeURIComponent(EXPECTED_SECRET)}`
+    ]
+
+    let res = null
+    for (const url of [...new Set(candidateUrls)]) {
+      try {
+        const attempt = await fetch(url, {
+          method: 'GET',
+          headers: { 'User-Agent': 'SchoolAdmin-VendorProxy/1.0' }
+        })
+        if (attempt.ok) {
+          res = attempt
+          break
+        }
+      } catch (e) {}
+    }
+
+    if (!res || !res.ok) {
       return NextResponse.json(
-        { success: false, message: `Gagal mengambil gambar dari hosting (${res.status})` },
-        { status: res.status }
+        { success: false, message: 'Gagal mengambil gambar dari hosting' },
+        { status: 404 }
       )
     }
 

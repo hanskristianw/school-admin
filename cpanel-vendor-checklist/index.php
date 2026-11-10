@@ -1,90 +1,78 @@
 <?php
 /**
- * ==============================================================================
- * SISTEM CHECKLIST KEBERSIHAN & PELAPORAN FASILITAS RUANGAN — CCS
- * Yayasan Pendidikan Mayapada School — Chung Chung Christian School
- * ==============================================================================
- * Standalone PHP 7.4 - 8.3 Application
- * Desain & Tipografi: 1:1 Identik dengan Sistem Sewa Lapangan & Registrasi CCS (ccs.sch.id)
- * Lokasi Hosting: cpanel ccs.sch.id/checklist/
- * ==============================================================================
+ * ============================================================================
+ * CHUNG CHUNG CHRISTIAN SCHOOL - PORTAL KHUSUS VENDOR CLEANER (WEB CCS PHP)
+ * File: index.php (Hostinger / cPanel: public_html/checklist/index.php)
+ * URL Publik: https://ccs.sch.id/checklist
+ * Aesthetic: Utilitarian Editorial Minimalism (Warm Monochrome + Spot Pastels)
+ * ============================================================================
  */
-
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
 
 define('CCS_VENDOR_LOADED', true);
 
-// Muat konfigurasi rahasia
 if (file_exists(__DIR__ . '/config.php')) {
     require_once __DIR__ . '/config.php';
 }
 
-if (!defined('API_SECRET_TOKEN')) define('API_SECRET_TOKEN', getenv('COURT_RENTAL_SECRET_KEY') ?: 'ccs_court_auth_2026_x7k9p2m4');
-if (!defined('NEXTJS_API_URL')) define('NEXTJS_API_URL', 'https://www.manageccs.online/api/public/vendor-checklist');
+if (!defined('API_SECRET_TOKEN')) {
+    define('API_SECRET_TOKEN', 'ccs_court_auth_2026_x7k9p2m4');
+}
+if (!defined('NEXTJS_API_URL')) {
+    define('NEXTJS_API_URL', 'https://www.manageccs.online/api/public/vendor-checklist');
+}
+if (!defined('UPLOAD_DIR')) {
+    define('UPLOAD_DIR', __DIR__ . '/uploads/');
+}
+if (!defined('MAX_IMAGE_SIZE_BYTES')) {
+    define('MAX_IMAGE_SIZE_BYTES', 15 * 1024 * 1024);
+}
 
-// Daftar Petugas Cleaning Default (Role ID 14) untuk Pre-render Cepat Tanpa Menunggu cURL
-$DEFAULT_CLEANERS = [
-    ['user_id' => 447, 'name' => 'Andrean Driver'],
-    ['user_id' => 445, 'name' => 'Budi Taman'],
-    ['user_id' => 439, 'name' => 'Darul Cleaning'],
-    ['user_id' => 438, 'name' => 'Davit Cleaning'],
-    ['user_id' => 436, 'name' => 'Evi Cleaning'],
-    ['user_id' => 448, 'name' => 'Fadil Kolam'],
-    ['user_id' => 442, 'name' => 'Fitria Cleaning'],
-    ['user_id' => 441, 'name' => 'Juhariya Cleaning'],
-    ['user_id' => 437, 'name' => 'Raditya Cleaning'],
-    ['user_id' => 466, 'name' => 'Rahmani .'],
-    ['user_id' => 444, 'name' => 'Risky Cleaning'],
-    ['user_id' => 443, 'name' => 'Suhadi Cleaning'],
-    ['user_id' => 446, 'name' => 'Toni Taman']
-];
-
-define('UPLOAD_DIR', __DIR__ . '/uploads');
-
-// Inisialisasi & proteksi folder uploads
+// Inisialisasi & proteksi folder uploads otomatis
 if (!file_exists(UPLOAD_DIR)) {
     @mkdir(UPLOAD_DIR, 0755, true);
 }
-@file_put_contents(UPLOAD_DIR . '/.htaccess', "Options -Indexes\nOrder Deny,Allow\nDeny from all\n<IfModule mod_authz_core.c>\nRequire all denied\n</IfModule>\n<FilesMatch \"\\.(php|phtml|php5|pl|py|cgi|sh)$\">\nRequire all denied\n</FilesMatch>\n");
-@file_put_contents(UPLOAD_DIR . '/index.html', '<!DOCTYPE html><html><head><title>403 Forbidden</title></head><body><h1>Directory access is forbidden.</h1></body></html>');
+if (!file_exists(UPLOAD_DIR . '.htaccess')) {
+    @file_put_contents(UPLOAD_DIR . '.htaccess', "Options -Indexes\nOrder Deny,Allow\nDeny from all\n<IfModule mod_authz_core.c>\nRequire all denied\n</IfModule>\n<FilesMatch \"\\.(php|phtml|php5|pl|py|cgi|sh)$\">\nRequire all denied\n</FilesMatch>\n");
+}
+if (!file_exists(UPLOAD_DIR . 'index.html')) {
+    @file_put_contents(UPLOAD_DIR . 'index.html', '<!DOCTYPE html><html><head><title>403 Forbidden</title></head><body><h1>Directory access is forbidden.</h1></body></html>');
+}
 
-// ─── 1. SECURE STREAMING FOTO UNTUK NEXT.JS ADMIN ─────────────────────────
-if (isset($_GET['action']) && $_GET['action'] === 'view_photo') {
-    $token = $_GET['token'] ?? '';
-    $validTokens = [
-        defined('API_SECRET_TOKEN') ? API_SECRET_TOKEN : 'ccs_vendor_auth_2026_v9x2k7p4',
-        'ccs_vendor_auth_2026_v9x2k7p4',
-        'ccs_court_auth_2026_x7k9p2m4'
-    ];
-    if (!in_array($token, $validTokens, true)) {
-        http_response_code(403);
-        header('Content-Type: application/json');
-        echo json_encode(['error' => 'Forbidden: Invalid security token']);
-        exit;
+// ── 0. SECURE STREAMING FOTO UNTUK NEXT.JS ADMIN & PREVIEW ──────────────────
+if (isset($_GET['action']) && ($_GET['action'] === 'view_photo' || $_GET['action'] === 'view_uploaded_photo')) {
+    if ($_GET['action'] === 'view_photo') {
+        $token = $_GET['token'] ?? '';
+        $validTokens = [
+            API_SECRET_TOKEN,
+            'ccs_vendor_auth_2026_v9x2k7p4',
+            'ccs_court_auth_2026_x7k9p2m4'
+        ];
+        if (!in_array($token, $validTokens, true)) {
+            http_response_code(403);
+            header('Content-Type: application/json');
+            echo json_encode(['error' => 'Forbidden: Invalid security token']);
+            exit;
+        }
     }
 
     $file = basename($_GET['file'] ?? '');
-    $filePath = UPLOAD_DIR . '/' . $file;
+    $filePath = UPLOAD_DIR . $file;
+    $ext = strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
 
-    if (!$file || !file_exists($filePath) || !is_file($filePath)) {
+    if (!$file || !file_exists($filePath) || !is_file($filePath) || !in_array($ext, ['jpg', 'jpeg', 'png', 'webp'])) {
         http_response_code(404);
         header('Content-Type: application/json');
         echo json_encode(['error' => 'File not found']);
         exit;
     }
 
-    $ext = strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
     $mimeTypes = [
         'jpg'  => 'image/jpeg',
         'jpeg' => 'image/jpeg',
         'png'  => 'image/png',
         'webp' => 'image/webp'
     ];
-    $contentType = $mimeTypes[$ext] ?? 'application/octet-stream';
-
-    header('Content-Type: ' . $contentType);
+    header('Content-Type: ' . ($mimeTypes[$ext] ?? 'image/jpeg'));
     header('Content-Length: ' . filesize($filePath));
     header('Cache-Control: private, max-age=86400');
     header('Content-Disposition: inline; filename="' . $file . '"');
@@ -92,3348 +80,1666 @@ if (isset($_GET['action']) && $_GET['action'] === 'view_photo') {
     exit;
 }
 
-// ─── 2. AJAX ENDPOINT: FETCH STATUS RUANGAN HARI INI ──────────────────────
-if (isset($_GET['action']) && $_GET['action'] === 'fetch_room') {
-    header('Content-Type: application/json');
-    $roomToken = trim($_GET['room_token'] ?? '');
-    if (!$roomToken) {
-        echo json_encode(['success' => false, 'message' => 'Token ruangan tidak disertakan']);
+// ── 1. AJAX HANDLER: GET (Load Cleaners / Assigned Rooms / Complaints) ──────
+if (isset($_GET['ajax_action'])) {
+    header('Content-Type: application/json; charset=utf-8');
+    $ajaxAction = $_GET['ajax_action'];
+
+    $apiUrl = NEXTJS_API_URL . '?secret_token=' . urlencode(API_SECRET_TOKEN);
+
+    if ($ajaxAction === 'get_cleaners') {
+        $apiUrl .= '&action=get_cleaners';
+    } elseif ($ajaxAction === 'get_cleaner_rooms') {
+        $userId = $_GET['user_id'] ?? '';
+        $workerName = $_GET['worker_name'] ?? '';
+        $apiUrl .= '&action=get_cleaner_rooms&user_id=' . urlencode($userId) . '&worker_name=' . urlencode($workerName);
+    } elseif ($ajaxAction === 'get_complaints') {
+        $apiUrl .= '&action=get_active_reports';
+    } else {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => 'Invalid ajax_action']);
         exit;
     }
 
-    $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, NEXTJS_API_URL . '?room_token=' . urlencode($roomToken));
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 15);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    $ch = curl_init($apiUrl);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_SSL_VERIFYPEER => false,
+        CURLOPT_TIMEOUT        => 20,
+        CURLOPT_HTTPHEADER     => [
+            'Accept: application/json',
+            'Authorization: Bearer ' . API_SECRET_TOKEN,
+            'x-vendor-secret: ' . API_SECRET_TOKEN
+        ]
+    ]);
     $response = curl_exec($ch);
     $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $curlErr  = curl_error($ch);
     curl_close($ch);
 
-    if ($response === false || $httpCode >= 500) {
-        echo json_encode(['success' => false, 'message' => 'Gagal terhubung ke server utama manageccs.online']);
+    if ($curlErr) {
+        http_response_code(502);
+        echo json_encode(['success' => false, 'message' => 'Gagal menghubungi server: ' . $curlErr]);
         exit;
     }
 
+    http_response_code($httpCode ?: 200);
     echo $response;
     exit;
 }
 
-// ─── 2b. AJAX ENDPOINT: FETCH DAFTAR PETUGAS CLEANING (USERS ROLE ID 14) ──
-if (isset($_GET['action']) && $_GET['action'] === 'fetch_cleaners') {
-    header('Content-Type: application/json');
+// ── 2. POST HANDLER: UPLOAD BEFORE & AFTER / REVISI / SELESAIKAN KOMPLAIN ───
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    header('Content-Type: application/json; charset=utf-8');
 
-    $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, NEXTJS_API_URL . '?action=get_cleaners');
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 15);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-    $response = curl_exec($ch);
+    $rawBody = file_get_contents('php://input');
+    $input = json_decode($rawBody, true);
+    if (!is_array($input)) {
+        $input = $_POST;
+    }
+
+    $action     = $input['action'] ?? '';
+    $roomId     = $input['room_id'] ?? '';
+    $roomToken  = $input['room_token'] ?? '';
+    $workerName = trim($input['worker_name'] ?? '');
+    $notes      = trim($input['notes'] ?? '');
+
+    if ($workerName === '') {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => 'Silakan pilih Nama Petugas terlebih dahulu.']);
+        exit;
+    }
+
+    function saveBase64Photo($base64Str, $prefix) {
+        if (!$base64Str) return null;
+        if (preg_match('/^data:image\/(\w+);base64,/', $base64Str)) {
+            $base64Str = substr($base64Str, strpos($base64Str, ',') + 1);
+        }
+        $decoded = base64_decode($base64Str);
+        if ($decoded === false) return null;
+        if (strlen($decoded) > MAX_IMAGE_SIZE_BYTES) return false;
+
+        $datePrefix = date('Ymd_His');
+        $randHash = substr(md5(uniqid((string)mt_rand(), true)), 0, 6);
+        $filename = "{$prefix}_{$datePrefix}_{$randHash}.jpg";
+        $filePath = UPLOAD_DIR . $filename;
+
+        if (file_put_contents($filePath, $decoded) === false) return null;
+        return $filename;
+    }
+
+    $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+    $host = $_SERVER['HTTP_HOST'] ?? 'ccs.sch.id';
+    $baseDir = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/\\');
+    $hostingUrl = "{$protocol}://{$host}{$baseDir}/";
+    $apiUrl = NEXTJS_API_URL;
+
+    // A. SUBMIT BEFORE & AFTER SEKALIGUS (1 Halaman)
+    if ($action === 'submit_before_after') {
+        $beforeB64 = $input['image_before_base64'] ?? '';
+        $afterB64  = $input['image_after_base64'] ?? '';
+
+        if ($beforeB64 === '' || $afterB64 === '') {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'Foto Before dan Foto After wajib diunggah keduanya.']);
+            exit;
+        }
+
+        $safeRoom = preg_replace('/[^a-zA-Z0-9_-]/', '', (string)($roomId ?: $roomToken));
+        $beforeFile = saveBase64Photo($beforeB64, "chk_{$safeRoom}_before");
+        $afterFile  = saveBase64Photo($afterB64, "chk_{$safeRoom}_after");
+
+        if (!$beforeFile || !$afterFile) {
+            if ($beforeFile) @unlink(UPLOAD_DIR . $beforeFile);
+            if ($afterFile) @unlink(UPLOAD_DIR . $afterFile);
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'Gagal menyimpan file foto atau ukuran melebihi 15MB.']);
+            exit;
+        }
+
+        $payload = json_encode([
+            'secret_token'      => API_SECRET_TOKEN,
+            'action'            => 'submit_before_after',
+            'room_id'           => $roomId ? (int)$roomId : null,
+            'room_token'        => $roomToken,
+            'worker_name'       => $workerName,
+            'notes'             => $notes,
+            'image_before_file' => $beforeFile,
+            'image_after_file'  => $afterFile,
+            'hosting_url'       => $hostingUrl
+        ]);
+    }
+    // B. SUBMIT REVISI
+    elseif ($action === 'submit_revision') {
+        $revB64 = $input['image_base64'] ?? '';
+        if ($revB64 === '') {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'Foto perbaikan revisi wajib diunggah.']);
+            exit;
+        }
+        $safeRoom = preg_replace('/[^a-zA-Z0-9_-]/', '', (string)($roomId ?: $roomToken));
+        $revFile = saveBase64Photo($revB64, "chk_{$safeRoom}_revision");
+        if (!$revFile) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'Gagal menyimpan foto revisi.']);
+            exit;
+        }
+
+        $payload = json_encode([
+            'secret_token' => API_SECRET_TOKEN,
+            'action'       => 'submit_revision',
+            'room_id'      => $roomId ? (int)$roomId : null,
+            'room_token'   => $roomToken,
+            'worker_name'  => $workerName,
+            'notes'        => $notes,
+            'image_file'   => $revFile,
+            'hosting_url'  => $hostingUrl
+        ]);
+    }
+    // C. RESOLVE COMPLAINT
+    elseif ($action === 'resolve_report') {
+        $reportId = $input['report_id'] ?? '';
+        $resB64   = $input['image_base64'] ?? '';
+        $resNotes = trim($input['resolution_notes'] ?? '');
+
+        if (!$reportId || !$resB64) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'Foto bukti penyelesaian komplain wajib diunggah.']);
+            exit;
+        }
+        $resFile = saveBase64Photo($resB64, "resolve_{$reportId}");
+        if (!$resFile) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'Gagal menyimpan foto penyelesaian.']);
+            exit;
+        }
+
+        $payload = json_encode([
+            'secret_token'     => API_SECRET_TOKEN,
+            'action'           => 'resolve_report',
+            'report_id'        => $reportId,
+            'worker_name'      => $workerName,
+            'resolution_notes' => $resNotes,
+            'image_file'       => $resFile,
+            'hosting_url'      => $hostingUrl
+        ]);
+    } else {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => 'Aksi tidak dikenali.']);
+        exit;
+    }
+
+    $ch = curl_init($apiUrl);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_POST           => true,
+        CURLOPT_POSTFIELDS     => $payload,
+        CURLOPT_SSL_VERIFYPEER => false,
+        CURLOPT_TIMEOUT        => 25,
+        CURLOPT_HTTPHEADER     => [
+            'Content-Type: application/json',
+            'Authorization: Bearer ' . API_SECRET_TOKEN,
+            'x-vendor-secret: ' . API_SECRET_TOKEN
+        ]
+    ]);
+    $resBody = curl_exec($ch);
     $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $curlErr = curl_error($ch);
     curl_close($ch);
 
-    if ($response === false || $httpCode >= 500) {
-        echo json_encode(['success' => false, 'message' => 'Gagal mengambil data petugas dari server']);
+    if ($curlErr) {
+        http_response_code(502);
+        echo json_encode(['success' => false, 'message' => 'Gagal menghubungi server pusat: ' . $curlErr]);
         exit;
     }
 
-    echo $response;
+    http_response_code($httpCode ?: 200);
+    echo $resBody;
     exit;
 }
-
-// ─── 2c. AJAX ENDPOINT: FETCH DAFTAR KOMPLAIN FASILITAS AKTIF ───────────────
-if (isset($_GET['action']) && $_GET['action'] === 'fetch_active_reports') {
-    header('Content-Type: application/json');
-
-    $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, NEXTJS_API_URL . '?action=get_active_reports');
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 15);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-    $response = curl_exec($ch);
-    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
-
-    if ($response === false || $httpCode >= 500) {
-        echo json_encode(['success' => false, 'message' => 'Gagal mengambil data komplain fasilitas dari server']);
-        exit;
-    }
-
-    echo $response;
-    exit;
-}
-
-// ─── 2d. PREVIEW FOTO UPLOAD UNTUK PORTAL LOKAL (CLEANER & REPORTER) ────────
-if (isset($_GET['action']) && $_GET['action'] === 'view_uploaded_photo') {
-    $file = basename($_GET['file'] ?? '');
-    $filePath = UPLOAD_DIR . '/' . $file;
-    $ext = strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
-
-    if ($file && file_exists($filePath) && is_file($filePath) && in_array($ext, ['jpg', 'jpeg', 'png', 'webp'])) {
-        $mimeTypes = [
-            'jpg'  => 'image/jpeg',
-            'jpeg' => 'image/jpeg',
-            'png'  => 'image/png',
-            'webp' => 'image/webp'
-        ];
-        header('Content-Type: ' . ($mimeTypes[$ext] ?? 'image/jpeg'));
-        header('Content-Length: ' . filesize($filePath));
-        header('Cache-Control: private, max-age=86400');
-        header('Content-Disposition: inline; filename="' . $file . '"');
-        readfile($filePath);
-        exit;
-    }
-    http_response_code(404);
-    header('Content-Type: application/json');
-    echo json_encode(['error' => 'File not found']);
-    exit;
-}
-
-// ─── 2e. AJAX ENDPOINT: FETCH RIWAYAT KOMPLAIN SELESAI (RESOLVED) ───────────
-if (isset($_GET['action']) && $_GET['action'] === 'fetch_resolved_reports') {
-    header('Content-Type: application/json');
-
-    $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, NEXTJS_API_URL . '?action=get_resolved_reports');
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 15);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-    $response = curl_exec($ch);
-    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
-
-    if ($response === false || $httpCode >= 500) {
-        echo json_encode(['success' => false, 'message' => 'Gagal mengambil riwayat komplain dari server']);
-        exit;
-    }
-
-    echo $response;
-    exit;
-}
-
-// ─── 3. AJAX ENDPOINT: PROSES UPLOAD FOTO & SINKRONISASI CLEANER ──────────
-if (isset($_POST['action']) && $_POST['action'] === 'submit_step') {
-    header('Content-Type: application/json');
-
-    $roomToken   = trim($_POST['room_token'] ?? '');
-    $stageAction = trim($_POST['stage_action'] ?? '');
-    $workerName  = trim($_POST['worker_name'] ?? '');
-    $notes       = trim($_POST['notes'] ?? '');
-
-    if (!$roomToken || !$stageAction) {
-        echo json_encode(['success' => false, 'message' => 'Data pengerjaan tidak lengkap']);
-        exit;
-    }
-
-    if ($stageAction === 'start_progress' && empty($workerName)) {
-        echo json_encode(['success' => false, 'message' => 'Nama petugas wajib dipilih']);
-        exit;
-    }
-
-    if (!isset($_FILES['photo_file']) || $_FILES['photo_file']['error'] !== UPLOAD_ERR_OK) {
-        echo json_encode(['success' => false, 'message' => 'Foto bukti pekerjaan wajib diunggah']);
-        exit;
-    }
-
-    $fileTmp  = $_FILES['photo_file']['tmp_name'];
-    $fileSize = $_FILES['photo_file']['size'];
-    $rawName  = $_FILES['photo_file']['name'];
-    $ext      = strtolower(pathinfo($rawName, PATHINFO_EXTENSION));
-
-    if (!in_array($ext, ['jpg', 'jpeg', 'png', 'webp'])) {
-        echo json_encode(['success' => false, 'message' => 'Format file harus berupa gambar (JPG, PNG, atau WEBP)']);
-        exit;
-    }
-
-    if ($fileSize > 15 * 1024 * 1024) {
-        echo json_encode(['success' => false, 'message' => 'Ukuran file foto maksimal 15 MB']);
-        exit;
-    }
-
-    $prefixMap = [
-        'start_progress'  => 'before',
-        'submit_finish'   => 'after',
-        'submit_revision' => 'revision'
-    ];
-    $stageTag = $prefixMap[$stageAction] ?? 'photo';
-    $safeDate = date('Ymd_His');
-    $fileName = 'room_' . preg_replace('/[^a-zA-Z0-9_-]/', '', $roomToken) . "_{$stageTag}_{$safeDate}_" . bin2hex(random_bytes(4)) . '.' . $ext;
-    $targetPath = UPLOAD_DIR . '/' . $fileName;
-
-    if (!move_uploaded_file($fileTmp, $targetPath)) {
-        echo json_encode(['success' => false, 'message' => 'Gagal menyimpan file foto ke server hosting']);
-        exit;
-    }
-
-    $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? "https" : "http";
-    $host = $_SERVER['HTTP_HOST'];
-    $dir = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/\\');
-    $hostingBaseUrl = "{$protocol}://{$host}{$dir}";
-
-    $payload = [
-        'secret_token' => API_SECRET_TOKEN,
-        'action'       => $stageAction,
-        'room_token'   => $roomToken,
-        'worker_name'  => $workerName,
-        'image_file'   => $fileName,
-        'hosting_url'  => $hostingBaseUrl,
-        'notes'        => $notes
-    ];
-
-    $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, NEXTJS_API_URL);
-    curl_setopt($ch, CURLOPT_POST, true);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
-    curl_setopt($ch, CURLOPT_HTTPHEADER, [
-        'Content-Type: application/json',
-        'Authorization: Bearer ' . API_SECRET_TOKEN
-    ]);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 20);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-    $response = curl_exec($ch);
-    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
-
-    if ($response === false) {
-        echo json_encode(['success' => false, 'message' => 'Gagal mengirim data verifikasi ke server utama']);
-        exit;
-    }
-
-    $resData = json_decode($response, true);
-    if ($httpCode >= 400 || (isset($resData['success']) && !$resData['success'])) {
-        $errMsg = $resData['message'] ?? 'Terjadi kesalahan saat memproses data di server';
-        echo json_encode(['success' => false, 'message' => $errMsg]);
-        exit;
-    }
-
-    echo json_encode([
-        'success'   => true,
-        'message'   => $resData['message'] ?? 'Berhasil disimpan',
-        'fileName'  => $fileName,
-        'serverRes' => $resData
-    ]);
-    exit;
-}
-
-// ─── 4. AJAX ENDPOINT: PROSES LAPORAN FASILITAS / PELAPOR ─────────────────
-if (isset($_POST['action']) && $_POST['action'] === 'submit_report') {
-    header('Content-Type: application/json');
-
-    $roomToken        = trim($_POST['room_token'] ?? '');
-    $reporterName     = trim($_POST['reporter_name'] ?? '');
-    $reporterContact  = trim($_POST['reporter_contact'] ?? '');
-    $issueDescription = trim($_POST['issue_description'] ?? '');
-
-    if (!$roomToken || !$reporterName || !$issueDescription) {
-        echo json_encode(['success' => false, 'message' => 'Nama pelapor, ruangan, dan deskripsi keluhan wajib diisi']);
-        exit;
-    }
-
-    if (!isset($_FILES['photo_file']) || $_FILES['photo_file']['error'] !== UPLOAD_ERR_OK) {
-        echo json_encode(['success' => false, 'message' => 'Foto bukti kondisi/kerusakan wajib diunggah']);
-        exit;
-    }
-
-    $fileTmp  = $_FILES['photo_file']['tmp_name'];
-    $fileSize = $_FILES['photo_file']['size'];
-    $rawName  = $_FILES['photo_file']['name'];
-    $ext      = strtolower(pathinfo($rawName, PATHINFO_EXTENSION));
-
-    if (!in_array($ext, ['jpg', 'jpeg', 'png', 'webp'])) {
-        echo json_encode(['success' => false, 'message' => 'Format file harus berupa gambar (JPG, PNG, atau WEBP)']);
-        exit;
-    }
-
-    if ($fileSize > 15 * 1024 * 1024) {
-        echo json_encode(['success' => false, 'message' => 'Ukuran file foto maksimal 15 MB']);
-        exit;
-    }
-
-    $safeDate = date('Ymd_His');
-    $fileName = 'report_' . preg_replace('/[^a-zA-Z0-9_-]/', '', $roomToken) . "_{$safeDate}_" . bin2hex(random_bytes(4)) . '.' . $ext;
-    $targetPath = UPLOAD_DIR . '/' . $fileName;
-
-    if (!move_uploaded_file($fileTmp, $targetPath)) {
-        echo json_encode(['success' => false, 'message' => 'Gagal menyimpan file foto ke server hosting']);
-        exit;
-    }
-
-    $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? "https" : "http";
-    $host = $_SERVER['HTTP_HOST'];
-    $dir = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/\\');
-    $hostingBaseUrl = "{$protocol}://{$host}{$dir}";
-
-    $payload = [
-        'secret_token'      => API_SECRET_TOKEN,
-        'action'            => 'submit_report',
-        'room_token'        => $roomToken,
-        'reporter_name'     => $reporterName,
-        'reporter_contact'  => $reporterContact,
-        'issue_description' => $issueDescription,
-        'image_file'        => $fileName,
-        'hosting_url'       => $hostingBaseUrl
-    ];
-
-    $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, NEXTJS_API_URL);
-    curl_setopt($ch, CURLOPT_POST, true);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
-    curl_setopt($ch, CURLOPT_HTTPHEADER, [
-        'Content-Type: application/json',
-        'Authorization: Bearer ' . API_SECRET_TOKEN
-    ]);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 20);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-    $response = curl_exec($ch);
-    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
-
-    if ($response === false) {
-        echo json_encode(['success' => false, 'message' => 'Gagal mengirim laporan ke server utama']);
-        exit;
-    }
-
-    $resData = json_decode($response, true);
-    if ($httpCode >= 400 || (isset($resData['success']) && !$resData['success'])) {
-        $errMsg = $resData['message'] ?? 'Terjadi kesalahan saat memproses laporan di server';
-        echo json_encode(['success' => false, 'message' => $errMsg]);
-        exit;
-    }
-
-    echo json_encode([
-        'success'   => true,
-        'message'   => $resData['message'] ?? 'Laporan berhasil dikirim',
-        'fileName'  => $fileName,
-        'serverRes' => $resData
-    ]);
-    exit;
-}
-
-// ─── 5. AJAX ENDPOINT: PROSES SELESAIKAN KOMPLAIN OLEH CLEANER ─────────────
-if (isset($_POST['action']) && $_POST['action'] === 'resolve_report') {
-    header('Content-Type: application/json');
-
-    $reportId   = trim($_POST['report_id'] ?? '');
-    $workerName = trim($_POST['worker_name'] ?? '');
-    $notes      = trim($_POST['resolution_notes'] ?? '');
-
-    if (!$reportId || !$workerName) {
-        echo json_encode(['success' => false, 'message' => 'ID laporan dan nama petugas wajib diisi']);
-        exit;
-    }
-
-    if (!isset($_FILES['photo_file']) || $_FILES['photo_file']['error'] !== UPLOAD_ERR_OK) {
-        echo json_encode(['success' => false, 'message' => 'Foto bukti penanganan komplain wajib diunggah']);
-        exit;
-    }
-
-    $fileTmp  = $_FILES['photo_file']['tmp_name'];
-    $fileSize = $_FILES['photo_file']['size'];
-    $rawName  = $_FILES['photo_file']['name'];
-    $ext      = strtolower(pathinfo($rawName, PATHINFO_EXTENSION));
-
-    if (!in_array($ext, ['jpg', 'jpeg', 'png', 'webp'])) {
-        echo json_encode(['success' => false, 'message' => 'Format file harus berupa gambar (JPG, PNG, atau WEBP)']);
-        exit;
-    }
-
-    if ($fileSize > 15 * 1024 * 1024) {
-        echo json_encode(['success' => false, 'message' => 'Ukuran file foto maksimal 15 MB']);
-        exit;
-    }
-
-    $safeDate = date('Ymd_His');
-    $fileName = 'resolved_rep_' . preg_replace('/[^a-zA-Z0-9_-]/', '', $reportId) . "_{$safeDate}_" . bin2hex(random_bytes(4)) . '.' . $ext;
-    $targetPath = UPLOAD_DIR . '/' . $fileName;
-
-    if (!move_uploaded_file($fileTmp, $targetPath)) {
-        echo json_encode(['success' => false, 'message' => 'Gagal menyimpan file foto ke server hosting']);
-        exit;
-    }
-
-    $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? "https" : "http";
-    $host = $_SERVER['HTTP_HOST'];
-    $dir = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/\\');
-    $hostingBaseUrl = "{$protocol}://{$host}{$dir}";
-
-    $payload = [
-        'secret_token'     => API_SECRET_TOKEN,
-        'action'           => 'resolve_report',
-        'report_id'        => $reportId,
-        'worker_name'      => $workerName,
-        'resolution_notes' => $notes,
-        'image_file'       => $fileName,
-        'hosting_url'      => $hostingBaseUrl
-    ];
-
-    $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, NEXTJS_API_URL);
-    curl_setopt($ch, CURLOPT_POST, true);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
-    curl_setopt($ch, CURLOPT_HTTPHEADER, [
-        'Content-Type: application/json',
-        'Authorization: Bearer ' . API_SECRET_TOKEN
-    ]);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 20);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-    $response = curl_exec($ch);
-    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
-
-    if ($response === false) {
-        echo json_encode(['success' => false, 'message' => 'Gagal menghubungi server utama']);
-        exit;
-    }
-
-    $resData = json_decode($response, true);
-    if ($httpCode >= 400 || (isset($resData['success']) && !$resData['success'])) {
-        $errMsg = $resData['message'] ?? 'Terjadi kesalahan saat memproses data di server';
-        echo json_encode(['success' => false, 'message' => $errMsg]);
-        exit;
-    }
-
-    echo json_encode([
-        'success'   => true,
-        'message'   => $resData['message'] ?? 'Komplain fasilitas berhasil ditandai selesai',
-        'fileName'  => $fileName,
-        'serverRes' => $resData
-    ]);
-    exit;
-}
-
-$roomParam = htmlspecialchars(trim($_GET['room'] ?? ''));
 ?>
 <!DOCTYPE html>
 <html lang="id">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Portal Ruangan & Checklist — Chung Chung Christian School</title>
-  
-  <!-- Favicon Resmi CCS -->
-  <link rel="icon" type="image/png" sizes="16x16" href="https://ccs.sch.id/assets/images/favicon.png">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Portal Kebersihan Ruangan — Chung Chung Christian School</title>
+  <link rel="icon" type="image/png" sizes="16x16" href="https://ccs.sch.id/assets/images/favicon.png" />
 
-  <!-- Google Font: Poppins -->
+  <!-- Editorial & Geometric Typography (No Inter/Roboto) -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 
-  <!-- FontAwesome 5 Icons -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
-
-  <!-- Tailwind CSS CDN -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          fontFamily: {
-            sans: ['Poppins', 'sans-serif'],
-          },
-          colors: {
-            ccsNavy: '#022c46',
-            ccsNavyLight: '#0b4877',
-            ccsOrange: '#f16101',
-            ccsOrangeLight: '#f79e27',
-            ccsTeal: '#2da397',
-            ccsPurple: '#7c4bc0',
-            ccsDark: '#012237',
-            ccsText: '#595959',
-            ccsHeading: '#0b4877',
-            ccsBg: '#fcfcfc',
-            ccsFooterCopy: '#94a3ac',
-          }
-        }
-      }
-    }
-  </script>
-
-  <!-- SweetAlert2 CDN -->
-  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-  <!-- HTML5 QR Code Scanner CDN -->
-  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+  <!-- Phosphor Icons (Bold & Fill Weights) -->
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
 
   <style>
-    body, button, input, select, textarea {
-      font-family: 'Poppins', sans-serif;
+    :root {
+      --canvas: #FBFBFA;
+      --surface: #FFFFFF;
+      --surface-alt: #F7F6F3;
+      --border: #EAEAEA;
+      --border-strong: #D6D5D0;
+      --text-primary: #111111;
+      --text-body: #2F3437;
+      --text-muted: #787774;
+
+      /* Desaturated Spot Pastels */
+      --pastel-green-bg: #EDF3EC;
+      --pastel-green-text: #346538;
+      --pastel-green-border: #D4E4D2;
+
+      --pastel-yellow-bg: #FBF3DB;
+      --pastel-yellow-text: #956400;
+      --pastel-yellow-border: #EFE1B6;
+
+      --pastel-red-bg: #FDEBEC;
+      --pastel-red-text: #9F2F2D;
+      --pastel-red-border: #F5D0D2;
+
+      --pastel-blue-bg: #E1F3FE;
+      --pastel-blue-text: #1F6C9F;
+      --pastel-blue-border: #C4E5FA;
+
+      --font-sans: 'Plus Jakarta Sans', 'SF Pro Display', 'Helvetica Neue', sans-serif;
+      --font-serif: 'Instrument Serif', Georgia, serif;
+      --font-mono: 'JetBrains Mono', 'SF Mono', monospace;
     }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
     body {
-      color: #595959;
-      font-size: 15px;
-      line-height: 1.7;
-      background-color: #fbfbfc;
+      font-family: var(--font-sans);
+      background-color: var(--canvas);
+      color: var(--text-body);
+      line-height: 1.6;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
       -webkit-font-smoothing: antialiased;
-      -webkit-tap-highlight-color: transparent;
+      position: relative;
     }
 
-    .fa, .fas, .far, .fal, .fad, .fab,
-    .fa::before, .fas::before, .far::before, .fal::before, .fab::before,
-    [class*="fa-"]::before {
-      font-family: "Font Awesome 5 Free" !important;
-      display: inline-block;
+    /* Subtle Architectural Grid Background */
+    .ambient-canvas {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      background-image:
+        radial-gradient(circle at 18% 12%, rgba(215, 208, 195, 0.16) 0%, transparent 45%),
+        linear-gradient(to right, rgba(0, 0, 0, 0.018) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(0, 0, 0, 0.018) 1px, transparent 1px);
+      background-size: 100% 100%, 48px 48px, 48px 48px;
     }
 
-    h1, h2, h3, h4, h5, h6 {
-      color: #0b4877;
-      font-weight: 700;
+    /* Top Minimalist Brand Bar */
+    .site-header {
+      position: sticky;
+      top: 0;
+      z-index: 40;
+      background: rgba(255, 255, 255, 0.92);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid var(--border);
     }
 
-    .main-logo {
-      width: 78px !important;
-      max-height: 42px !important;
+    .header-inner {
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 14px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .brand-group {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      text-decoration: none;
+      color: var(--text-primary);
+    }
+
+    .school-logo {
+      height: 40px;
+      width: auto;
+      max-width: 115px;
       object-fit: contain;
-      height: auto !important;
       display: block;
     }
-    @media (min-width: 640px) {
-      .main-logo {
-        width: 110px !important;
-        max-height: 52px !important;
+
+    .brand-divider {
+      width: 1px;
+      height: 26px;
+      background: var(--border);
+    }
+
+    .brand-meta {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .brand-eyebrow {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      line-height: 1.2;
+    }
+
+    .brand-title {
+      font-size: 13.5px;
+      font-weight: 700;
+      color: var(--text-primary);
+      letter-spacing: -0.01em;
+      line-height: 1.3;
+    }
+
+    .date-kbd {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--text-body);
+      background: var(--surface-alt);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 4px 10px;
+      white-space: nowrap;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* Main Workspace Container */
+    .workspace {
+      position: relative;
+      z-index: 1;
+      max-width: 760px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 36px 20px 64px;
+      flex: 1;
+    }
+
+    /* Editorial Intro Block */
+    .editorial-header {
+      margin-bottom: 28px;
+      padding-bottom: 22px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .editorial-kicker {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-muted);
+    }
+
+    .editorial-heading {
+      font-family: var(--font-serif);
+      font-size: 34px;
+      font-weight: 400;
+      color: var(--text-primary);
+      letter-spacing: -0.02em;
+      line-height: 1.12;
+    }
+
+    .editorial-sub {
+      font-size: 13.5px;
+      color: var(--text-muted);
+      max-width: 580px;
+    }
+
+    /* Navigation Tabs */
+    .nav-tabs {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      background: var(--surface-alt);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 4px;
+      margin-bottom: 24px;
+    }
+
+    .nav-tab {
+      border: 1px solid transparent;
+      background: transparent;
+      color: var(--text-muted);
+      font-family: var(--font-sans);
+      font-size: 12.5px;
+      font-weight: 600;
+      padding: 9px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: all 0.18s ease;
+    }
+
+    .nav-tab.active {
+      background: var(--surface);
+      color: var(--text-primary);
+      border-color: var(--border);
+    }
+
+    .count-pill {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 600;
+      padding: 1px 7px;
+      border-radius: 9999px;
+      background: var(--pastel-red-bg);
+      color: var(--pastel-red-text);
+      border: 1px solid var(--pastel-red-border);
+    }
+
+    /* Bento Cards */
+    .bento-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 24px;
+      margin-bottom: 16px;
+      transition: box-shadow 0.2s ease;
+      animation: revealUp 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
+    }
+
+    .bento-card:hover {
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+    }
+
+    @keyframes revealUp {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
       }
     }
 
-    .thm-btn {
+    /* Form Controls */
+    .field-block {
+      margin-bottom: 18px;
+    }
+    .field-block:last-child {
+      margin-bottom: 0;
+    }
+
+    .field-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .field-label {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-primary);
+    }
+
+    /* Status Badges (Muted Pastels) */
+    .pastel-tag {
+      font-family: var(--font-mono);
+      font-size: 10.5px;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      padding: 2px 9px;
+      border-radius: 9999px;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .tag-green {
+      background: var(--pastel-green-bg);
+      color: var(--pastel-green-text);
+      border: 1px solid var(--pastel-green-border);
+    }
+    .tag-yellow {
+      background: var(--pastel-yellow-bg);
+      color: var(--pastel-yellow-text);
+      border: 1px solid var(--pastel-yellow-border);
+    }
+    .tag-red {
+      background: var(--pastel-red-bg);
+      color: var(--pastel-red-text);
+      border: 1px solid var(--pastel-red-border);
+    }
+    .tag-blue {
+      background: var(--pastel-blue-bg);
+      color: var(--pastel-blue-text);
+      border: 1px solid var(--pastel-blue-border);
+    }
+
+    .select-wrap {
+      position: relative;
+    }
+
+    .select-control {
+      width: 100%;
+      appearance: none;
+      -webkit-appearance: none;
+      font-family: var(--font-sans);
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-primary);
+      background: var(--surface-alt);
+      border: 1px solid var(--border-strong);
+      border-radius: 6px;
+      padding: 12px 38px 12px 14px;
+      outline: none;
+      cursor: pointer;
+      transition: border-color 0.15s ease, background 0.15s ease;
+    }
+
+    .select-control:focus {
+      background: var(--surface);
+      border-color: var(--text-primary);
+    }
+
+    .select-control:disabled {
+      opacity: 0.65;
+      cursor: not-allowed;
+    }
+
+    .select-caret {
+      position: absolute;
+      right: 13px;
+      top: 50%;
+      transform: translateY(-50%);
+      pointer-events: none;
+      color: var(--text-muted);
+      font-size: 15px;
+    }
+
+    /* Progress Bar & Room Chips */
+    .progress-panel {
+      margin-top: 18px;
+      padding-top: 18px;
+      border-top: 1px solid var(--border);
+    }
+
+    .progress-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+
+    .progress-track {
+      height: 6px;
+      width: 100%;
+      background: var(--surface-alt);
+      border: 1px solid var(--border);
+      border-radius: 9999px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: var(--text-primary);
+      transition: width 0.3s ease;
+    }
+
+    .room-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 12px;
+    }
+
+    .room-chip {
+      font-family: var(--font-sans);
+      font-size: 12px;
+      font-weight: 600;
+      padding: 6px 11px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text-body);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s ease;
+    }
+
+    .room-chip:hover {
+      border-color: var(--text-primary);
+    }
+
+    .room-chip.active {
+      background: var(--text-primary);
+      color: #FFFFFF;
+      border-color: var(--text-primary);
+    }
+
+    .room-chip.done:not(.active) {
+      background: var(--pastel-green-bg);
+      color: var(--pastel-green-text);
+      border-color: var(--pastel-green-border);
+    }
+
+    .room-chip.revision:not(.active) {
+      background: var(--pastel-red-bg);
+      color: var(--pastel-red-text);
+      border-color: var(--pastel-red-border);
+    }
+
+    /* Empty / Notice Card */
+    .empty-bento {
+      background: var(--surface-alt);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 22px;
+      text-align: center;
+      margin-top: 16px;
+    }
+
+    .empty-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 6px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-muted);
+      font-size: 18px;
+      margin-bottom: 10px;
+    }
+
+    /* Dual Photo Upload Grid */
+    .photo-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin: 18px 0;
+    }
+
+    @media (max-width: 520px) {
+      .photo-grid {
+        grid-template-columns: 1fr;
+      }
+      .header-inner {
+        padding: 12px 16px;
+      }
+      .workspace {
+        padding: 24px 16px 48px;
+      }
+      .editorial-heading {
+        font-size: 28px;
+      }
+      .bento-card {
+        padding: 18px;
+      }
+    }
+
+    .upload-slot {
+      border: 1px dashed var(--border-strong);
+      border-radius: 8px;
+      background: var(--surface-alt);
+      padding: 20px 14px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.18s ease, background 0.18s ease;
+    }
+
+    .upload-slot:hover {
+      border-color: var(--text-primary);
+      background: var(--surface);
+    }
+
+    .upload-slot.ready {
+      border-style: solid;
+      border-color: var(--pastel-green-border);
+      background: var(--pastel-green-bg);
+      padding: 10px;
+    }
+
+    .upload-slot img {
+      width: 100%;
+      height: 175px;
+      object-fit: cover;
+      border-radius: 6px;
+      display: block;
+      border: 1px solid var(--border);
+    }
+
+    .slot-kicker {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 3px 8px;
+      border-radius: 4px;
+      display: inline-block;
+      margin-bottom: 10px;
+    }
+
+    .textarea-control {
+      width: 100%;
+      font-family: var(--font-sans);
+      font-size: 13.5px;
+      color: var(--text-primary);
+      background: var(--surface-alt);
+      border: 1px solid var(--border-strong);
+      border-radius: 6px;
+      padding: 11px 13px;
+      outline: none;
+      resize: vertical;
+      min-height: 68px;
+      transition: border-color 0.15s ease, background 0.15s ease;
+    }
+
+    .textarea-control:focus {
+      background: var(--surface);
+      border-color: var(--text-primary);
+    }
+
+    /* Utilitarian Primary Button (#111111) */
+    .btn-primary {
+      width: 100%;
+      background: var(--text-primary);
+      color: #FFFFFF;
+      font-family: var(--font-sans);
+      font-size: 13.5px;
+      font-weight: 600;
+      border: 1px solid var(--text-primary);
+      border-radius: 6px;
+      padding: 13px 18px;
+      cursor: pointer;
       display: inline-flex;
       align-items: center;
       justify-content: center;
       gap: 8px;
-      border: 2px solid #f16101;
-      outline: none;
-      background-color: #f16101;
-      font-size: 14px;
-      font-weight: 600;
-      color: #ffffff;
-      padding: 11px 24px;
-      border-radius: 40px;
-      transition: all 0.3s ease;
-      cursor: pointer;
-      text-transform: capitalize;
+      transition: background 0.15s ease, transform 0.1s ease;
     }
-    .thm-btn:hover {
-      background-color: #022c46;
-      border-color: #022c46;
-      color: #ffffff;
-      transform: translateY(-1px);
-      box-shadow: 0 4px 12px rgba(2, 44, 70, 0.15);
+
+    .btn-primary:hover {
+      background: #2B2B2B;
     }
-    .thm-btn--teal {
-      background-color: #2da397;
-      border-color: #2da397;
+
+    .btn-primary:active {
+      transform: scale(0.98);
     }
-    .thm-btn--teal:hover {
-      background-color: #022c46;
-      border-color: #022c46;
+
+    .btn-primary:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
     }
-    .thm-btn--outline {
-      background-color: transparent;
-      border-color: #cbd5e1;
-      color: #475569;
+
+    /* Banners & Alerts */
+    .notice-banner {
+      padding: 12px 14px;
+      border-radius: 6px;
+      font-size: 12.5px;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      line-height: 1.5;
     }
-    .thm-btn--outline:hover {
-      background-color: #f1f5f9;
-      border-color: #94a3ac;
-      color: #0b4877;
+
+    .notice-done {
+      background: var(--pastel-green-bg);
+      color: var(--pastel-green-text);
+      border: 1px solid var(--pastel-green-border);
+    }
+
+    .notice-revision {
+      background: var(--pastel-red-bg);
+      color: var(--pastel-red-text);
+      border: 1px solid var(--pastel-red-border);
+    }
+
+    .alert-box {
+      display: none;
+      padding: 13px 16px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 500;
+      margin-bottom: 16px;
+      align-items: center;
+      gap: 10px;
+    }
+    .alert-error {
+      background: var(--pastel-red-bg);
+      color: var(--pastel-red-text);
+      border: 1px solid var(--pastel-red-border);
+    }
+    .alert-success {
+      background: var(--pastel-green-bg);
+      color: var(--pastel-green-text);
+      border: 1px solid var(--pastel-green-border);
+    }
+
+    /* Complaint Item */
+    .complaint-card {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 18px;
+      background: var(--surface);
+      margin-bottom: 12px;
     }
 
     .site-footer {
-      background-color: #012237;
-    }
-    .site-footer__copy {
-      color: #94a3ac !important;
-      font-size: 13px !important;
-      font-weight: 500 !important;
-      margin: 0;
+      border-top: 1px solid var(--border);
+      background: var(--surface);
+      padding: 18px 20px;
       text-align: center;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-muted);
+      position: relative;
+      z-index: 1;
     }
   </style>
 </head>
-<body class="min-h-screen flex flex-col justify-between">
+<body>
 
-  <!-- ═══════════════════════════════════════════════════════════════════════ -->
-  <!-- 1. TOP BAR (TANGGAL & BAHASA / LANGUAGE SWITCHER)                       -->
-  <!-- ═══════════════════════════════════════════════════════════════════════ -->
-  <div class="bg-ccsNavy text-white py-2">
-    <div class="max-w-4xl mx-auto px-4 sm:px-6 flex items-center justify-between">
-      <!-- Language Switcher Pill -->
-      <div class="flex items-center gap-1.5 text-xs font-semibold bg-white/10 p-0.5 rounded-full border border-white/20">
-        <button 
-          id="btnLangID" 
-          onclick="setLanguage('id')" 
-          class="px-2.5 py-0.5 rounded-full text-[11px] transition-all bg-ccsOrange text-white shadow-xs"
-        >
-          ID
-        </button>
-        <button 
-          id="btnLangEN" 
-          onclick="setLanguage('en')" 
-          class="px-2.5 py-0.5 rounded-full text-[11px] transition-all text-gray-300 hover:text-white"
-        >
-          EN
-        </button>
-      </div>
+  <div class="ambient-canvas"></div>
 
-      <!-- Date Display -->
-      <div class="flex items-center gap-2 text-[12px] sm:text-[13px] font-medium text-gray-200">
-        <i class="far fa-calendar-alt text-ccsOrangeLight"></i>
-        <span><?= date('d M Y') ?></span>
-      </div>
-    </div>
-  </div>
-
-  <!-- ═══════════════════════════════════════════════════════════════════════ -->
-  <!-- 2. NAVBAR DENGAN LOGO RESMI CCS                                         -->
-  <!-- ═══════════════════════════════════════════════════════════════════════ -->
-  <header class="bg-white sticky top-0 z-50 shadow-sm">
-    <div class="max-w-4xl mx-auto px-4 sm:px-6 h-[56px] sm:h-[68px] flex items-center justify-between">
-      <a href="https://ccs.sch.id/" class="flex items-center">
-        <img 
-          src="https://ccs.sch.id/assets/images/logo-cccs.png" 
-          alt="Chung Chung Christian School" 
-          class="main-logo"
+  <!-- TOP MINIMALIST HEADER WITH OFFICIAL CCS LOGO -->
+  <header class="site-header">
+    <div class="header-inner">
+      <a href="https://ccs.sch.id/" class="brand-group">
+        <img
+          src="https://ccs.sch.id/assets/images/logo-cccs.png"
+          alt="Chung Chung Christian School"
+          class="school-logo"
           onerror="this.src='https://ccs.sch.id/assets/images/logo.png';"
         />
+        <span class="brand-divider"></span>
+        <div class="brand-meta">
+          <span class="brand-eyebrow">Facility Operations</span>
+          <span class="brand-title">Cleaner Workspace</span>
+        </div>
       </a>
-      <div class="flex items-center gap-2 sm:gap-4">
-        <nav class="flex items-center gap-3 sm:gap-6 text-xs sm:text-[15px] font-medium">
-          <a href="https://ccs.sch.id/" class="text-gray-800 hover:text-ccsOrange transition-colors hidden sm:inline-block">
-            Home
-          </a>
-          <a href="index.php" class="text-ccsOrange font-semibold border-b-2 border-ccsOrange pb-1 transition-colors">
-            <span data-i18n="portal_title">Portal Ruangan</span>
-          </a>
-        </nav>
-        
-        <!-- Hamburger Menu Button -->
-        <button 
-          id="btnHamburger"
-          type="button" 
-          onclick="openMobileNavDrawer()" 
-          class="relative p-2 sm:px-3 sm:py-1.5 rounded-xl border border-gray-200 text-gray-700 hover:text-ccsOrange hover:border-ccsOrange hover:bg-orange-50/50 transition flex items-center gap-1.5 shadow-2xs active:scale-95"
-          aria-label="Menu"
-        >
-          <i class="fas fa-bars text-sm"></i>
-          <span class="hidden sm:inline text-xs font-bold" data-i18n="menu_btn">Menu</span>
-          <span id="navActiveBadgeDot" class="hidden absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white animate-pulse"></span>
-        </button>
-      </div>
-    </div>
 
-    <!-- PITA 3 WARNA IKONIK CCS -->
-    <div class="w-full flex h-[6px]">
-      <div class="flex-1 bg-ccsTeal"></div>
-      <div class="flex-1 bg-ccsOrange"></div>
-      <div class="flex-1 bg-ccsPurple"></div>
+      <div class="date-kbd">
+        <i class="ph-bold ph-calendar-blank"></i>
+        <span id="dateBadgeText">Hari Ini</span>
+      </div>
     </div>
   </header>
 
-  <!-- SLIDE-OVER NAVIGATION DRAWER (HAMBURGER MENU) -->
-  <div id="mobileNavDrawer" class="fixed inset-0 z-50 hidden">
-    <!-- Backdrop -->
-    <div class="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity" onclick="closeMobileNavDrawer()"></div>
-    
-    <!-- Drawer Panel -->
-    <div class="fixed inset-y-0 right-0 max-w-xs w-full bg-white shadow-2xl flex flex-col justify-between z-10">
-      <!-- Drawer Header -->
-      <div class="p-4 sm:p-5 border-b border-gray-100 flex items-center justify-between bg-gradient-to-r from-gray-50 to-white">
-        <div class="flex items-center gap-2.5">
-          <img src="https://ccs.sch.id/assets/images/logo-cccs.png" alt="CCS" class="h-7 w-auto" onerror="this.src='https://ccs.sch.id/assets/images/logo.png';">
-          <span class="text-xs font-bold text-ccsHeading" data-i18n="portal_menu">Menu Navigasi</span>
-        </div>
-        <button onclick="closeMobileNavDrawer()" class="w-8 h-8 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-600 flex items-center justify-center transition active:scale-95" aria-label="Tutup">
-          <i class="fas fa-times text-sm"></i>
-        </button>
-      </div>
-
-      <!-- Drawer Content -->
-      <div class="p-4 sm:p-5 space-y-4 flex-1 overflow-y-auto">
-        <!-- Active User Profile Card -->
-        <div class="bg-gray-50 border border-gray-200/80 rounded-2xl p-3.5 space-y-2">
-          <div class="text-[10px] font-bold uppercase tracking-wider text-gray-400" data-i18n="active_role_label">Peran Saat Ini</div>
-          <div class="flex items-center justify-between">
-            <div class="flex items-center gap-2">
-              <div id="drawerRoleIcon" class="w-7 h-7 rounded-lg bg-orange-100 text-ccsOrange flex items-center justify-center text-xs font-bold">
-                <i class="fas fa-broom"></i>
-              </div>
-              <div class="text-xs font-extrabold text-ccsHeading truncate" id="drawerWorkerName">Darul Cleaning</div>
-            </div>
-            <button onclick="closeMobileNavDrawer(); promptSwitchCleanerModal();" class="text-[11px] font-bold text-ccsOrange hover:underline" data-i18n="change_worker">
-              Ganti
-            </button>
-          </div>
-        </div>
-
-        <!-- Navigation Menu List -->
-        <div class="space-y-1.5 pt-1">
-          <button 
-            type="button" 
-            onclick="closeMobileNavDrawer(); goToNextRoomScan();"
-            class="w-full text-left px-3.5 py-3 rounded-xl font-bold text-xs text-gray-700 hover:bg-orange-50 hover:text-ccsOrange transition flex items-center justify-between group active:scale-98"
-          >
-            <div class="flex items-center gap-3">
-              <div class="w-8 h-8 rounded-lg bg-orange-100 text-ccsOrange flex items-center justify-center text-xs font-bold group-hover:scale-105 transition">
-                <i class="fas fa-qrcode"></i>
-              </div>
-              <div>
-                <div data-i18n="nav_scan_room">Scan Ruangan & Checklist</div>
-                <div class="text-[10px] font-normal text-gray-400" data-i18n="nav_scan_room_sub">Buka kamera scan QR pintu</div>
-              </div>
-            </div>
-            <i class="fas fa-chevron-right text-[10px] text-gray-300 group-hover:text-ccsOrange"></i>
-          </button>
-
-          <button 
-            type="button" 
-            onclick="closeMobileNavDrawer(); openComplaintCenter('active');"
-            class="w-full text-left px-3.5 py-3 rounded-xl font-bold text-xs text-gray-700 hover:bg-amber-50 hover:text-amber-800 transition flex items-center justify-between group active:scale-98"
-          >
-            <div class="flex items-center gap-3">
-              <div class="w-8 h-8 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center text-xs font-bold group-hover:scale-105 transition">
-                <i class="fas fa-tasks"></i>
-              </div>
-              <div>
-                <div class="flex items-center gap-1.5">
-                  <span data-i18n="nav_complaint_center">Penanganan Komplain</span>
-                  <span id="drawerComplaintsCountBadge" class="hidden px-1.5 py-0.5 rounded-full text-[10px] font-extrabold bg-red-500 text-white">0</span>
-                </div>
-                <div class="text-[10px] font-normal text-gray-400" data-i18n="nav_complaint_center_sub">Komplain aktif & history selesai</div>
-              </div>
-            </div>
-            <i class="fas fa-chevron-right text-[10px] text-gray-300 group-hover:text-amber-600"></i>
-          </button>
-
-          <button 
-            type="button" 
-            onclick="closeMobileNavDrawer(); resetRole();"
-            class="w-full text-left px-3.5 py-3 rounded-xl font-bold text-xs text-gray-700 hover:bg-gray-100 transition flex items-center justify-between group active:scale-98"
-          >
-            <div class="flex items-center gap-3">
-              <div class="w-8 h-8 rounded-lg bg-gray-100 text-gray-600 flex items-center justify-center text-xs font-bold group-hover:scale-105 transition">
-                <i class="fas fa-exchange-alt"></i>
-              </div>
-              <div>
-                <div data-i18n="switch_role">Ganti Peran</div>
-                <div class="text-[10px] font-normal text-gray-400" data-i18n="switch_role_sub">Cleaner atau Pelapor</div>
-              </div>
-            </div>
-            <i class="fas fa-chevron-right text-[10px] text-gray-300"></i>
-          </button>
-        </div>
-      </div>
-
-      <!-- Drawer Footer -->
-      <div class="p-4 bg-gray-50 border-t border-gray-100 text-center">
-        <p class="text-[11px] text-gray-400">&copy; <?= date('Y') ?> CCS Room & Facility Portal</p>
-      </div>
-    </div>
-  </div>
-
-  <!-- ═══════════════════════════════════════════════════════════════════════ -->
-  <!-- 3. KONTEN UTAMA                                                         -->
-  <!-- ═══════════════════════════════════════════════════════════════════════ -->
-  <main class="max-w-xl mx-auto px-4 sm:px-6 py-6 sm:py-8 flex-1 w-full space-y-6">
-
-    <!-- Active Role Header Indicator (Clean Mobile-First Header) -->
-    <div id="activeRoleBar" class="hidden bg-white rounded-2xl p-4 border border-gray-100 shadow-sm space-y-3">
-      <div class="flex items-start justify-between gap-3">
-        <div class="flex items-start gap-3 min-w-0">
-          <div id="activeRoleIcon" class="w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold bg-orange-100 text-ccsOrange shrink-0 shadow-xs mt-0.5">
-            <i class="fas fa-broom"></i>
-          </div>
-          <div class="min-w-0">
-            <div id="activeRoleCategoryText" class="text-[10px] font-bold text-gray-400 uppercase tracking-wider leading-tight">
-              Petugas Kebersihan
-            </div>
-            <div class="text-sm font-extrabold text-ccsHeading truncate leading-tight mt-0.5">
-              <span id="activeCleanerNameText">Darul Cleaning</span>
-            </div>
-            <!-- Button Ganti Nama di bawah nama petugas -->
-            <div class="mt-1.5">
-              <button 
-                id="btnChangeCleanerQuick"
-                type="button"
-                onclick="promptSwitchCleanerModal()" 
-                class="hidden px-2.5 py-1 rounded-lg bg-orange-50 hover:bg-orange-100 border border-orange-200 text-ccsOrange text-[11px] font-bold items-center gap-1.5 transition active:scale-95"
-                title="Ganti Nama Petugas"
-              >
-                <i class="fas fa-user-edit text-[10px]"></i>
-                <span data-i18n="change_worker">Ganti Nama</span>
-              </button>
-            </div>
-          </div>
-        </div>
-        <div class="flex items-center gap-1.5 shrink-0">
-          <button 
-            type="button" 
-            onclick="resetRole()" 
-            class="px-2.5 py-1.5 rounded-xl border border-gray-200 text-gray-500 hover:text-ccsNavy hover:bg-gray-50 text-xs font-semibold flex items-center gap-1 transition active:scale-95"
-            title="Ganti Peran"
-          >
-            <i class="fas fa-sync-alt text-[10px]"></i>
-            <span class="hidden sm:inline" data-i18n="switch_role">Ganti Peran</span>
-          </button>
-        </div>
-      </div>
-
-      <!-- Card Notifikasi Komplain Ruangan (DIBAWAH BUTTON GANTI NAMA) -->
-      <div id="scannerActiveComplaintsAlert" class="hidden pt-2.5 border-t border-gray-100">
-        <div 
-          onclick="openComplaintCenter('active')" 
-          class="bg-gradient-to-r from-red-50 to-amber-50 border border-red-200 hover:border-red-400 rounded-xl p-3 flex items-center justify-between cursor-pointer transition shadow-2xs group active:scale-98"
-        >
-          <div class="flex items-center gap-3">
-            <div class="w-8 h-8 rounded-xl bg-red-100 text-red-600 flex items-center justify-center text-xs font-bold shrink-0">
-              <i class="fas fa-exclamation-triangle"></i>
-            </div>
-            <div>
-              <p class="text-xs font-bold text-gray-800">
-                <span id="scannerComplaintsAlertCount">0</span> <span data-i18n="active_complaints_count_text">Komplain Ruangan Perlu Ditangani</span>
-              </p>
-              <p class="text-[10px] text-gray-500" data-i18n="tap_to_open_complaints">Ketuk untuk membuka menu penanganan komplain →</p>
-            </div>
-          </div>
-          <i class="fas fa-chevron-right text-xs text-gray-400 group-hover:text-red-600 transition"></i>
-        </div>
-      </div>
-    </div>
-
-    <!-- Loading State Card -->
-    <div id="loadingCard" class="bg-white rounded-2xl p-8 border border-gray-100 shadow-sm text-center">
-      <div class="w-12 h-12 border-4 border-ccsOrange border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-      <p class="text-sm font-semibold text-ccsHeading" data-i18n="loading_room">Memeriksa Data Ruangan...</p>
-      <p class="text-xs text-gray-400 mt-1" data-i18n="connecting_server">Menghubungkan ke sistem Chung Chung Christian School</p>
-    </div>
-
-    <!-- ─── SECTION 1: ROLE SELECTION (PILIH PERAN) ─────────────────────── -->
-    <div id="roleSelectionSection" class="hidden space-y-5">
-      <div class="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm text-center space-y-2">
-        <div class="w-12 h-12 rounded-full bg-orange-100 text-ccsOrange font-bold flex items-center justify-center text-xl mx-auto mb-1">
-          <i class="fas fa-user-tag"></i>
-        </div>
-        <h2 class="text-lg sm:text-xl font-bold text-ccsHeading" data-i18n="role_title">
-          Pilih Peran Anda
-        </h2>
-        <p class="text-xs text-gray-500 max-w-sm mx-auto" data-i18n="role_subtitle">
-          Silakan pilih apakah Anda bertugas sebagai tim kebersihan ruangan atau ingin melaporkan kendala fasilitas.
-        </p>
-      </div>
-
-      <!-- Choice Cards (Responsive Mobile-First) -->
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-
-        <!-- Card: Cleaner (Petugas Kebersihan) -->
-        <div 
-          class="bg-white rounded-2xl p-5 border-2 border-orange-200 hover:border-ccsOrange transition-all duration-300 shadow-xs hover:shadow-md flex flex-col justify-between group relative overflow-hidden"
-        >
-          <div class="absolute top-0 right-0 w-16 h-16 bg-orange-50 rounded-bl-full -mr-4 -mt-4 transition-transform group-hover:scale-110"></div>
-          <div>
-            <div class="w-12 h-12 rounded-2xl bg-orange-100 text-ccsOrange flex items-center justify-center text-xl mb-3 group-hover:scale-105 transition-transform">
-              <i class="fas fa-broom"></i>
-            </div>
-            <div class="flex items-center gap-2 mb-1">
-              <h3 class="text-base font-bold text-ccsHeading" data-i18n="role_cleaner_name">Petugas Kebersihan</h3>
-              <span class="text-[10px] font-semibold bg-orange-50 text-ccsOrange px-2 py-0.5 rounded-full" data-i18n="role_cleaner_badge">Cleaner</span>
-            </div>
-            <p class="text-xs text-gray-500 line-clamp-2 mb-3" data-i18n="role_cleaner_desc">
-              Checklist pengerjaan kebersihan ruangan & unggah foto before / after.
-            </p>
-
-            <!-- Dropdown Pemilihan Nama Petugas Kebersihan -->
-            <div class="pt-2.5 border-t border-orange-100/70 mb-3 text-left">
-              <div class="flex items-center justify-between mb-1">
-                <label class="block text-[11px] font-bold text-gray-700 uppercase tracking-wider" data-i18n="select_your_name">
-                  Pilih Nama Anda:
-                </label>
-                <span id="roleWorkerSavedBadge" class="hidden text-[10px] text-emerald-600 font-semibold flex items-center gap-1 bg-emerald-50 px-1.5 py-0.5 rounded">
-                  <i class="fas fa-check"></i> <span data-i18n="auto_saved">Tersimpan</span>
-                </span>
-              </div>
-              <div class="relative">
-                <select 
-                  id="roleWorkerNameSelect" 
-                  onchange="handleGlobalCleanerChange(this.value)"
-                  class="w-full px-3 py-2.5 text-xs border border-orange-200 rounded-xl bg-orange-50/40 text-gray-800 font-semibold focus:border-ccsOrange focus:ring-2 focus:ring-ccsOrange/20 outline-none appearance-none cursor-pointer"
-                >
-                  <option value="" data-i18n="cleaner_placeholder">-- Pilih nama Anda --</option>
-                </select>
-                <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-ccsOrange">
-                  <i class="fas fa-chevron-down text-xs"></i>
-                </div>
-              </div>
-              <p class="text-[10px] text-gray-400 mt-1" data-i18n="cleaner_auto_remember_hint">
-                Pilihan nama otomatis diingat untuk semua ruangan berikutnya.
-              </p>
-            </div>
-          </div>
-
-          <button 
-            type="button" 
-            onclick="handleEnterCleaner()" 
-            class="thm-btn w-full text-xs py-2.5 group-hover:bg-ccsNavy group-hover:border-ccsNavy shadow-xs"
-          >
-            <i class="fas fa-check-circle mr-1"></i>
-            <span data-i18n="role_cleaner_btn">Masuk sebagai Cleaner</span>
-          </button>
-        </div>
-
-        <!-- Card: Pelapor (Facility Reporter) -->
-        <div 
-          onclick="selectRole('reporter')" 
-          class="bg-white rounded-2xl p-5 border-2 border-gray-100 hover:border-ccsTeal transition-all duration-300 shadow-xs hover:shadow-md cursor-pointer flex flex-col justify-between group relative overflow-hidden"
-        >
-          <div class="absolute top-0 right-0 w-16 h-16 bg-teal-50 rounded-bl-full -mr-4 -mt-4 transition-transform group-hover:scale-110"></div>
-          <div>
-            <div class="w-12 h-12 rounded-2xl bg-teal-100 text-ccsTeal flex items-center justify-center text-xl mb-4 group-hover:scale-105 transition-transform">
-              <i class="fas fa-bullhorn"></i>
-            </div>
-            <div class="flex items-center gap-2 mb-1">
-              <h3 class="text-base font-bold text-ccsHeading" data-i18n="role_reporter_name">Pelapor Fasilitas</h3>
-              <span class="text-[10px] font-semibold bg-teal-50 text-ccsTeal px-2 py-0.5 rounded-full" data-i18n="role_reporter_badge">Reporter</span>
-            </div>
-            <p class="text-xs text-gray-500 line-clamp-3 mb-4" data-i18n="role_reporter_desc">
-              Laporkan fasilitas ruangan yang rusak, bermasalah, atau memerlukan perbaikan.
-            </p>
-          </div>
-          <button class="thm-btn thm-btn--teal w-full text-xs py-2.5 group-hover:bg-ccsNavy group-hover:border-ccsNavy">
-            <i class="fas fa-exclamation-circle mr-1"></i>
-            <span data-i18n="role_reporter_btn">Laporkan Masalah</span>
-          </button>
-        </div>
-
-      </div>
-    </div>
-
-    <!-- ─── SECTION 2: QR SCANNER SECTION ───────────────────────────────── -->
-    <div id="scannerSection" class="hidden">
-      <div class="bg-white rounded-2xl p-5 sm:p-6 border border-gray-100 shadow-sm space-y-4">
-
-        <!-- 2A. KOTAK KUNCI: JIKA PETUGAS BELUM PILIH NAMA (KAMERA WAJIB MATI) -->
-        <div id="cleanerLockBox" class="hidden bg-gradient-to-br from-amber-50 to-orange-50 border-2 border-amber-300 rounded-2xl p-6 text-center space-y-4">
-          <div class="w-14 h-14 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center text-2xl mx-auto shadow-xs">
-            <i class="fas fa-user-lock"></i>
-          </div>
-          <div>
-            <h3 class="text-base font-extrabold text-ccsHeading" data-i18n="cleaner_required_title">
-              Pilih Nama Petugas Terlebih Dahulu
-            </h3>
-            <p class="text-xs text-gray-600 mt-1.5 max-w-sm mx-auto" data-i18n="cleaner_required_subtitle">
-              Kamera scanner tidak dapat digunakan sebelum Anda memilih identitas nama petugas kebersihan yang bertugas.
-            </p>
-          </div>
-          <div class="max-w-xs mx-auto">
-            <label class="block text-[11px] font-bold text-gray-700 uppercase tracking-wider mb-1.5 text-left" data-i18n="select_your_name">
-              Pilih Nama Anda:
-            </label>
-            <div class="relative">
-              <select 
-                id="scannerLockWorkerSelect" 
-                onchange="handleSelectCleanerAndUnlock(this.value)"
-                class="w-full px-4 py-3 text-xs font-bold border-2 border-amber-300 rounded-xl bg-white text-gray-800 focus:border-ccsOrange focus:ring-2 focus:ring-ccsOrange/20 outline-none shadow-xs appearance-none cursor-pointer"
-              >
-                <option value="" data-i18n="cleaner_placeholder">-- Pilih nama Anda --</option>
-              </select>
-              <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-amber-600">
-                <i class="fas fa-chevron-down text-xs"></i>
-              </div>
-            </div>
-            <p class="text-[10px] text-gray-400 mt-2 text-left" data-i18n="cleaner_lock_hint">
-              Setelah dipilih, kamera scanner akan aktif & nama diingat permanen di HP ini.
-            </p>
-          </div>
-        </div>
-
-        <!-- 2B. KOTAK SCANNER AKTIF (Hanya aktif jika nama sudah dipilih / mode pelapor) -->
-        <div id="scannerActiveBox" class="space-y-4">
-          <div class="text-center">
-            <div id="scannerIconBox" class="w-12 h-12 rounded-full bg-orange-100 text-ccsOrange font-bold flex items-center justify-center text-xl mx-auto mb-2">
-              <i class="fas fa-qrcode"></i>
-            </div>
-            <h2 id="scannerHeading" class="text-lg font-bold text-ccsHeading" data-i18n="scan_heading">Scan QR Code Ruangan</h2>
-            <p id="scannerSubHeading" class="text-xs text-gray-500 mt-1" data-i18n="scan_subtitle">Arahkan kamera ke stiker barcode di pintu ruangan sekolah</p>
-          </div>
-
-          <div id="qrReader" class="overflow-hidden rounded-xl border border-gray-200 bg-gray-900 min-h-[240px]"></div>
-
-          <div class="pt-4 border-t border-gray-100 text-center">
-            <p class="text-xs text-gray-400 mb-2 font-medium" data-i18n="manual_token_label">Atau masukkan kode token ruangan:</p>
-            <div class="flex gap-2">
-              <input 
-                type="text" 
-                id="manualRoomToken" 
-                placeholder="Contoh: rm_a1b2c3d4" 
-                class="flex-1 px-4 py-2.5 text-xs border border-gray-200 rounded-xl focus:border-ccsNavy focus:ring-2 focus:ring-ccsNavy/10 font-mono uppercase outline-none"
-              >
-              <button onclick="handleManualToken()" class="thm-btn py-2 px-5 text-xs">
-                <span data-i18n="open_btn">Buka</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- ─── SECTION 3: CLEANER FORM SECTION ─────────────────────────────── -->
-    <div id="cleanerFormSection" class="hidden space-y-5">
-
-      <!-- Room Header Box -->
-      <div class="bg-white rounded-2xl p-5 sm:p-6 border border-gray-100 shadow-sm relative overflow-hidden">
-        <div class="flex items-start justify-between gap-3">
-          <div>
-            <span class="text-[11px] font-bold tracking-wider uppercase text-ccsTeal bg-teal-50 px-2.5 py-1 rounded-md inline-block">
-              <i class="fas fa-door-open mr-1"></i> <span data-i18n="room_location">Lokasi Ruangan</span>
-            </span>
-            <h2 id="cleanerRoomName" class="text-lg sm:text-xl font-bold text-ccsHeading mt-2">
-              Nama Ruangan
-            </h2>
-            <p id="cleanerRoomToken" class="text-xs font-mono text-gray-400 mt-0.5">
-              Token: -
-            </p>
-          </div>
-          <div class="flex flex-col items-end gap-2 shrink-0">
-            <div id="cleanerStatusBadge" class="shrink-0 text-xs font-bold px-3 py-1.5 rounded-full">
-              <!-- Dynamic Status Badge -->
-            </div>
-            <button 
-              type="button" 
-              onclick="goToNextRoomScan()" 
-              class="text-[11px] font-semibold text-gray-500 hover:text-ccsOrange border border-gray-200 px-2.5 py-1 rounded-lg transition flex items-center gap-1 shadow-2xs active:scale-95"
-            >
-              <i class="fas fa-qrcode text-[10px]"></i>
-              <span data-i18n="scan_other_room">Scan Ruangan Lain</span>
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Alert Komplain Ruangan dipindah ke Menu Khusus Penanganan Komplain -->
-
-      <!-- Identitas Petugas Cleaner (Dropdown dari users role Cleaning) -->
-      <div class="bg-white rounded-2xl p-5 sm:p-6 border border-gray-100 shadow-sm space-y-3">
-        <div class="flex items-center justify-between">
-          <div class="flex items-center gap-3">
-            <div class="w-8 h-8 rounded-full bg-orange-100 text-ccsOrange font-bold text-xs flex items-center justify-center shrink-0">
-              <i class="fas fa-user"></i>
-            </div>
-            <h3 class="text-sm font-bold text-ccsHeading" data-i18n="cleaner_id_title">Identitas Petugas Kebersihan</h3>
-          </div>
-          <span class="text-[11px] text-emerald-600 font-semibold flex items-center bg-emerald-50 px-2 py-0.5 rounded-md">
-            <i class="fas fa-check-circle mr-1"></i> <span data-i18n="auto_saved">Tersimpan Otomatis</span>
-          </span>
-        </div>
-
-        <div>
-          <label class="block text-xs font-semibold uppercase tracking-wider text-gray-700 mb-1.5" data-i18n="cleaner_select_label">
-            Nama Lengkap Petugas
-          </label>
-          <div class="relative">
-            <select 
-              id="workerNameSelect" 
-              onchange="handleGlobalCleanerChange(this.value)"
-              class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:border-ccsNavy focus:ring-2 focus:ring-ccsNavy/10 text-sm outline-none transition bg-white appearance-none cursor-pointer"
-            >
-              <option value="" data-i18n="cleaner_loading">-- Memuat daftar petugas... --</option>
-            </select>
-            <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-400">
-              <i class="fas fa-chevron-down text-xs"></i>
-            </div>
-          </div>
-          <p class="text-[11px] text-gray-400 mt-1.5" data-i18n="cleaner_hint">
-            Pilihan Anda otomatis tersimpan di HP ini, tidak perlu dipilih ulang untuk ruangan lainnya.
-          </p>
-        </div>
-      </div>
-
-      <!-- Dynamic Stage Container (Before / After / Revision) -->
-      <div id="stageContainer" class="bg-white rounded-2xl p-5 sm:p-6 border border-gray-100 shadow-sm space-y-4">
-        <!-- Injected via JavaScript -->
-      </div>
-
-    </div>
-
-    <!-- ─── SECTION 4: PELAPOR / REPORTER FORM SECTION ───────────────────── -->
-    <div id="reporterFormSection" class="hidden space-y-5">
-
-      <!-- Room Header Box -->
-      <div class="bg-white rounded-2xl p-5 sm:p-6 border border-gray-100 shadow-sm relative overflow-hidden">
-        <div class="flex items-start justify-between gap-3">
-          <div>
-            <span class="text-[11px] font-bold tracking-wider uppercase text-ccsTeal bg-teal-50 px-2.5 py-1 rounded-md inline-block">
-              <i class="fas fa-door-open mr-1"></i> <span data-i18n="room_location">Lokasi Ruangan</span>
-            </span>
-            <h2 id="reporterRoomName" class="text-lg sm:text-xl font-bold text-ccsHeading mt-2">
-              Nama Ruangan
-            </h2>
-            <p id="reporterRoomToken" class="text-xs font-mono text-gray-400 mt-0.5">
-              Token: -
-            </p>
-          </div>
-          <div class="flex flex-col items-end gap-2 shrink-0">
-            <div class="shrink-0 text-xs font-bold px-3 py-1.5 rounded-full bg-teal-50 text-ccsTeal border border-teal-200">
-              <i class="fas fa-bullhorn mr-1"></i> <span data-i18n="facility_report_badge">Laporan Fasilitas</span>
-            </div>
-            <button 
-              type="button" 
-              onclick="goToNextRoomScan()" 
-              class="text-[11px] font-semibold text-gray-500 hover:text-ccsTeal border border-gray-200 px-2.5 py-1 rounded-lg transition flex items-center gap-1 shadow-2xs active:scale-95"
-            >
-              <i class="fas fa-qrcode text-[10px]"></i>
-              <span data-i18n="scan_other_room">Scan Ruangan Lain</span>
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Form Card: Pelaporan Kendala / Kerusakan Ruangan -->
-      <div class="bg-white rounded-2xl p-5 sm:p-6 border border-gray-100 shadow-sm space-y-4">
-        <div class="border-b border-gray-100 pb-3">
-          <h3 class="text-sm font-bold text-ccsHeading flex items-center gap-2">
-            <i class="fas fa-clipboard-list text-ccsTeal"></i>
-            <span data-i18n="reporter_form_title">Formulir Laporan Fasilitas</span>
-          </h3>
-          <p class="text-xs text-gray-400 mt-1" data-i18n="reporter_form_subtitle">
-            Kirimkan laporan kendala atau kerusakan ruangan untuk ditindaklanjuti tim operasional.
-          </p>
-        </div>
-
-        <!-- Nama Pelapor -->
-        <div>
-          <label class="block text-xs font-semibold uppercase tracking-wider text-gray-700 mb-1.5">
-            <span data-i18n="reporter_name_label">Nama Lengkap Pelapor</span> <span class="text-rose-500">*</span>
-          </label>
-          <input 
-            type="text" 
-            id="reporterNameInput" 
-            placeholder="Contoh: Budi Santoso / Ms. Sarah"
-            data-i18n-ph="reporter_name_placeholder"
-            class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:border-ccsTeal focus:ring-2 focus:ring-ccsTeal/10 text-sm outline-none transition"
-          >
-        </div>
-
-
-
-        <!-- Foto Bukti Kondisi / Kerusakan (Wajib) -->
-        <div>
-          <label class="block text-xs font-semibold uppercase tracking-wider text-gray-700 mb-1.5">
-            <span data-i18n="reporter_photo_label">Foto Bukti Kerusakan / Kondisi</span> <span class="text-rose-500">*</span>
-          </label>
-
-          <input 
-            type="file" 
-            id="reporterCameraInput" 
-            accept="image/*" 
-            capture="environment" 
-            class="hidden" 
-            onchange="handleReporterFileSelect(event)"
-          >
-
-          <!-- Upload Box / Camera Trigger -->
-          <div 
-            id="reporterUploadPlaceholder"
-            onclick="triggerReporterCamera()"
-            class="border-2 border-dashed border-gray-200 hover:border-ccsTeal rounded-2xl p-6 text-center cursor-pointer transition-colors bg-teal-50/20"
-          >
-            <div class="w-12 h-12 rounded-full bg-teal-100 text-ccsTeal flex items-center justify-center text-xl mx-auto mb-2">
-              <i class="fas fa-camera"></i>
-            </div>
-            <p class="text-xs font-bold text-ccsHeading" data-i18n="take_photo_btn">Ambil Foto dengan Kamera</p>
-            <p class="text-[11px] text-gray-400 mt-0.5" data-i18n="photo_auto_compress">Foto otomatis dikompresi agar hemat kuota</p>
-          </div>
-
-          <!-- Preview Box -->
-          <div id="reporterPreviewBox" class="hidden space-y-2">
-            <div class="relative rounded-2xl overflow-hidden border border-gray-200 bg-gray-900 flex items-center justify-center max-h-[260px]">
-              <img id="reporterImgPreview" src="" alt="Bukti Laporan" class="w-full h-auto max-h-[260px] object-contain">
-            </div>
-            <button 
-              type="button" 
-              onclick="triggerReporterCamera()"
-              class="w-full py-2 px-3 text-xs font-semibold text-ccsTeal hover:bg-teal-50 rounded-xl border border-teal-200 transition flex items-center justify-center gap-1.5"
-            >
-              <i class="fas fa-sync-alt"></i>
-              <span data-i18n="retake_photo">Ganti / Foto Ulang</span>
-            </button>
-          </div>
-        </div>
-
-        <!-- Deskripsi Kendala / Kerusakan (Wajib) -->
-        <div>
-          <label class="block text-xs font-semibold uppercase tracking-wider text-gray-700 mb-1.5">
-            <span data-i18n="reporter_desc_label">Deskripsi Kendala / Kerusakan</span> <span class="text-rose-500">*</span>
-          </label>
-          <textarea 
-            id="reporterIssueDesc" 
-            rows="3" 
-            placeholder="Jelaskan kendala fasilitas (misal: AC tidak dingin, lampu mati, proyektor bergaris, meja rusak, dll)..."
-            data-i18n-ph="reporter_desc_placeholder"
-            class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:border-ccsTeal focus:ring-2 focus:ring-ccsTeal/10 text-sm outline-none transition"
-          ></textarea>
-        </div>
-
-        <!-- Submit Button -->
-        <button 
-          id="btnSubmitReport"
-          onclick="submitReporterReport()" 
-          class="thm-btn thm-btn--teal w-full py-3.5 text-sm font-semibold rounded-xl flex items-center justify-center gap-2"
-        >
-          <i class="fas fa-paper-plane"></i>
-          <span data-i18n="submit_report_btn">Kirim Laporan Fasilitas</span>
-        </button>
-
-      </div>
-
-    </div>
-
-    <!-- ─── SECTION 5: MENU KHUSUS PENANGANAN KOMPLAIN (2 TAB) ──────────── -->
-    <div id="cleanerComplaintCenterSection" class="hidden space-y-4">
-      
-      <!-- Segmented Tab Navigation: Tab 1 (Komplain Aktif) vs Tab 2 (History Komplain) -->
-      <div class="flex items-center gap-2">
-        <div class="flex-1 bg-gray-100/90 p-1.5 rounded-2xl border border-gray-200/80 flex gap-1.5 shadow-2xs">
-          <button 
-            type="button" 
-            id="tabBtnActiveComplaints"
-            onclick="switchComplaintTab('active')" 
-            class="flex-1 py-2.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-xs bg-white text-red-700"
-          >
-            <i class="fas fa-exclamation-triangle text-red-500"></i>
-            <span data-i18n="tab_active_complaints">Komplain Aktif</span>
-            <span id="tabActiveCountBadge" class="hidden px-1.5 py-0.5 rounded-full text-[10px] font-extrabold bg-red-500 text-white leading-none">0</span>
-          </button>
-
-          <button 
-            type="button" 
-            id="tabBtnResolvedComplaints"
-            onclick="switchComplaintTab('resolved')" 
-            class="flex-1 py-2.5 px-3 rounded-xl text-xs font-semibold text-gray-500 hover:text-gray-800 transition-all flex items-center justify-center gap-1.5"
-          >
-            <i class="fas fa-history text-emerald-600"></i>
-            <span data-i18n="tab_resolved_history">History Komplain</span>
-            <span id="tabResolvedCountBadge" class="hidden px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-gray-200 text-gray-700 leading-none">0</span>
-          </button>
-        </div>
-
-        <button 
-          type="button" 
-          onclick="refreshComplaintCenter(true)" 
-          class="w-11 h-11 bg-white hover:bg-gray-50 border border-gray-200 text-gray-500 hover:text-ccsOrange rounded-2xl flex items-center justify-center transition shadow-2xs shrink-0 active:scale-95" 
-          title="Muat Ulang Data"
-        >
-          <i class="fas fa-sync-alt text-xs" id="refreshComplaintCenterIcon"></i>
-        </button>
-      </div>
-
-      <!-- Panel Tab 1: Komplain Aktif List -->
-      <div id="tabPanelActiveComplaints" class="space-y-3">
-        <div id="cleanerComplaintsList" class="space-y-3">
-          <!-- Injected via JavaScript -->
-        </div>
-      </div>
-
-      <!-- Panel Tab 2: History Komplain List -->
-      <div id="tabPanelResolvedComplaints" class="hidden space-y-3">
-        <div id="cleanerHistoryList" class="space-y-3">
-          <!-- Injected via JavaScript -->
-        </div>
-      </div>
-
-    </div>
-
-  </main>
-
-  <!-- ═══════════════════════════════════════════════════════════════════════ -->
-  <!-- 4. COPYRIGHT FOOTER                                                     -->
-  <!-- ═══════════════════════════════════════════════════════════════════════ -->
-  <footer class="site-footer bg-[#012237] py-6 text-center">
-    <div class="max-w-4xl mx-auto px-4 flex items-center justify-center relative">
-      <p class="site-footer__copy text-[#94a3ac] text-[13px] sm:text-[14px] font-medium m-0 tracking-normal">
-        &copy; <?= date('Y') ?> Chung Chung Christian School. All Right Reserved
+  <main class="workspace">
+    <!-- EDITORIAL HEADER -->
+    <div class="editorial-header">
+      <span class="editorial-kicker">[01] Daily Sanitation Log &amp; Verification</span>
+      <h1 class="editorial-heading">Laporan Kebersihan Harian</h1>
+      <p class="editorial-sub">
+        Pilih nama petugas dan ruangan yang ditugaskan kepada Anda, lalu lampirkan dokumentasi foto kondisi sebelum (Before) dan sesudah (After) pembersihan.
       </p>
     </div>
-  </footer>
 
-  <!-- Modal Preview Gambar -->
-  <div id="imagePreviewModal" class="fixed inset-0 bg-black/80 z-50 hidden flex items-center justify-center p-4 backdrop-blur-xs" onclick="closeImagePreview()">
-    <div class="max-w-md w-full bg-white rounded-2xl overflow-hidden shadow-2xl relative" onclick="event.stopPropagation()">
-      <div class="p-3.5 bg-ccsNavy text-white flex justify-between items-center">
-        <span id="previewModalTitle" class="text-xs font-semibold">Preview Foto</span>
-        <button onclick="closeImagePreview()" class="text-white hover:text-ccsOrange text-sm font-bold px-2 py-1">✕</button>
-      </div>
-      <div class="p-2 flex items-center justify-center bg-gray-900 max-h-[70vh] overflow-auto">
-        <img id="modalPreviewImg" src="" alt="Bukti Foto" class="max-w-full max-h-[65vh] rounded-lg object-contain">
-      </div>
+    <!-- NAVIGATION TABS -->
+    <div class="nav-tabs">
+      <button type="button" class="nav-tab active" id="tabBtnCleaning" onclick="switchTab('cleaning')">
+        <i class="ph-bold ph-broom"></i>
+        <span>Checklist Ruangan</span>
+      </button>
+      <button type="button" class="nav-tab" id="tabBtnComplaints" onclick="switchTab('complaints')">
+        <i class="ph-bold ph-warning-circle"></i>
+        <span>Komplain Pelapor</span>
+        <span class="count-pill" id="complaintCountPill" style="display:none;">0</span>
+      </button>
     </div>
-  </div>
 
-  <!-- Modal Selesaikan Komplain Fasilitas oleh Tim Cleaning -->
-  <div id="resolveComplaintModal" class="fixed inset-0 bg-black/80 z-50 hidden flex items-center justify-center p-4 backdrop-blur-xs overflow-y-auto">
-    <div class="max-w-md w-full bg-white rounded-2xl overflow-hidden shadow-2xl relative my-auto" onclick="event.stopPropagation()">
-      <!-- Modal Header -->
-      <div class="p-4 bg-gradient-to-r from-emerald-600 to-teal-700 text-white flex justify-between items-center">
-        <div class="flex items-center gap-2.5">
-          <div class="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center text-sm font-bold">
-            <i class="fas fa-tools"></i>
+    <div id="alertBox" class="alert-box"></div>
+
+    <!-- ══════════════════════════════════════════════════════════════════════ -->
+    <!-- TAB 1: CHECKLIST KEBERSIHAN RUANGAN                                    -->
+    <!-- ══════════════════════════════════════════════════════════════════════ -->
+    <div id="paneCleaning">
+      <!-- BENTO CARD 1: DROPDOWN 1 (NAMA CLEANER) & DROPDOWN 2 (RUANGAN) -->
+      <section class="bento-card">
+        <!-- DROPDOWN 1: PILIH NAMA CLEANER -->
+        <div class="field-block">
+          <div class="field-top">
+            <label class="field-label" for="cleanerDropdown">01 / Pilih Nama Petugas (Cleaner)</label>
+            <span class="pastel-tag tag-green" id="rememberedHint" style="display:none;">
+              <i class="ph-bold ph-check"></i> Tersimpan Otomatis
+            </span>
           </div>
-          <div>
-            <h3 class="text-xs sm:text-sm font-bold" data-i18n="resolve_modal_title">Selesaikan Komplain Fasilitas</h3>
-            <p id="resolveModalRoomBadge" class="text-[11px] text-emerald-100 font-medium">Ruangan: -</p>
+          <div class="select-wrap">
+            <select id="cleanerDropdown" class="select-control" onchange="onCleanerChange()">
+              <option value="">Memuat daftar nama petugas...</option>
+            </select>
+            <i class="ph-bold ph-caret-down select-caret"></i>
           </div>
         </div>
-        <button onclick="closeResolveModal()" class="text-white hover:text-amber-200 text-lg font-bold p-1 leading-none">&times;</button>
-      </div>
 
-      <!-- Modal Body -->
-      <div class="p-5 space-y-4 max-h-[75vh] overflow-y-auto">
-        <!-- Complaint Detail Card -->
-        <div class="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs space-y-1">
-          <div class="text-[10px] font-bold uppercase tracking-wider text-amber-800 flex items-center gap-1">
-            <i class="fas fa-info-circle"></i>
-            <span data-i18n="complaint_detail_heading">Detail Keluhan / Masalah</span>
+        <!-- DROPDOWN 2: PILIH RUANGAN YANG BERKAITAN DENGAN CLEANER TERSEBUT -->
+        <div class="field-block" id="roomSelectGroup" style="display:none;">
+          <div class="field-top">
+            <label class="field-label" for="roomDropdown">02 / Pilih Ruangan Tanggung Jawab Anda</label>
+            <span class="pastel-tag tag-blue" id="roomCountLabel">0 Ruangan</span>
           </div>
-          <p id="resolveModalIssueDesc" class="font-semibold text-gray-800 leading-relaxed"></p>
-          <div id="resolveModalReporterInfo" class="text-[11px] text-gray-500"></div>
+          <div class="select-wrap">
+            <select id="roomDropdown" class="select-control" onchange="onRoomChange()">
+              <option value="">-- Pilih Ruangan --</option>
+            </select>
+            <i class="ph-bold ph-caret-down select-caret"></i>
+          </div>
+
+          <!-- Empty State jika Cleaner belum memiliki ruangan yang ditugaskan -->
+          <div id="noAssignedRoomsBox" class="empty-bento" style="display:none;">
+            <div class="empty-icon">
+              <i class="ph-bold ph-door-open"></i>
+            </div>
+            <div style="font-size:13.5px; font-weight:700; color:var(--text-primary);">
+              Belum Ada Ruangan yang Ditugaskan
+            </div>
+            <p style="font-size:12.5px; color:var(--text-muted); margin-top:4px; max-width:440px; margin-left:auto; margin-right:auto;">
+              Nama Anda saat ini belum terdaftar pada jadwal ruangan di sistem supervisor. Silakan pilih nama petugas lain atau hubungi supervisor untuk mengatur petugas ruangan.
+            </p>
+          </div>
+
+          <!-- Indikator Target Harian Cleaner -->
+          <div class="progress-panel" id="dailyProgressBox" style="display:none;">
+            <div class="progress-meta">
+              <span>PROGRES KEBERSIHAN HARI INI</span>
+              <span id="progressText" style="color:var(--text-primary); font-weight:600;">0 / 0 Selesai</span>
+            </div>
+            <div class="progress-track">
+              <div class="progress-fill" id="progressBarFill" style="width:0%;"></div>
+            </div>
+            <div class="room-chips" id="roomChipsContainer"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- BENTO CARD 2: FORM UPLOAD FOTO BEFORE & AFTER UNTUK RUANGAN TERPILIH -->
+      <section class="bento-card" id="uploadCard" style="display:none;">
+        <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:12px; padding-bottom:16px; border-bottom:1px solid var(--border); margin-bottom:16px;">
+          <div>
+            <div style="font-family:var(--font-mono); font-size:10.5px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em;">
+              RUANGAN AKTIF
+            </div>
+            <h2 id="activeRoomTitle" style="font-family:var(--font-serif); font-size:26px; font-weight:400; color:var(--text-primary); line-height:1.2; margin-top:2px;">
+              Nama Ruangan
+            </h2>
+          </div>
+          <span id="activeRoomBadge" class="pastel-tag tag-yellow">Wajib Upload</span>
         </div>
 
-        <!-- Worker Name info -->
-        <div class="bg-gray-50 border border-gray-200 rounded-xl p-3 text-xs flex items-center justify-between">
-          <div>
-            <div class="text-[10px] font-bold uppercase tracking-wider text-gray-500" data-i18n="active_worker">Petugas yang Menyelesaikan:</div>
-            <div id="resolveModalWorkerName" class="font-bold text-ccsHeading text-xs mt-0.5">-</div>
+        <!-- Banner Status -->
+        <div id="roomStatusBanner" class="notice-banner" style="display:none;"></div>
+
+        <!-- Area Upload Before & After (Mode Normal) -->
+        <div id="beforeAfterSection">
+          <p style="font-size:13px; color:var(--text-muted);">
+            Ambil atau unggah foto kondisi ruangan <strong style="color:var(--text-primary);">Sebelum (Before)</strong> dan <strong style="color:var(--text-primary);">Sesudah (After)</strong> dibersihkan untuk hari ini:
+          </p>
+
+          <div class="photo-grid">
+            <!-- SLOT 1: FOTO BEFORE -->
+            <div>
+              <input type="file" id="beforeInput" accept="image/*" capture="environment" style="display:none;" onchange="handlePhotoSelect(event, 'before')" />
+              <div class="upload-slot" id="beforeSlot" onclick="document.getElementById('beforeInput').click()">
+                <div id="beforePlaceholder">
+                  <span class="slot-kicker tag-yellow">1. Foto Before</span>
+                  <div style="margin:6px 0; color:var(--text-primary); font-size:24px;">
+                    <i class="ph-bold ph-camera"></i>
+                  </div>
+                  <div style="font-size:13px; font-weight:600; color:var(--text-primary);">Ambil Foto Sebelum</div>
+                  <div style="font-size:11.5px; color:var(--text-muted); margin-top:2px;">Kondisi awal ruangan</div>
+                </div>
+                <div id="beforePreviewWrap" style="display:none;">
+                  <img id="beforePreviewImg" src="" alt="Preview Before" />
+                  <div style="font-family:var(--font-mono); font-size:11px; font-weight:600; color:var(--pastel-green-text); margin-top:8px; display:flex; align-items:center; justify-content:center; gap:4px;">
+                    <i class="ph-bold ph-check-circle"></i> Foto Before Siap (Klik ganti)
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- SLOT 2: FOTO AFTER -->
+            <div>
+              <input type="file" id="afterInput" accept="image/*" capture="environment" style="display:none;" onchange="handlePhotoSelect(event, 'after')" />
+              <div class="upload-slot" id="afterSlot" onclick="document.getElementById('afterInput').click()">
+                <div id="afterPlaceholder">
+                  <span class="slot-kicker tag-green">2. Foto After</span>
+                  <div style="margin:6px 0; color:var(--text-primary); font-size:24px;">
+                    <i class="ph-bold ph-sparkle"></i>
+                  </div>
+                  <div style="font-size:13px; font-weight:600; color:var(--text-primary);">Ambil Foto Sesudah</div>
+                  <div style="font-size:11.5px; color:var(--text-muted); margin-top:2px;">Kondisi setelah bersih</div>
+                </div>
+                <div id="afterPreviewWrap" style="display:none;">
+                  <img id="afterPreviewImg" src="" alt="Preview After" />
+                  <div style="font-family:var(--font-mono); font-size:11px; font-weight:600; color:var(--pastel-green-text); margin-top:8px; display:flex; align-items:center; justify-content:center; gap:4px;">
+                    <i class="ph-bold ph-check-circle"></i> Foto After Siap (Klik ganti)
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
-          <button type="button" onclick="handleChangeWorkerName()" class="text-[11px] font-semibold text-ccsOrange hover:underline">
-            <span data-i18n="change_worker">Ganti Nama</span>
+
+          <div class="field-block" style="margin-bottom:16px;">
+            <div class="field-top">
+              <label class="field-label" for="cleaningNotes">Catatan Tambahan (Opsional)</label>
+            </div>
+            <textarea id="cleaningNotes" class="textarea-control" placeholder="Ketik catatan singkat bila diperlukan..."></textarea>
+          </div>
+
+          <button type="button" class="btn-primary" id="btnSubmitBeforeAfter" onclick="submitBeforeAfter()">
+            <i class="ph-bold ph-upload-simple"></i>
+            <span>Simpan Foto Before &amp; After</span>
           </button>
         </div>
 
-        <!-- Resolution Photo Upload (with camera) -->
-        <div class="space-y-2">
-          <label class="block text-xs font-bold uppercase tracking-wider text-gray-700">
-            <i class="fas fa-camera text-emerald-600 mr-1"></i> <span data-i18n="resolution_photo_label">Foto Bukti Penyelesaian</span> <span class="text-red-500">*</span>
-          </label>
-          
-          <input type="file" id="resolveCameraInput" accept="image/*" capture="environment" class="hidden" onchange="handleResolveFileSelect(event)">
-          
-          <div id="resolveUploadPlaceholder" onclick="triggerResolveCamera()" class="border-2 border-dashed border-emerald-300 hover:border-emerald-500 bg-emerald-50/50 rounded-xl p-5 text-center cursor-pointer transition">
-            <div class="w-12 h-12 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center text-xl mx-auto mb-2">
-              <i class="fas fa-camera"></i>
+        <!-- Area Upload Revisi (Jika diminta revisi oleh Supervisor) -->
+        <div id="revisionSection" style="display:none;">
+          <input type="file" id="revisionInput" accept="image/*" capture="environment" style="display:none;" onchange="handlePhotoSelect(event, 'revision')" />
+          <div class="upload-slot" id="revisionSlot" onclick="document.getElementById('revisionInput').click()" style="margin-bottom:16px;">
+            <div id="revisionPlaceholder">
+              <span class="slot-kicker tag-red">Foto Perbaikan Revisi</span>
+              <div style="margin:6px 0; color:var(--pastel-red-text); font-size:24px;">
+                <i class="ph-bold ph-camera-rotate"></i>
+              </div>
+              <div style="font-size:13px; font-weight:600; color:var(--text-primary);">Ambil Foto Hasil Perbaikan</div>
             </div>
-            <p class="text-xs font-bold text-gray-700" data-i18n="take_photo_btn">Ambil Foto dengan Kamera</p>
-            <p class="text-[10px] text-gray-500 mt-1" data-i18n="photo_auto_compress">Foto otomatis dikompresi agar hemat kuota</p>
-          </div>
-
-          <div id="resolvePreviewBox" class="hidden space-y-2">
-            <div class="relative rounded-xl overflow-hidden border border-gray-200 bg-gray-900 max-h-56 flex items-center justify-center">
-              <img id="resolveImgPreview" src="" alt="Preview Bukti Penyelesaian" class="max-h-56 max-w-full object-contain">
-              <button type="button" onclick="triggerResolveCamera()" class="absolute bottom-2 right-2 bg-black/70 hover:bg-black text-white text-[11px] font-semibold px-2.5 py-1 rounded-lg backdrop-blur-xs flex items-center gap-1">
-                <i class="fas fa-camera"></i> <span data-i18n="retake_photo">Ganti Foto</span>
-              </button>
+            <div id="revisionPreviewWrap" style="display:none;">
+              <img id="revisionPreviewImg" src="" alt="Preview Revisi" />
+              <div style="font-family:var(--font-mono); font-size:11px; font-weight:600; color:var(--pastel-green-text); margin-top:8px;">
+                Foto Revisi Siap (Klik untuk ganti)
+              </div>
             </div>
           </div>
-        </div>
 
-        <!-- Resolution Notes -->
-        <div class="space-y-1.5">
-          <label class="block text-xs font-bold uppercase tracking-wider text-gray-700">
-            <span data-i18n="resolution_notes_label">Catatan Penanganan</span> <span class="text-gray-400 font-normal" data-i18n="optional_tag">(Opsional)</span>
-          </label>
-          <textarea 
-            id="resolveNotesInput" 
-            rows="2" 
-            data-i18n-ph="resolution_notes_placeholder"
-            placeholder="Tuliskan tindakan yang dilakukan (misal: sudah dipel ulang, sampah telah dibuang, fasilitas diperbaiki)..."
-            class="w-full px-3 py-2 text-xs border border-gray-200 rounded-xl focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 outline-none resize-none"
-          ></textarea>
+          <button type="button" class="btn-primary" id="btnSubmitRevision" onclick="submitRevision()">
+            <i class="ph-bold ph-paper-plane-tilt"></i>
+            <span>Kirim Foto Perbaikan Revisi</span>
+          </button>
         </div>
-      </div>
-
-      <!-- Modal Footer -->
-      <div class="p-4 bg-gray-50 border-t border-gray-100 flex gap-2 justify-end">
-        <button type="button" onclick="closeResolveModal()" class="px-4 py-2 text-xs font-semibold text-gray-600 hover:bg-gray-200 rounded-xl transition">
-          <span data-i18n="cancel_btn">Batal</span>
-        </button>
-        <button type="button" id="submitResolveBtn" onclick="submitResolveReport()" class="px-5 py-2 text-xs font-bold text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 rounded-xl shadow-xs transition flex items-center gap-1.5 active:scale-95">
-          <i class="fas fa-check-circle"></i>
-          <span data-i18n="submit_resolution_btn">Kirim Bukti & Selesaikan</span>
-        </button>
-      </div>
+      </section>
     </div>
-  </div>
 
-  <!-- ═══════════════════════════════════════════════════════════════════════ -->
-  <!-- 5. JAVASCRIPT APLIKASI (BILINGUAL ID & EN, ROLE SELECTION, CAMERA)       -->
-  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+    <!-- ══════════════════════════════════════════════════════════════════════ -->
+    <!-- TAB 2: DAFTAR KOMPLAIN PELAPOR (QR GENERAL)                            -->
+    <!-- ══════════════════════════════════════════════════════════════════════ -->
+    <div id="paneComplaints" style="display:none;">
+      <section class="bento-card">
+        <div style="margin-bottom:16px; padding-bottom:14px; border-bottom:1px solid var(--border);">
+          <div style="font-family:var(--font-mono); font-size:10.5px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em;">
+            PUBLIC FACILITY REPORTS
+          </div>
+          <h2 style="font-family:var(--font-serif); font-size:24px; font-weight:400; color:var(--text-primary); margin-top:2px;">
+            Daftar Keluhan &amp; Laporan Masuk
+          </h2>
+          <p style="font-size:12.5px; color:var(--text-muted); margin-top:2px;">
+            Laporan dari warga sekolah melalui QR General. Unggah foto bukti penanganan untuk menandai selesai.
+          </p>
+        </div>
+        <div id="complaintsListContainer">
+          <div style="text-align:center; padding:28px 0; color:var(--text-muted); font-size:13px;">
+            Memuat daftar komplain...
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    CHUNG CHUNG CHRISTIAN SCHOOL &mdash; FACILITY SANITATION &amp; MAINTENANCE SYSTEM
+  </footer>
+
   <script>
-    // ─── KAMUS BAHASA DUA ARAH (INDONESIAN & ENGLISH) ──────────────────────
-    const I18N = {
-      id: {
-        portal_title: 'Portal Ruangan',
-        active_role_label: 'Peran Saat Ini',
-        switch_role: 'Ganti Peran',
-        loading_room: 'Memeriksa Data Ruangan...',
-        connecting_server: 'Menghubungkan ke sistem Chung Chung Christian School',
-        role_title: 'Pilih Peran Anda',
-        role_subtitle: 'Silakan pilih apakah Anda bertugas sebagai tim kebersihan ruangan atau ingin melaporkan kendala fasilitas.',
-        role_cleaner_name: 'Petugas Kebersihan',
-        role_cleaner_badge: 'Cleaner',
-        role_cleaner_desc: 'Checklist pengerjaan kebersihan ruangan & unggah foto before / after.',
-        role_cleaner_btn: 'Masuk sebagai Cleaner',
-        role_reporter_name: 'Pelapor Fasilitas',
-        role_reporter_badge: 'Reporter',
-        role_reporter_desc: 'Laporkan fasilitas ruangan yang rusak, bermasalah, atau memerlukan perbaikan.',
-        role_reporter_btn: 'Laporkan Masalah',
-        scan_heading: 'Scan QR Code Ruangan',
-        scan_cleaner_sub: 'Arahkan kamera ke stiker barcode di pintu ruangan sekolah',
-        scan_reporter_sub: 'Arahkan kamera ke stiker barcode di pintu ruangan yang ingin dilaporkan',
-        manual_token_label: 'Atau masukkan kode token ruangan:',
-        manual_token_placeholder: 'Contoh: rm_a1b2c3d4',
-        open_btn: 'Buka',
-        room_location: 'Lokasi Ruangan',
-        cleaner_id_title: 'Identitas Petugas Kebersihan',
-        auto_saved: 'Tersimpan Otomatis',
-        cleaner_select_label: 'Nama Lengkap Petugas',
-        cleaner_loading: '-- Memuat daftar petugas... --',
-        cleaner_placeholder: '-- Pilih nama Anda --',
-        cleaner_hint: 'Pilihan Anda otomatis tersimpan di HP ini, tidak perlu dipilih ulang untuk ruangan lainnya.',
-        facility_report_badge: 'Laporan Fasilitas',
-        reporter_form_title: 'Formulir Laporan Fasilitas',
-        reporter_form_subtitle: 'Kirimkan laporan kendala atau kerusakan ruangan untuk ditindaklanjuti tim operasional.',
-        reporter_name_label: 'Nama Lengkap Pelapor',
-        reporter_name_placeholder: 'Contoh: Budi Santoso / Ms. Sarah',
-        reporter_contact_label: 'No. WhatsApp / Email',
-        reporter_contact_placeholder: 'Untuk konfirmasi status tindak lanjut',
-        optional_tag: '(Opsional)',
-        reporter_photo_label: 'Foto Bukti Kerusakan / Kondisi',
-        take_photo_btn: 'Ambil Foto dengan Kamera',
-        photo_auto_compress: 'Foto otomatis dikompresi agar hemat kuota',
-        retake_photo: 'Ganti / Foto Ulang',
-        reporter_desc_label: 'Deskripsi Kendala / Kerusakan',
-        reporter_desc_placeholder: 'Jelaskan kendala fasilitas (misal: AC tidak dingin, lampu mati, proyektor bergaris, meja rusak, dll)...',
-        submit_report_btn: 'Kirim Laporan Fasilitas',
-        submitting_report: 'Mengunggah & Mengirim Laporan...',
-        report_success_title: 'Laporan Berhasil Terkirim!',
-        report_success_desc: 'Terima kasih atas laporan Anda. Tim operasional sekolah akan segera memeriksa dan menindaklanjuti kendala di ruangan ini.',
-        scan_another_room: 'Scan Ruangan Lain',
-        alert_select_cleaner: 'Silakan pilih nama petugas kebersihan terlebih dahulu.',
-        alert_take_photo: 'Silakan ambil foto bukti terlebih dahulu menggunakan kamera.',
-        alert_enter_desc: 'Silakan isi deskripsi kendala kerusakan ruangan terlebih dahulu.',
-        alert_enter_name: 'Silakan isi nama pelapor terlebih dahulu.',
-        select_your_name: 'Pilih Nama Anda:',
-        cleaner_auto_remember_hint: 'Pilihan nama otomatis diingat untuk semua ruangan berikutnya.',
-        logged_in_cleaner: 'Petugas Kebersihan Aktif:',
-        auto_selected: 'Tersimpan Otomatis',
-        change_worker: 'Ganti Nama',
-        active_worker: 'Petugas',
-        prompt_select_worker: 'Silakan pilih nama petugas kebersihan terlebih dahulu.',
-        cleaner_required_title: 'Pilih Nama Petugas Terlebih Dahulu',
-        cleaner_required_subtitle: 'Kamera scanner tidak dapat digunakan sebelum Anda memilih identitas nama petugas kebersihan yang bertugas.',
-        cleaner_lock_hint: 'Setelah dipilih, kamera scanner akan aktif & nama diingat permanen di HP ini.',
-        continue_next_room: 'Lanjut ke Ruangan Lain (Scan QR)',
-        scan_other_room: 'Scan Ruangan Lain',
-        active_complaints_title: 'Daftar Komplain Ruangan Aktif',
-        active_complaints_subtitle: 'Ruangan yang membutuhkan penanganan kebersihan / fasilitas',
-        complaint_for_room: 'Terdapat komplain untuk ruangan',
-        complaint_detail_heading: 'Detail Keluhan / Masalah',
-        resolve_modal_title: 'Selesaikan Komplain Fasilitas',
-        resolve_complaint_btn: 'Tangani',
-        resolution_notes_label: 'Catatan Penanganan',
-        resolution_notes_placeholder: 'Tuliskan tindakan yang dilakukan (misal: sudah dipel ulang, fasilitas diperbaiki)...',
-        resolution_photo_label: 'Foto Bukti Penyelesaian',
-        submit_resolution_btn: 'Kirim Bukti & Selesaikan',
-        cancel_btn: 'Batal',
-        view_photo_btn: 'Lihat Foto',
-        menu_btn: 'Menu',
-        portal_menu: 'Menu Navigasi',
-        nav_scan_room: 'Scan Ruangan & Checklist',
-        nav_scan_room_sub: 'Buka kamera scan QR pintu',
-        nav_active_complaints: 'Komplain Aktif',
-        nav_active_complaints_sub: 'Perlu perbaikan / kebersihan',
-        nav_history_complaints: 'Riwayat Komplain Selesai',
-        nav_history_complaints_sub: 'Arsip komplain yang ditangani',
-        switch_role_sub: 'Cleaner atau Pelapor',
-        view_resolved_history: 'Lihat Riwayat Komplain yang Sudah Selesai',
-        history_badge: 'Arsip Selesai',
-        history_title: 'Riwayat Komplain Fasilitas Selesai',
-        history_subtitle: 'Daftar keluhan fasilitas yang telah ditangani dan diverifikasi dengan foto bukti penyelesaian.',
-        back_to_scanner: 'Kembali ke Scan Ruangan',
-        no_resolved_history: 'Belum ada riwayat komplain yang diselesaikan.',
-        resolved_by_label: 'Diselesaikan oleh:',
-        resolution_notes_text: 'Catatan Penanganan:',
-        view_problem_photo: 'Foto Kendala',
-        view_solution_photo: 'Foto Hasil Selesai',
-        complaint_center_badge: 'Khusus Petugas Kebersihan',
-        complaint_center_title: 'Penanganan Komplain Fasilitas',
-        complaint_center_subtitle: 'Pusat tindak lanjut keluhan fasilitas dari pengguna ruangan sekolah.',
-        tab_active_complaints: 'Komplain Aktif',
-        tab_resolved_history: 'History Komplain',
-        nav_complaint_center: 'Penanganan Komplain',
-        nav_complaint_center_sub: 'Komplain aktif & history selesai',
-        complaints_short: 'Komplain',
-        back_to_scanner: 'Kembali ke Scan Ruangan & Checklist',
-        active_complaints_count_text: 'Komplain Ruangan Perlu Ditangani',
-        tap_to_open_complaints: 'Ketuk untuk membuka menu penanganan komplain →',
-        no_active_complaints_title: 'Tidak Ada Komplain Aktif',
-        no_active_complaints_desc: 'Semua ruangan dalam kondisi bersih dan fasilitas berfungsi normal.'
-      },
-      en: {
-        portal_title: 'Room Portal',
-        active_role_label: 'Current Role',
-        switch_role: 'Switch Role',
-        loading_room: 'Checking Room Data...',
-        connecting_server: 'Connecting to Chung Chung Christian School system',
-        role_title: 'Select Your Role',
-        role_subtitle: 'Please select whether you are cleaning staff or reporting a facility issue.',
-        role_cleaner_name: 'Cleaning Staff',
-        role_cleaner_badge: 'Cleaner',
-        role_cleaner_desc: 'Room cleaning checklist & before / after photo verification.',
-        role_cleaner_btn: 'Enter as Cleaner',
-        role_reporter_name: 'Facility Reporter',
-        role_reporter_badge: 'Reporter',
-        role_reporter_desc: 'Report damaged, malfunctioning, or dirty room facilities.',
-        role_reporter_btn: 'Report an Issue',
-        scan_heading: 'Scan Room QR Code',
-        scan_cleaner_sub: 'Aim your camera at the QR sticker on the classroom door',
-        scan_reporter_sub: 'Aim your camera at the QR sticker on the door of the room you wish to report',
-        manual_token_label: 'Or enter room token code:',
-        manual_token_placeholder: 'e.g.: rm_a1b2c3d4',
-        open_btn: 'Open',
-        room_location: 'Room Location',
-        cleaner_id_title: 'Cleaning Staff Identity',
-        auto_saved: 'Saved Automatically',
-        cleaner_select_label: 'Staff Full Name',
-        cleaner_loading: '-- Loading staff list... --',
-        cleaner_placeholder: '-- Select your name --',
-        cleaner_hint: 'Your selection is automatically saved on this phone for subsequent rooms.',
-        facility_report_badge: 'Facility Report',
-        reporter_form_title: 'Facility Issue Report Form',
-        reporter_form_subtitle: 'Submit room issues or damage for operations team follow-up.',
-        reporter_name_label: 'Reporter Full Name',
-        reporter_name_placeholder: 'e.g.: Budi Santoso / Ms. Sarah',
-        reporter_contact_label: 'WhatsApp No. / Email',
-        reporter_contact_placeholder: 'For follow-up status updates',
-        optional_tag: '(Optional)',
-        reporter_photo_label: 'Photo of Issue / Condition',
-        take_photo_btn: 'Take Photo with Camera',
-        photo_auto_compress: 'Photos are automatically compressed to save cellular data',
-        retake_photo: 'Retake Photo',
-        reporter_desc_label: 'Issue / Damage Description',
-        reporter_desc_placeholder: 'Describe the issue (e.g., AC not cold, lights flickering, broken projector, damaged desk, etc.)...',
-        submit_report_btn: 'Submit Facility Report',
-        submitting_report: 'Uploading & Submitting Report...',
-        report_success_title: 'Report Submitted Successfully!',
-        report_success_desc: 'Thank you for your report. The school operations team will inspect and follow up on this room shortly.',
-        scan_another_room: 'Scan Another Room',
-        alert_select_cleaner: 'Please select your cleaning staff name first.',
-        alert_take_photo: 'Please take photo evidence using the camera first.',
-        alert_enter_desc: 'Please provide a description of the issue or damage.',
-        alert_enter_name: 'Please enter reporter name first.',
-        select_your_name: 'Select Your Name:',
-        cleaner_auto_remember_hint: 'Your name will be automatically remembered for upcoming rooms.',
-        logged_in_cleaner: 'Active Cleaning Staff:',
-        auto_selected: 'Auto-selected',
-        change_worker: 'Change Name',
-        active_worker: 'Staff',
-        prompt_select_worker: 'Please select your cleaning staff name first.',
-        cleaner_required_title: 'Select Cleaning Staff Name First',
-        cleaner_required_subtitle: 'Camera scanner is disabled until you select your cleaning staff identity.',
-        cleaner_lock_hint: 'Once selected, the scanner camera will activate and remember your name on this phone.',
-        continue_next_room: 'Continue to Next Room (Scan QR)',
-        scan_other_room: 'Scan Another Room',
-        active_complaints_title: 'Active Room Facility Complaints',
-        active_complaints_subtitle: 'Rooms requiring cleaning or facility attention',
-        complaint_for_room: 'Complaint for room:',
-        complaint_detail_heading: 'Complaint / Issue Details',
-        resolve_modal_title: 'Resolve Facility Complaint',
-        resolve_complaint_btn: 'Resolve Complaint',
-        resolution_notes_label: 'Resolution Notes',
-        resolution_notes_placeholder: 'Describe actions taken (e.g., mopped floor, replaced bulb, etc.)...',
-        resolution_photo_label: 'Resolution Photo Evidence',
-        submit_resolution_btn: 'Submit Proof & Resolve',
-        cancel_btn: 'Cancel',
-        view_photo_btn: 'View Photo',
-        menu_btn: 'Menu',
-        portal_menu: 'Navigation Menu',
-        nav_scan_room: 'Scan Room & Checklist',
-        nav_scan_room_sub: 'Open camera to scan door QR',
-        nav_active_complaints: 'Active Complaints',
-        nav_active_complaints_sub: 'Needs repair or cleaning',
-        nav_history_complaints: 'Resolved Complaints History',
-        nav_history_complaints_sub: 'Archive of handled issues',
-        switch_role_sub: 'Cleaner or Reporter',
-        view_resolved_history: 'View Resolved Complaints History',
-        history_badge: 'Resolved Archive',
-        history_title: 'Resolved Facility Complaints History',
-        history_subtitle: 'List of facility issues that have been addressed with resolution photo proof.',
-        back_to_scanner: 'Back to Room Scanner',
-        no_resolved_history: 'No resolved complaints recorded yet.',
-        resolved_by_label: 'Resolved by:',
-        resolution_notes_text: 'Resolution Notes:',
-        view_problem_photo: 'Problem Photo',
-        view_solution_photo: 'Resolution Photo',
-        complaint_center_badge: 'Cleaning Staff Only',
-        complaint_center_title: 'Facility Complaints Center',
-        complaint_center_subtitle: 'Follow up on room facility complaints reported by school users.',
-        tab_active_complaints: 'Active Complaints',
-        tab_resolved_history: 'Resolved History',
-        nav_complaint_center: 'Complaint Handling',
-        nav_complaint_center_sub: 'Active & resolved complaints',
-        complaints_short: 'Complaints',
-        back_to_scanner: 'Back to Room Scanner & Checklist',
-        active_complaints_count_text: 'Room Complaints Need Attention',
-        tap_to_open_complaints: 'Tap to open complaint handling menu →',
-        no_active_complaints_title: 'No Active Complaints',
-        no_active_complaints_desc: 'All rooms are clean and facilities are in good condition.'
-      }
+    const STORAGE_USER_ID   = 'ccs_cleaner_user_id';
+    const STORAGE_USER_NAME = 'ccs_cleaner_name';
+
+    let cleanersList = [];
+    let assignedRooms = [];
+    let activeRoom = null;
+    let selectedCleaner = {
+      userId: localStorage.getItem(STORAGE_USER_ID) || '',
+      name: localStorage.getItem(STORAGE_USER_NAME) || ''
     };
 
-    let currentLang = localStorage.getItem('ccs_portal_lang') || 'id';
-    let currentRole = localStorage.getItem('ccs_portal_role') || null; // 'cleaner' | 'reporter' | null
-    let currentRoomToken = '<?= $roomParam ?>';
-    let currentRoomData = null;
-    let currentChecklist = null;
-    let cleanersList = <?= json_encode($DEFAULT_CLEANERS ?? []) ?>;
+    let beforeBase64 = '';
+    let afterBase64 = '';
+    let revisionBase64 = '';
+    let resolvePhotosMap = {};
 
-    let selectedCleanerBlob = null;
-    let selectedReporterBlob = null;
-    let qrScanner = null;
-
-    document.addEventListener('DOMContentLoaded', () => {
-      applyLanguage(currentLang);
-      populateCleanerSelect();
-      fetchCleaners();
-
-      const savedWorkerName = localStorage.getItem('ccs_vendor_worker_name');
-
-      // Inisialisasi Alur:
-      // PERATURAN MUTLAK: Peran Reporter (Komplain) TIDAK PERNAH mengingat ruangan sebelumnya.
-      if (currentRole === 'reporter') {
-        currentRoomToken = '';
-        currentRoomData = null;
-        if (window.history.replaceState) {
-          const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
-          window.history.replaceState({ path: cleanUrl }, '', cleanUrl);
-        }
-        selectRole('reporter', false);
-      } else if (currentRoomToken) {
-        if (currentRole === 'cleaner') {
-          // Jika sudah peran cleaner tapi belum pernah pilih nama, buka role selection agar nama dipilih dulu
-          if (!savedWorkerName) {
-            showRoleSelectionSection();
-          } else {
-            selectRole('cleaner', false);
-          }
-        } else {
-          // Belum memilih peran tapi sudah scan QR ruangan
-          showRoleSelectionSection();
-        }
-      } else {
-        if (currentRole === 'cleaner') {
-          if (!savedWorkerName) {
-            showRoleSelectionSection();
-          } else {
-            selectRole('cleaner', false);
-          }
-        } else {
-          showRoleSelectionSection();
-        }
-      }
+    // Format Tanggal Hari Ini
+    const now = new Date();
+    document.getElementById('dateBadgeText').textContent = now.toLocaleDateString('id-ID', {
+      weekday: 'short', day: 'numeric', month: 'short', year: 'numeric'
     });
 
-    // ─── FITUR BAHASA (I18N) ───────────────────────────────────────────────
-    function setLanguage(lang) {
-      currentLang = lang;
-      localStorage.setItem('ccs_portal_lang', lang);
-      applyLanguage(lang);
-      if (currentChecklist && currentRole === 'cleaner') {
-        renderCleanerStage(currentChecklist);
-      }
-      if (activeComplaintsList && activeComplaintsList.length > 0) {
-        renderComplaintsList(activeComplaintsList);
-      }
-      if (resolvedComplaintsList && resolvedComplaintsList.length > 0) {
-        renderResolvedHistoryList(resolvedComplaintsList);
-      }
+    function showAlert(msg, type = 'error') {
+      const box = document.getElementById('alertBox');
+      box.className = 'alert-box ' + (type === 'success' ? 'alert-success' : 'alert-error');
+      const icon = type === 'success' ? 'ph-check-circle' : 'ph-warning-circle';
+      box.innerHTML = `<i class="ph-bold ${icon}" style="font-size:17px; flex-shrink:0;"></i><span>${msg}</span>`;
+      box.style.display = 'flex';
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
-    function applyLanguage(lang) {
-      const dict = I18N[lang] || I18N.id;
-
-      // Update switcher UI
-      const btnID = document.getElementById('btnLangID');
-      const btnEN = document.getElementById('btnLangEN');
-      if (btnID && btnEN) {
-        if (lang === 'id') {
-          btnID.className = 'px-2.5 py-0.5 rounded-full text-[11px] transition-all bg-ccsOrange text-white shadow-xs';
-          btnEN.className = 'px-2.5 py-0.5 rounded-full text-[11px] transition-all text-gray-300 hover:text-white';
-        } else {
-          btnEN.className = 'px-2.5 py-0.5 rounded-full text-[11px] transition-all bg-ccsOrange text-white shadow-xs';
-          btnID.className = 'px-2.5 py-0.5 rounded-full text-[11px] transition-all text-gray-300 hover:text-white';
-        }
-      }
-
-      // Update all elements with data-i18n
-      document.querySelectorAll('[data-i18n]').forEach(el => {
-        const key = el.getAttribute('data-i18n');
-        if (dict[key]) el.textContent = dict[key];
-      });
-
-      // Update placeholders
-      document.querySelectorAll('[data-i18n-ph]').forEach(el => {
-        const key = el.getAttribute('data-i18n-ph');
-        if (dict[key]) el.placeholder = dict[key];
-      });
-
-      // Update scanner subtitle depending on active role
-      updateScannerText();
+    function hideAlert() {
+      const box = document.getElementById('alertBox');
+      box.style.display = 'none';
     }
 
-    // ─── AMBIL DAFTAR CLEANERS DARI USERS (ROLE CLEANING) ─────────────────
-    async function fetchCleaners() {
-      try {
-        const res = await fetch('index.php?action=fetch_cleaners');
-        const data = await res.json();
-        if (data.success && Array.isArray(data.cleaners) && data.cleaners.length > 0) {
-          cleanersList = data.cleaners;
-          populateCleanerSelect();
-        }
-      } catch (e) {
-        console.warn('Gagal memuat update daftar cleaners dari server:', e);
+    function switchTab(tab) {
+      hideAlert();
+      document.getElementById('tabBtnCleaning').classList.toggle('active', tab === 'cleaning');
+      document.getElementById('tabBtnComplaints').classList.toggle('active', tab === 'complaints');
+      document.getElementById('paneCleaning').style.display = tab === 'cleaning' ? 'block' : 'none';
+      document.getElementById('paneComplaints').style.display = tab === 'complaints' ? 'block' : 'none';
+      if (tab === 'complaints') {
+        loadComplaints();
       }
     }
 
-    function escapeHtml(str) {
-      if (!str) return '';
-      return String(str)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#039;');
-    }
-
-    function populateCleanerSelect() {
-      const dict = I18N[currentLang] || I18N.id;
-      const placeholder = dict.cleaner_placeholder || '-- Pilih nama Anda --';
-      const saved = localStorage.getItem('ccs_vendor_worker_name') || '';
-
-      const dropdownIds = ['roleWorkerNameSelect', 'scannerLockWorkerSelect', 'workerNameSelect'];
-
-      dropdownIds.forEach(id => {
-        const sel = document.getElementById(id);
-        if (!sel) return;
-
-        let html = `<option value="">${placeholder}</option>`;
-        cleanersList.forEach(c => {
-          const isSelected = (saved && c.name === saved) ? 'selected' : '';
-          html += `<option value="${escapeHtml(c.name)}" ${isSelected}>${escapeHtml(c.name)}</option>`;
-        });
-
-        sel.innerHTML = html;
-        if (saved) {
-          sel.value = saved;
-        }
-      });
-
-      syncAllCleanerDropdowns(saved);
-    }
-
-    function syncAllCleanerDropdowns(selectedName) {
-      const current = selectedName || localStorage.getItem('ccs_vendor_worker_name') || '';
-
-      // 1. Sinkronkan nilai semua dropdown
-      ['roleWorkerNameSelect', 'scannerLockWorkerSelect', 'workerNameSelect'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el && el.value !== current) {
-          el.value = current;
-        }
-      });
-
-      // 2. Badge tersimpan di role card
-      const savedBadge = document.getElementById('roleWorkerSavedBadge');
-      if (savedBadge) {
-        if (current) savedBadge.classList.remove('hidden');
-        else savedBadge.classList.add('hidden');
-      }
-
-      // 3. Update tampilan mobile header (Active Role Bar)
-      updateActiveRoleBarHeader(current);
-    }
-
-    function updateActiveRoleBarHeader(workerName) {
-      const bar = document.getElementById('activeRoleBar');
-      const icon = document.getElementById('activeRoleIcon');
-      const categoryText = document.getElementById('activeRoleCategoryText');
-      const cleanerNameEl = document.getElementById('activeCleanerNameText');
-      const btnQuickChange = document.getElementById('btnChangeCleanerQuick');
-      const dict = I18N[currentLang] || I18N.id;
-      const isEN = currentLang === 'en';
-
-      if (!currentRole) {
-        if (bar) bar.classList.add('hidden');
-        return;
-      }
-
-      if (bar) bar.classList.remove('hidden');
-
-      if (currentRole === 'cleaner') {
-        if (icon) {
-          icon.className = 'w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold bg-orange-100 text-ccsOrange shrink-0 shadow-xs';
-          icon.innerHTML = '<i class="fas fa-broom"></i>';
-        }
-        if (categoryText) {
-          categoryText.textContent = dict.role_cleaner_name || 'Petugas Kebersihan';
-        }
-        const saved = workerName || localStorage.getItem('ccs_vendor_worker_name');
-        if (cleanerNameEl) {
-          cleanerNameEl.textContent = saved || (isEN ? 'Name Not Selected' : 'Nama Belum Dipilih');
-          cleanerNameEl.className = saved ? 'text-ccsHeading font-extrabold' : 'text-amber-600 font-semibold italic';
-        }
-        if (btnQuickChange) {
-          btnQuickChange.classList.remove('hidden');
-          btnQuickChange.classList.add('inline-flex');
-        }
-        const scannerAlert = document.getElementById('scannerActiveComplaintsAlert');
-        if (scannerAlert) {
-          if (activeComplaintsList && activeComplaintsList.length > 0) {
-            scannerAlert.classList.remove('hidden');
-          } else {
-            scannerAlert.classList.add('hidden');
-          }
-        }
-      } else {
-        if (icon) {
-          icon.className = 'w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold bg-teal-100 text-ccsTeal shrink-0 shadow-xs mt-0.5';
-          icon.innerHTML = '<i class="fas fa-bullhorn"></i>';
-        }
-        if (categoryText) {
-          categoryText.textContent = dict.role_reporter_badge || 'Reporter';
-        }
-        if (cleanerNameEl) {
-          cleanerNameEl.textContent = dict.role_reporter_name || 'Pelapor Fasilitas';
-          cleanerNameEl.className = 'text-ccsHeading font-extrabold';
-        }
-        if (btnQuickChange) {
-          btnQuickChange.classList.add('hidden');
-          btnQuickChange.classList.remove('inline-flex');
-        }
-        const scannerAlert = document.getElementById('scannerActiveComplaintsAlert');
-        if (scannerAlert) {
-          scannerAlert.classList.add('hidden');
-        }
-      }
-    }
-
-    function handleGlobalCleanerChange(name) {
-      if (!name) return;
-      localStorage.setItem('ccs_vendor_worker_name', name);
-      syncAllCleanerDropdowns(name);
-    }
-
-    function handleSelectCleanerAndUnlock(name) {
-      if (!name) return;
-      localStorage.setItem('ccs_vendor_worker_name', name);
-      syncAllCleanerDropdowns(name);
-      showScannerSection(); // Unlocks and starts camera immediately!
-    }
-
-    function handleEnterCleaner() {
-      const isEN = currentLang === 'en';
-      const roleSelect = document.getElementById('roleWorkerNameSelect');
-      let selected = (roleSelect ? roleSelect.value.trim() : '') || localStorage.getItem('ccs_vendor_worker_name') || '';
-
-      if (!selected) {
-        Swal.fire({
-          icon: 'warning',
-          title: isEN ? 'Select Your Name' : 'Pilih Nama Petugas',
-          text: isEN ? 'Please select your cleaning staff name from the dropdown list before proceeding.' : 'Silakan pilih nama petugas kebersihan Anda dari daftar dropdown terlebih dahulu sebelum masuk ke scanner kamera.',
-          confirmButtonText: isEN ? 'OK, I Will Select' : 'Baik, Saya Pilih'
-        }).then(() => {
-          if (roleSelect) {
-            roleSelect.focus();
-            roleSelect.classList.add('ring-2', 'ring-ccsOrange');
-            setTimeout(() => roleSelect.classList.remove('ring-2', 'ring-ccsOrange'), 2000);
-          }
-        });
-        return;
-      }
-
-      localStorage.setItem('ccs_vendor_worker_name', selected);
-      selectRole('cleaner', true);
-    }
-
-    function promptSwitchCleanerModal() {
-      const isEN = currentLang === 'en';
-      const saved = localStorage.getItem('ccs_vendor_worker_name') || '';
-      let optionsHtml = cleanersList.map(c => `
-        <option value="${escapeHtml(c.name)}" ${c.name === saved ? 'selected' : ''}>${escapeHtml(c.name)}</option>
-      `).join('');
-
-      Swal.fire({
-        title: isEN ? 'Switch Cleaning Staff' : 'Ganti Nama Petugas',
-        html: `
-          <p class="text-xs text-gray-500 mb-3">${isEN ? 'Select the active cleaning staff name:' : 'Pilih nama petugas kebersihan yang bertugas saat ini:'}</p>
-          <div class="relative">
-            <select id="swalWorkerSelect" class="w-full p-3 text-sm font-bold border-2 border-orange-300 rounded-xl outline-none focus:ring-2 focus:ring-orange-200 bg-white">
-              <option value="">${isEN ? '-- Select your name --' : '-- Pilih nama Anda --'}</option>
-              ${optionsHtml}
-            </select>
-          </div>
-        `,
-        showCancelButton: true,
-        confirmButtonText: isEN ? 'Save & Switch' : 'Simpan & Ganti',
-        cancelButtonText: isEN ? 'Cancel' : 'Batal',
-        preConfirm: () => {
-          const val = document.getElementById('swalWorkerSelect').value;
-          if (!val) {
-            Swal.showValidationMessage(isEN ? 'Please select a name' : 'Silakan pilih salah satu nama');
-            return false;
-          }
-          return val;
-        }
-      }).then(result => {
-        if (result.isConfirmed && result.value) {
-          handleGlobalCleanerChange(result.value);
-          // Jika tadi kamera terkunci, buka sekarang
-          showScannerSection();
-          Swal.fire({
-            icon: 'success',
-            title: isEN ? 'Staff Updated!' : 'Petugas Diperbarui!',
-            text: isEN ? `Logged in as: ${result.value}` : `Petugas aktif: ${result.value}`,
-            timer: 1500,
-            showConfirmButton: false
-          });
-        }
-      });
-    }
-
-    // ─── PENGATURAN PERAN (ROLE SELECTION) ─────────────────────────────────
-    function showRoleSelectionSection() {
-      stopScanner();
-      document.getElementById('loadingCard').classList.add('hidden');
-      document.getElementById('scannerSection').classList.add('hidden');
-      document.getElementById('cleanerFormSection').classList.add('hidden');
-      document.getElementById('cleanerComplaintCenterSection')?.classList.add('hidden');
-      document.getElementById('reporterFormSection').classList.add('hidden');
-      document.getElementById('activeRoleBar').classList.add('hidden');
-      document.getElementById('roleSelectionSection').classList.remove('hidden');
-      syncAllCleanerDropdowns();
-    }
-
-    function selectRole(role, saveStorage = true) {
-      currentRole = role;
-      if (saveStorage) {
-        localStorage.setItem('ccs_portal_role', role);
-      }
-
-      updateActiveRoleBarHeader();
-      syncAllCleanerDropdowns();
-
-      document.getElementById('roleSelectionSection').classList.add('hidden');
-
-      // PERATURAN MUTLAK: Mode Komplain (Reporter) TIDAK BOLEH mengingat ruangan sebelumnya.
-      // Setiap masuk komplain, user WAJIB scan QR code ruangan secara langsung.
-      if (role === 'reporter') {
-        currentRoomToken = '';
-        currentRoomData = null;
-        selectedReporterBlob = null;
-        if (window.history.replaceState) {
-          const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
-          window.history.replaceState({ path: cleanUrl }, '', cleanUrl);
-        }
-        // Reset preview form komplain
-        const repDesc = document.getElementById('reporterIssueDesc');
-        if (repDesc) repDesc.value = '';
-        const repImg = document.getElementById('reporterImgPreview');
-        if (repImg) repImg.src = '';
-        document.getElementById('reporterPreviewBox')?.classList.add('hidden');
-        document.getElementById('reporterUploadPlaceholder')?.classList.remove('hidden');
-
-        showScannerSection();
-        return;
-      }
-
-      if (currentRoomToken) {
-        loadRoomForCleaner(currentRoomToken);
-      } else {
-        showScannerSection();
-      }
-    }
-
-    function resetRole() {
-      stopScanner();
-      currentRole = null;
-      localStorage.removeItem('ccs_portal_role');
-      currentRoomToken = '';
-      currentRoomData = null;
-      selectedCleanerBlob = null;
-      selectedReporterBlob = null;
-      if (window.history.replaceState) {
-        const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
-        window.history.replaceState({ path: cleanUrl }, '', cleanUrl);
-      }
-      showRoleSelectionSection();
-    }
-
-    // ─── QR SCANNER LOGIC ──────────────────────────────────────────────────
-    function updateScannerText() {
-      const dict = I18N[currentLang] || I18N.id;
-      const sub = document.getElementById('scannerSubHeading');
-      const iconBox = document.getElementById('scannerIconBox');
-      if (!sub) return;
-
-      if (currentRole === 'reporter') {
-        sub.textContent = dict.scan_reporter_sub;
-        if (iconBox) iconBox.className = 'w-12 h-12 rounded-full bg-teal-100 text-ccsTeal font-bold flex items-center justify-center text-xl mx-auto mb-2';
-      } else {
-        sub.textContent = dict.scan_cleaner_sub;
-        if (iconBox) iconBox.className = 'w-12 h-12 rounded-full bg-orange-100 text-ccsOrange font-bold flex items-center justify-center text-xl mx-auto mb-2';
-      }
-    }
-
-    function showScannerSection() {
-      document.getElementById('loadingCard').classList.add('hidden');
-      document.getElementById('cleanerFormSection').classList.add('hidden');
-      document.getElementById('cleanerComplaintCenterSection')?.classList.add('hidden');
-      document.getElementById('reporterFormSection').classList.add('hidden');
-      document.getElementById('roleSelectionSection').classList.add('hidden');
-      document.getElementById('scannerSection').classList.remove('hidden');
-
-      const savedWorker = localStorage.getItem('ccs_vendor_worker_name');
-      const lockBox = document.getElementById('cleanerLockBox');
-      const activeBox = document.getElementById('scannerActiveBox');
-
-      // SYARAT MUTLAK: Jika peran Cleaner tapi nama belum pernah dipilih, KAMERA HARUS DILARANG NYALA!
-      if (currentRole === 'cleaner' && !savedWorker) {
-        stopScanner();
-        if (lockBox) lockBox.classList.remove('hidden');
-        if (activeBox) activeBox.classList.add('hidden');
-        updateActiveRoleBarHeader();
-        return;
-      }
-
-      // Jika Cleaner sudah punya nama ATAU sebagai Reporter -> Buka kamera
-      if (lockBox) lockBox.classList.add('hidden');
-      if (activeBox) activeBox.classList.remove('hidden');
-      updateScannerText();
-      updateActiveRoleBarHeader();
-
-      // Tampilkan daftar komplain aktif hanya jika peran adalah Cleaner
-      const complaintsSection = document.getElementById('cleanerComplaintsSection');
-      if (currentRole === 'cleaner') {
-        if (complaintsSection) complaintsSection.classList.remove('hidden');
-        loadActiveComplaints();
-      } else {
-        if (complaintsSection) complaintsSection.classList.add('hidden');
-      }
-
-      startCameraScanner();
-    }
-
-    function startCameraScanner() {
-      stopScanner();
-      try {
-        qrScanner = new Html5Qrcode("qrReader");
-        qrScanner.start(
-          { facingMode: "environment" },
-          { fps: 10, qrbox: { width: 220, height: 220 } },
-          (decodedText) => {
-            handleDecodedQr(decodedText);
-          },
-          (errorMessage) => {}
-        ).catch(err => {
-          console.warn("Camera QR scan error:", err);
-        });
-      } catch (e) {
-        console.error("Failed to init qr scanner", e);
-      }
-    }
-
-    function stopScanner() {
-      if (qrScanner) {
-        qrScanner.stop().catch(() => {});
-        qrScanner = null;
-      }
-    }
-
-    function handleDecodedQr(text) {
-      stopScanner();
-      let token = text.trim();
-      if (token.includes('room=')) {
-        const match = token.match(/room=([a-zA-Z0-9_-]+)/);
-        if (match) token = match[1];
-      } else if (token.startsWith('http')) {
-        try {
-          const url = new URL(token);
-          token = url.searchParams.get('room') || token;
-        } catch(e) {}
-      }
-      
-      currentRoomToken = token;
-      if (currentRole === 'reporter') {
-        loadRoomForReporter(token);
-      } else {
-        loadRoomForCleaner(token);
-      }
-    }
-
-    function handleManualToken() {
-      const input = document.getElementById('manualRoomToken').value.trim();
-      if (!input) {
-        Swal.fire({ 
-          icon: 'warning', 
-          title: currentLang === 'en' ? 'Attention' : 'Perhatian', 
-          text: currentLang === 'en' ? 'Please enter a room token first' : 'Ketikkan token ruangan terlebih dahulu' 
-        });
-        return;
-      }
-      currentRoomToken = input;
-      if (currentRole === 'reporter') {
-        loadRoomForReporter(input);
-      } else {
-        loadRoomForCleaner(input);
-      }
-    }
-
-    // ─── CLEANER FLOW (FETCH ROOM & RENDER CHECKLIST) ──────────────────────
-    async function loadRoomForCleaner(token) {
-      stopScanner();
-      document.getElementById('loadingCard').classList.remove('hidden');
-      document.getElementById('scannerSection').classList.add('hidden');
-      document.getElementById('reporterFormSection').classList.add('hidden');
-      document.getElementById('cleanerFormSection').classList.add('hidden');
-      document.getElementById('cleanerComplaintCenterSection')?.classList.add('hidden');
-
-      try {
-        const res = await fetch(`index.php?action=fetch_room&room_token=${encodeURIComponent(token)}`);
-        const data = await res.json();
-
-        if (!data.success) {
-          document.getElementById('loadingCard').classList.add('hidden');
-          Swal.fire({
-            icon: 'error',
-            title: currentLang === 'en' ? 'Room Not Found' : 'Ruangan Tidak Ditemukan',
-            text: data.message || (currentLang === 'en' ? 'QR Code token is invalid' : 'QR Code ruangan tidak terdaftar di sistem.'),
-            confirmButtonText: currentLang === 'en' ? 'Scan Another Room' : 'Scan Ulang Ruangan'
-          }).then(() => {
-            window.location.href = 'index.php';
-          });
-          return;
-        }
-
-        currentRoomData = data.room;
-        currentChecklist = data.checklist;
-
-        document.getElementById('cleanerRoomName').textContent = data.room.name;
-        document.getElementById('cleanerRoomToken').textContent = `Token: ${data.room.token}`;
-
-        document.getElementById('loadingCard').classList.add('hidden');
-        document.getElementById('cleanerFormSection').classList.remove('hidden');
-
-        populateCleanerSelect();
-        renderCleanerStage(data.checklist);
-        renderRoomActiveComplaints(data.activeReports || []);
-
-      } catch (err) {
-        document.getElementById('loadingCard').classList.add('hidden');
-        Swal.fire({
-          icon: 'error',
-          title: currentLang === 'en' ? 'Connection Error' : 'Gangguan Koneksi',
-          text: currentLang === 'en' ? 'Failed to connect to school server' : 'Gagal menghubungi server utama sekolah.'
-        });
-      }
-    }
-
-    function renderCleanerStage(checklist) {
-      const container = document.getElementById('stageContainer');
-      const statusBadge = document.getElementById('cleanerStatusBadge');
-      const isEN = currentLang === 'en';
-
-      if (!checklist || checklist.status === 'in_progress' && !checklist.image_before_file) {
-        statusBadge.className = 'shrink-0 text-xs font-bold px-3 py-1.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200';
-        statusBadge.innerHTML = `<i class="fas fa-clock mr-1"></i> ${isEN ? 'Not Started' : 'Belum Dikerjakan'}`;
-
-        container.innerHTML = `
-          <div class="space-y-3">
-            <div class="flex items-center justify-between border-b border-gray-100 pb-2">
-              <span class="text-xs font-bold uppercase tracking-wider text-ccsHeading">
-                <i class="fas fa-camera mr-1 text-ccsOrange"></i> ${isEN ? 'Step 1: Photo Before Cleaning' : 'Tahap 1: Foto Sebelum Dibersihkan (Before)'}
-              </span>
-              <span class="text-[11px] font-semibold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-md">
-                ${isEN ? 'Starting Cleaning' : 'Mulai Bersihkan'}
-              </span>
-            </div>
-
-            <p class="text-xs text-gray-500">
-              ${isEN 
-                ? 'Take a photo of the room condition before cleaning. The system will record the start time automatically.' 
-                : 'Ambil foto kondisi ruangan saat ini sebelum dibersihkan. Sistem akan mencatat waktu mulai secara otomatis.'}
-            </p>
-
-            <input type="file" id="cameraInput" accept="image/*" capture="environment" class="hidden" onchange="handleCleanerFileSelect(event)">
-
-            <div id="uploadPlaceholder" onclick="triggerCleanerCamera()" class="border-2 border-dashed border-gray-200 hover:border-ccsOrange rounded-2xl p-6 text-center cursor-pointer transition-colors bg-orange-50/20">
-              <div class="w-12 h-12 rounded-full bg-orange-100 text-ccsOrange flex items-center justify-center text-xl mx-auto mb-2">
-                <i class="fas fa-camera"></i>
-              </div>
-              <p class="text-xs font-bold text-ccsHeading">${isEN ? 'Take Before Photo with Camera' : 'Ambil Foto Before dengan Kamera'}</p>
-              <p class="text-[11px] text-gray-400 mt-0.5">${isEN ? 'Photo is automatically compressed to save data' : 'Foto otomatis dikompresi agar hemat kuota'}</p>
-            </div>
-
-            <div id="previewBox" class="hidden space-y-2">
-              <div class="relative rounded-2xl overflow-hidden border border-gray-200 bg-gray-900 flex items-center justify-center max-h-[260px]">
-                <img id="imgPreview" src="" alt="Preview" class="w-full h-auto max-h-[260px] object-contain">
-              </div>
-              <button type="button" onclick="triggerCleanerCamera()" class="w-full py-2 px-3 text-xs font-semibold text-ccsNavy hover:bg-gray-100 rounded-xl border border-gray-200 transition flex items-center justify-center gap-1.5">
-                <i class="fas fa-sync-alt"></i> ${isEN ? 'Retake Photo' : 'Ganti / Foto Ulang'}
-              </button>
-            </div>
-
-            <button id="btnSubmitStage" onclick="submitCleanerStage('start_progress')" class="thm-btn w-full py-3 text-sm font-semibold rounded-xl flex items-center justify-center gap-2">
-              <i class="fas fa-play"></i> ${isEN ? 'Start Cleaning & Send Before Photo' : 'Mulai Bersihkan & Kirim Foto Before'}
-            </button>
-          </div>
-        `;
-        return;
-      }
-
-      if (checklist.status === 'in_progress') {
-        statusBadge.className = 'shrink-0 text-xs font-bold px-3 py-1.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200';
-        statusBadge.innerHTML = `<i class="fas fa-spinner fa-spin mr-1"></i> ${isEN ? 'In Progress' : 'Sedang Dikerjakan'}`;
-
-        container.innerHTML = `
-          <div class="space-y-4">
-            <div class="flex items-center justify-between border-b border-gray-100 pb-2">
-              <span class="text-xs font-bold uppercase tracking-wider text-ccsHeading">
-                <i class="fas fa-check-double mr-1 text-emerald-600"></i> ${isEN ? 'Step 2: Finish & Photo After' : 'Tahap 2: Selesai & Foto Hasil (After)'}
-              </span>
-              <span class="text-[11px] font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md">
-                ${isEN ? 'Cleaning in Progress' : 'Sedang Dikerjakan'}
-              </span>
-            </div>
-
-            <!-- Kartu Info Foto Before -->
-            <div class="bg-gray-50 rounded-xl p-3 border border-gray-200 flex items-center justify-between text-xs">
-              <div class="flex items-center gap-2.5">
-                <div class="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
-                  <i class="fas fa-check"></i>
-                </div>
-                <div>
-                  <div class="font-bold text-gray-800">${isEN ? 'Before Photo Recorded' : 'Foto Before Telah Tersimpan'}</div>
-                  <div class="text-[11px] text-gray-500">${checklist.vendor_worker_name || '-'}</div>
-                </div>
-              </div>
-              <button type="button" onclick="viewRemotePhoto(${checklist.id}, 'before', '${isEN ? 'Before Photo' : 'Foto Before Ruangan'}')" class="text-xs text-ccsOrange font-semibold hover:underline">
-                <i class="fas fa-eye mr-1"></i> ${isEN ? 'View' : 'Lihat'}
-              </button>
-            </div>
-
-            <p class="text-xs text-gray-500">
-              ${isEN 
-                ? 'After finishing cleaning, take a photo of the clean room to complete the task.' 
-                : 'Setelah selesai membersihkan, ambil foto hasil ruangan yang sudah bersih untuk menyelesaikan tugas.'}
-            </p>
-
-            <input type="file" id="cameraInput" accept="image/*" capture="environment" class="hidden" onchange="handleCleanerFileSelect(event)">
-
-            <div id="uploadPlaceholder" onclick="triggerCleanerCamera()" class="border-2 border-dashed border-gray-200 hover:border-emerald-500 rounded-2xl p-6 text-center cursor-pointer transition-colors bg-emerald-50/20">
-              <div class="w-12 h-12 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-xl mx-auto mb-2">
-                <i class="fas fa-camera"></i>
-              </div>
-              <p class="text-xs font-bold text-ccsHeading">${isEN ? 'Take After Photo with Camera' : 'Ambil Foto After dengan Kamera'}</p>
-              <p class="text-[11px] text-gray-400 mt-0.5">${isEN ? 'Photo is automatically compressed' : 'Foto otomatis dikompresi agar hemat kuota'}</p>
-            </div>
-
-            <div id="previewBox" class="hidden space-y-2">
-              <div class="relative rounded-2xl overflow-hidden border border-gray-200 bg-gray-900 flex items-center justify-center max-h-[260px]">
-                <img id="imgPreview" src="" alt="Preview" class="w-full h-auto max-h-[260px] object-contain">
-              </div>
-              <button type="button" onclick="triggerCleanerCamera()" class="w-full py-2 px-3 text-xs font-semibold text-ccsNavy hover:bg-gray-100 rounded-xl border border-gray-200 transition flex items-center justify-center gap-1.5">
-                <i class="fas fa-sync-alt"></i> ${isEN ? 'Retake Photo' : 'Ganti / Foto Ulang'}
-              </button>
-            </div>
-
-            <div>
-              <label class="block text-xs font-semibold text-gray-700 mb-1">${isEN ? 'Notes (Optional)' : 'Catatan Petugas (Opsional)'}</label>
-              <textarea id="stageNotes" rows="2" placeholder="${isEN ? 'e.g., mopped floor, trash emptied, etc.' : 'Misal: Lantai sudah dipel, tong sampah dikosongkan...'}" class="w-full px-3 py-2 text-xs border border-gray-200 rounded-xl focus:border-ccsNavy outline-none"></textarea>
-            </div>
-
-            <button id="btnSubmitStage" onclick="submitCleanerStage('submit_finish')" class="thm-btn w-full py-3 text-sm font-semibold rounded-xl flex items-center justify-center gap-2 bg-emerald-600 border-emerald-600 hover:bg-emerald-700">
-              <i class="fas fa-check-circle"></i> ${isEN ? 'Finish & Submit for Review' : 'Selesai & Kirim untuk Ditinjau'}
-            </button>
-          </div>
-        `;
-        return;
-      }
-
-      if (checklist.status === 'revision') {
-        statusBadge.className = 'shrink-0 text-xs font-bold px-3 py-1.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200';
-        statusBadge.innerHTML = `<i class="fas fa-exclamation-triangle mr-1"></i> ${isEN ? 'Revision Required' : 'Perlu Revisi'}`;
-
-        container.innerHTML = `
-          <div class="space-y-4">
-            <div class="bg-rose-50 rounded-2xl p-4 border border-rose-200 text-rose-800 space-y-1.5">
-              <div class="flex items-center gap-2 font-bold text-xs uppercase tracking-wider text-rose-700">
-                <i class="fas fa-exclamation-circle text-sm"></i> ${isEN ? 'Supervisor Revision Instructions' : 'Instruksi Revisi Supervisor'}
-              </div>
-              <p class="text-xs font-medium pl-5">${checklist.review_notes || (isEN ? 'Please clean the room again properly.' : 'Harap bersihkan kembali ruangan dengan baik.')}</p>
-            </div>
-
-            <p class="text-xs text-gray-500">
-              ${isEN 
-                ? 'Please re-clean the areas requested by the supervisor, then upload proof of revision photo.' 
-                : 'Silakan bersihkan ulang area yang diminta supervisor, lalu unggah foto bukti perbaikan revisi.'}
-            </p>
-
-            <input type="file" id="cameraInput" accept="image/*" capture="environment" class="hidden" onchange="handleCleanerFileSelect(event)">
-
-            <div id="uploadPlaceholder" onclick="triggerCleanerCamera()" class="border-2 border-dashed border-rose-200 hover:border-rose-500 rounded-2xl p-6 text-center cursor-pointer transition-colors bg-rose-50/20">
-              <div class="w-12 h-12 rounded-full bg-rose-100 text-rose-700 flex items-center justify-center text-xl mx-auto mb-2">
-                <i class="fas fa-camera"></i>
-              </div>
-              <p class="text-xs font-bold text-ccsHeading">${isEN ? 'Take Revision Photo with Camera' : 'Ambil Foto Revisi dengan Kamera'}</p>
-              <p class="text-[11px] text-gray-400 mt-0.5">${isEN ? 'Photo is automatically compressed' : 'Foto otomatis dikompresi'}</p>
-            </div>
-
-            <div id="previewBox" class="hidden space-y-2">
-              <div class="relative rounded-2xl overflow-hidden border border-gray-200 bg-gray-900 flex items-center justify-center max-h-[260px]">
-                <img id="imgPreview" src="" alt="Preview" class="w-full h-auto max-h-[260px] object-contain">
-              </div>
-              <button type="button" onclick="triggerCleanerCamera()" class="w-full py-2 px-3 text-xs font-semibold text-ccsNavy hover:bg-gray-100 rounded-xl border border-gray-200 transition flex items-center justify-center gap-1.5">
-                <i class="fas fa-sync-alt"></i> ${isEN ? 'Retake Photo' : 'Ganti / Foto Ulang'}
-              </button>
-            </div>
-
-            <div>
-              <label class="block text-xs font-semibold text-gray-700 mb-1">${isEN ? 'Revision Notes' : 'Catatan Perbaikan'}</label>
-              <textarea id="stageNotes" rows="2" placeholder="${isEN ? 'e.g., floor mopped again, trash emptied' : 'Misal: Area lantai sudah dipel ulang...'}" class="w-full px-3 py-2 text-xs border border-gray-200 rounded-xl focus:border-ccsNavy outline-none"></textarea>
-            </div>
-
-            <button id="btnSubmitStage" onclick="submitCleanerStage('submit_revision')" class="thm-btn w-full py-3 text-sm font-semibold rounded-xl flex items-center justify-center gap-2 bg-rose-600 border-rose-600 hover:bg-rose-700">
-              <i class="fas fa-paper-plane"></i> ${isEN ? 'Send Revision Photo' : 'Kirim Foto Bukti Revisi'}
-            </button>
-          </div>
-        `;
-        return;
-      }
-
-      if (checklist.status === 'pending_review') {
-        statusBadge.className = 'shrink-0 text-xs font-bold px-3 py-1.5 rounded-full bg-purple-50 text-purple-700 border border-purple-200';
-        statusBadge.innerHTML = `<i class="fas fa-hourglass-half mr-1"></i> ${isEN ? 'Pending Review' : 'Menunggu Review'}`;
-
-        container.innerHTML = `
-          <div class="text-center py-5 space-y-4">
-            <div class="w-14 h-14 bg-purple-100 text-purple-700 rounded-full flex items-center justify-center mx-auto text-2xl shadow-xs">
-              <i class="fas fa-clipboard-check"></i>
-            </div>
-            <div>
-              <h3 class="text-base font-bold text-ccsHeading">${isEN ? 'Checklist Awaiting Supervisor Review' : 'Pekerjaan Selesai & Menunggu Review'}</h3>
-              <p class="text-xs text-gray-500 max-w-sm mx-auto mt-1">
-                ${isEN 
-                  ? 'All photos have been submitted. The supervisor will inspect the cleaning quality soon.' 
-                  : 'Foto sebelum dan sesudah telah dikirim. Supervisor akan memeriksa kualitas kebersihan ruangan ini.'}
-              </p>
-            </div>
-            <div class="flex items-center justify-center gap-2 pt-1 pb-1">
-              <button type="button" onclick="viewRemotePhoto(${checklist.id}, 'before', '${isEN ? 'Before Photo' : 'Foto Sebelum'}')" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 transition">
-                <i class="fas fa-eye mr-1"></i> ${isEN ? 'Before Photo' : 'Foto Sebelum'}
-              </button>
-              <button type="button" onclick="viewRemotePhoto(${checklist.id}, 'after', '${isEN ? 'After Photo' : 'Foto Sesudah'}')" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 transition">
-                <i class="fas fa-eye mr-1"></i> ${isEN ? 'After Photo' : 'Foto Sesudah'}
-              </button>
-            </div>
-
-            <!-- Tombol Lanjut ke Ruangan Lain (Scan QR) -->
-            <div class="pt-4 border-t border-gray-100">
-              <button 
-                type="button" 
-                onclick="goToNextRoomScan()" 
-                class="thm-btn w-full py-3.5 text-xs sm:text-sm font-bold rounded-xl flex items-center justify-center gap-2 shadow-sm active:scale-95 transition"
-              >
-                <i class="fas fa-qrcode text-base"></i>
-                <span data-i18n="continue_next_room">${isEN ? 'Continue to Next Room (Scan QR)' : 'Lanjut ke Ruangan Lain (Scan QR)'}</span>
-                <i class="fas fa-arrow-right text-xs"></i>
-              </button>
-            </div>
-          </div>
-        `;
-        return;
-      }
-
-      if (checklist.status === 'approved') {
-        statusBadge.className = 'shrink-0 text-xs font-bold px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200';
-        statusBadge.innerHTML = `<i class="fas fa-check-circle mr-1"></i> ${isEN ? 'Approved' : 'Disetujui'}`;
-
-        container.innerHTML = `
-          <div class="text-center py-5 space-y-4">
-            <div class="w-14 h-14 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto text-2xl shadow-xs">
-              <i class="fas fa-shield-alt"></i>
-            </div>
-            <div>
-              <h3 class="text-base font-bold text-ccsHeading">${isEN ? 'Room Clean & Approved!' : 'Ruangan Bersih & Disetujui!'}</h3>
-              <p class="text-xs text-gray-500 max-w-sm mx-auto mt-1">
-                ${isEN 
-                  ? 'Cleaning has been verified and approved by the supervisor.' 
-                  : 'Hasil pekerjaan kebersihan ruangan ini telah diperiksa dan disetujui oleh supervisor.'}
-              </p>
-            </div>
-            <div class="flex items-center justify-center gap-2 pt-1 pb-1">
-              <button type="button" onclick="viewRemotePhoto(${checklist.id}, 'before', '${isEN ? 'Before Photo' : 'Foto Sebelum'}')" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 transition">
-                <i class="fas fa-eye mr-1"></i> ${isEN ? 'Before' : 'Sebelum'}
-              </button>
-              <button type="button" onclick="viewRemotePhoto(${checklist.id}, 'after', '${isEN ? 'After Photo' : 'Foto Sesudah'}')" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 transition">
-                <i class="fas fa-eye mr-1"></i> ${isEN ? 'After' : 'Sesudah'}
-              </button>
-            </div>
-
-            <!-- Tombol Lanjut ke Ruangan Lain (Scan QR) -->
-            <div class="pt-4 border-t border-gray-100">
-              <button 
-                type="button" 
-                onclick="goToNextRoomScan()" 
-                class="thm-btn w-full py-3.5 text-xs sm:text-sm font-bold rounded-xl flex items-center justify-center gap-2 shadow-sm active:scale-95 transition"
-              >
-                <i class="fas fa-qrcode text-base"></i>
-                <span data-i18n="continue_next_room">${isEN ? 'Continue to Next Room (Scan QR)' : 'Lanjut ke Ruangan Lain (Scan QR)'}</span>
-                <i class="fas fa-arrow-right text-xs"></i>
-              </button>
-            </div>
-          </div>
-        `;
-        return;
-      }
-
-      if (checklist.status === 'rejected') {
-        statusBadge.className = 'shrink-0 text-xs font-bold px-3 py-1.5 rounded-full bg-gray-200 text-gray-700 border border-gray-300';
-        statusBadge.innerHTML = `<i class="fas fa-times-circle mr-1"></i> ${isEN ? 'Rejected' : 'Ditolak'}`;
-
-        container.innerHTML = `
-          <div class="text-center py-4 space-y-3">
-            <div class="w-14 h-14 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center mx-auto text-2xl">
-              <i class="fas fa-times"></i>
-            </div>
-            <div>
-              <h3 class="text-base font-bold text-ccsHeading">${isEN ? 'Checklist Rejected' : 'Checklist Ditolak'}</h3>
-              <p class="text-xs text-rose-700 mt-1 bg-rose-50 p-3 rounded-xl border border-rose-200">
-                "${checklist.review_notes || (isEN ? 'Cleaning did not meet standard.' : 'Pekerjaan kebersihan tidak memenuhi standar.')}"
-              </p>
-            </div>
-          </div>
-        `;
-        return;
-      }
-    }
-
-    function triggerCleanerCamera() {
-      const input = document.getElementById('cameraInput');
-      if (input) input.click();
-    }
-
-    function handleCleanerFileSelect(e) {
-      const file = e.target.files[0];
-      if (!file) return;
-
-      compressImage(file, 1280, 0.8, (compressedBlob, dataUrl) => {
-        selectedCleanerBlob = compressedBlob;
-        document.getElementById('uploadPlaceholder').classList.add('hidden');
-        document.getElementById('previewBox').classList.remove('hidden');
-        document.getElementById('imgPreview').src = dataUrl;
-      });
-    }
-
-    async function submitCleanerStage(actionType) {
-      const isEN = currentLang === 'en';
-      const workerSelect = document.getElementById('workerNameSelect');
-      const workerName = workerSelect ? workerSelect.value.trim() : '';
-
-      if (actionType === 'start_progress' && !workerName) {
-        Swal.fire({
-          icon: 'warning',
-          title: isEN ? 'Staff Not Selected' : 'Nama Petugas Belum Dipilih',
-          text: isEN ? 'Please select your name from the dropdown list before starting.' : 'Silakan pilih nama petugas kebersihan dari dropdown terlebih dahulu.'
-        });
-        workerSelect.focus();
-        return;
-      }
-
-      if (!selectedCleanerBlob) {
-        Swal.fire({
-          icon: 'warning',
-          title: isEN ? 'Photo Required' : 'Foto Belum Diambil',
-          text: isEN ? 'Please take photo evidence using the camera first.' : 'Silakan ambil foto bukti pekerjaan terlebih dahulu menggunakan kamera.'
-        });
-        return;
-      }
-
-      const notesEl = document.getElementById('stageNotes');
-      const notes = notesEl ? notesEl.value.trim() : '';
-
-      const btn = document.getElementById('btnSubmitStage');
-      const origText = btn.innerHTML;
-      btn.disabled = true;
-      btn.innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i> ${isEN ? 'Uploading & Saving...' : 'Mengunggah & Menyimpan...'}`;
-
-      try {
-        const formData = new FormData();
-        formData.append('action', 'submit_step');
-        formData.append('stage_action', actionType);
-        formData.append('room_token', currentRoomToken);
-        formData.append('worker_name', workerName);
-        formData.append('notes', notes);
-        formData.append('photo_file', selectedCleanerBlob, 'upload.jpg');
-
-        const res = await fetch('index.php', {
-          method: 'POST',
-          body: formData
-        });
-
-        const result = await res.json();
-        if (!result.success) {
-          throw new Error(result.message || (isEN ? 'Failed to save data' : 'Gagal menyimpan data'));
-        }
-
-        Swal.fire({
-          icon: 'success',
-          title: isEN ? 'Room Cleaned Successfully!' : 'Pekerjaan Selesai!',
-          text: isEN 
-            ? 'After photo submitted and sent for supervisor review. Ready to scan the next room?' 
-            : 'Foto hasil after telah tersimpan dan menunggu review supervisor. Lanjut scan ruangan berikutnya?',
-          confirmButtonText: isEN ? '<i class="fas fa-qrcode mr-1"></i> Scan Next Room' : '<i class="fas fa-qrcode mr-1"></i> Lanjut Scan Ruangan Lain',
-          showCancelButton: true,
-          cancelButtonText: isEN ? 'View This Room' : 'Lihat Status Ruangan Ini',
-          confirmButtonColor: '#ea580c',
-          cancelButtonColor: '#64748b'
-        }).then((swalRes) => {
-          if (swalRes.isConfirmed) {
-            goToNextRoomScan();
-          } else {
-            loadRoomForCleaner(currentRoomToken);
-          }
-        });
-
-      } catch (err) {
-        Swal.fire({
-          icon: 'error',
-          title: isEN ? 'Save Failed' : 'Gagal Menyimpan',
-          text: err.message || (isEN ? 'System error occurred' : 'Terjadi kesalahan sistem')
-        });
-        btn.disabled = false;
-        btn.innerHTML = origText;
-      }
-    }
-
-    // ─── PELAPOR / REPORTER FLOW ───────────────────────────────────────────
-    async function loadRoomForReporter(token) {
-      stopScanner();
-      document.getElementById('loadingCard').classList.remove('hidden');
-      document.getElementById('scannerSection').classList.add('hidden');
-      document.getElementById('cleanerFormSection').classList.add('hidden');
-      document.getElementById('cleanerComplaintCenterSection')?.classList.add('hidden');
-      document.getElementById('reporterFormSection').classList.add('hidden');
-
-      try {
-        const res = await fetch(`index.php?action=fetch_room&room_token=${encodeURIComponent(token)}`);
-        const data = await res.json();
-
-        if (!data.success) {
-          document.getElementById('loadingCard').classList.add('hidden');
-          Swal.fire({
-            icon: 'error',
-            title: currentLang === 'en' ? 'Room Not Found' : 'Ruangan Tidak Ditemukan',
-            text: data.message || (currentLang === 'en' ? 'Room QR code is invalid' : 'QR Code ruangan tidak terdaftar.'),
-            confirmButtonText: currentLang === 'en' ? 'Scan Another Room' : 'Scan Ulang'
-          }).then(() => {
-            window.location.href = 'index.php';
-          });
-          return;
-        }
-
-        currentRoomData = data.room;
-        document.getElementById('reporterRoomName').textContent = data.room.name;
-        document.getElementById('reporterRoomToken').textContent = `Token: ${data.room.token}`;
-
-        // Restore saved reporter info
-        const savedRepName = localStorage.getItem('ccs_reporter_name');
-        if (savedRepName) document.getElementById('reporterNameInput').value = savedRepName;
-
-        document.getElementById('loadingCard').classList.add('hidden');
-        document.getElementById('reporterFormSection').classList.remove('hidden');
-
-      } catch (err) {
-        document.getElementById('loadingCard').classList.add('hidden');
-        Swal.fire({
-          icon: 'error',
-          title: currentLang === 'en' ? 'Connection Error' : 'Gangguan Koneksi',
-          text: currentLang === 'en' ? 'Failed to connect to school server' : 'Gagal menghubungi server utama sekolah.'
-        });
-      }
-    }
-
-    function triggerReporterCamera() {
-      const input = document.getElementById('reporterCameraInput');
-      if (input) input.click();
-    }
-
-    function handleReporterFileSelect(e) {
-      const file = e.target.files[0];
-      if (!file) return;
-
-      compressImage(file, 1280, 0.8, (compressedBlob, dataUrl) => {
-        selectedReporterBlob = compressedBlob;
-        document.getElementById('reporterUploadPlaceholder').classList.add('hidden');
-        document.getElementById('reporterPreviewBox').classList.remove('hidden');
-        document.getElementById('reporterImgPreview').src = dataUrl;
-      });
-    }
-
-    async function submitReporterReport() {
-      const isEN = currentLang === 'en';
-      const nameInput = document.getElementById('reporterNameInput');
-      const descInput = document.getElementById('reporterIssueDesc');
-
-      const repName = nameInput ? nameInput.value.trim() : '';
-      const repDesc = descInput ? descInput.value.trim() : '';
-
-      if (!repName) {
-        Swal.fire({
-          icon: 'warning',
-          title: isEN ? 'Name Required' : 'Nama Pelapor Wajib Diisi',
-          text: isEN ? 'Please enter your full name before submitting the report.' : 'Silakan isi nama lengkap pelapor terlebih dahulu.'
-        });
-        nameInput.focus();
-        return;
-      }
-
-      if (!selectedReporterBlob) {
-        Swal.fire({
-          icon: 'warning',
-          title: isEN ? 'Photo Required' : 'Foto Wajib Diambil',
-          text: isEN ? 'Please take a photo of the damaged or problematic facility condition.' : 'Silakan ambil foto bukti kerusakan atau kondisi fasilitas terlebih dahulu.'
-        });
-        return;
-      }
-
-      if (!repDesc) {
-        Swal.fire({
-          icon: 'warning',
-          title: isEN ? 'Description Required' : 'Deskripsi Keluhan Wajib Diisi',
-          text: isEN ? 'Please describe the facility issue or damage in this room.' : 'Silakan jelaskan kendala atau kerusakan fasilitas yang terjadi.'
-        });
-        descInput.focus();
-        return;
-      }
-
-      // Save to localStorage for convenience
-      localStorage.setItem('ccs_reporter_name', repName);
-
-      const btn = document.getElementById('btnSubmitReport');
-      const origText = btn.innerHTML;
-      btn.disabled = true;
-      btn.innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i> ${isEN ? 'Submitting Report...' : 'Mengunggah & Mengirim Laporan...'}`;
-
-      try {
-        const formData = new FormData();
-        formData.append('action', 'submit_report');
-        formData.append('room_token', currentRoomToken);
-        formData.append('reporter_name', repName);
-        formData.append('reporter_contact', '');
-        formData.append('issue_description', repDesc);
-        formData.append('photo_file', selectedReporterBlob, 'report.jpg');
-
-        const res = await fetch('index.php', {
-          method: 'POST',
-          body: formData
-        });
-
-        const result = await res.json();
-        if (!result.success) {
-          throw new Error(result.message || (isEN ? 'Failed to submit report' : 'Gagal mengirim laporan'));
-        }
-
-        Swal.fire({
-          icon: 'success',
-          title: isEN ? 'Report Submitted Successfully!' : 'Laporan Berhasil Terkirim!',
-          text: isEN 
-            ? 'Thank you for your report. The school operations team will inspect and follow up shortly.' 
-            : 'Terima kasih atas laporan Anda. Tim operasional sekolah akan segera memeriksa dan menindaklanjuti kendala di ruangan ini.',
-          confirmButtonText: isEN ? '<i class="fas fa-qrcode mr-1"></i> Scan Another Room' : '<i class="fas fa-qrcode mr-1"></i> Scan Ruangan Lain'
-        }).then(() => {
-          goToNextRoomScan();
-        });
-
-      } catch (err) {
-        Swal.fire({
-          icon: 'error',
-          title: isEN ? 'Submission Failed' : 'Gagal Mengirim Laporan',
-          text: err.message || (isEN ? 'System error occurred' : 'Terjadi kesalahan sistem')
-        });
-        btn.disabled = false;
-        btn.innerHTML = origText;
-      }
-    }
-
-    // ─── SLIDE-OVER NAVIGATION DRAWER (HAMBURGER) ─────────────────────────
-    function openMobileNavDrawer() {
-      const drawer = document.getElementById('mobileNavDrawer');
-      const drawerWorker = document.getElementById('drawerWorkerName');
-      const drawerRoleIcon = document.getElementById('drawerRoleIcon');
-      const activeWorker = localStorage.getItem('ccs_vendor_worker_name');
-      const isEN = currentLang === 'en';
-
-      if (drawerWorker) {
-        if (currentRole === 'cleaner') {
-          drawerWorker.textContent = activeWorker || (isEN ? 'Staff Not Selected' : 'Belum Pilih Nama');
-        } else if (currentRole === 'reporter') {
-          drawerWorker.textContent = isEN ? 'Facility Reporter' : 'Pelapor Fasilitas';
-        } else {
-          drawerWorker.textContent = isEN ? 'Role Not Selected' : 'Belum Pilih Peran';
-        }
-      }
-
-      if (drawerRoleIcon) {
-        if (currentRole === 'cleaner') {
-          drawerRoleIcon.className = 'w-7 h-7 rounded-lg bg-orange-100 text-ccsOrange flex items-center justify-center text-xs font-bold';
-          drawerRoleIcon.innerHTML = '<i class="fas fa-broom"></i>';
-        } else {
-          drawerRoleIcon.className = 'w-7 h-7 rounded-lg bg-teal-100 text-ccsTeal flex items-center justify-center text-xs font-bold';
-          drawerRoleIcon.innerHTML = '<i class="fas fa-bullhorn"></i>';
-        }
-      }
-
-      if (drawer) drawer.classList.remove('hidden');
-    }
-
-    function closeMobileNavDrawer() {
-      const drawer = document.getElementById('mobileNavDrawer');
-      if (drawer) drawer.classList.add('hidden');
-    }
-
-    // ─── PUSAT PENANGANAN KOMPLAIN CLEANING (2 TAB) ────────────────────────
-    let activeComplaintTab = 'active';
-
-    function openComplaintCenter(defaultTab = 'active') {
-      stopScanner();
-      document.getElementById('loadingCard')?.classList.add('hidden');
-      document.getElementById('scannerSection')?.classList.add('hidden');
-      document.getElementById('cleanerFormSection')?.classList.add('hidden');
-      document.getElementById('reporterFormSection')?.classList.add('hidden');
-      document.getElementById('roleSelectionSection')?.classList.add('hidden');
-      document.getElementById('cleanerComplaintCenterSection')?.classList.remove('hidden');
-
-      switchComplaintTab(defaultTab);
-      refreshComplaintCenter();
-    }
-
-    function switchComplaintTab(tab) {
-      activeComplaintTab = tab;
-      const btnActive = document.getElementById('tabBtnActiveComplaints');
-      const btnResolved = document.getElementById('tabBtnResolvedComplaints');
-      const panelActive = document.getElementById('tabPanelActiveComplaints');
-      const panelResolved = document.getElementById('tabPanelResolvedComplaints');
-
-      if (tab === 'active') {
-        if (panelActive) panelActive.classList.remove('hidden');
-        if (panelResolved) panelResolved.classList.add('hidden');
-
-        if (btnActive) {
-          btnActive.className = 'flex-1 py-2.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-xs bg-white text-red-700';
-        }
-        if (btnResolved) {
-          btnResolved.className = 'flex-1 py-2.5 px-3 rounded-xl text-xs font-semibold text-gray-500 hover:text-gray-800 transition-all flex items-center justify-center gap-1.5';
-        }
-      } else {
-        if (panelActive) panelActive.classList.add('hidden');
-        if (panelResolved) panelResolved.classList.remove('hidden');
-
-        if (btnResolved) {
-          btnResolved.className = 'flex-1 py-2.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-xs bg-white text-emerald-800';
-        }
-        if (btnActive) {
-          btnActive.className = 'flex-1 py-2.5 px-3 rounded-xl text-xs font-semibold text-gray-500 hover:text-gray-800 transition-all flex items-center justify-center gap-1.5';
-        }
-      }
-    }
-
-    async function refreshComplaintCenter(showSpin = false) {
-      const icon = document.getElementById('refreshComplaintCenterIcon');
-      if (showSpin && icon) icon.classList.add('fa-spin');
-      
-      await Promise.all([
-        loadActiveComplaints(false),
-        loadResolvedComplaints(false)
-      ]);
-
-      if (showSpin && icon) icon.classList.remove('fa-spin');
-    }
-
-    // Backward-compatibility aliases
-    function showHistorySection() {
-      openComplaintCenter('resolved');
-    }
-
-    function navToActiveComplaints() {
-      openComplaintCenter('active');
-    }
-
-    let resolvedComplaintsList = [];
-
-    async function loadResolvedComplaints(showSpin = false) {
-      const container = document.getElementById('cleanerHistoryList');
-      const isEN = currentLang === 'en';
-
-      try {
-        const res = await fetch('index.php?action=fetch_resolved_reports');
-        const data = await res.json();
-
-        if (!data.success) {
-          if (container) {
-            container.innerHTML = `
-              <div class="p-4 text-center text-xs text-gray-400 bg-white rounded-2xl border border-gray-100">
-                ${isEN ? 'Failed to load complaint history' : 'Gagal memuat riwayat komplain'}
-              </div>
-            `;
-          }
-          return;
-        }
-
-        resolvedComplaintsList = data.reports || [];
-        renderResolvedHistoryList(resolvedComplaintsList);
-
-        const resolvedCount = resolvedComplaintsList.length;
-        const tabResolvedBadge = document.getElementById('tabResolvedCountBadge');
-        if (tabResolvedBadge) {
-          tabResolvedBadge.textContent = resolvedCount;
-          if (resolvedCount > 0) tabResolvedBadge.classList.remove('hidden');
-          else tabResolvedBadge.classList.add('hidden');
-        }
-      } catch (err) {
-        console.warn('Error fetching resolved complaints:', err);
-      }
-    }
-
-    function renderResolvedHistoryList(reports) {
-      const container = document.getElementById('cleanerHistoryList');
-      if (!container) return;
-      const isEN = currentLang === 'en';
-
-      if (!reports || reports.length === 0) {
-        container.innerHTML = `
-          <div class="p-6 text-center bg-white border border-gray-100 rounded-2xl shadow-xs">
-            <div class="w-12 h-12 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center text-xl mx-auto mb-2">
-              <i class="fas fa-clipboard-check"></i>
-            </div>
-            <p class="text-xs font-semibold text-gray-700">
-              ${isEN ? 'No resolved complaints recorded yet.' : 'Belum ada riwayat komplain yang diselesaikan.'}
-            </p>
-            <p class="text-[11px] text-gray-400 mt-1">
-              ${isEN ? 'Resolved complaints will appear here after cleaning staff resolves them.' : 'Komplain yang selesai ditangani oleh tim kebersihan akan terarsip di sini.'}
-            </p>
-          </div>
-        `;
-        return;
-      }
-
-      container.innerHTML = reports.map(r => `
-        <div class="bg-white border border-gray-200/80 rounded-2xl p-4 sm:p-5 space-y-3 shadow-2xs hover:shadow-xs transition">
-          <div class="flex items-start justify-between gap-2">
-            <div>
-              <div class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 mb-1 border border-emerald-200">
-                <i class="fas fa-check-circle text-emerald-600"></i>
-                <span>${escapeHtml(r.room_name)}</span>
-              </div>
-              <h4 class="text-xs font-bold text-gray-800 leading-snug mt-1">${escapeHtml(r.issue_description)}</h4>
-              <div class="text-[11px] text-gray-400 mt-0.5">
-                ${isEN ? 'Reported by:' : 'Pelapor:'} <span class="font-semibold text-gray-600">${escapeHtml(r.reporter_name || 'Pengguna Ruangan')}</span>
-                <span class="mx-1">•</span>
-                <span>${formatTimeAgo(r.created_at)}</span>
-              </div>
-            </div>
-            <span class="shrink-0 text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200">
-              ${isEN ? 'Resolved' : 'Selesai'}
-            </span>
-          </div>
-
-          <!-- Resolution Summary Box -->
-          <div class="bg-emerald-50/50 border border-emerald-100 rounded-xl p-3 text-xs space-y-1">
-            <div class="flex items-center gap-2 text-[11px]">
-              <span class="text-gray-500">${isEN ? 'Resolved by:' : 'Diselesaikan oleh:'}</span>
-              <span class="font-bold text-ccsHeading">${escapeHtml(r.resolved_by_name || 'Petugas Kebersihan')}</span>
-              ${r.resolved_at ? `<span class="text-gray-400 text-[10px]">(${formatTimeAgo(r.resolved_at)})</span>` : ''}
-            </div>
-            ${r.resolution_notes ? `
-              <div class="text-[11px] text-gray-600 italic mt-0.5">
-                "${escapeHtml(r.resolution_notes)}"
-              </div>
-            ` : ''}
-          </div>
-
-          <!-- Photo Verification Buttons -->
-          <div class="flex flex-wrap items-center gap-2 pt-1 border-t border-gray-100">
-            ${r.photo_file ? `
-              <button 
-                type="button" 
-                onclick="previewComplaintPhoto('${r.photo_file}', '${isEN ? 'Problem Photo - ' : 'Foto Kendala - '}${escapeHtml(r.room_name)}')"
-                class="px-3 py-1.5 text-xs font-semibold text-gray-700 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-xl transition flex items-center gap-1.5 shadow-2xs active:scale-95"
-              >
-                <i class="fas fa-image text-amber-500"></i>
-                <span>${isEN ? 'Problem Photo' : 'Foto Kendala'}</span>
-              </button>
-            ` : ''}
-            ${r.resolution_photo_file ? `
-              <button 
-                type="button" 
-                onclick="previewComplaintPhoto('${r.resolution_photo_file}', '${isEN ? 'Resolution Proof - ' : 'Bukti Selesai - '}${escapeHtml(r.room_name)}')"
-                class="px-3 py-1.5 text-xs font-bold text-emerald-800 bg-emerald-100 hover:bg-emerald-200 border border-emerald-300 rounded-xl transition flex items-center gap-1.5 shadow-2xs active:scale-95"
-              >
-                <i class="fas fa-check-circle text-emerald-600"></i>
-                <span>${isEN ? 'Resolution Photo' : 'Bukti Selesai'}</span>
-              </button>
-            ` : ''}
-          </div>
-        </div>
-      `).join('');
-    }
-
-    // ─── NAVIGASI LANJUT SCAN RUANGAN BERIKUTNYA ───────────────────────────
-    function goToNextRoomScan() {
-      stopScanner();
-      currentRoomToken = '';
-      currentRoomData = null;
-      currentChecklist = null;
-      selectedCleanerBlob = null;
-      selectedReporterBlob = null;
-
-      // Bersihkan parameter ?room=... dari URL tanpa reload penuh agar instan
-      if (window.history.replaceState) {
-        const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
-        window.history.replaceState({ path: cleanUrl }, '', cleanUrl);
-      }
-
-      document.getElementById('cleanerFormSection').classList.add('hidden');
-      document.getElementById('cleanerComplaintCenterSection')?.classList.add('hidden');
-      document.getElementById('reporterFormSection').classList.add('hidden');
-      document.getElementById('loadingCard').classList.add('hidden');
-
-      showScannerSection();
-    }
-
-    // ─── FITUR RESOLVE & DAFTAR KOMPLAIN RUANGAN OLEH CLEANER ─────────────
-    let activeComplaintsList = [];
-    let selectedResolveReport = null;
-    let selectedResolveBlob = null;
-
-    function escapeHtml(str) {
-      if (!str) return '';
-      return String(str)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#039;');
-    }
-
-    function formatTimeAgo(isoString) {
-      if (!isoString) return '';
-      const now = new Date();
-      const date = new Date(isoString);
-      const diffSec = Math.floor((now - date) / 1000);
-      const isEN = currentLang === 'en';
-      if (diffSec < 60) return isEN ? 'Just now' : 'Baru saja';
-      const diffMin = Math.floor(diffSec / 60);
-      if (diffMin < 60) return isEN ? `${diffMin}m ago` : `${diffMin} menit lalu`;
-      const diffHour = Math.floor(diffMin / 60);
-      if (diffHour < 24) return isEN ? `${diffHour}h ago` : `${diffHour} jam lalu`;
-      const diffDay = Math.floor(diffHour / 24);
-      return isEN ? `${diffDay}d ago` : `${diffDay} hari lalu`;
-    }
-
-    async function loadActiveComplaints(showSpin = false) {
-      const container = document.getElementById('cleanerComplaintsList');
-      const isEN = currentLang === 'en';
-
-      try {
-        const res = await fetch('index.php?action=fetch_active_reports');
-        const data = await res.json();
-
-        if (!data.success) {
-          if (container) {
-            container.innerHTML = `
-              <div class="p-4 text-center text-xs text-gray-400 bg-white rounded-2xl border border-gray-100">
-                ${isEN ? 'Failed to load complaints' : 'Gagal memuat daftar komplain'}
-              </div>
-            `;
-          }
-          return;
-        }
-
-        activeComplaintsList = data.reports || [];
-        renderComplaintsList(activeComplaintsList);
-
-        const count = activeComplaintsList.length;
-
-        // Badge di Tab 1 (Komplain Aktif)
-        const tabActiveBadge = document.getElementById('tabActiveCountBadge');
-        if (tabActiveBadge) {
-          tabActiveBadge.textContent = count;
-          if (count > 0) tabActiveBadge.classList.remove('hidden');
-          else tabActiveBadge.classList.add('hidden');
-        }
-
-        // Badge di Drawer Navigation
-        const countBadge = document.getElementById('drawerComplaintsCountBadge');
-        if (countBadge) {
-          countBadge.textContent = count;
-          if (count > 0) countBadge.classList.remove('hidden');
-          else countBadge.classList.add('hidden');
-        }
-
-        // Dot di Hamburger Menu Button
-        const dotBadge = document.getElementById('navActiveBadgeDot');
-        if (dotBadge) {
-          if (count > 0) dotBadge.classList.remove('hidden');
-          else dotBadge.classList.add('hidden');
-        }
-
-        // Badge di Role Bar Header
-        const roleBarBadge = document.getElementById('roleBarComplaintsBadge');
-        if (roleBarBadge) {
-          roleBarBadge.textContent = count;
-          if (count > 0) roleBarBadge.classList.remove('hidden');
-          else roleBarBadge.classList.add('hidden');
-        }
-
-        // Alert di Halaman Scanner
-        const scannerAlert = document.getElementById('scannerActiveComplaintsAlert');
-        const scannerCount = document.getElementById('scannerComplaintsAlertCount');
-        if (scannerAlert && scannerCount) {
-          scannerCount.textContent = count;
-          if (count > 0 && currentRole === 'cleaner') {
-            scannerAlert.classList.remove('hidden');
-          } else {
-            scannerAlert.classList.add('hidden');
-          }
-        }
-      } catch (err) {
-        console.warn('Error loading active complaints:', err);
-      }
-    }
-
-    function renderComplaintsList(reports) {
-      const container = document.getElementById('cleanerComplaintsList');
-      if (!container) return;
-      const isEN = currentLang === 'en';
-
-      if (!reports || reports.length === 0) {
-        container.innerHTML = `
-          <div class="p-6 text-center bg-white border border-gray-100 rounded-2xl shadow-xs">
-            <div class="w-12 h-12 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center text-xl mx-auto mb-2">
-              <i class="fas fa-check-circle"></i>
-            </div>
-            <p class="text-xs font-bold text-gray-800">
-              ${isEN ? 'No Active Facility Complaints' : 'Tidak Ada Komplain Aktif'}
-            </p>
-            <p class="text-[11px] text-gray-400 mt-1">
-              ${isEN ? 'All rooms are clean and in good condition.' : 'Semua ruangan dalam kondisi bersih dan fasilitas berfungsi normal.'}
-            </p>
-          </div>
-        `;
-        return;
-      }
-
-      container.innerHTML = reports.map(r => `
-        <div class="bg-white border-2 border-red-200 rounded-2xl p-4 sm:p-5 space-y-3 shadow-2xs hover:shadow-xs transition">
-          <div>
-            <div class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-red-100 text-red-800 border border-red-200">
-              <i class="fas fa-door-open text-red-600"></i>
-              <span>${escapeHtml(r.room_name || 'Ruangan')}</span>
-            </div>
-            <h4 class="text-sm font-bold text-gray-800 leading-snug mt-1.5">${escapeHtml(r.issue_description)}</h4>
-            <div class="text-[11px] text-gray-500 flex items-center gap-1.5 mt-1 font-medium">
-              <i class="fas fa-user text-gray-400 text-[10px]"></i>
-              <span class="font-semibold text-gray-700">${escapeHtml(r.reporter_name || 'Pengguna Ruangan')}</span>
-              <span>•</span>
-              <span>${formatTimeAgo(r.created_at)}</span>
-            </div>
-          </div>
-
-          <div class="space-y-2 pt-2 border-t border-gray-100">
-            ${r.photo_file ? `
-              <button type="button" onclick="previewComplaintPhoto('${r.photo_file}', '${escapeHtml(r.room_name)}')" class="w-full py-2.5 px-3 text-xs font-bold text-ccsNavy bg-sky-50 hover:bg-sky-100/80 border border-sky-200 rounded-xl transition flex items-center justify-center gap-2 shadow-2xs active:scale-98">
-                <i class="fas fa-image text-sky-600"></i>
-                <span>${isEN ? 'View Photo' : 'Lihat Foto'}</span>
-              </button>
-            ` : ''}
-            <button type="button" onclick="openResolveComplaintModal(${JSON.stringify(r).replace(/"/g, '&quot;')}, '${escapeHtml(r.room_name)}')" class="w-full py-2.5 px-3 text-xs font-bold text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 rounded-xl shadow-xs transition flex items-center justify-center gap-2 active:scale-98">
-              <i class="fas fa-check-circle"></i>
-              <span>${isEN ? 'Resolve' : 'Tangani'}</span>
-            </button>
-          </div>
-        </div>
-      `).join('');
-    }
-
-    function renderRoomActiveComplaints(reports) {
-      const container = document.getElementById('cleanerRoomComplaintAlert');
-      if (!container) return;
-      const isEN = currentLang === 'en';
-
-      if (!reports || reports.length === 0) {
-        container.classList.add('hidden');
-        container.innerHTML = '';
-        return;
-      }
-
-      container.classList.remove('hidden');
-      container.innerHTML = `
-        <div class="bg-red-50 border-2 border-red-300 rounded-2xl p-4 sm:p-5 space-y-3 shadow-xs">
-          <div class="flex items-center gap-2 text-red-700 font-bold text-xs sm:text-sm">
-            <div class="w-7 h-7 rounded-lg bg-red-100 text-red-600 flex items-center justify-center text-xs shrink-0 font-bold">
-              <i class="fas fa-exclamation-triangle"></i>
-            </div>
-            <span>${isEN ? 'Attention: Active Complaint in this Room!' : 'Perhatian: Ada Komplain Masalah di Ruangan Ini!'}</span>
-          </div>
-          <div class="space-y-2.5">
-            ${reports.map(r => `
-              <div class="bg-white border border-red-200 rounded-xl p-3 text-xs space-y-2 shadow-2xs">
-                <div class="flex justify-between items-start gap-2">
-                  <div>
-                    <p class="font-bold text-gray-800 text-xs sm:text-[13px] leading-snug">${escapeHtml(r.issue_description)}</p>
-                    <div class="text-[11px] text-gray-500 mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5">
-                      <span><i class="fas fa-user text-gray-400 mr-1"></i>${escapeHtml(r.reporter_name || 'Pengguna Ruangan')}</span>
-                      ${r.reporter_contact ? `<span><i class="fas fa-phone text-gray-400 mr-1"></i>${escapeHtml(r.reporter_contact)}</span>` : ''}
-                      <span><i class="fas fa-clock text-gray-400 mr-1"></i>${formatTimeAgo(r.created_at)}</span>
-                    </div>
-                  </div>
-                  ${r.photo_file ? `
-                    <button type="button" onclick="previewComplaintPhoto('${r.photo_file}', '${escapeHtml(currentRoomData?.name || '')}')" class="shrink-0 px-2.5 py-1 text-[11px] font-semibold text-ccsNavy bg-sky-50 border border-sky-200 rounded-lg hover:bg-sky-100 transition flex items-center gap-1">
-                      <i class="fas fa-image text-sky-600"></i>
-                      <span>${isEN ? 'Photo' : 'Foto'}</span>
-                    </button>
-                  ` : ''}
-                </div>
-                <div class="pt-2 border-t border-gray-100 flex justify-end">
-                  <button type="button" onclick="openResolveComplaintModal(${JSON.stringify(r).replace(/"/g, '&quot;')}, '${escapeHtml(currentRoomData?.name || '')}')" class="w-full sm:w-auto px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold text-xs rounded-xl shadow-xs transition flex items-center justify-center gap-1.5 active:scale-95">
-                    <i class="fas fa-check-circle"></i>
-                    <span>${isEN ? 'Resolve' : 'Tangani'}</span>
-                  </button>
-                </div>
-              </div>
-            `).join('')}
-          </div>
-        </div>
-      `;
-    }
-
-    function openResolveComplaintModal(report, roomName = '') {
-      selectedResolveReport = report;
-      selectedResolveBlob = null;
-      const isEN = currentLang === 'en';
-
-      const modal = document.getElementById('resolveComplaintModal');
-      const roomBadge = document.getElementById('resolveModalRoomBadge');
-      const issueDesc = document.getElementById('resolveModalIssueDesc');
-      const reporterInfo = document.getElementById('resolveModalReporterInfo');
-      const workerNameEl = document.getElementById('resolveModalWorkerName');
-      const notesInput = document.getElementById('resolveNotesInput');
-
-      const displayRoom = roomName || report.room_name || `Ruangan #${report.room_id}`;
-      if (roomBadge) roomBadge.textContent = `${isEN ? 'Room' : 'Ruangan'}: ${displayRoom}`;
-      if (issueDesc) issueDesc.textContent = report.issue_description || '';
-
-      let repText = `${isEN ? 'Reporter:' : 'Pelapor:'} ${report.reporter_name || '-'}`;
-      if (report.reporter_contact) repText += ` (${report.reporter_contact})`;
-      if (reporterInfo) reporterInfo.textContent = repText;
-
-      const currentWorker = localStorage.getItem('ccs_vendor_worker_name') || '';
-      if (workerNameEl) {
-        workerNameEl.textContent = currentWorker || (isEN ? 'Not selected' : 'Belum dipilih');
-      }
-
-      if (notesInput) notesInput.value = '';
-
-      // Reset area upload foto bukti
-      document.getElementById('resolveUploadPlaceholder').classList.remove('hidden');
-      document.getElementById('resolvePreviewBox').classList.add('hidden');
-      document.getElementById('resolveImgPreview').src = '';
-      document.getElementById('resolveCameraInput').value = '';
-
-      modal.classList.remove('hidden');
-    }
-
-    function closeResolveModal() {
-      const modal = document.getElementById('resolveComplaintModal');
-      if (modal) modal.classList.add('hidden');
-      selectedResolveReport = null;
-      selectedResolveBlob = null;
-    }
-
-    function triggerResolveCamera() {
-      const input = document.getElementById('resolveCameraInput');
-      if (input) input.click();
-    }
-
-    function handleResolveFileSelect(e) {
-      const file = e.target.files[0];
-      if (!file) return;
-
-      compressImage(file, 1280, 0.8, (compressedBlob, dataUrl) => {
-        selectedResolveBlob = compressedBlob;
-        document.getElementById('resolveUploadPlaceholder').classList.add('hidden');
-        document.getElementById('resolvePreviewBox').classList.remove('hidden');
-        document.getElementById('resolveImgPreview').src = dataUrl;
-      });
-    }
-
-    function previewComplaintPhoto(photoFile, roomName) {
-      const modal = document.getElementById('imagePreviewModal');
-      const modalTitle = document.getElementById('previewModalTitle');
-      const modalImg = document.getElementById('modalPreviewImg');
-      const isEN = currentLang === 'en';
-
-      if (modalTitle) modalTitle.textContent = `${isEN ? 'Complaint Photo' : 'Foto Komplain'} — ${roomName}`;
-      if (modalImg) modalImg.src = `index.php?action=view_uploaded_photo&file=${encodeURIComponent(photoFile)}&t=${Date.now()}`;
-      if (modal) modal.classList.remove('hidden');
-    }
-
-    async function submitResolveReport() {
-      const isEN = currentLang === 'en';
-      if (!selectedResolveReport) return;
-
-      const workerName = localStorage.getItem('ccs_vendor_worker_name') || '';
-      if (!workerName) {
-        Swal.fire({
-          icon: 'warning',
-          title: isEN ? 'Select Staff First' : 'Pilih Petugas Terlebih Dahulu',
-          text: isEN ? 'Please select your cleaning staff identity first.' : 'Silakan pilih nama petugas kebersihan Anda terlebih dahulu.'
-        }).then(() => {
-          handleChangeWorkerName();
-        });
-        return;
-      }
-
-      if (!selectedResolveBlob) {
-        Swal.fire({
-          icon: 'warning',
-          title: isEN ? 'Photo Required' : 'Foto Bukti Wajib',
-          text: isEN ? 'Please take a photo of the resolved facility.' : 'Silakan ambil foto bukti fasilitas yang sudah ditangani/dibersihkan.'
-        });
-        return;
-      }
-
-      const notes = (document.getElementById('resolveNotesInput')?.value || '').trim();
-      const submitBtn = document.getElementById('submitResolveBtn');
-      if (submitBtn) submitBtn.disabled = true;
-
-      Swal.fire({
-        title: isEN ? 'Saving Resolution...' : 'Menyimpan Bukti Penyelesaian...',
-        text: isEN ? 'Uploading photo and marking complaint resolved' : 'Mengunggah foto dan menandai komplain selesai',
-        allowOutsideClick: false,
-        didOpen: () => Swal.showLoading()
-      });
-
-      try {
-        const formData = new FormData();
-        formData.append('action', 'resolve_report');
-        formData.append('report_id', selectedResolveReport.id);
-        formData.append('worker_name', workerName);
-        formData.append('resolution_notes', notes);
-        formData.append('photo_file', selectedResolveBlob, 'resolved.jpg');
-
-        const res = await fetch('index.php', {
-          method: 'POST',
-          body: formData
-        });
-        const data = await res.json();
-
-        if (submitBtn) submitBtn.disabled = false;
-
-        if (!data.success) {
-          Swal.fire({
-            icon: 'error',
-            title: isEN ? 'Failed' : 'Gagal Menyimpan',
-            text: data.message || (isEN ? 'Failed to resolve complaint' : 'Gagal menandai komplain selesai')
-          });
-          return;
-        }
-
-        closeResolveModal();
-
-        Swal.fire({
-          icon: 'success',
-          title: isEN ? 'Complaint Resolved!' : 'Komplain Berhasil Diselesaikan!',
-          text: isEN ? 'Photo proof has been recorded. Good job!' : 'Bukti penanganan komplain telah tersimpan di sistem.',
-          timer: 2000,
-          showConfirmButton: false
-        });
-
-        // Muat ulang komplain aktif & history pada menu komplain
-        refreshComplaintCenter(false);
-
-        // Jika sedang di dalam ruangan, muat ulang data ruangan
-        if (currentRoomToken) {
-          loadRoomForCleaner(currentRoomToken);
-        }
-
-      } catch (err) {
-        if (submitBtn) submitBtn.disabled = false;
-        Swal.fire({
-          icon: 'error',
-          title: isEN ? 'Connection Error' : 'Gangguan Koneksi',
-          text: isEN ? 'Failed to connect to server' : 'Gagal terhubung ke server hosting.'
-        });
-      }
-    }
-
-    // ─── KOMPRESI GAMBAR CLIENT-SIDE (CANVAS HTML5) ────────────────────────
-    function compressImage(file, maxDimension, quality, callback) {
-      const reader = new FileReader();
-      reader.onload = function(event) {
-        const img = new Image();
-        img.onload = function() {
-          let width = img.width;
-          let height = img.height;
-
-          if (width > height) {
-            if (width > maxDimension) {
-              height = Math.round((height * maxDimension) / width);
-              width = maxDimension;
+    // Kompresi gambar di sisi browser
+    function compressImageFile(file, maxWidth = 1280, quality = 0.80) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          const img = new Image();
+          img.onload = () => {
+            let w = img.width;
+            let h = img.height;
+            if (w > maxWidth) {
+              h = Math.round((h * maxWidth) / w);
+              w = maxWidth;
             }
-          } else {
-            if (height > maxDimension) {
-              width = Math.round((width * maxDimension) / height);
-              height = maxDimension;
-            }
-          }
-
-          const canvas = document.createElement('canvas');
-          canvas.width = width;
-          canvas.height = height;
-          const ctx = canvas.getContext('2d');
-          ctx.drawImage(img, 0, 0, width, height);
-
-          canvas.toBlob((blob) => {
-            const dataUrl = canvas.toDataURL('image/jpeg', quality);
-            callback(blob, dataUrl);
-          }, 'image/jpeg', quality);
+            const canvas = document.createElement('canvas');
+            canvas.width = w;
+            canvas.height = h;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, w, h);
+            resolve(canvas.toDataURL('image/jpeg', quality));
+          };
+          img.onerror = reject;
+          img.src = ev.target.result;
         };
-        img.src = event.target.result;
-      };
-      reader.readAsDataURL(file);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
     }
 
-    // ─── REMOTE IMAGE PREVIEW MODAL ────────────────────────────────────────
-    function viewRemotePhoto(checklistId, type, title) {
-      const modal = document.getElementById('imagePreviewModal');
-      const modalTitle = document.getElementById('previewModalTitle');
-      const modalImg = document.getElementById('modalPreviewImg');
-
-      modalTitle.textContent = title;
-      modalImg.src = `https://www.manageccs.online/api/vendor-checklist/${checklistId}/photo?type=${type}&t=${Date.now()}`;
-      modal.classList.remove('hidden');
+    async function handlePhotoSelect(event, type) {
+      const file = event.target.files && event.target.files[0];
+      if (!file) return;
+      hideAlert();
+      try {
+        const b64 = await compressImageFile(file);
+        if (type === 'before') {
+          beforeBase64 = b64;
+          document.getElementById('beforePreviewImg').src = b64;
+          document.getElementById('beforePlaceholder').style.display = 'none';
+          document.getElementById('beforePreviewWrap').style.display = 'block';
+          document.getElementById('beforeSlot').classList.add('ready');
+        } else if (type === 'after') {
+          afterBase64 = b64;
+          document.getElementById('afterPreviewImg').src = b64;
+          document.getElementById('afterPlaceholder').style.display = 'none';
+          document.getElementById('afterPreviewWrap').style.display = 'block';
+          document.getElementById('afterSlot').classList.add('ready');
+        } else if (type === 'revision') {
+          revisionBase64 = b64;
+          document.getElementById('revisionPreviewImg').src = b64;
+          document.getElementById('revisionPlaceholder').style.display = 'none';
+          document.getElementById('revisionPreviewWrap').style.display = 'block';
+          document.getElementById('revisionSlot').classList.add('ready');
+        }
+      } catch (err) {
+        showAlert('Gagal memproses foto. Silakan ulangi kembali.');
+      }
     }
 
-    function closeImagePreview() {
-      document.getElementById('imagePreviewModal').classList.add('hidden');
+    // 1. Inisialisasi Portal Cleaner & Ingat Pilihan Sebelumnya (localStorage)
+    async function initCleanerPortal() {
+      loadComplaintsCountOnly();
+      const dropdown = document.getElementById('cleanerDropdown');
+      try {
+        const res = await fetch('?ajax_action=get_cleaners');
+        const data = await res.json();
+        cleanersList = (data.cleaners || []).map(c => ({
+          user_id: String(c.user_id || ''),
+          full_name: c.full_name || c.name || ''
+        }));
+
+        dropdown.innerHTML = '<option value="">-- Pilih Nama Anda --</option>' +
+          cleanersList.map(c => `<option value="${c.user_id}" data-name="${c.full_name.replace(/"/g, '&quot;')}">${c.full_name}</option>`).join('');
+
+        if (selectedCleaner.userId || selectedCleaner.name) {
+          const match = cleanersList.find(
+            c => c.user_id === String(selectedCleaner.userId) || c.full_name === selectedCleaner.name
+          );
+          if (match) {
+            dropdown.value = match.user_id;
+            selectedCleaner.userId = match.user_id;
+            selectedCleaner.name = match.full_name;
+            document.getElementById('rememberedHint').style.display = 'inline-flex';
+            await loadCleanerRooms();
+          }
+        }
+      } catch (err) {
+        dropdown.innerHTML = '<option value="">Gagal memuat daftar petugas</option>';
+      }
     }
+
+    async function onCleanerChange() {
+      hideAlert();
+      const dropdown = document.getElementById('cleanerDropdown');
+      const userId = dropdown.value;
+      const opt = dropdown.options[dropdown.selectedIndex];
+      const fullName = opt ? (opt.getAttribute('data-name') || opt.textContent) : '';
+
+      if (!userId) {
+        localStorage.removeItem(STORAGE_USER_ID);
+        localStorage.removeItem(STORAGE_USER_NAME);
+        selectedCleaner = { userId: '', name: '' };
+        document.getElementById('rememberedHint').style.display = 'none';
+        document.getElementById('roomSelectGroup').style.display = 'none';
+        document.getElementById('uploadCard').style.display = 'none';
+        return;
+      }
+
+      selectedCleaner = { userId, name: fullName };
+      localStorage.setItem(STORAGE_USER_ID, userId);
+      localStorage.setItem(STORAGE_USER_NAME, fullName);
+      document.getElementById('rememberedHint').style.display = 'inline-flex';
+
+      await loadCleanerRooms();
+    }
+
+    // 2. Load Daftar Ruangan yang berkaitan dengan Nama Cleaner tersebut
+    async function loadCleanerRooms(preserveRoomId = null) {
+      const roomGroup = document.getElementById('roomSelectGroup');
+      const roomDropdown = document.getElementById('roomDropdown');
+      const progressBox = document.getElementById('dailyProgressBox');
+      const noRoomsBox = document.getElementById('noAssignedRoomsBox');
+
+      roomGroup.style.display = 'block';
+      roomDropdown.disabled = true;
+      roomDropdown.innerHTML = '<option value="">Memuat ruangan tanggung jawab Anda...</option>';
+      noRoomsBox.style.display = 'none';
+
+      try {
+        const url = `?ajax_action=get_cleaner_rooms&user_id=${encodeURIComponent(selectedCleaner.userId)}&worker_name=${encodeURIComponent(selectedCleaner.name)}`;
+        const res = await fetch(url);
+        const data = await res.json();
+        assignedRooms = data.rooms || [];
+
+        document.getElementById('roomCountLabel').textContent = `${assignedRooms.length} Ruangan`;
+
+        if (assignedRooms.length === 0) {
+          roomDropdown.innerHTML = '<option value="">Belum ada ruangan yang ditugaskan untuk Anda</option>';
+          progressBox.style.display = 'none';
+          noRoomsBox.style.display = 'block';
+          document.getElementById('uploadCard').style.display = 'none';
+          return;
+        }
+
+        roomDropdown.disabled = false;
+
+        let doneCount = 0;
+        assignedRooms.forEach(r => {
+          if (r.status === 'pending_review' || r.status === 'approved') doneCount++;
+        });
+
+        const totalCount = assignedRooms.length;
+        const pct = totalCount > 0 ? Math.round((doneCount / totalCount) * 100) : 0;
+        document.getElementById('progressText').textContent = `${doneCount} / ${totalCount} Ruangan Selesai`;
+        document.getElementById('progressBarFill').style.width = `${pct}%`;
+        progressBox.style.display = 'block';
+
+        roomDropdown.innerHTML = assignedRooms.map(r => {
+          let statusLabel = '[Belum Upload]';
+          if (r.status === 'pending_review' || r.status === 'approved') statusLabel = '[Sudah Upload]';
+          else if (r.status === 'revision') statusLabel = '[Perlu Revisi]';
+          return `<option value="${r.room_id}">${statusLabel} ${r.room_name}</option>`;
+        }).join('');
+
+        let targetRoom = null;
+        if (preserveRoomId) {
+          targetRoom = assignedRooms.find(r => Number(r.room_id) === Number(preserveRoomId));
+        }
+        if (!targetRoom) {
+          targetRoom = assignedRooms.find(r => r.status !== 'pending_review' && r.status !== 'approved') || assignedRooms[0];
+        }
+
+        if (targetRoom) {
+          roomDropdown.value = String(targetRoom.room_id);
+          selectRoom(targetRoom.room_id);
+        }
+      } catch (err) {
+        roomDropdown.innerHTML = '<option value="">Gagal memuat daftar ruangan</option>';
+      }
+    }
+
+    function onRoomChange() {
+      hideAlert();
+      const roomId = document.getElementById('roomDropdown').value;
+      if (roomId) selectRoom(roomId);
+    }
+
+    function renderRoomChips() {
+      const container = document.getElementById('roomChipsContainer');
+      container.innerHTML = assignedRooms.map(r => {
+        const isDone = r.status === 'pending_review' || r.status === 'approved';
+        const isRev = r.status === 'revision';
+        const isActive = activeRoom && Number(activeRoom.room_id) === Number(r.room_id);
+        let cls = 'room-chip';
+        if (isDone) cls += ' done';
+        else if (isRev) cls += ' revision';
+        if (isActive) cls += ' active';
+
+        const icon = isDone
+          ? '<i class="ph-bold ph-check-circle"></i>'
+          : isRev
+          ? '<i class="ph-bold ph-warning-circle"></i>'
+          : '<i class="ph-bold ph-clock"></i>';
+
+        return `<button type="button" class="${cls}" onclick="quickSelectRoom(${r.room_id})">${icon}<span>${r.room_name}</span></button>`;
+      }).join('');
+    }
+
+    function quickSelectRoom(roomId) {
+      hideAlert();
+      const roomDropdown = document.getElementById('roomDropdown');
+      roomDropdown.value = String(roomId);
+      selectRoom(roomId);
+    }
+
+    function resetPhotoInputs() {
+      beforeBase64 = '';
+      afterBase64 = '';
+      revisionBase64 = '';
+      document.getElementById('beforeInput').value = '';
+      document.getElementById('afterInput').value = '';
+      document.getElementById('revisionInput').value = '';
+
+      document.getElementById('beforePlaceholder').style.display = 'block';
+      document.getElementById('beforePreviewWrap').style.display = 'none';
+      document.getElementById('beforeSlot').classList.remove('ready');
+
+      document.getElementById('afterPlaceholder').style.display = 'block';
+      document.getElementById('afterPreviewWrap').style.display = 'none';
+      document.getElementById('afterSlot').classList.remove('ready');
+
+      document.getElementById('revisionPlaceholder').style.display = 'block';
+      document.getElementById('revisionPreviewWrap').style.display = 'none';
+      document.getElementById('revisionSlot').classList.remove('ready');
+
+      document.getElementById('cleaningNotes').value = '';
+    }
+
+    function selectRoom(roomId) {
+      const room = assignedRooms.find(r => Number(r.room_id) === Number(roomId));
+      if (!room) return;
+      activeRoom = room;
+      renderRoomChips();
+      resetPhotoInputs();
+
+      const card = document.getElementById('uploadCard');
+      const title = document.getElementById('activeRoomTitle');
+      const badge = document.getElementById('activeRoomBadge');
+      const banner = document.getElementById('roomStatusBanner');
+      const baSection = document.getElementById('beforeAfterSection');
+      const revSection = document.getElementById('revisionSection');
+      const btnSubmit = document.getElementById('btnSubmitBeforeAfter');
+
+      card.style.display = 'block';
+      title.textContent = room.room_name;
+
+      if (room.status === 'approved' || room.status === 'pending_review') {
+        badge.className = 'pastel-tag tag-green';
+        badge.innerHTML = `<i class="ph-bold ph-check"></i> ${room.status === 'approved' ? 'Disetujui Supervisor' : 'Sudah Upload Hari Ini'}`;
+
+        banner.className = 'notice-banner notice-done';
+        banner.innerHTML = '<i class="ph-bold ph-check-circle" style="font-size:17px; flex-shrink:0; margin-top:2px;"></i><div><strong>Foto Before &amp; After untuk ruangan ini sudah diunggah hari ini.</strong> Anda tetap dapat mengunggah ulang foto baru di bawah jika ingin memperbarui.</div>';
+        banner.style.display = 'flex';
+
+        baSection.style.display = 'block';
+        revSection.style.display = 'none';
+        btnSubmit.innerHTML = '<i class="ph-bold ph-arrows-clockwise"></i><span>Perbarui Foto Before &amp; After</span>';
+      } else if (room.status === 'revision') {
+        badge.className = 'pastel-tag tag-red';
+        badge.innerHTML = '<i class="ph-bold ph-warning-circle"></i> Perlu Revisi';
+
+        banner.className = 'notice-banner notice-revision';
+        banner.innerHTML = `<i class="ph-bold ph-warning" style="font-size:17px; flex-shrink:0; margin-top:2px;"></i><div><strong>Catatan Revisi Supervisor:</strong> "${room.checklist?.review_notes || 'Mohon dibersihkan kembali'}"</div>`;
+        banner.style.display = 'flex';
+
+        baSection.style.display = 'none';
+        revSection.style.display = 'block';
+      } else {
+        badge.className = 'pastel-tag tag-yellow';
+        badge.innerHTML = '<i class="ph-bold ph-clock"></i> Wajib Upload Hari Ini';
+
+        banner.style.display = 'none';
+        baSection.style.display = 'block';
+        revSection.style.display = 'none';
+        btnSubmit.innerHTML = '<i class="ph-bold ph-upload-simple"></i><span>Simpan Foto Before &amp; After</span>';
+      }
+    }
+
+    async function submitBeforeAfter() {
+      hideAlert();
+      if (!activeRoom) return;
+      if (!beforeBase64 || !afterBase64) {
+        showAlert('Foto Before (Sebelum) dan Foto After (Sesudah) wajib diambil keduanya.', 'error');
+        return;
+      }
+
+      const btn = document.getElementById('btnSubmitBeforeAfter');
+      btn.disabled = true;
+      btn.innerHTML = '<i class="ph-bold ph-spinner"></i><span>Mengunggah Foto Before &amp; After...</span>';
+
+      try {
+        const res = await fetch(window.location.pathname, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'submit_before_after',
+            room_id: activeRoom.room_id,
+            room_token: activeRoom.room_token || activeRoom.qr_code_token,
+            worker_name: selectedCleaner.name,
+            notes: document.getElementById('cleaningNotes').value.trim(),
+            image_before_base64: beforeBase64,
+            image_after_base64: afterBase64
+          })
+        });
+        const data = await res.json();
+        if (!res.ok || !data.success) throw new Error(data.message || 'Gagal mengunggah foto.');
+
+        const finishedRoomName = activeRoom.room_name;
+        await loadCleanerRooms();
+        showAlert(`Berhasil menyimpan foto Before & After untuk ${finishedRoomName}.`, 'success');
+      } catch (err) {
+        showAlert(err.message, 'error');
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    async function submitRevision() {
+      hideAlert();
+      if (!activeRoom || !revisionBase64) {
+        showAlert('Mohon ambil foto hasil perbaikan revisi terlebih dahulu.', 'error');
+        return;
+      }
+
+      const btn = document.getElementById('btnSubmitRevision');
+      btn.disabled = true;
+      btn.innerHTML = '<i class="ph-bold ph-spinner"></i><span>Mengirim Foto Revisi...</span>';
+
+      try {
+        const res = await fetch(window.location.pathname, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'submit_revision',
+            room_id: activeRoom.room_id,
+            room_token: activeRoom.room_token || activeRoom.qr_code_token,
+            worker_name: selectedCleaner.name,
+            image_base64: revisionBase64
+          })
+        });
+        const data = await res.json();
+        if (!res.ok || !data.success) throw new Error(data.message || 'Gagal mengirim revisi.');
+
+        await loadCleanerRooms();
+        showAlert('Foto perbaikan revisi berhasil dikirim.', 'success');
+      } catch (err) {
+        showAlert(err.message, 'error');
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="ph-bold ph-paper-plane-tilt"></i><span>Kirim Foto Perbaikan Revisi</span>';
+      }
+    }
+
+    // ── KOMPLAIN PELAPOR ─────────────────────────────────────────────────────
+    async function loadComplaintsCountOnly() {
+      try {
+        const res = await fetch('?ajax_action=get_complaints');
+        const data = await res.json();
+        const list = data.reports || data.complaints || [];
+        const pill = document.getElementById('complaintCountPill');
+        if (list.length > 0) {
+          pill.textContent = list.length;
+          pill.style.display = 'inline-flex';
+        } else {
+          pill.style.display = 'none';
+        }
+      } catch (e) {}
+    }
+
+    async function loadComplaints() {
+      const container = document.getElementById('complaintsListContainer');
+      container.innerHTML = '<div style="text-align:center; padding:24px 0; color:var(--text-muted); font-size:13px;">Memuat daftar komplain...</div>';
+      try {
+        const res = await fetch('?ajax_action=get_complaints');
+        const data = await res.json();
+        const list = data.reports || data.complaints || [];
+        const pill = document.getElementById('complaintCountPill');
+        if (list.length > 0) {
+          pill.textContent = list.length;
+          pill.style.display = 'inline-flex';
+        } else {
+          pill.style.display = 'none';
+          container.innerHTML = `
+            <div class="empty-bento" style="margin-top:0;">
+              <div class="empty-icon"><i class="ph-bold ph-check-circle"></i></div>
+              <div style="font-size:13.5px; font-weight:700; color:var(--text-primary);">Tidak Ada Komplain Aktif</div>
+              <p style="font-size:12.5px; color:var(--text-muted); margin-top:4px;">Seluruh laporan keluhan fasilitas sudah ditangani dengan baik.</p>
+            </div>`;
+          return;
+        }
+
+        container.innerHTML = list.map(item => `
+          <div class="complaint-card">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+              <span class="pastel-tag tag-red">${item.room_name || 'Laporan Umum'}</span>
+              <span style="font-family:var(--font-mono); font-size:11px; color:var(--text-muted);">Pelapor: ${item.reporter_name || 'Anonim'}</span>
+            </div>
+            <div style="font-size:13.5px; color:var(--text-primary); font-weight:500; margin-bottom:12px;">
+              "${item.issue_description || ''}"
+            </div>
+            <input type="file" id="resFile_${item.id}" accept="image/*" capture="environment" style="display:none;" onchange="onSelectResolvePhoto(event, ${item.id})" />
+            <div class="upload-slot" id="resSlot_${item.id}" onclick="document.getElementById('resFile_${item.id}').click()" style="padding:12px; margin-bottom:10px;">
+              <div id="resPlaceholder_${item.id}" style="font-size:12px; font-weight:600; color:var(--text-primary); display:flex; align-items:center; justify-content:center; gap:6px;">
+                <i class="ph-bold ph-camera"></i> Ambil Foto Bukti Penanganan
+              </div>
+              <div id="resPreviewWrap_${item.id}" style="display:none;">
+                <img id="resPreviewImg_${item.id}" src="" style="height:130px;" />
+              </div>
+            </div>
+            <button type="button" class="btn-primary" id="btnResolve_${item.id}" onclick="submitResolveComplaint(${item.id})">
+              <i class="ph-bold ph-check"></i>
+              <span>Tandai Selesai Ditangani</span>
+            </button>
+          </div>
+        `).join('');
+      } catch (err) {
+        container.innerHTML = '<div style="text-align:center; padding:20px; color:var(--pastel-red-text);">Gagal memuat komplain.</div>';
+      }
+    }
+
+    async function onSelectResolvePhoto(event, reportId) {
+      const file = event.target.files && event.target.files[0];
+      if (!file) return;
+      const b64 = await compressImageFile(file);
+      resolvePhotosMap[reportId] = b64;
+      document.getElementById(`resPreviewImg_${reportId}`).src = b64;
+      document.getElementById(`resPlaceholder_${reportId}`).style.display = 'none';
+      document.getElementById(`resPreviewWrap_${reportId}`).style.display = 'block';
+      document.getElementById(`resSlot_${reportId}`).classList.add('ready');
+    }
+
+    async function submitResolveComplaint(reportId) {
+      if (!selectedCleaner.name) {
+        showAlert('Pilih Nama Anda pada tab Checklist Ruangan terlebih dahulu.', 'error');
+        return;
+      }
+      const b64 = resolvePhotosMap[reportId];
+      if (!b64) {
+        showAlert('Mohon ambil foto bukti penanganan komplain terlebih dahulu.', 'error');
+        return;
+      }
+      const btn = document.getElementById(`btnResolve_${reportId}`);
+      btn.disabled = true;
+      btn.innerHTML = '<span>Mengirim...</span>';
+      try {
+        const res = await fetch(window.location.pathname, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'resolve_report',
+            report_id: reportId,
+            worker_name: selectedCleaner.name,
+            image_base64: b64
+          })
+        });
+        const data = await res.json();
+        if (!res.ok || !data.success) throw new Error(data.message || 'Gagal menyelesaikan komplain.');
+        showAlert('Komplain berhasil diselesaikan.', 'success');
+        await loadComplaints();
+      } catch (err) {
+        showAlert(err.message, 'error');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="ph-bold ph-check"></i><span>Tandai Selesai Ditangani</span>';
+      }
+    }
+
+    initCleanerPortal();
   </script>
 </body>
 </html>

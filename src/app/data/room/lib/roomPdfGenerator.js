@@ -1,15 +1,14 @@
 import { jsPDF } from 'jspdf'
 import QRCode from 'qrcode'
 
-const BASE_CHECKLIST_URL = 'https://ccs.sch.id/checklist/'
+export const DEFAULT_GENERAL_REPORT_URL = 'https://ccs.sch.id/reportfacility'
 
 /**
- * Generates QR Code data URL for a room
+ * Generates QR Code data URL for the General Facility Report Portal
  */
-export async function getRoomQrDataUrl(tokenOrId) {
-  const targetUrl = `${BASE_CHECKLIST_URL}?room=${tokenOrId}`
+export async function getGeneralReportQrDataUrl(targetUrl = DEFAULT_GENERAL_REPORT_URL) {
   return await QRCode.toDataURL(targetUrl, {
-    width: 500,
+    width: 520,
     margin: 2,
     color: {
       dark: '#022c46',
@@ -19,18 +18,25 @@ export async function getRoomQrDataUrl(tokenOrId) {
 }
 
 /**
- * Renders a single door sticker card onto the current page of the jsPDF instance.
+ * Backward-compatible alias that now generates the General Reporter QR
+ */
+export async function getRoomQrDataUrl(customUrl) {
+  const url = customUrl && customUrl.startsWith('http') ? customUrl : DEFAULT_GENERAL_REPORT_URL
+  return await getGeneralReportQrDataUrl(url)
+}
+
+/**
+ * Renders the General Reporter QR Sticker Card onto the current page of the jsPDF instance.
  * Perfectly centered on an A4 portrait sheet (210mm x 297mm).
  */
-export async function renderRoomStickerPage(doc, room) {
-  const token = room.qr_code_token || 'rm_' + room.room_id
-  const qrDataUrl = await getRoomQrDataUrl(token)
+export async function renderGeneralReporterStickerPage(doc, { targetUrl = DEFAULT_GENERAL_REPORT_URL } = {}) {
+  const qrDataUrl = await getGeneralReportQrDataUrl(targetUrl)
 
   // Card Dimensions (Centered on A4)
   const cardW = 140
-  const cardH = 175
+  const cardH = 180
   const cardX = (210 - cardW) / 2 // 35mm
-  const cardY = (297 - cardH) / 2 // 61mm
+  const cardY = (297 - cardH) / 2 // 58.5mm
 
   // 1. Card Background & Outer Navy Border
   doc.setDrawColor(2, 44, 70) // #022c46
@@ -65,33 +71,27 @@ export async function renderRoomStickerPage(doc, room) {
 
   doc.setFontSize(9)
   doc.setTextColor(241, 97, 1) // #f16101
-  doc.text('CHECKLIST KEBERSIHAN RUANGAN', 105, cardY + 25.5, { align: 'center' })
+  doc.text('PORTAL PELAPORAN KELUHAN & FASILITAS', 105, cardY + 25.5, { align: 'center' })
 
   // Header Divider
   doc.setDrawColor(2, 44, 70)
   doc.setLineWidth(0.35)
   doc.line(cardX + ribbonMargin, cardY + 29, cardX + cardW - ribbonMargin, cardY + 29)
 
-  // 4. Room Location & Name
+  // 4. General Heading
   doc.setFontSize(8)
   doc.setTextColor(113, 113, 122) // #71717a
-  doc.text('LOKASI RUANGAN', 105, cardY + 36, { align: 'center' })
+  doc.text('QR CODE UMUM (GENERAL)', 105, cardY + 36, { align: 'center' })
 
-  const roomName = room.room_name || 'Ruangan'
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(15)
   doc.setTextColor(11, 72, 119) // #0b4877
-  if (roomName.length > 24) {
-    doc.setFontSize(13)
-  } else if (roomName.length > 16) {
-    doc.setFontSize(15)
-  } else {
-    doc.setFontSize(18)
-  }
-  doc.text(roomName, 105, cardY + 44, { align: 'center' })
+  doc.text('LAPOR KELUHAN & KEBERSIHAN', 105, cardY + 43.5, { align: 'center' })
 
   // 5. QR Code Box & Image
-  const qrBoxW = 78
-  const qrBoxH = 78
-  const qrBoxX = 105 - qrBoxW / 2 // 66mm
+  const qrBoxW = 80
+  const qrBoxH = 80
+  const qrBoxX = 105 - qrBoxW / 2
   const qrBoxY = cardY + 49
 
   doc.setFillColor(248, 250, 252) // #f8fafc
@@ -100,8 +100,8 @@ export async function renderRoomStickerPage(doc, room) {
   doc.roundedRect(qrBoxX, qrBoxY, qrBoxW, qrBoxH, 4, 4, 'FD')
 
   // QR Image inside box
-  const qrImgW = 68
-  const qrImgH = 68
+  const qrImgW = 70
+  const qrImgH = 70
   const qrImgX = 105 - qrImgW / 2
   const qrImgY = qrBoxY + 5
   doc.addImage(qrDataUrl, 'PNG', qrImgX, qrImgY, qrImgW, qrImgH)
@@ -109,59 +109,45 @@ export async function renderRoomStickerPage(doc, room) {
   // 6. Footer Section
   doc.setDrawColor(226, 232, 240)
   doc.setLineWidth(0.25)
-  doc.line(cardX + ribbonMargin, cardY + 138, cardX + cardW - ribbonMargin, cardY + 138)
+  doc.line(cardX + ribbonMargin, cardY + 137, cardX + cardW - ribbonMargin, cardY + 137)
 
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(9.5)
   doc.setTextColor(2, 44, 70)
-  doc.text('Pindai (Scan) QR Sebelum & Sesudah Membersihkan', 105, cardY + 146, { align: 'center' })
+  doc.text('Pindai (Scan) QR untuk Melaporkan Keluhan / Fasilitas', 105, cardY + 145, { align: 'center' })
 
-  doc.setFont('courier', 'normal')
+  doc.setFont('helvetica', 'normal')
   doc.setFontSize(8)
   doc.setTextColor(113, 113, 122)
-  doc.text(`Token: ${token}`, 105, cardY + 152, { align: 'center' })
+  doc.text('Foto Kondisi & Deskripsi Keluhan Wajib • Nama Pelapor Opsional', 105, cardY + 151, { align: 'center' })
+
+  doc.setFont('courier', 'normal')
+  doc.setFontSize(7.5)
+  doc.setTextColor(148, 163, 184)
+  doc.text(targetUrl, 105, cardY + 157, { align: 'center' })
 }
 
 /**
- * Generates and triggers print/download for a single room
+ * Generates and triggers print/download for the General Reporter QR Sticker
  */
-export async function generateSingleRoomPDF(room, { action = 'print' } = {}) {
-  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
-  await renderRoomStickerPage(doc, room)
-
-  const cleanName = (room.room_name || 'Ruangan').replace(/[^a-zA-Z0-9_-]/g, '_')
-  const filename = `Label_QR_${cleanName}.pdf`
-
-  if (action === 'download') {
-    doc.save(filename)
-  } else {
-    const blob = doc.output('blob')
-    const blobUrl = URL.createObjectURL(blob)
-    const w = window.open(blobUrl, '_blank')
-    if (!w) {
-      doc.save(filename)
-    }
-  }
-
-  return doc
-}
-
-/**
- * Generates and triggers print/download for all rooms (1 page per room)
- */
-export async function generateBatchRoomPDF(rooms, { action = 'print' } = {}) {
-  if (!rooms || rooms.length === 0) return null
-
+export async function generateGeneralReporterPDF({
+  targetUrl = DEFAULT_GENERAL_REPORT_URL,
+  copies = 1,
+  action = 'print'
+} = {}) {
+  const totalCopies = Math.max(1, Math.min(50, Number(copies) || 1))
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
 
-  for (let i = 0; i < rooms.length; i++) {
+  for (let i = 0; i < totalCopies; i++) {
     if (i > 0) {
       doc.addPage('a4', 'portrait')
     }
-    await renderRoomStickerPage(doc, rooms[i])
+    await renderGeneralReporterStickerPage(doc, { targetUrl })
   }
 
-  const filename = `Label_QR_Semua_Ruangan_CCS_${rooms.length}_Lembar.pdf`
+  const filename = totalCopies > 1
+    ? `Label_QR_General_Pelapor_CCS_${totalCopies}_Lembar.pdf`
+    : `Label_QR_General_Pelapor_CCS.pdf`
 
   if (action === 'download') {
     doc.save(filename)
@@ -175,4 +161,21 @@ export async function generateBatchRoomPDF(rooms, { action = 'print' } = {}) {
   }
 
   return doc
+}
+
+/**
+ * Backward-compatible wrappers so any call to single/batch room PDF
+ * generates the General Reporter QR PDF.
+ */
+export async function renderRoomStickerPage(doc) {
+  return await renderGeneralReporterStickerPage(doc)
+}
+
+export async function generateSingleRoomPDF(_room, { action = 'print', targetUrl = DEFAULT_GENERAL_REPORT_URL } = {}) {
+  return await generateGeneralReporterPDF({ targetUrl, copies: 1, action })
+}
+
+export async function generateBatchRoomPDF(rooms, { action = 'print', targetUrl = DEFAULT_GENERAL_REPORT_URL } = {}) {
+  const count = Array.isArray(rooms) && rooms.length > 0 ? rooms.length : 1
+  return await generateGeneralReporterPDF({ targetUrl, copies: count, action })
 }
