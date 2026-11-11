@@ -197,6 +197,13 @@ export default function VendorChecklistDashboardPage() {
   const [reviewNoteInput, setReviewNoteInput] = useState('')
   const [reviewActionLoading, setReviewActionLoading] = useState(false)
   const [zoomImage, setZoomImage] = useState(null)
+  const [photoLoadErrors, setPhotoLoadErrors] = useState({})
+  const [photoRetryKey, setPhotoRetryKey] = useState(0)
+
+  const handleRetryPhoto = (photoKey) => {
+    setPhotoLoadErrors(prev => ({ ...prev, [photoKey]: false }))
+    setPhotoRetryKey(prev => prev + 1)
+  }
 
   // Roles modal
   const [rolesModalOpen, setRolesModalOpen] = useState(false)
@@ -2279,18 +2286,40 @@ export default function VendorChecklistDashboardPage() {
                     <span className="text-[10px] text-neutral-400 cursor-pointer">Klik zoom</span>
                   </div>
                   <div
-                    onClick={() => setZoomImage({
-                      url: `/api/vendor-checklist/${activeItem.checklist.id}/photo?type=before`,
-                      title: 'Foto Sebelum (Before)'
-                    })}
-                    className="rounded overflow-hidden bg-black aspect-4/3 cursor-pointer border border-neutral-700 relative group"
+                    onClick={() => {
+                      if (activeItem.checklist.image_before_file && !photoLoadErrors[`chk_${activeItem.checklist.id}_before`]) {
+                        setZoomImage({
+                          url: `/api/vendor-checklist/${activeItem.checklist.id}/photo?type=before&v=${photoRetryKey}`,
+                          title: 'Foto Sebelum (Before)'
+                        })
+                      }
+                    }}
+                    className="rounded overflow-hidden bg-black aspect-4/3 cursor-pointer border border-neutral-700 relative group flex items-center justify-center"
                   >
                     {activeItem.checklist.image_before_file ? (
-                      <img
-                        src={`/api/vendor-checklist/${activeItem.checklist.id}/photo?type=before`}
-                        alt="Before"
-                        className="w-full h-full object-contain"
-                      />
+                      photoLoadErrors[`chk_${activeItem.checklist.id}_before`] ? (
+                        <div className="p-4 text-center text-neutral-400 space-y-2" onClick={(e) => e.stopPropagation()}>
+                          <div className="font-mono text-[11px] text-rose-400">Gagal memuat foto hosting</div>
+                          <button
+                            type="button"
+                            onClick={() => handleRetryPhoto(`chk_${activeItem.checklist.id}_before`)}
+                            className="px-3 py-1 rounded bg-neutral-800 hover:bg-neutral-700 text-white font-mono text-[11px] cursor-pointer inline-flex items-center gap-1.5"
+                          >
+                            <FontAwesomeIcon icon={faRotateRight} className="text-[10px]" />
+                            <span>Coba Lagi</span>
+                          </button>
+                        </div>
+                      ) : (
+                        <img
+                          key={`chk_${activeItem.checklist.id}_before_${photoRetryKey}`}
+                          src={`/api/vendor-checklist/${activeItem.checklist.id}/photo?type=before&v=${photoRetryKey}`}
+                          alt="Before"
+                          className="w-full h-full object-contain"
+                          onError={() => {
+                            setPhotoLoadErrors(prev => ({ ...prev, [`chk_${activeItem.checklist.id}_before`]: true }))
+                          }}
+                        />
+                      )
                     ) : (
                       <div className="h-full flex items-center justify-center text-neutral-500 font-mono text-xs">
                         Tidak ada foto
@@ -2306,18 +2335,40 @@ export default function VendorChecklistDashboardPage() {
                     <span className="text-[10px] text-neutral-400 cursor-pointer">Klik zoom</span>
                   </div>
                   <div
-                    onClick={() => setZoomImage({
-                      url: `/api/vendor-checklist/${activeItem.checklist.id}/photo?type=after`,
-                      title: 'Foto Sesudah (After)'
-                    })}
-                    className="rounded overflow-hidden bg-black aspect-4/3 cursor-pointer border border-neutral-700 relative group"
+                    onClick={() => {
+                      if (activeItem.checklist.image_after_file && !photoLoadErrors[`chk_${activeItem.checklist.id}_after`]) {
+                        setZoomImage({
+                          url: `/api/vendor-checklist/${activeItem.checklist.id}/photo?type=after&v=${photoRetryKey}`,
+                          title: 'Foto Sesudah (After)'
+                        })
+                      }
+                    }}
+                    className="rounded overflow-hidden bg-black aspect-4/3 cursor-pointer border border-neutral-700 relative group flex items-center justify-center"
                   >
                     {activeItem.checklist.image_after_file ? (
-                      <img
-                        src={`/api/vendor-checklist/${activeItem.checklist.id}/photo?type=after`}
-                        alt="After"
-                        className="w-full h-full object-contain"
-                      />
+                      photoLoadErrors[`chk_${activeItem.checklist.id}_after`] ? (
+                        <div className="p-4 text-center text-neutral-400 space-y-2" onClick={(e) => e.stopPropagation()}>
+                          <div className="font-mono text-[11px] text-rose-400">Gagal memuat foto hosting</div>
+                          <button
+                            type="button"
+                            onClick={() => handleRetryPhoto(`chk_${activeItem.checklist.id}_after`)}
+                            className="px-3 py-1 rounded bg-neutral-800 hover:bg-neutral-700 text-white font-mono text-[11px] cursor-pointer inline-flex items-center gap-1.5"
+                          >
+                            <FontAwesomeIcon icon={faRotateRight} className="text-[10px]" />
+                            <span>Coba Lagi</span>
+                          </button>
+                        </div>
+                      ) : (
+                        <img
+                          key={`chk_${activeItem.checklist.id}_after_${photoRetryKey}`}
+                          src={`/api/vendor-checklist/${activeItem.checklist.id}/photo?type=after&v=${photoRetryKey}`}
+                          alt="After"
+                          className="w-full h-full object-contain"
+                          onError={() => {
+                            setPhotoLoadErrors(prev => ({ ...prev, [`chk_${activeItem.checklist.id}_after`]: true }))
+                          }}
+                        />
+                      )
                     ) : (
                       <div className="h-full flex items-center justify-center text-neutral-500 font-mono text-xs">
                         Belum diunggah
@@ -2334,17 +2385,39 @@ export default function VendorChecklistDashboardPage() {
                       <span className="text-[10px] text-neutral-400 cursor-pointer">Klik zoom</span>
                     </div>
                     <div
-                      onClick={() => setZoomImage({
-                        url: `/api/vendor-checklist/${activeItem.checklist.id}/photo?type=revision`,
-                        title: 'Foto Hasil Revisi'
-                      })}
-                      className="rounded overflow-hidden bg-black aspect-4/3 cursor-pointer border-2 border-rose-500 relative group"
+                      onClick={() => {
+                        if (!photoLoadErrors[`chk_${activeItem.checklist.id}_rev`]) {
+                          setZoomImage({
+                            url: `/api/vendor-checklist/${activeItem.checklist.id}/photo?type=revision&v=${photoRetryKey}`,
+                            title: 'Foto Hasil Revisi'
+                          })
+                        }
+                      }}
+                      className="rounded overflow-hidden bg-black aspect-4/3 cursor-pointer border-2 border-rose-500 relative group flex items-center justify-center"
                     >
-                      <img
-                        src={`/api/vendor-checklist/${activeItem.checklist.id}/photo?type=revision`}
-                        alt="Revision"
-                        className="w-full h-full object-contain"
-                      />
+                      {photoLoadErrors[`chk_${activeItem.checklist.id}_rev`] ? (
+                        <div className="p-4 text-center text-neutral-400 space-y-2" onClick={(e) => e.stopPropagation()}>
+                          <div className="font-mono text-[11px] text-rose-400">Gagal memuat foto hosting</div>
+                          <button
+                            type="button"
+                            onClick={() => handleRetryPhoto(`chk_${activeItem.checklist.id}_rev`)}
+                            className="px-3 py-1 rounded bg-neutral-800 hover:bg-neutral-700 text-white font-mono text-[11px] cursor-pointer inline-flex items-center gap-1.5"
+                          >
+                            <FontAwesomeIcon icon={faRotateRight} className="text-[10px]" />
+                            <span>Coba Lagi</span>
+                          </button>
+                        </div>
+                      ) : (
+                        <img
+                          key={`chk_${activeItem.checklist.id}_rev_${photoRetryKey}`}
+                          src={`/api/vendor-checklist/${activeItem.checklist.id}/photo?type=revision&v=${photoRetryKey}`}
+                          alt="Revision"
+                          className="w-full h-full object-contain"
+                          onError={() => {
+                            setPhotoLoadErrors(prev => ({ ...prev, [`chk_${activeItem.checklist.id}_rev`]: true }))
+                          }}
+                        />
+                      )}
                     </div>
                   </div>
                 )}
@@ -2622,21 +2695,39 @@ export default function VendorChecklistDashboardPage() {
                   </div>
                   <div
                     onClick={() => {
-                      if (selectedComplaint.photo_file) {
+                      if (selectedComplaint.photo_file && !photoLoadErrors[`complaint_${selectedComplaint.id}_issue`]) {
                         setZoomImage({
-                          url: `/api/vendor-checklist/facility-reports/${selectedComplaint.id}/photo?type=issue`,
+                          url: `/api/vendor-checklist/facility-reports/${selectedComplaint.id}/photo?type=issue&v=${photoRetryKey}`,
                           title: `Foto Kendala Pelapor`
                         })
                       }
                     }}
-                    className="rounded overflow-hidden bg-black aspect-4/3 cursor-pointer border border-neutral-700 relative group"
+                    className="rounded overflow-hidden bg-black aspect-4/3 cursor-pointer border border-neutral-700 relative group flex items-center justify-center"
                   >
                     {selectedComplaint.photo_file ? (
-                      <img
-                        src={`/api/vendor-checklist/facility-reports/${selectedComplaint.id}/photo?type=issue`}
-                        alt="Foto Kendala"
-                        className="w-full h-full object-contain"
-                      />
+                      photoLoadErrors[`complaint_${selectedComplaint.id}_issue`] ? (
+                        <div className="p-4 text-center text-neutral-400 space-y-2" onClick={(e) => e.stopPropagation()}>
+                          <div className="font-mono text-[11px] text-rose-400">Koneksi hosting sempat terputus</div>
+                          <button
+                            type="button"
+                            onClick={() => handleRetryPhoto(`complaint_${selectedComplaint.id}_issue`)}
+                            className="px-3 py-1 rounded bg-neutral-800 hover:bg-neutral-700 text-white font-mono text-[11px] cursor-pointer inline-flex items-center gap-1.5"
+                          >
+                            <FontAwesomeIcon icon={faRotateRight} className="text-[10px]" />
+                            <span>Coba Lagi</span>
+                          </button>
+                        </div>
+                      ) : (
+                        <img
+                          key={`complaint_${selectedComplaint.id}_issue_${photoRetryKey}`}
+                          src={`/api/vendor-checklist/facility-reports/${selectedComplaint.id}/photo?type=issue&v=${photoRetryKey}`}
+                          alt="Foto Kendala"
+                          className="w-full h-full object-contain"
+                          onError={() => {
+                            setPhotoLoadErrors(prev => ({ ...prev, [`complaint_${selectedComplaint.id}_issue`]: true }))
+                          }}
+                        />
+                      )
                     ) : (
                       <div className="h-full flex items-center justify-center text-neutral-500 font-mono text-xs">
                         Pelapor tidak melampirkan foto
@@ -2653,21 +2744,39 @@ export default function VendorChecklistDashboardPage() {
                   </div>
                   <div
                     onClick={() => {
-                      if (selectedComplaint.resolution_photo_file) {
+                      if (selectedComplaint.resolution_photo_file && !photoLoadErrors[`complaint_${selectedComplaint.id}_resolution`]) {
                         setZoomImage({
-                          url: `/api/vendor-checklist/facility-reports/${selectedComplaint.id}/photo?type=resolution`,
+                          url: `/api/vendor-checklist/facility-reports/${selectedComplaint.id}/photo?type=resolution&v=${photoRetryKey}`,
                           title: `Bukti Penyelesaian`
                         })
                       }
                     }}
-                    className="rounded overflow-hidden bg-black aspect-4/3 cursor-pointer border border-neutral-700 relative group"
+                    className="rounded overflow-hidden bg-black aspect-4/3 cursor-pointer border border-neutral-700 relative group flex items-center justify-center"
                   >
                     {selectedComplaint.resolution_photo_file ? (
-                      <img
-                        src={`/api/vendor-checklist/facility-reports/${selectedComplaint.id}/photo?type=resolution`}
-                        alt="Bukti Selesai"
-                        className="w-full h-full object-contain"
-                      />
+                      photoLoadErrors[`complaint_${selectedComplaint.id}_resolution`] ? (
+                        <div className="p-4 text-center text-neutral-400 space-y-2" onClick={(e) => e.stopPropagation()}>
+                          <div className="font-mono text-[11px] text-rose-400">Koneksi hosting sempat terputus</div>
+                          <button
+                            type="button"
+                            onClick={() => handleRetryPhoto(`complaint_${selectedComplaint.id}_resolution`)}
+                            className="px-3 py-1 rounded bg-neutral-800 hover:bg-neutral-700 text-white font-mono text-[11px] cursor-pointer inline-flex items-center gap-1.5"
+                          >
+                            <FontAwesomeIcon icon={faRotateRight} className="text-[10px]" />
+                            <span>Coba Lagi</span>
+                          </button>
+                        </div>
+                      ) : (
+                        <img
+                          key={`complaint_${selectedComplaint.id}_resolution_${photoRetryKey}`}
+                          src={`/api/vendor-checklist/facility-reports/${selectedComplaint.id}/photo?type=resolution&v=${photoRetryKey}`}
+                          alt="Bukti Selesai"
+                          className="w-full h-full object-contain"
+                          onError={() => {
+                            setPhotoLoadErrors(prev => ({ ...prev, [`complaint_${selectedComplaint.id}_resolution`]: true }))
+                          }}
+                        />
+                      )
                     ) : (
                       <div className="h-full flex items-center justify-center text-neutral-500 font-mono text-xs">
                         Belum ada bukti selesai

@@ -10,6 +10,20 @@ const supabaseAdmin = createClient(
 
 const EXPECTED_SECRET = process.env.COURT_RENTAL_SECRET_KEY || process.env.VENDOR_CHECKLIST_SECRET_KEY || 'ccs_court_auth_2026_x7k9p2m4'
 
+async function fetchWithRetry(url, options = {}, maxRetries = 2) {
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      const res = await fetch(url, options)
+      if (res.ok) return res
+    } catch (err) {
+      if (attempt < maxRetries) {
+        await new Promise(r => setTimeout(r, 200 * (attempt + 1)))
+      }
+    }
+  }
+  return null
+}
+
 export async function GET(request, { params }) {
   try {
     const { id } = await params
@@ -41,21 +55,50 @@ export async function GET(request, { params }) {
       )
     }
 
-    const hostingUrl = item.hosting_url || 'https://ccs.sch.id/checklist'
-    const cleanHostingUrl = hostingUrl.replace(/\/index\.php$/i, '').replace(/\/$/, '')
-    const targetUrl = `${cleanHostingUrl}/index.php?action=view_photo&file=${encodeURIComponent(targetFile)}&token=${encodeURIComponent(EXPECTED_SECRET)}`
-
-    const res = await fetch(targetUrl, {
-      method: 'GET',
-      headers: {
-        'User-Agent': 'SchoolAdmin-VendorProxy/1.0'
+    // Jika targetFile sudah berupa URL publik langsung
+    if (targetFile.startsWith('http://') || targetFile.startsWith('https://')) {
+      const directRes = await fetchWithRetry(targetFile)
+      if (!directRes || !directRes.ok) {
+        return NextResponse.json(
+          { success: false, message: 'Gagal mengambil gambar langsung' },
+          { status: directRes?.status || 502 }
+        )
       }
-    })
+      const ct = directRes.headers.get('content-type') || 'image/jpeg'
+      const ab = await directRes.arrayBuffer()
+      return new NextResponse(Buffer.from(ab), {
+        status: 200,
+        headers: {
+          'Content-Type': ct,
+          'Cache-Control': 'private, max-age=3600'
+        }
+      })
+    }
 
-    if (!res.ok) {
+    const hostingUrl = item.hosting_url || 'https://ccs.sch.id/checklist'
+    const cleanHostingUrl = hostingUrl.replace(/\/(index|report_facility)\.php$/i, '').replace(/\/$/, '')
+    const candidateUrls = [
+      `${cleanHostingUrl}/index.php?action=view_photo&file=${encodeURIComponent(targetFile)}&token=${encodeURIComponent(EXPECTED_SECRET)}`,
+      `https://ccs.sch.id/checklist/index.php?action=view_photo&file=${encodeURIComponent(targetFile)}&token=${encodeURIComponent(EXPECTED_SECRET)}`,
+      `https://ccs.sch.id/reportfacility/index.php?action=view_photo&file=${encodeURIComponent(targetFile)}&token=${encodeURIComponent(EXPECTED_SECRET)}`
+    ]
+
+    let res = null
+    for (const url of [...new Set(candidateUrls)]) {
+      const attempt = await fetchWithRetry(url, {
+        method: 'GET',
+        headers: { 'User-Agent': 'SchoolAdmin-VendorProxy/1.0' }
+      }, 1)
+      if (attempt && attempt.ok) {
+        res = attempt
+        break
+      }
+    }
+
+    if (!res || !res.ok) {
       return NextResponse.json(
-        { success: false, message: `Gagal mengambil gambar dari hosting (${res.status})` },
-        { status: res.status }
+        { success: false, message: `Gagal mengambil gambar dari hosting` },
+        { status: 404 }
       )
     }
 

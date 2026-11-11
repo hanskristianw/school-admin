@@ -1,11 +1,11 @@
 # Graph Report - school-admin  (2026-11-11)
 
 ## Corpus Check
-- 472 files · ~803,699 words
+- 472 files · ~803,978 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 2547 nodes · 2699 edges · 439 communities (299 shown, 140 thin omitted)
+- 2547 nodes · 2699 edges · 438 communities (298 shown, 140 thin omitted)
 - Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 11 edges (avg confidence: 0.69)
 - Token cost: 0 input · 0 output
 
@@ -281,7 +281,6 @@
 - 12. THE BLOCK LIBRARY (Contract - Implementations Land Here Iteratively)
 - 5. CONTEXT-AWARE PROACTIVITY
 - 8. DARK MODE PROTOCOL
-- SKILL.md
 - browser-image-compression
 - pngjs
 - route.js
@@ -357,7 +356,7 @@
 ## Import Cycles
 - None detected.
 
-## Communities (439 total, 140 thin omitted)
+## Communities (438 total, 140 thin omitted)
 
 ### Community 0 - "Admission Management"
 Cohesion: 0.08
@@ -648,8 +647,8 @@ Cohesion: 0.37
 Nodes (13): public.uniform, public.uniform_purchase, public.uniform_purchase_item, public.uniform_purchase_receipt, public.uniform_purchase_receipt_item, public.uniform_sale, public.uniform_sale_item, public.uniform_size (+5 more)
 
 ### Community 101 - "Module 101"
-Cohesion: 0.14
-Nodes (13): **Additional Files:**, **Completed Features:**, **Database Migration Files (Execute in Order):**, **Development:**, **Important Files:**, **Key Business Rules:**, **Key Directories:**, **Key Environment:** (+5 more)
+Cohesion: 0.12
+Nodes (16): Attendance (QR) Tables, **Backend & Database:**, **Completed Features:**, **Core Tables:**, �🏗️ **Database Structure**, **Frontend Stack:**, Grades (Nilai) Table, **Important Files:** (+8 more)
 
 ### Community 102 - "Module 102"
 Cohesion: 0.14
@@ -777,7 +776,7 @@ Nodes (8): 18.1 Key Features & Architecture, 18.2 Tables, 18.3 Storage Buckets, 
 
 ### Community 133 - "Module 133"
 Cohesion: 0.15
-Nodes (13): browser-image-compression, @fortawesome/react-fontawesome, @hookform/resolvers, lucide-react, dependencies, browser-image-compression, @fortawesome/react-fontawesome, @hookform/resolvers (+5 more)
+Nodes (13): bcryptjs, @fortawesome/react-fontawesome, @hookform/resolvers, lucide-react, dependencies, bcryptjs, @fortawesome/react-fontawesome, @hookform/resolvers (+5 more)
 
 ### Community 135 - "Module 135"
 Cohesion: 0.29
@@ -848,8 +847,8 @@ Cohesion: 0.33
 Nodes (6): 19.1 Tables, 19.2 Storage Buckets, 19. System Changelog, Bug Reporting & Feature Roadmap Domain (`/data/feedback`, `/data/changelog`), `attachments` (Public), `system_feedback`, `system_feedback_recipients`
 
 ### Community 155 - "Module 155"
-Cohesion: 0.50
-Nodes (4): Attendance (QR) Tables, **Core Tables:**, �🏗️ **Database Structure**, Grades (Nilai) Table
+Cohesion: 0.40
+Nodes (5): **Additional Files:**, **Database Migration Files (Execute in Order):**, **Development:**, **Key Environment:**, 🚀 **Setup & Deployment**
 
 ### Community 156 - "**3. Assessment System**"
 Cohesion: 0.33
@@ -995,10 +994,6 @@ Nodes (3): absen, attendance_scan_log, attendance_session
 Cohesion: 0.20
 Nodes (9): 1. Protocol Overview, 2. Absolute Negative Constraints (Banned Elements), 3. Typographic Architecture, 4. Color Palette (Warm Monochrome + Spot Pastels), 5. Component Specifications, 6. Iconography & Imagery Directives, 7. Subtle Motion & Micro-Animations, 8. Execution Protocol (+1 more)
 
-### Community 273 - "class-variance-authority"
-Cohesion: 0.50
-Nodes (4): **Backend & Database:**, **Frontend Stack:**, **Key Technical Notes:**, 🔧 **Technical Implementation**
-
 ### Community 280 - "🚀 **Setup & Deployment**"
 Cohesion: 0.36
 Nodes (8): AttendanceCheckPage(), CATEGORY_LABEL, fmtDuration(), fmtMins(), getApproverName(), getMonthEnd(), getMonthStart(), ISSUE_LABELS
@@ -1063,7 +1058,7 @@ Nodes (3): ALLOWED_EXTS, ALLOWED_TYPES, supabaseAdmin
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `dependencies` connect `Module 133` to `Admission Management`, `Package Dependencies & Config`, `next-auth`, `DDL`, `📁 **Project Structure**`, `react-dom`, `Module 134`, `4.1 Tables`, `🔧 **Technical Implementation**`, `pdf-lib`, `@radix-ui/react-select`, `React UI Components`, `react-hook-form`, `class-variance-authority`, `@tiptap/extension-table-cell`, `@tiptap/extension-table-header`, `@tiptap/extension-table-row`, `@tiptap/extension-task-item`, `@tiptap/extension-task-list`, `@tiptap/extension-text-align`, `docx`, `@tiptap/extension-text-style`, `@tiptap/extension-underline`, `@tiptap/pm`, `Module 154`, `@tiptap/react`, `@tiptap/starter-kit`, `xlsx`, `**3. Assessment System**`, `exceljs`, `clsx`, `dotenv`, `@supabase/supabase-js`, `zod`, `Appendix B - Canonical Sources (read these before reinventing)`, `Analysis & Synthesis Instructions`, `**3. Assessment System**`, `@fortawesome/fontawesome-svg-core`, `📁 **Project Structure**`, `class-variance-authority`, `11. REDESIGN PROTOCOL`, `33. CATEGORY-SPECIFIC BIAS`, `12. THE BLOCK LIBRARY (Contract - Implementations Land Here Iteratively)`, `5. CONTEXT-AWARE PROACTIVITY`, `8. DARK MODE PROTOCOL`, `SKILL.md`, `Module 105`, `Module 239`, `jsonwebtoken`, `jspdf-autotable`, `@sparticuz/chromium-min`, `react-easy-crop`?**
+- **Why does `dependencies` connect `Module 133` to `Admission Management`, `Package Dependencies & Config`, `next-auth`, `DDL`, `📁 **Project Structure**`, `react-dom`, `Module 134`, `4.1 Tables`, `🔧 **Technical Implementation**`, `pdf-lib`, `@radix-ui/react-select`, `React UI Components`, `react-hook-form`, `class-variance-authority`, `@tiptap/extension-table-cell`, `class-variance-authority`, `@tiptap/extension-table-header`, `@tiptap/extension-table-row`, `@tiptap/extension-task-item`, `@tiptap/extension-task-list`, `docx`, `@tiptap/extension-text-align`, `@tiptap/extension-text-style`, `@tiptap/extension-underline`, `Module 154`, `@tiptap/pm`, `@tiptap/react`, `@tiptap/starter-kit`, `xlsx`, `**3. Assessment System**`, `exceljs`, `clsx`, `dotenv`, `@supabase/supabase-js`, `zod`, `Appendix B - Canonical Sources (read these before reinventing)`, `Analysis & Synthesis Instructions`, `**3. Assessment System**`, `@fortawesome/fontawesome-svg-core`, `📁 **Project Structure**`, `class-variance-authority`, `11. REDESIGN PROTOCOL`, `33. CATEGORY-SPECIFIC BIAS`, `12. THE BLOCK LIBRARY (Contract - Implementations Land Here Iteratively)`, `5. CONTEXT-AWARE PROACTIVITY`, `8. DARK MODE PROTOCOL`, `Module 105`, `Module 239`, `jsonwebtoken`, `jspdf-autotable`, `@sparticuz/chromium-min`, `react-easy-crop`?**
   _High betweenness centrality (0.015) - this node is a cross-community bridge._
 - **Why does `jspdf` connect `Admission Management` to `Module 105`, `Module 145`, `Module 133`?**
   _High betweenness centrality (0.009) - this node is a cross-community bridge._

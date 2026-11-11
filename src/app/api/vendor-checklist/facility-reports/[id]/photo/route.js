@@ -10,6 +10,20 @@ const supabaseAdmin = createClient(
 
 const EXPECTED_SECRET = process.env.COURT_RENTAL_SECRET_KEY || process.env.VENDOR_CHECKLIST_SECRET_KEY || 'ccs_court_auth_2026_x7k9p2m4'
 
+async function fetchWithRetry(url, options = {}, maxRetries = 2) {
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      const res = await fetch(url, options)
+      if (res.ok) return res
+    } catch (err) {
+      if (attempt < maxRetries) {
+        await new Promise(r => setTimeout(r, 200 * (attempt + 1)))
+      }
+    }
+  }
+  return null
+}
+
 export async function GET(request, { params }) {
   try {
     const { id } = await params
@@ -40,11 +54,11 @@ export async function GET(request, { params }) {
 
     // Jika targetFile sudah berupa URL publik langsung (misal Supabase Storage)
     if (targetFile.startsWith('http://') || targetFile.startsWith('https://')) {
-      const directRes = await fetch(targetFile)
-      if (!directRes.ok) {
+      const directRes = await fetchWithRetry(targetFile)
+      if (!directRes || !directRes.ok) {
         return NextResponse.json(
-          { success: false, message: `Gagal mengambil gambar (${directRes.status})` },
-          { status: directRes.status }
+          { success: false, message: `Gagal mengambil gambar langsung` },
+          { status: directRes?.status || 502 }
         )
       }
       const ct = directRes.headers.get('content-type') || 'image/jpeg'
@@ -63,22 +77,21 @@ export async function GET(request, { params }) {
     const candidateUrls = [
       `${cleanHostingUrl}/index.php?action=view_photo&file=${encodeURIComponent(targetFile)}&token=${encodeURIComponent(EXPECTED_SECRET)}`,
       `https://ccs.sch.id/reportfacility/index.php?action=view_photo&file=${encodeURIComponent(targetFile)}&token=${encodeURIComponent(EXPECTED_SECRET)}`,
+      `https://ccs.sch.id/checklist/index.php?action=view_complaint_photo&file=${encodeURIComponent(targetFile)}`,
       `https://ccs.sch.id/checklist/index.php?action=view_photo&file=${encodeURIComponent(targetFile)}&token=${encodeURIComponent(EXPECTED_SECRET)}`,
       `https://ccs.sch.id/report_facility/index.php?action=view_photo&file=${encodeURIComponent(targetFile)}&token=${encodeURIComponent(EXPECTED_SECRET)}`
     ]
 
     let res = null
     for (const url of [...new Set(candidateUrls)]) {
-      try {
-        const attempt = await fetch(url, {
-          method: 'GET',
-          headers: { 'User-Agent': 'SchoolAdmin-VendorProxy/1.0' }
-        })
-        if (attempt.ok) {
-          res = attempt
-          break
-        }
-      } catch (e) {}
+      const attempt = await fetchWithRetry(url, {
+        method: 'GET',
+        headers: { 'User-Agent': 'SchoolAdmin-VendorProxy/1.0' }
+      }, 1)
+      if (attempt && attempt.ok) {
+        res = attempt
+        break
+      }
     }
 
     if (!res || !res.ok) {

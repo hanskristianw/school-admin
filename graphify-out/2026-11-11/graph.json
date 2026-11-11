@@ -3582,8 +3582,8 @@
       "source_location": "L38",
       "_origin": "ast",
       "id": "package_dependencies_bcryptjs",
-      "community": 346,
-      "community_name": "SKILL.md",
+      "community": 133,
+      "community_name": "Module 133",
       "norm_label": "bcryptjs"
     },
     {
@@ -3593,8 +3593,8 @@
       "source_location": "L38",
       "_origin": "ast",
       "id": "bcryptjs",
-      "community": 346,
-      "community_name": "SKILL.md",
+      "community": 133,
+      "community_name": "Module 133",
       "norm_label": "bcryptjs"
     },
     {
@@ -3604,8 +3604,8 @@
       "source_location": "L39",
       "_origin": "ast",
       "id": "package_dependencies_browser_image_compression",
-      "community": 133,
-      "community_name": "Module 133",
+      "community": 273,
+      "community_name": "class-variance-authority",
       "norm_label": "browser-image-compression"
     },
     {
@@ -3615,8 +3615,8 @@
       "source_location": "L39",
       "_origin": "ast",
       "id": "browser_image_compression",
-      "community": 133,
-      "community_name": "Module 133",
+      "community": 273,
+      "community_name": "class-variance-authority",
       "norm_label": "browser-image-compression"
     },
     {
@@ -23426,8 +23426,8 @@
       "source_location": "L287",
       "_origin": "ast",
       "id": "main_documentation_database_structure",
-      "community": 155,
-      "community_name": "Module 155",
+      "community": 101,
+      "community_name": "Module 101",
       "norm_label": "\ufffd\ud83c\udfd7\ufe0f **database structure**"
     },
     {
@@ -23437,8 +23437,8 @@
       "source_location": "L289",
       "_origin": "ast",
       "id": "main_documentation_core_tables",
-      "community": 155,
-      "community_name": "Module 155",
+      "community": 101,
+      "community_name": "Module 101",
       "norm_label": "**core tables:**"
     },
     {
@@ -23448,8 +23448,8 @@
       "source_location": "L524",
       "_origin": "ast",
       "id": "main_documentation_grades_nilai_table",
-      "community": 155,
-      "community_name": "Module 155",
+      "community": 101,
+      "community_name": "Module 101",
       "norm_label": "grades (nilai) table"
     },
     {
@@ -23459,8 +23459,8 @@
       "source_location": "L539",
       "_origin": "ast",
       "id": "main_documentation_attendance_qr_tables",
-      "community": 155,
-      "community_name": "Module 155",
+      "community": 101,
+      "community_name": "Module 101",
       "norm_label": "attendance (qr) tables"
     },
     {
@@ -23657,8 +23657,8 @@
       "source_location": "L812",
       "_origin": "ast",
       "id": "main_documentation_technical_implementation",
-      "community": 273,
-      "community_name": "class-variance-authority",
+      "community": 101,
+      "community_name": "Module 101",
       "norm_label": "\ud83d\udd27 **technical implementation**"
     },
     {
@@ -23668,8 +23668,8 @@
       "source_location": "L814",
       "_origin": "ast",
       "id": "main_documentation_frontend_stack",
-      "community": 273,
-      "community_name": "class-variance-authority",
+      "community": 101,
+      "community_name": "Module 101",
       "norm_label": "**frontend stack:**"
     },
     {
@@ -23679,8 +23679,8 @@
       "source_location": "L821",
       "_origin": "ast",
       "id": "main_documentation_backend_database",
-      "community": 273,
-      "community_name": "class-variance-authority",
+      "community": 101,
+      "community_name": "Module 101",
       "norm_label": "**backend & database:**"
     },
     {
@@ -23690,8 +23690,8 @@
       "source_location": "L827",
       "_origin": "ast",
       "id": "main_documentation_key_technical_notes",
-      "community": 273,
-      "community_name": "class-variance-authority",
+      "community": 101,
+      "community_name": "Module 101",
       "norm_label": "**key technical notes:**"
     },
     {
@@ -23701,8 +23701,8 @@
       "source_location": "L881",
       "_origin": "ast",
       "id": "main_documentation_setup_deployment",
-      "community": 101,
-      "community_name": "Module 101",
+      "community": 155,
+      "community_name": "Module 155",
       "norm_label": "\ud83d\ude80 **setup & deployment**"
     },
     {
@@ -23712,8 +23712,8 @@
       "source_location": "L883",
       "_origin": "ast",
       "id": "main_documentation_database_migration_files_execute_in_order",
-      "community": 101,
-      "community_name": "Module 101",
+      "community": 155,
+      "community_name": "Module 155",
       "norm_label": "**database migration files (execute in order):**"
     },
     {
@@ -23723,8 +23723,8 @@
       "source_location": "L911",
       "_origin": "ast",
       "id": "main_documentation_development",
-      "community": 101,
-      "community_name": "Module 101",
+      "community": 155,
+      "community_name": "Module 155",
       "norm_label": "**development:**"
     },
     {
@@ -23734,8 +23734,8 @@
       "source_location": "L918",
       "_origin": "ast",
       "id": "main_documentation_key_environment",
-      "community": 101,
-      "community_name": "Module 101",
+      "community": 155,
+      "community_name": "Module 155",
       "norm_label": "**key environment:**"
     },
     {
@@ -23745,8 +23745,8 @@
       "source_location": "L928",
       "_origin": "ast",
       "id": "main_documentation_additional_files",
-      "community": 101,
-      "community_name": "Module 101",
+      "community": 155,
+      "community_name": "Module 155",
       "norm_label": "**additional files:**"
     },
     {
@@ -42788,7 +42788,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/app/data/vendor-checklist/page.jsx",
-      "source_location": "L1833",
+      "source_location": "L1820",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_vendor_checklist_page_vendorchecklistdashboardpage",

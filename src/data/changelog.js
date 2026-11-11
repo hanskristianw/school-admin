@@ -88,6 +88,11 @@ export const SYSTEM_RELEASES = [
           "id": "Menambahkan proteksi konkurensi (atomic concurrency guard) pada API penyelesaian komplain (resolve_report) untuk mencegah race condition saat 2 cleaner menyelesaikan komplain yang sama secara bersamaan: cleaner kedua tidak akan menimpa data cleaner pertama melainkan menerima notifikasi bahwa laporan telah diselesaikan lebih dulu beserta nama petugas dan jamnya, lalu kartu otomatis diperbarui.",
           "en": "Added atomic concurrency guard to the complaint resolution API (resolve_report) to prevent race conditions when two cleaners resolve the same complaint simultaneously: the second cleaner will not overwrite the first cleaner's submission but will receive a notice stating it was already resolved along with the resolver's name and timestamp, automatically refreshing the card.",
           "zh": "在设施报修处理接口（resolve_report）中加入原子并发控制保护（Atomic Concurrency Guard），防止两名保洁员同时处理同一张报修单发生竞争覆写：后提交的保洁员不会覆盖先提交者的数据，而是会收到提示告知该报修单已由首位保洁员于几点几分完成，并自动刷新移除该卡片。"
+        },
+        {
+          "id": "Memperbaiki kendala foto laporan fasilitas dan foto kebersihan yang terkadang gagal dimuat (broken image placeholder) pada modal inspeksi /data/vendor-checklist akibat latensi atau timeout resolusi DNS hosting sesaat: menambahkan mekanisme auto-retry transparan pada proxy API Next.js serta tombol 'Coba Lagi' interaktif dengan cache-buster di UI.",
+          "en": "Fixed intermittent image load failures (broken image placeholder) on /data/vendor-checklist inspection modals caused by transient DNS resolution or network timeouts to the hosting: added transparent auto-retry mechanisms to Next.js photo proxy APIs and an interactive 'Coba Lagi' retry button with cache-busting in the UI.",
+          "zh": "修复 /data/vendor-checklist 检查弹窗中因主机 DNS 解析超时或瞬时网络延迟偶发图片无法加载（碎图图标）的问题：在 Next.js 图片代理 API 中增加透明自动重试机制，并在界面增加带防缓存机制的'Coba Lagi'重试按钮。"
         }
       ]
     }

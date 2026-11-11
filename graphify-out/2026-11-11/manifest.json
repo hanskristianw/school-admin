@@ -2355,8 +2355,8 @@
     "semantic_hash": ""
   },
   "src/app/data/vendor-checklist/page.jsx": {
-    "mtime": 1794374060.6709006,
-    "ast_hash": "ffb2334847c0ec977e39512338ecaef9",
+    "mtime": 1794374897.8187332,
+    "ast_hash": "f28716f1717b104584e301d7c558acaa",
     "semantic_hash": ""
   },
   "cpanel-vendor-checklist/README.md": {
@@ -2495,8 +2495,8 @@
     "semantic_hash": ""
   },
   "src/data/changelog.js": {
-    "mtime": 1794374521.4163685,
-    "ast_hash": "344d6e8ef180994f451594cde7acc0bb",
+    "mtime": 1794374959.647814,
+    "ast_hash": "535446f76923a8c7d12736095916cf01",
     "semantic_hash": ""
   },
   "src/app/api/system-feedback/upload/route.js": {
