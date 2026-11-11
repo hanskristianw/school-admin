@@ -6285,6 +6285,11 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
 
   const handleTopicOpen = async (topic) => {
     resetAiState()
+    setWizardStrands([])
+    setWizardRubrics([])
+    if (topic.topic_subject_id) {
+      fetchCriteriaForSubject(topic.topic_subject_id)
+    }
     setSelectedTopic({
       ...topic,
       topic_atl: topic.topic_atl || '',
@@ -6370,6 +6375,9 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
         selected_criteria: criteriaIds,
         assessment_tsc: assessmentData.assessment_tsc || {}
       })
+      if (criteriaIds.length > 0 && topic.topic_year) {
+        fetchStrandsForCriteria(criteriaIds, topic.topic_year)
+      }
     } else {
       setWizardAssessment({
         assessment_nama: '',

@@ -180,7 +180,7 @@ export const buildAssessmentCriteriaForPdf = ({
         const tscItems = subjectItems
           .map(item => {
             const tscKey = `${criterionId}_${band.bandLabel}_${item.label}`;
-            const tsc = (tscMap || {})?.[tscKey] || '';
+            const tsc = (tscMap || {})?.[tscKey] || (criterionCode ? (tscMap || {})?.[`${criterionCode}_general_${item.label}`] : '') || '';
             return tsc ? { label: item.label, text: tsc } : null;
           })
           .filter(Boolean);
@@ -1135,7 +1135,7 @@ const renderCriteriaRubricsToPdf = (pdf, { selectedCriteriaIds, criteriaList, st
         
         const tscPairs = (band.rubricsData || []).map(r => {
           const tscKey = `${criterionId}_${band.band_label}_${r.label}`;
-          const tsc = (tscMap || {})?.[tscKey] || '';
+          const tsc = (tscMap || {})?.[tscKey] || (criterion.code ? (tscMap || {})?.[`${criterion.code}_general_${r.label}`] : '') || '';
           return tsc ? { label: r.label, text: tsc } : null;
         }).filter(Boolean);
         const tscContent = tscPairs.length > 0 ? buildHangingContent(tscPairs) : '';

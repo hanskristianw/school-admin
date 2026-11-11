@@ -1,16 +1,16 @@
 # Graph Report - school-admin  (2026-11-11)
 
 ## Corpus Check
-- 472 files · ~804,664 words
+- 472 files · ~804,828 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 2549 nodes · 2703 edges · 442 communities (303 shown, 139 thin omitted)
+- 2549 nodes · 2703 edges · 441 communities (303 shown, 138 thin omitted)
 - Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 11 edges (avg confidence: 0.69)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `89807c95`
+- Built from commit: `dabb1885`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -281,7 +281,6 @@
 - 12. THE BLOCK LIBRARY (Contract - Implementations Land Here Iteratively)
 - 5. CONTEXT-AWARE PROACTIVITY
 - 8. DARK MODE PROTOCOL
-- SKILL.md
 - browser-image-compression
 - pngjs
 - route.js
@@ -360,7 +359,7 @@
 ## Import Cycles
 - None detected.
 
-## Communities (442 total, 139 thin omitted)
+## Communities (441 total, 138 thin omitted)
 
 ### Community 0 - "Admission Management"
 Cohesion: 0.08
@@ -631,8 +630,8 @@ Cohesion: 0.13
 Nodes (14): admission_level, application_discount, Daftar Tabel, DDL, Dokumentasi Schema PMB (Penerimaan Murid Baru), fee_discount, Halaman Terkait, Migration SQL (+6 more)
 
 ### Community 96 - "Module 96"
-Cohesion: 0.14
-Nodes (14): 10. SECTION RHYTHM RULE, 12. DENSITY & SPACING DISCIPLINE, 14. IMAGE / MEDIA DIRECTION, 16. MULTI-IMAGE CONSISTENCY RULE, 17. CLARITY CHECK, 19. RESPONSE BEHAVIOR, 1. ACTIVE BASELINE CONFIGURATION, 21. FINAL GOAL (+6 more)
+Cohesion: 0.12
+Nodes (16): 10. SECTION RHYTHM RULE, 12. DENSITY & SPACING DISCIPLINE, 14. IMAGE / MEDIA DIRECTION, 16. MULTI-IMAGE CONSISTENCY RULE, 17. CLARITY CHECK, 19. RESPONSE BEHAVIOR, 1. ACTIVE BASELINE CONFIGURATION, 21. FINAL GOAL (+8 more)
 
 ### Community 97 - "Module 97"
 Cohesion: 0.14
@@ -1077,7 +1076,7 @@ Nodes (3): fetchWithRetry(), GET(), supabaseAdmin
 ## Knowledge Gaps
 - **1243 isolated node(s):** `extends`, `next/core-web-vitals`, `$schema`, `style`, `rsc` (+1238 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **139 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **138 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_

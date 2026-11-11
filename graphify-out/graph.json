@@ -18575,8 +18575,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "agents_skills_imagegen_frontend_web_skill",
-      "community": 346,
-      "community_name": "SKILL.md",
+      "community": 96,
+      "community_name": "Module 96",
       "norm_label": "skill.md"
     },
     {
@@ -18586,8 +18586,8 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "agents_skills_imagegen_frontend_web_skill_hard_output_rule_read_first",
-      "community": 346,
-      "community_name": "SKILL.md",
+      "community": 96,
+      "community_name": "Module 96",
       "norm_label": "hard output rule \u2014 read first"
     },
     {
@@ -18597,8 +18597,8 @@
       "source_location": "L25",
       "_origin": "ast",
       "id": "agents_skills_imagegen_frontend_web_skill_hero_composition_bias_read_first",
-      "community": 346,
-      "community_name": "SKILL.md",
+      "community": 96,
+      "community_name": "Module 96",
       "norm_label": "hero composition bias \u2014 read first"
     },
     {
@@ -42154,7 +42154,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/app/data/topic-new/page.jsx",
-      "source_location": "L6322",
+      "source_location": "L6327",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_topic_new_page_topicnewpage",
@@ -42178,7 +42178,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/app/data/topic-new/page.jsx",
-      "source_location": "L6323",
+      "source_location": "L6328",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_topic_new_page_topicnewpage",
@@ -58286,5 +58286,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "89807c9502c98b8a25a2dee77a3bd5504a735f98"
+  "built_at_commit": "dabb1885bf9f6dd055f8af2325f19c251d505f8e"
 }

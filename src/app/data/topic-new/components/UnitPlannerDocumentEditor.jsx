@@ -236,15 +236,15 @@ export default function UnitPlannerDocumentEditor({
 
   // Ensure strands are loaded when criteria and year are present
   useEffect(() => {
-    if (
-      wizardAssessment?.selected_criteria?.length > 0 &&
-      selectedTopic?.topic_year &&
-      (!wizardStrands || wizardStrands.length === 0) &&
-      fetchStrandsForCriteria
-    ) {
-      fetchStrandsForCriteria(wizardAssessment.selected_criteria, selectedTopic.topic_year)
+    const selCriteria = wizardAssessment?.selected_criteria || []
+    const topicYear = selectedTopic?.topic_year
+    if (selCriteria.length > 0 && topicYear && fetchStrandsForCriteria) {
+      const allLoaded = selCriteria.every(cid => (wizardStrands || []).some(s => s.criterion_id === cid))
+      if (!allLoaded) {
+        fetchStrandsForCriteria(selCriteria, topicYear)
+      }
     }
-  }, [wizardAssessment?.selected_criteria, selectedTopic?.topic_year])
+  }, [wizardAssessment?.selected_criteria, selectedTopic?.topic_year, wizardStrands, fetchStrandsForCriteria])
 
   // Relational Teacher Name resolver according to DATABASE_SCHEMA:
   // Priority 1: detail_kelas.teacher_user_id (Real Teacher teaching this specific class & subject)
@@ -1628,7 +1628,8 @@ export default function UnitPlannerDocumentEditor({
                                   {criterionStrands.map(strand => {
                                     const tscKey = `${criterion.criterion_id}_${bandLabel}_${strand.label}`
                                     const currentVal = wizardAssessment?.assessment_tsc?.[tscKey] ||
-                                      wizardAssessment?.assessment_tsc?.[strand.strand_id]?.[bandLabel] || ''
+                                      wizardAssessment?.assessment_tsc?.[strand.strand_id]?.[bandLabel] ||
+                                      wizardAssessment?.assessment_tsc?.[`${criterion.code}_general_${strand.label}`] || ''
 
                                     return (
                                       <div key={strand.strand_id} className="space-y-0.5">

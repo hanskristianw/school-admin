@@ -93,6 +93,11 @@ export const SYSTEM_RELEASES = [
           "id": "Memperbaiki kendala foto laporan fasilitas dan foto kebersihan yang terkadang gagal dimuat (broken image placeholder) pada modal inspeksi /data/vendor-checklist akibat latensi atau timeout resolusi DNS hosting sesaat: menambahkan mekanisme auto-retry transparan pada proxy API Next.js serta tombol 'Coba Lagi' interaktif dengan cache-buster di UI.",
           "en": "Fixed intermittent image load failures (broken image placeholder) on /data/vendor-checklist inspection modals caused by transient DNS resolution or network timeouts to the hosting: added transparent auto-retry mechanisms to Next.js photo proxy APIs and an interactive 'Coba Lagi' retry button with cache-busting in the UI.",
           "zh": "修复 /data/vendor-checklist 检查弹窗中因主机 DNS 解析超时或瞬时网络延迟偶发图片无法加载（碎图图标）的问题：在 Next.js 图片代理 API 中增加透明自动重试机制，并在界面增加带防缓存机制的'Coba Lagi'重试按钮。"
+        },
+        {
+          "id": "Memperbaiki tabel Task-Specific Clarification (TSC) yang kosong pada perencana unit MYP (/data/topic-new) dengan memuat kriteria dan strand rubrik secara reaktif saat membuka unit planner (handleTopicOpen), memperbaiki guard dependensi kriteria pada UnitPlannerDocumentEditor, serta menyediakan fallback pemetaan kunci legacy (A_general_*, C_general_*) pada editor dan generator PDF.",
+          "en": "Fixed blank Task-Specific Clarification (TSC) rubric tables in the MYP Unit Planner (/data/topic-new) by reactively loading criteria and rubric strands upon opening a unit planner (handleTopicOpen), fixing criteria dependency guards in UnitPlannerDocumentEditor, and adding fallback mapping for legacy clarification keys (A_general_*, C_general_*) in both the document editor and PDF generators.",
+          "zh": "修复 MYP 单元备课计划（/data/topic-new）中任务特定细化表（Task-Specific Clarification / TSC）显示空白的问题：在打开备课计划时（handleTopicOpen）同步响应式加载学科准则（Criteria）与阶梯维度（Strands），修复 UnitPlannerDocumentEditor 内部阶梯依赖守卫，并在文档编辑器与 PDF 生成器中增加对旧版通用细化键（A_general_*、C_general_*）的回退映射支持。"
         }
       ]
     }
@@ -356,4 +361,4 @@ export const SYSTEM_RELEASES = [
       ]
     }
   }
-];
+]
