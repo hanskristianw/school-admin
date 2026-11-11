@@ -1050,8 +1050,8 @@
     "semantic_hash": ""
   },
   "src/app/data/topic-new/lib/pdfGenerators.js": {
-    "mtime": 1794289476.0986698,
-    "ast_hash": "dc5147bfc3b4055d662d7af36c8b46c9",
+    "mtime": 1794381382.4984841,
+    "ast_hash": "cdd55af94ce65f4e1bf3e419bcd063ca",
     "semantic_hash": ""
   },
   "src/app/data/topic-new/lib/useAiHelp.js": {
@@ -1060,8 +1060,8 @@
     "semantic_hash": ""
   },
   "src/app/data/topic-new/page.jsx": {
-    "mtime": 1793770147.827294,
-    "ast_hash": "f77d0a99873f5833e85eaa1966cc54d0",
+    "mtime": 1794381382.4968925,
+    "ast_hash": "5ff530416498cf827043f525ec355f0b",
     "semantic_hash": ""
   },
   "src/app/data/topic/page.jsx": {
@@ -1670,8 +1670,8 @@
     "semantic_hash": ""
   },
   ".agents/AGENTS.md": {
-    "mtime": 1794187822.6820242,
-    "ast_hash": "3511c5f31c8e3320013201b768fae57e",
+    "mtime": 1794382709.391365,
+    "ast_hash": "63172b8061091016261e0f9ea5881bfc",
     "semantic_hash": ""
   },
   "migrations/add-topic-status.sql": {
@@ -2070,8 +2070,8 @@
     "semantic_hash": ""
   },
   "src/app/data/topic-new/components/UnitPlannerDocumentEditor.jsx": {
-    "mtime": 1793081404.4324417,
-    "ast_hash": "51aae42fe73bcba6cedc134877caca4f",
+    "mtime": 1794381418.2069788,
+    "ast_hash": "b89544c504be66cb0acc8b54e584baf2",
     "semantic_hash": ""
   },
   "migrations/add-kelas-user-id-2.sql": {
@@ -2355,8 +2355,8 @@
     "semantic_hash": ""
   },
   "src/app/data/vendor-checklist/page.jsx": {
-    "mtime": 1794377007.491446,
-    "ast_hash": "dbc25ad64a699bb2e7218bd60f9a9f9f",
+    "mtime": 1794382677.6956997,
+    "ast_hash": "c348202c93a95930b83f1d7b42506fdd",
     "semantic_hash": ""
   },
   "cpanel-vendor-checklist/README.md": {
@@ -2495,8 +2495,8 @@
     "semantic_hash": ""
   },
   "src/data/changelog.js": {
-    "mtime": 1794377035.927791,
-    "ast_hash": "ab3ae93b0592af4d6f12f0c2aea6da74",
+    "mtime": 1794382722.9932487,
+    "ast_hash": "00c4f5b2b545bdca5b9bdf5efd18473e",
     "semantic_hash": ""
   },
   "src/app/api/system-feedback/upload/route.js": {
@@ -2592,6 +2592,11 @@
   "cpanel-report-facility/README.md": {
     "mtime": 1794301075.9390686,
     "ast_hash": "2edb9558b2b310193ecd653d6183441b",
+    "semantic_hash": ""
+  },
+  ".agents/rules/ui-button-anti-duplication.md": {
+    "mtime": 1794382701.942093,
+    "ast_hash": "682203bca958c3851336dd3f22cc0628",
     "semantic_hash": ""
   }
 }

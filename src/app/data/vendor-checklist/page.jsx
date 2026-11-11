@@ -992,54 +992,12 @@ export default function VendorChecklistDashboardPage() {
               <h1 className="text-xl font-bold tracking-tight" style={{ color: textPrimary, letterSpacing: '-0.02em', margin: 0 }}>
                 Vendor Cleaning &amp; Facility Reporting Management
               </h1>
-              <p className="text-xs" style={{ color: textSecondary, margin: '2px 0 0 0' }}>
-                Jadwal penugasan ruangan per cleaner (Si X → Ruangan A, B, C, D), verifikasi foto before-after, dan keluhan QR General.
-              </p>
             </div>
           </div>
         </div>
 
         {/* Action Toolbar */}
         <div className="flex items-center gap-2 flex-wrap">
-          {/* Date Picker Bar */}
-          <div
-            className="flex items-center px-2 py-1 rounded border shadow-2xs"
-            style={{ background: cardBg, borderColor }}
-          >
-            <button
-              onClick={() => changeDateBy(-1)}
-              className="p-1 text-xs hover:opacity-70 transition cursor-pointer"
-              title="Hari Sebelumnya"
-            >
-              <FontAwesomeIcon icon={faChevronLeft} />
-            </button>
-            <div className="flex items-center gap-1.5 px-2">
-              <FontAwesomeIcon icon={faCalendarAlt} className="text-blue-500 text-xs" />
-              <input
-                type="date"
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
-                className="text-xs font-mono font-semibold bg-transparent border-none focus:outline-none cursor-pointer"
-                style={{ color: textPrimary }}
-              />
-            </div>
-            <button
-              onClick={() => changeDateBy(1)}
-              className="p-1 text-xs hover:opacity-70 transition cursor-pointer"
-              title="Hari Berikutnya"
-            >
-              <FontAwesomeIcon icon={faChevronRight} />
-            </button>
-            {!isToday && (
-              <button
-                onClick={() => setSelectedDate(getWibDate())}
-                className="ml-1 px-2 py-0.5 text-[10px] font-mono font-bold rounded bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 transition"
-              >
-                TODAY
-              </button>
-            )}
-          </div>
-
           {/* Refresh Button */}
           <button
             onClick={() => {
@@ -1263,46 +1221,6 @@ export default function VendorChecklistDashboardPage() {
               <span>All Rooms</span>
               <span className="text-[11px] opacity-75">({rooms.length})</span>
             </button>
-          </div>
-
-          {/* ── SEARCH, CLEANER FILTER & VIEW MODE TOOLBAR ── */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 mb-4">
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 flex-1">
-              <div className="relative flex-1 max-w-sm">
-                <FontAwesomeIcon icon={faSearch} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 text-xs" />
-                <input
-                  type="text"
-                  placeholder="Cari ruangan atau nama petugas..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  style={{
-                    background: cardBg,
-                    borderColor,
-                    color: textPrimary
-                  }}
-                  className="w-full pl-8 pr-3 py-1.5 rounded-md text-xs border focus:outline-none focus:ring-1 focus:ring-blue-500 font-mono"
-                />
-              </div>
-
-              <select
-                value={cleanerFilter}
-                onChange={(e) => setCleanerFilter(e.target.value)}
-                style={{
-                  background: cardBg,
-                  borderColor,
-                  color: textPrimary
-                }}
-                className="px-3 py-1.5 rounded-md text-xs border font-mono font-semibold cursor-pointer focus:outline-none"
-              >
-                <option value="all">Semua Jadwal Cleaner ({cleaners.length})</option>
-                {cleaners.map(c => (
-                  <option key={c.user_id} value={String(c.user_id)}>
-                    Jadwal: {c.full_name} ({(assignmentsMap[String(c.user_id)] || []).length} Ruangan)
-                  </option>
-                ))}
-                <option value="unassigned">Belum Ada PIC Cleaner ({unassignedRooms.length})</option>
-              </select>
-            </div>
           </div>
 
           {/* ── CONTENT AREA ── */}
@@ -2966,22 +2884,7 @@ export default function VendorChecklistDashboardPage() {
             </div>
 
             {/* Modal footer buttons */}
-            <div className="flex items-center justify-between pt-2 border-t" style={{ borderColor }}>
-              <button
-                type="button"
-                onClick={() => {
-                  setAssignmentCleanerFilter(String(cleanerDayModal.cleaner.user_id))
-                  setAssignmentSearch('')
-                  setManageAssignmentsModalOpen(true)
-                  setCleanerDayModal(null)
-                }}
-                className="px-3 py-1.5 rounded border text-xs font-mono font-semibold flex items-center gap-1.5 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition cursor-pointer"
-                style={{ borderColor, color: textPrimary }}
-              >
-                <FontAwesomeIcon icon={faUsersCog} className="text-blue-500 text-xs" />
-                <span>Atur Ruangan Cleaner Ini</span>
-              </button>
-
+            <div className="flex items-center justify-end pt-2 border-t" style={{ borderColor }}>
               <button
                 type="button"
                 onClick={() => setCleanerDayModal(null)}

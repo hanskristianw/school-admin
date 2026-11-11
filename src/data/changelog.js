@@ -71,6 +71,21 @@ export const SYSTEM_RELEASES = [
           "id": "Menyinkronkan penugasan 95 slot ruangan ke 5 cleaner aktif berakhiran nama 'Triple S' (Davit: 18 ruangan, Risky: 17 ruangan, Darul: 24 ruangan, Fitria: 18 ruangan, Raditya: 18 ruangan) tanpa duplikasi ruangan pada master ruangan.",
           "en": "Synchronized 95 room assignment slots to 5 active cleaners with 'Triple S' suffix (Davit: 18 rooms, Risky: 17 rooms, Darul: 24 rooms, Fitria: 18 rooms, Raditya: 18 rooms) with zero duplication in the room master catalog.",
           "zh": "同步 95 间教室保洁排班至 5 名后缀为 'Triple S' 的在职保洁员（Davit：18 间、Risky：17 间、Darul：24 间、Fitria：18 间、Raditya：18 间），并确保教室主数据无重复记录。"
+        },
+        {
+          "id": "Menghapus tombol duplikat 'Atur Ruangan Cleaner Ini' pada footer modal Detail Tugas di /data/vendor-checklist dan menetapkan aturan baku proyek (Single Action / Anti-Duplication Button Rule) yang melarang adanya lebih dari satu tombol yang mengarah ke modal atau fungsionalitas yang sama pada satu halaman atau sub-modal.",
+          "en": "Removed the duplicate 'Atur Ruangan Cleaner Ini' button from the Task Detail modal footer on /data/vendor-checklist and established a project-wide rule (Single Action / Anti-Duplication Button Rule) prohibiting duplicate buttons pointing to the same modal or action across a page or sub-modal.",
+          "zh": "移除 /data/vendor-checklist 任务详情弹窗底部的'Atur Ruangan Cleaner Ini'冗余按钮，并在项目规范中确立防按钮冗余规则（Single Action / Anti-Duplication Button Rule），禁止在单页面或子弹窗内存在多个指向相同弹窗或操作的重复按钮。"
+        },
+        {
+          "id": "Menghapus teks sub-judul deskripsi di bawah judul halaman /data/vendor-checklist guna mewujudkan tata letak header yang lebih ringkas, bersih, dan fokus.",
+          "en": "Removed the descriptive subtitle under the page title on /data/vendor-checklist for a more concise, uncluttered, and focused header layout.",
+          "zh": "移除 /data/vendor-checklist 页面标题下方的描述性副标题文本，使顶栏排版更加紧凑、整洁与专注。"
+        },
+        {
+          "id": "Menghapus pemilih tanggal harian tunggal pada bilah alat atas serta menghapus bilah pencarian ruangan/petugas dan selektor cleaner di /data/vendor-checklist agar navigasi terfokus penuh pada pemilih rentang mingguan kalender (Weekly Calendar View).",
+          "en": "Removed the single daily date picker from the top toolbar as well as the search bar and cleaner dropdown selector on /data/vendor-checklist to streamline navigation directly onto the Weekly Calendar View.",
+          "zh": "移除 /data/vendor-checklist 顶部工具栏中的单日日期选择器，并移除房间/保洁员搜索框与保洁员筛选下拉框，使日历导航完全聚焦于统一的周历视图（Weekly Calendar View）。"
         }
       ],
       "fixed": [

@@ -27,3 +27,9 @@
   - **PATCH (`0.y.Z`)**: Dinaikkan saat rilis perbaikan kendala (*bug fixes*), *hotfix*, penyesuaian tata letak UI, atau pembenahan teks bahasa/i18n pada hari rilis baru jika tidak ada fitur mayor.
   - **MAJOR (`1.0.0`)**: Hanya dideklarasikan ketika seluruh modul utama sistem sekolah telah selesai secara komprehensif, teruji penuh, dan ditutup masa pengembangannya untuk dipakai operasional resmi.
 - Setiap rilis baru atau perubahan nomor versi pada `SYSTEM_RELEASES` di `src/data/changelog.js`, agen **WAJIB menyelaraskan nomor versi di `package.json`**.
+
+## Single Action / Anti-Duplication Button Rule
+- **STRICT DIRECTIVE**: Dilarang membuat tombol duplikat (*duplicate/redundant buttons*) yang membuka modal, mengarahkan navigasi, atau memicu tindakan fungsionalitas yang sama pada satu halaman atau di dalam sub-modal/kartu anak (*child modal/drawer*).
+- **Single Source of Truth UI Action**: Setiap fitur atau modal (misal: "Atur Petugas Ruangan", kelola data master, konfigurasi) hanya boleh memiliki **1 tombol akses utama** yang terpusat dan konsisten (misal di toolbar utama halaman).
+- **Larangan Penyebaran Tombol Pintasan**: Dilarang menyebarkan tombol pintasan duplikat berulang kali di footer tabel, di dalam baris/kolom tabel, di bawah nama pengguna, maupun di dalam modal detail/pratinjau.
+- Prinsip ini wajib ditaati untuk menjaga hierarki UI tetap bersih, konsisten, menghindari kebingungan pengguna (*reduce cognitive load*), serta mencegah potensi inkonsistensi status/state pada modal berlapis.

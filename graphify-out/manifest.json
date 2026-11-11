@@ -1670,8 +1670,8 @@
     "semantic_hash": ""
   },
   ".agents/AGENTS.md": {
-    "mtime": 1794187822.6820242,
-    "ast_hash": "3511c5f31c8e3320013201b768fae57e",
+    "mtime": 1794382709.391365,
+    "ast_hash": "63172b8061091016261e0f9ea5881bfc",
     "semantic_hash": ""
   },
   "migrations/add-topic-status.sql": {
@@ -2355,8 +2355,8 @@
     "semantic_hash": ""
   },
   "src/app/data/vendor-checklist/page.jsx": {
-    "mtime": 1794377007.491446,
-    "ast_hash": "dbc25ad64a699bb2e7218bd60f9a9f9f",
+    "mtime": 1794383833.785096,
+    "ast_hash": "4742d2acedd9056cca8f47743f1bfa39",
     "semantic_hash": ""
   },
   "cpanel-vendor-checklist/README.md": {
@@ -2495,8 +2495,8 @@
     "semantic_hash": ""
   },
   "src/data/changelog.js": {
-    "mtime": 1794381474.198356,
-    "ast_hash": "39e9ba88fa779b7ce4c25aeecc508e6c",
+    "mtime": 1794383858.7877607,
+    "ast_hash": "fef148b88b82a327cd575883080967c0",
     "semantic_hash": ""
   },
   "src/app/api/system-feedback/upload/route.js": {
@@ -2592,6 +2592,11 @@
   "cpanel-report-facility/README.md": {
     "mtime": 1794301075.9390686,
     "ast_hash": "2edb9558b2b310193ecd653d6183441b",
+    "semantic_hash": ""
+  },
+  ".agents/rules/ui-button-anti-duplication.md": {
+    "mtime": 1794382701.942093,
+    "ast_hash": "682203bca958c3851336dd3f22cc0628",
     "semantic_hash": ""
   }
 }
