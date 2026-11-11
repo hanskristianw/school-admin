@@ -39,7 +39,7 @@ if (!file_exists(UPLOAD_DIR . 'index.html')) {
 }
 
 // ── 0. SECURE STREAMING FOTO UNTUK NEXT.JS ADMIN & PREVIEW ──────────────────
-if (isset($_GET['action']) && ($_GET['action'] === 'view_photo' || $_GET['action'] === 'view_uploaded_photo')) {
+if (isset($_GET['action']) && ($_GET['action'] === 'view_photo' || $_GET['action'] === 'view_uploaded_photo' || $_GET['action'] === 'view_complaint_photo')) {
     if ($_GET['action'] === 'view_photo') {
         $token = $_GET['token'] ?? '';
         $validTokens = [
@@ -56,27 +56,52 @@ if (isset($_GET['action']) && ($_GET['action'] === 'view_photo' || $_GET['action
     }
 
     $file = basename($_GET['file'] ?? '');
-    $filePath = UPLOAD_DIR . $file;
-    $ext = strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
+    $ext = strtolower(pathinfo($file, PATHINFO_EXTENSION));
 
-    if (!$file || !file_exists($filePath) || !is_file($filePath) || !in_array($ext, ['jpg', 'jpeg', 'png', 'webp'])) {
+    if (!$file || !in_array($ext, ['jpg', 'jpeg', 'png', 'webp'])) {
         http_response_code(404);
         header('Content-Type: application/json');
         echo json_encode(['error' => 'File not found']);
         exit;
     }
 
-    $mimeTypes = [
-        'jpg'  => 'image/jpeg',
-        'jpeg' => 'image/jpeg',
-        'png'  => 'image/png',
-        'webp' => 'image/webp'
+    // Cari lokasi file fisik di beberapa kemungkinan direktori Hostinger
+    $candidatePaths = [
+        UPLOAD_DIR . $file,
+        dirname(__DIR__) . '/reportfacility/uploads/' . $file,
+        dirname(__DIR__) . '/report_facility/uploads/' . $file,
+        dirname(UPLOAD_DIR) . '/reportfacility/uploads/' . $file,
+        dirname(UPLOAD_DIR) . '/report_facility/uploads/' . $file
     ];
-    header('Content-Type: ' . ($mimeTypes[$ext] ?? 'image/jpeg'));
-    header('Content-Length: ' . filesize($filePath));
-    header('Cache-Control: private, max-age=86400');
-    header('Content-Disposition: inline; filename="' . $file . '"');
-    readfile($filePath);
+
+    $filePath = null;
+    foreach ($candidatePaths as $p) {
+        if (file_exists($p) && is_file($p)) {
+            $filePath = $p;
+            break;
+        }
+    }
+
+    // Jika ditemukan di filesystem lokal, stream langsung
+    if ($filePath) {
+        $mimeTypes = [
+            'jpg'  => 'image/jpeg',
+            'jpeg' => 'image/jpeg',
+            'png'  => 'image/png',
+            'webp' => 'image/webp'
+        ];
+        header('Content-Type: ' . ($mimeTypes[$ext] ?? 'image/jpeg'));
+        header('Content-Length: ' . filesize($filePath));
+        header('Cache-Control: private, max-age=86400');
+        header('Content-Disposition: inline; filename="' . $file . '"');
+        readfile($filePath);
+        exit;
+    }
+
+    // Fallback jika beda server: redirect ke hosting_url pelapor
+    $hostingUrl = $_GET['hosting_url'] ?? 'https://ccs.sch.id/reportfacility/';
+    $cleanHost = rtrim($hostingUrl, '/');
+    header("Location: {$cleanHost}/index.php?action=view_uploaded_photo&file=" . urlencode($file));
     exit;
 }
 
@@ -952,6 +977,138 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       margin-bottom: 12px;
     }
 
+    /* Lightbox Modal Pembesar Foto */
+    .lightbox-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(10, 10, 10, 0.82);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      z-index: 99999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+    .lightbox-content {
+      background: var(--surface);
+      border: 1px solid var(--border-strong);
+      border-radius: 10px;
+      max-width: 92vw;
+      max-height: 92vh;
+      width: 580px;
+      overflow: hidden;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35);
+      display: flex;
+      flex-direction: column;
+      animation: lbScale 0.18s ease-out;
+    }
+    @keyframes lbScale {
+      from { opacity: 0; transform: scale(0.95); }
+      to { opacity: 1; transform: scale(1); }
+    }
+    .lightbox-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface-alt);
+    }
+    .lightbox-title {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-primary);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      padding-right: 12px;
+    }
+    .lightbox-close {
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      font-size: 16px;
+      color: var(--text-muted);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+      transition: all 0.15s ease;
+      flex-shrink: 0;
+    }
+    .lightbox-close:hover {
+      color: var(--text-primary);
+      background: var(--border);
+    }
+    .lightbox-body {
+      padding: 12px;
+      background: #0D0D0E;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: auto;
+    }
+    .lightbox-body img {
+      max-width: 100%;
+      max-height: 72vh;
+      object-fit: contain;
+      border-radius: 4px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    }
+
+    /* Thumbnail Foto Keluhan */
+    .complaint-photo-box {
+      margin-bottom: 14px;
+      padding: 10px 12px;
+      background: var(--surface-alt);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+    }
+    .complaint-thumb-wrap {
+      position: relative;
+      width: 96px;
+      height: 78px;
+      flex-shrink: 0;
+      cursor: pointer;
+      border-radius: 6px;
+      overflow: hidden;
+      border: 1px solid var(--border-strong);
+      background: #111;
+    }
+    .complaint-thumb-wrap img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      transition: transform 0.18s ease;
+    }
+    .complaint-thumb-wrap:hover img {
+      transform: scale(1.08);
+    }
+    .complaint-thumb-badge {
+      position: absolute;
+      bottom: 3px;
+      right: 3px;
+      background: rgba(0,0,0,0.7);
+      color: #FFFFFF;
+      border-radius: 3px;
+      padding: 2px 4px;
+      font-size: 8.5px;
+      font-family: var(--font-mono);
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 3px;
+      line-height: 1;
+      pointer-events: none;
+    }
+
     .site-footer {
       border-top: 1px solid var(--border);
       background: var(--surface);
@@ -981,8 +1138,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         />
         <span class="brand-divider"></span>
         <div class="brand-meta">
-          <span class="brand-eyebrow">Facility Operations</span>
-          <span class="brand-title">Cleaner Workspace</span>
+          <span class="brand-title">Operational</span>
         </div>
       </a>
 
@@ -1215,6 +1371,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   <footer class="site-footer">
     CHUNG CHUNG CHRISTIAN SCHOOL &mdash; FACILITY SANITATION &amp; MAINTENANCE SYSTEM
   </footer>
+
+  <!-- Modal Lightbox Pembesar Foto -->
+  <div id="photoLightboxModal" class="lightbox-backdrop" style="display:none;" onclick="closePhotoLightbox()">
+    <div class="lightbox-content" onclick="event.stopPropagation()">
+      <div class="lightbox-header">
+        <span id="lightboxTitle" class="lightbox-title">Foto Kondisi dari Pelapor</span>
+        <button type="button" class="lightbox-close" onclick="closePhotoLightbox()" title="Tutup (Esc)">
+          <i class="ph-bold ph-x"></i>
+        </button>
+      </div>
+      <div class="lightbox-body">
+        <img id="lightboxImg" src="" alt="Foto Ukuran Penuh" />
+      </div>
+    </div>
+  </div>
 
   <script>
     const STORAGE_USER_ID   = 'ccs_cleaner_user_id';
@@ -1627,6 +1798,47 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     // ── KOMPLAIN PELAPOR ─────────────────────────────────────────────────────
+    function escapeAttr(str) {
+      return String(str || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+    }
+
+    function getComplaintPhotoUrl(item) {
+      if (!item) return '';
+      if (item.photo_url) return item.photo_url;
+      if (!item.photo_file) return '';
+      if (item.photo_file.startsWith('http://') || item.photo_file.startsWith('https://')) {
+        return item.photo_file;
+      }
+      if (item.hosting_url) {
+        const cleanHost = item.hosting_url.replace(/\/$/, '');
+        return `${cleanHost}/index.php?action=view_uploaded_photo&file=${encodeURIComponent(item.photo_file)}`;
+      }
+      return `?action=view_uploaded_photo&file=${encodeURIComponent(item.photo_file)}`;
+    }
+
+    function openPhotoLightbox(src, title) {
+      if (!src) return;
+      const modal = document.getElementById('photoLightboxModal');
+      const img = document.getElementById('lightboxImg');
+      const t = document.getElementById('lightboxTitle');
+      img.src = src;
+      t.textContent = title || 'Foto Kondisi dari Pelapor';
+      modal.style.display = 'flex';
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closePhotoLightbox() {
+      const modal = document.getElementById('photoLightboxModal');
+      if (modal) modal.style.display = 'none';
+      const img = document.getElementById('lightboxImg');
+      if (img) img.src = '';
+      document.body.style.overflow = '';
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closePhotoLightbox();
+    });
+
     async function loadComplaintsCountOnly() {
       try {
         const res = await fetch('?ajax_action=get_complaints');
@@ -1664,15 +1876,51 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           return;
         }
 
-        container.innerHTML = list.map(item => `
+        container.innerHTML = list.map(item => {
+          const photoUrl = getComplaintPhotoUrl(item);
+          return `
           <div class="complaint-card">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
               <span class="pastel-tag tag-red">${item.room_name || 'Laporan Umum'}</span>
               <span style="font-family:var(--font-mono); font-size:11px; color:var(--text-muted);">Pelapor: ${item.reporter_name || 'Anonim'}</span>
             </div>
-            <div style="font-size:13.5px; color:var(--text-primary); font-weight:500; margin-bottom:12px;">
+
+            <div style="font-size:13.5px; color:var(--text-primary); font-weight:500; margin-bottom:12px; line-height:1.45;">
               "${item.issue_description || ''}"
             </div>
+
+            ${item.photo_file ? `
+              <div class="complaint-photo-box">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                  <span style="font-family:var(--font-mono); font-size:10px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.04em; display:flex; align-items:center; gap:4px;">
+                    <i class="ph-bold ph-image"></i> Foto Kondisi dari Pelapor
+                  </span>
+                  <span style="font-family:var(--font-mono); font-size:10px; color:var(--text-muted);">Klik foto untuk perbesar</span>
+                </div>
+                <div style="display:flex; align-items:center; gap:12px;">
+                  <div 
+                    class="complaint-thumb-wrap"
+                    onclick="openPhotoLightbox('${photoUrl}', 'Foto Pelapor: ${escapeAttr(item.issue_description || item.room_name)}')"
+                    title="Klik untuk melihat foto ukuran penuh"
+                  >
+                    <img 
+                      src="${photoUrl}" 
+                      alt="Foto Kondisi" 
+                      loading="lazy"
+                      onerror="if (!this.dataset.fallback) { this.dataset.fallback = '1'; this.src = '?action=view_complaint_photo&file=' + encodeURIComponent('${item.photo_file}'); }"
+                    />
+                    <div class="complaint-thumb-badge">
+                      <i class="ph-bold ph-magnifying-glass-plus"></i>
+                      <span>Perbesar</span>
+                    </div>
+                  </div>
+                  <div style="font-size:11.5px; color:var(--text-muted); line-height:1.45;">
+                    Periksa foto kondisi sebelum memulai penanganan. Klik gambar untuk melihat detail yang lebih jelas.
+                  </div>
+                </div>
+              </div>
+            ` : ''}
+
             <input type="file" id="resFile_${item.id}" accept="image/*" capture="environment" style="display:none;" onchange="onSelectResolvePhoto(event, ${item.id})" />
             <div class="upload-slot" id="resSlot_${item.id}" onclick="document.getElementById('resFile_${item.id}').click()" style="padding:12px; margin-bottom:10px;">
               <div id="resPlaceholder_${item.id}" style="font-size:12px; font-weight:600; color:var(--text-primary); display:flex; align-items:center; justify-content:center; gap:6px;">
@@ -1687,7 +1935,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
               <span>Tandai Selesai Ditangani</span>
             </button>
           </div>
-        `).join('');
+          `;
+        }).join('');
       } catch (err) {
         container.innerHTML = '<div style="text-align:center; padding:20px; color:var(--pastel-red-text);">Gagal memuat komplain.</div>';
       }
@@ -1736,6 +1985,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         showAlert(err.message, 'error');
         btn.disabled = false;
         btn.innerHTML = '<i class="ph-bold ph-check"></i><span>Tandai Selesai Ditangani</span>';
+        // Muat ulang daftar komplain agar jika sudah diselesaikan cleaner lain, kartu langsung hilang dari layar
+        await loadComplaints();
       }
     }
 

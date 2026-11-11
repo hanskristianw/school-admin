@@ -38,9 +38,9 @@ export const SYSTEM_RELEASES = [
       ],
       "changed": [
         {
-          "id": "Merombak portal web PHP cPanel (cpanel-vendor-checklist/index.php & cpanel-report-facility/index.php) menggunakan desain Utilitarian Editorial Minimalist dilengkapi logo resmi Chung Chung Christian School, palet warna Warm Monochrome & Spot Pastels, tipografi editorial Instrument Serif & JetBrains Mono, serta 2 dropdown bertingkat dengan penyimpanan nama cleaner otomatis di localStorage.",
-          "en": "Redesigned the cPanel PHP web portals (cpanel-vendor-checklist/index.php & cpanel-report-facility/index.php) using a Utilitarian Editorial Minimalist aesthetic featuring the official Chung Chung Christian School logo, Warm Monochrome & Spot Pastels palette, Instrument Serif & JetBrains Mono editorial typography, and 2 cascading dropdowns with automatic localStorage cleaner memory.",
-          "zh": "采用极简实用主义编辑风格（Utilitarian Editorial Minimalist）重构 cPanel PHP 门户（cpanel-vendor-checklist/index.php 与 cpanel-report-facility/index.php），配备中中基督学校（CCS）官方校徽、暖色单色与柔和粉彩配色、Instrument Serif 与 JetBrains Mono 字体排版，以及支持 localStorage 自动记忆保洁员姓名的双下拉菜单联动。"
+          "id": "Merombak portal web PHP cPanel (cpanel-vendor-checklist/index.php & cpanel-report-facility/index.php) menggunakan desain Utilitarian Editorial Minimalist dilengkapi logo resmi Chung Chung Christian School, header ringkas 'Operational' pada portal cleaner dan 'Report Facility' pada portal pelapor, menghapus badge QR general dan footer yang tidak diperlukan, palet warna Warm Monochrome & Spot Pastels, serta tipografi editorial Instrument Serif & JetBrains Mono.",
+          "en": "Redesigned the cPanel PHP web portals (cpanel-vendor-checklist/index.php & cpanel-report-facility/index.php) using a Utilitarian Editorial Minimalist aesthetic featuring the official Chung Chung Christian School logo, concise header text ('Operational' on cleaner portal and 'Report Facility' on reporter portal), removing redundant QR badges and footers, Warm Monochrome & Spot Pastels palette, and Instrument Serif & JetBrains Mono editorial typography.",
+          "zh": "采用极简实用主义编辑风格重构 cPanel PHP 门户（cpanel-vendor-checklist/index.php 与 cpanel-report-facility/index.php），配备中中基督学校（CCS）官方校徽、保洁端 'Operational' 与报修端 'Report Facility' 简明顶栏、移除报修端多余的右上角二维码标识与页脚、暖色单色与柔和粉彩配色，以及 Instrument Serif 与 JetBrains Mono 字体排版。"
         },
         {
           "id": "Menyeragamkan seluruh header kolom tabel, label antarmuka, tombol aksi, placeholder, dan pesan status pada halaman Health Report Card (/data/health_report) ke dalam bahasa Inggris resmi (EYE, EAR, DENTAL, BP, RBG, COLOR VISION, NAILS, HAIR, WEIGHT, HEIGHT, TYPE, DATE, CHRONOLOGY, TREATMENT).",
@@ -56,6 +56,21 @@ export const SYSTEM_RELEASES = [
           "id": "Menghapus tombol pintasan antar-halaman Master Ruangan pada halaman /data/vendor-checklist (serta pintasan sebaliknya pada /data/room) agar navigasi terpusat melalui menu utama.",
           "en": "Removed the cross-page Room Master shortcut button on /data/vendor-checklist (and the reverse shortcut on /data/room) so navigation remains centralized through the main menu.",
           "zh": "移除 /data/vendor-checklist 页面上的教室主数据跨页快捷按钮（以及 /data/room 上的反向快捷按钮），统一通过主菜单导航。"
+        },
+        {
+          "id": "Menyederhanakan bilah navigasi dan tabel /data/vendor-checklist dengan menghapus 5 tab filter status yang tidak diperlukan (hanya menyisakan tab 'All Rooms'), serta menghapus tombol duplikat 'Atur Petugas Ruangan' di bagian bawah dan tombol '+ Kelola Ruangan' di bawah nama cleaner pada tabel kalender matriks, sehingga pengelolaan penugasan terpusat pada 1 tombol utama 'Atur Petugas Ruangan' di pojok kanan atas berdampingan dengan Role Supervisor dan QR General.",
+          "en": "Simplified /data/vendor-checklist navigation and table by removing the 5 redundant status filter tabs (leaving exclusively the 'All Rooms' tab), and removing duplicate 'Atur Petugas Ruangan' buttons from the bottom and the '+ Kelola Ruangan' button under each cleaner's name in the matrix table, centralizing all assignment controls into 1 primary 'Atur Petugas Ruangan' button in the top-right toolbar alongside Role Supervisor and QR General.",
+          "zh": "精简 /data/vendor-checklist 导航与表格，移除 5 个冗余状态筛选选项卡仅保留 'All Rooms'，并删除底部重复的'Atur Petugas Ruangan'按钮及日历矩阵表格中保洁员姓名下方的'+ Kelola Ruangan'按钮，使房间排班管理统一收敛至右上角与 Role Supervisor 及 QR General 并列的唯一主按钮。"
+        },
+        {
+          "id": "Mengimplementasikan Tampilan Kalender Mingguan (Weekly Calendar View) sebagai tampilan tunggal di /data/vendor-checklist untuk memantau status pelaporan tugas kebersihan harian seluruh cleaner dalam seminggu penuh, menghapus widget 'Pantauan Pelaporan Hari Ini' serta pilihan mode 'Tabel Harian' dan 'Kartu Foto' demi antarmuka yang bersih dan fokus, serta menyediakan modal terpadu 'Atur Petugas Ruangan' untuk mempermudah pengaturan petugas per ruangan.",
+          "en": "Implemented Weekly Calendar View as the sole view on /data/vendor-checklist to monitor cleaner daily cleaning reporting across the entire week, removing the 'Today's Reporting Spotlight' widget and the 'Daily Table' / 'Photo Cards' view switchers for a cleaner interface, and providing a unified 'Atur Petugas Ruangan' modal for easy room assignment management.",
+          "zh": "在 /data/vendor-checklist 将周历视图（Weekly Calendar View）作为唯一监控视图，移除'今日报送看板'以及'每日表格'与'照片卡片'切换按钮以精简界面，并提供统一的'Atur Petugas Ruangan'弹窗以全面提升按教室指派保洁员的便捷度。"
+        },
+        {
+          "id": "Menyinkronkan penugasan 95 slot ruangan ke 5 cleaner aktif berakhiran nama 'Triple S' (Davit: 18 ruangan, Risky: 17 ruangan, Darul: 24 ruangan, Fitria: 18 ruangan, Raditya: 18 ruangan) tanpa duplikasi ruangan pada master ruangan.",
+          "en": "Synchronized 95 room assignment slots to 5 active cleaners with 'Triple S' suffix (Davit: 18 rooms, Risky: 17 rooms, Darul: 24 rooms, Fitria: 18 rooms, Raditya: 18 rooms) with zero duplication in the room master catalog.",
+          "zh": "同步 95 间教室保洁排班至 5 名后缀为 'Triple S' 的在职保洁员（Davit：18 间、Risky：17 间、Darul：24 间、Fitria：18 间、Raditya：18 间），并确保教室主数据无重复记录。"
         }
       ],
       "fixed": [
@@ -63,6 +78,16 @@ export const SYSTEM_RELEASES = [
           "id": "Memperbaiki error 403 Forbidden (Direct access is strictly prohibited) pada portal PHP cPanel (cpanel-report-facility/index.php & cpanel-vendor-checklist/index.php) dengan mendefinisikan konstanta proteksi CCS_VENDOR_LOADED sebelum memuat config.php serta menyelaraskan konstanta API_SECRET_TOKEN dan NEXTJS_API_URL.",
           "en": "Fixed the 403 Forbidden (Direct access is strictly prohibited) error on the cPanel PHP portals (cpanel-report-facility/index.php & cpanel-vendor-checklist/index.php) by defining the CCS_VENDOR_LOADED guard constant before loading config.php and aligning API_SECRET_TOKEN and NEXTJS_API_URL constants.",
           "zh": "修复 cPanel PHP 门户（cpanel-report-facility/index.php 与 cpanel-vendor-checklist/index.php）中的 403 Forbidden（Direct access is strictly prohibited）错误，在加载 config.php 前定义 CCS_VENDOR_LOADED 保护常量并统一 API_SECRET_TOKEN 与 NEXTJS_API_URL 常量。"
+        },
+        {
+          "id": "Menambahkan pratinjau thumbnail foto kondisi keluhan pelapor pada tab 'Komplain Pelapor' di portal cleaner (/checklist/index.php) lengkap dengan modal lightbox interaktif untuk memperbesar foto saat diklik, serta dukungan streaming lintas folder uploads antara portal pelapor dan cleaner.",
+          "en": "Added reporter condition photo thumbnail preview on the 'Komplain Pelapor' tab in the cleaner portal (/checklist/index.php) complete with an interactive lightbox modal to enlarge photos upon clicking, along with cross-folder upload streaming support between reporter and cleaner portals.",
+          "zh": "在保洁员门户（/checklist/index.php）的'报修投诉'选项卡中新增报修人现场照片微缩图预览，并配备点击即可放大查看全图的交互式灯箱弹窗（Lightbox），同时支持报修端与保洁端跨 uploads 目录的文件流式访问。"
+        },
+        {
+          "id": "Menambahkan proteksi konkurensi (atomic concurrency guard) pada API penyelesaian komplain (resolve_report) untuk mencegah race condition saat 2 cleaner menyelesaikan komplain yang sama secara bersamaan: cleaner kedua tidak akan menimpa data cleaner pertama melainkan menerima notifikasi bahwa laporan telah diselesaikan lebih dulu beserta nama petugas dan jamnya, lalu kartu otomatis diperbarui.",
+          "en": "Added atomic concurrency guard to the complaint resolution API (resolve_report) to prevent race conditions when two cleaners resolve the same complaint simultaneously: the second cleaner will not overwrite the first cleaner's submission but will receive a notice stating it was already resolved along with the resolver's name and timestamp, automatically refreshing the card.",
+          "zh": "在设施报修处理接口（resolve_report）中加入原子并发控制保护（Atomic Concurrency Guard），防止两名保洁员同时处理同一张报修单发生竞争覆写：后提交的保洁员不会覆盖先提交者的数据，而是会收到提示告知该报修单已由首位保洁员于几点几分完成，并自动刷新移除该卡片。"
         }
       ]
     }

@@ -31,7 +31,12 @@ import {
   faPrint,
   faDownload,
   faFilePdf,
-  faSpinner
+  faSpinner,
+  faCalendarWeek,
+  faUserCheck,
+  faUserTimes,
+  faExclamationCircle,
+  faInfoCircle
 } from '@fortawesome/free-solid-svg-icons'
 import {
   DEFAULT_GENERAL_REPORT_URL,
@@ -87,6 +92,41 @@ function calculateDuration(startStr, endStr) {
   }
 }
 
+function getWeekBounds(dateStr) {
+  if (!dateStr) return { startDate: '', endDate: '', days: [] }
+  const [y, m, d] = dateStr.split('-').map(Number)
+  const curr = new Date(y, m - 1, d)
+  const dayOfWeek = curr.getDay() // 0 = Sun, 1 = Mon, ..., 6 = Sat
+  const distanceToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek
+  const monday = new Date(curr)
+  monday.setDate(curr.getDate() + distanceToMonday)
+
+  const todayStr = getWibDate()
+  const days = []
+  for (let i = 0; i < 7; i++) {
+    const dt = new Date(monday)
+    dt.setDate(monday.getDate() + i)
+    const yr = dt.getFullYear()
+    const mo = String(dt.getMonth() + 1).padStart(2, '0')
+    const da = String(dt.getDate()).padStart(2, '0')
+    const iso = `${yr}-${mo}-${da}`
+    days.push({
+      dateStr: iso,
+      dayIndex: dt.getDay(),
+      dayName: ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'][dt.getDay()],
+      dayShort: ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'][dt.getDay()],
+      formatted: dt.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }),
+      isToday: iso === todayStr,
+      isSelected: iso === dateStr
+    })
+  }
+  return {
+    startDate: days[0].dateStr,
+    endDate: days[6].dateStr,
+    days
+  }
+}
+
 export default function VendorChecklistDashboardPage() {
   const router = useRouter()
   const { isDark } = useTheme()
@@ -108,7 +148,8 @@ export default function VendorChecklistDashboardPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [cleanerFilter, setCleanerFilter] = useState('all')
   const [activeTab, setActiveTab] = useState('all') // 'all' | 'pending_review' | 'in_progress' | 'revision' | 'approved' | 'not_started'
-  const [viewMode, setViewMode] = useState('table') // 'table' | 'grid'
+  const [viewMode, setViewMode] = useState('weekly') // 'weekly' (default) | 'table' | 'grid'
+  const [cleanerDayModal, setCleanerDayModal] = useState(null) // { cleaner, day } modal detail popup
 
   // Main Tab Navigation: 'checklists' | 'complaints'
   const [mainTab, setMainTab] = useState('checklists')
@@ -122,6 +163,9 @@ export default function VendorChecklistDashboardPage() {
   const [editingRoomModal, setEditingRoomModal] = useState(null) // room item object
   const [draftRoomCleaners, setDraftRoomCleaners] = useState([]) // array of user_ids
   const [cleanerModalSearch, setCleanerModalSearch] = useState('')
+  const [manageAssignmentsModalOpen, setManageAssignmentsModalOpen] = useState(false)
+  const [assignmentSearch, setAssignmentSearch] = useState('')
+  const [assignmentCleanerFilter, setAssignmentCleanerFilter] = useState('all')
 
   // General QR Modal state
   const [generalQrModalOpen, setGeneralQrModalOpen] = useState(false)
@@ -254,10 +298,13 @@ export default function VendorChecklistDashboardPage() {
       if (roomErr) throw roomErr
       setRooms(roomList || [])
 
+      const currentBounds = getWeekBounds(selectedDate)
+
       const { data: checklistList, error: checkErr } = await supabase
         .from('vendor_room_checklists')
         .select('*')
-        .eq('check_date', selectedDate)
+        .gte('check_date', currentBounds.startDate)
+        .lte('check_date', currentBounds.endDate)
 
       if (checkErr) {
         if (checkErr.code === '42P01' || checkErr.message?.includes('does not exist')) {
@@ -397,10 +444,12 @@ export default function VendorChecklistDashboardPage() {
     }
   }
 
-  // 3. Combine Rooms, Assigned Cleaners, and Checklist data
+  // 3. Combine Rooms, Assigned Cleaners, and Checklist data for selectedDate
   const mergedItems = useMemo(() => {
     const checklistMap = new Map()
-    checklists.forEach(c => checklistMap.set(c.room_id, c))
+    checklists
+      .filter(c => c.check_date === selectedDate)
+      .forEach(c => checklistMap.set(c.room_id, c))
 
     return rooms.map(room => {
       const check = checklistMap.get(room.room_id)
@@ -415,12 +464,37 @@ export default function VendorChecklistDashboardPage() {
         status: check ? check.status : 'not_started'
       }
     })
-  }, [rooms, checklists, roomCleanersMap])
+  }, [rooms, checklists, selectedDate, roomCleanersMap])
 
   // Unassigned active rooms
   const unassignedRooms = useMemo(() => {
     return mergedItems.filter(item => item.is_active && (!item.assigned_cleaners || item.assigned_cleaners.length === 0))
   }, [mergedItems])
+
+  // Filtered rooms for Manage Assignments modal
+  const filteredAssignmentRooms = useMemo(() => {
+    return rooms.filter(rm => {
+      if (assignmentCleanerFilter !== 'all') {
+        if (assignmentCleanerFilter === 'unassigned') {
+          const cleanersForRoom = roomCleanersMap[rm.room_id] || []
+          if (cleanersForRoom.length > 0) return false
+        } else {
+          const targetId = Number(assignmentCleanerFilter)
+          const cleanersForRoom = roomCleanersMap[rm.room_id] || []
+          if (!cleanersForRoom.some(c => Number(c.user_id) === targetId)) return false
+        }
+      }
+
+      if (assignmentSearch.trim()) {
+        const q = assignmentSearch.toLowerCase()
+        const roomMatch = rm.room_name.toLowerCase().includes(q)
+        const cleanerMatch = (roomCleanersMap[rm.room_id] || []).some(c => c.full_name.toLowerCase().includes(q))
+        if (!roomMatch && !cleanerMatch) return false
+      }
+
+      return true
+    })
+  }, [rooms, roomCleanersMap, assignmentCleanerFilter, assignmentSearch])
 
   // 4. Statistics Calculation
   const stats = useMemo(() => {
@@ -472,6 +546,223 @@ export default function VendorChecklistDashboardPage() {
       return true
     })
   }, [mergedItems, activeTab, cleanerFilter, searchQuery])
+
+  // 6. Weekly Matrix Calculation (Cleaner Rows x Weekday Columns)
+  const weekBounds = useMemo(() => getWeekBounds(selectedDate), [selectedDate])
+
+  const weeklyMatrixData = useMemo(() => {
+    let targetCleaners = cleaners.filter(c => (assignmentsMap[String(c.user_id)] || []).length > 0)
+    if (cleanerFilter !== 'all' && cleanerFilter !== 'unassigned') {
+      const targetId = Number(cleanerFilter)
+      targetCleaners = targetCleaners.filter(c => Number(c.user_id) === targetId)
+    }
+
+    const roomMap = new Map(rooms.map(r => [r.room_id, r]))
+    const todayStr = getWibDate()
+
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase()
+      targetCleaners = targetCleaners.filter(c => {
+        const cleanerMatch = (c.full_name || '').toLowerCase().includes(q)
+        const assignedIds = assignmentsMap[String(c.user_id)] || []
+        const roomMatch = assignedIds.some(rId => {
+          const rm = roomMap.get(rId)
+          return rm && rm.room_name.toLowerCase().includes(q)
+        })
+        return cleanerMatch || roomMatch
+      })
+    }
+
+    const checklistLookup = new Map()
+    checklists.forEach(chk => {
+      checklistLookup.set(`${chk.check_date}_${chk.room_id}`, chk)
+    })
+
+    const rows = targetCleaners.map(cleaner => {
+      const assignedRoomIds = assignmentsMap[String(cleaner.user_id)] || []
+      const totalAssignedRooms = assignedRoomIds.length
+
+      let weeklyReportedTotal = 0
+      let weeklyApprovedTotal = 0
+      let weeklyPendingTotal = 0
+      let weeklyRevisionTotal = 0
+
+      const daysData = weekBounds.days.map(d => {
+        const isFuture = d.dateStr > todayStr
+        const isToday = d.dateStr === todayStr
+        const isPast = d.dateStr < todayStr
+
+        const roomsForCleaner = assignedRoomIds.map(rId => {
+          const roomObj = roomMap.get(rId) || { room_id: rId, room_name: `Ruangan #${rId}` }
+          const chk = checklistLookup.get(`${d.dateStr}_${rId}`)
+          return {
+            room_id: rId,
+            room_name: roomObj.room_name,
+            qr_code_token: roomObj.qr_code_token,
+            assigned_cleaners: roomCleanersMap[rId] || [],
+            checklist: chk || null,
+            status: chk ? chk.status : 'not_started'
+          }
+        })
+
+        let approved = 0
+        let pendingReview = 0
+        let inProgress = 0
+        let revision = 0
+        let rejected = 0
+        let notStarted = 0
+
+        roomsForCleaner.forEach(r => {
+          if (r.status === 'approved') approved++
+          else if (r.status === 'pending_review') pendingReview++
+          else if (r.status === 'in_progress') inProgress++
+          else if (r.status === 'revision') revision++
+          else if (r.status === 'rejected') rejected++
+          else notStarted++
+        })
+
+        const reportedCount = approved + pendingReview + inProgress + revision + rejected
+        const completedCount = approved + pendingReview
+
+        weeklyReportedTotal += reportedCount
+        weeklyApprovedTotal += approved
+        weeklyPendingTotal += pendingReview
+        weeklyRevisionTotal += revision
+
+        let dayStatus = 'not_started'
+        if (totalAssignedRooms === 0) {
+          dayStatus = 'no_tasks'
+        } else if (completedCount >= totalAssignedRooms && totalAssignedRooms > 0) {
+          dayStatus = 'completed'
+        } else if (reportedCount > 0) {
+          dayStatus = 'partial'
+        } else if (isFuture) {
+          dayStatus = 'future'
+        } else {
+          dayStatus = 'not_started'
+        }
+
+        return {
+          dateStr: d.dateStr,
+          dayName: d.dayName,
+          dayShort: d.dayShort,
+          formatted: d.formatted,
+          isToday,
+          isPast,
+          isFuture,
+          totalAssigned: totalAssignedRooms,
+          reportedCount,
+          completedCount,
+          approved,
+          pendingReview,
+          inProgress,
+          revision,
+          rejected,
+          notStarted,
+          dayStatus,
+          rooms: roomsForCleaner
+        }
+      })
+
+      const activeDaysCount = weekBounds.days.filter(d => d.dateStr <= todayStr).length || 1
+      const maxPossibleForActiveDays = totalAssignedRooms * activeDaysCount
+      const weeklyPercent = maxPossibleForActiveDays > 0
+        ? Math.round(((weeklyApprovedTotal + weeklyPendingTotal) / maxPossibleForActiveDays) * 100)
+        : 0
+
+      return {
+        cleaner,
+        totalAssignedRooms,
+        assignedRoomNames: assignedRoomIds.map(rId => roomMap.get(rId)?.room_name || `#${rId}`),
+        days: daysData,
+        weeklyStats: {
+          reported: weeklyReportedTotal,
+          approved: weeklyApprovedTotal,
+          pending: weeklyPendingTotal,
+          revision: weeklyRevisionTotal,
+          percent: weeklyPercent
+        }
+      }
+    })
+
+    const todayIndex = weekBounds.days.findIndex(d => d.isToday)
+    const todayUnreportedCleaners = []
+    const todayPartialCleaners = []
+    const todayCompletedCleaners = []
+
+    rows.forEach(r => {
+      const todayDay = todayIndex >= 0 ? r.days[todayIndex] : null
+      if (todayDay && r.totalAssignedRooms > 0) {
+        if (todayDay.dayStatus === 'completed') {
+          todayCompletedCleaners.push({
+            cleaner: r.cleaner,
+            completed: todayDay.completedCount,
+            total: r.totalAssignedRooms,
+            dayData: todayDay
+          })
+        } else if (todayDay.dayStatus === 'partial') {
+          todayPartialCleaners.push({
+            cleaner: r.cleaner,
+            completed: todayDay.completedCount,
+            total: r.totalAssignedRooms,
+            dayData: todayDay
+          })
+        } else {
+          todayUnreportedCleaners.push({
+            cleaner: r.cleaner,
+            completed: 0,
+            total: r.totalAssignedRooms,
+            dayData: todayDay
+          })
+        }
+      }
+    })
+
+    const dayTotals = weekBounds.days.map((d, dIdx) => {
+      let sumAssigned = 0
+      let sumCompleted = 0
+      let sumReported = 0
+      let sumPending = 0
+      let sumApproved = 0
+
+      rows.forEach(r => {
+        const day = r.days[dIdx]
+        if (day) {
+          sumAssigned += day.totalAssigned
+          sumCompleted += day.completedCount
+          sumReported += day.reportedCount
+          sumPending += day.pendingReview
+          sumApproved += day.approved
+        }
+      })
+
+      const percent = sumAssigned > 0 ? Math.round((sumCompleted / sumAssigned) * 100) : 0
+
+      return {
+        dateStr: d.dateStr,
+        dayName: d.dayName,
+        formatted: d.formatted,
+        isToday: d.isToday,
+        sumAssigned,
+        sumCompleted,
+        sumReported,
+        sumPending,
+        sumApproved,
+        percent
+      }
+    })
+
+    return {
+      rows,
+      dayTotals,
+      todaySpotlight: {
+        unreported: todayUnreportedCleaners,
+        partial: todayPartialCleaners,
+        completed: todayCompletedCleaners,
+        allReported: todayUnreportedCleaners.length === 0 && todayPartialCleaners.length === 0 && todayCompletedCleaners.length > 0
+      }
+    }
+  }, [cleaners, assignmentsMap, rooms, checklists, selectedDate, cleanerFilter, weekBounds, roomCleanersMap, searchQuery])
 
   // 6. Review checklist action
   const handleReviewAction = async (newStatus) => {
@@ -540,6 +831,16 @@ export default function VendorChecklistDashboardPage() {
     const d = new Date(selectedDate)
     d.setDate(d.getDate() + days)
     setSelectedDate(d.toISOString().slice(0, 10))
+  }
+
+  const changeWeekBy = (weeks) => {
+    const d = new Date(selectedDate)
+    d.setDate(d.getDate() + (weeks * 7))
+    setSelectedDate(d.toISOString().slice(0, 10))
+  }
+
+  const openCleanerDayModal = (cleaner, dayData) => {
+    setCleanerDayModal({ cleaner, day: dayData })
   }
 
   const isToday = selectedDate === getWibDate()
@@ -781,6 +1082,31 @@ export default function VendorChecklistDashboardPage() {
             </button>
           )}
 
+          {/* Kelola Penugasan Petugas Ruangan (Room PIC) */}
+          <button
+            onClick={() => {
+              setAssignmentCleanerFilter('all')
+              setAssignmentSearch('')
+              setManageAssignmentsModalOpen(true)
+            }}
+            style={{
+              background: isDark ? 'rgba(59, 130, 246, 0.15)' : '#EFF6FF',
+              border: `1px solid ${isDark ? '#2563EB' : '#BFDBFE'}`,
+              color: isDark ? '#60A5FA' : '#1D4ED8',
+              borderRadius: '6px',
+              fontSize: '12px',
+              fontWeight: 600,
+              padding: '7px 14px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}
+          >
+            <FontAwesomeIcon icon={faUsersCog} className="text-xs" />
+            <span>Atur Petugas Ruangan</span>
+          </button>
+
           {/* General QR Pelapor Modal Button */}
           <button
             onClick={() => setGeneralQrModalOpen(true)}
@@ -908,130 +1234,28 @@ export default function VendorChecklistDashboardPage() {
             </div>
           )}
 
-          {/* ── BENTO METRIC CARDS ── */}
-          <div className="grid grid-cols-2 md:grid-cols-6 gap-3 mb-6">
-            <div
-              onClick={() => setActiveTab('all')}
-              style={{ background: cardBg, border: `1px solid ${borderColor}`, borderRadius: '8px', padding: '14px 18px', cursor: 'pointer' }}
-              className="hover:border-neutral-400 transition"
-            >
-              <div className="text-[10px] font-mono tracking-wider uppercase font-semibold" style={{ color: textSecondary }}>
-                TOTAL ROOMS
-              </div>
-              <div className="text-2xl font-bold font-mono tracking-tight mt-1.5" style={{ color: textPrimary }}>
-                {stats.total}
-              </div>
-            </div>
-
-            <div
-              onClick={() => setActiveTab('not_started')}
-              style={{ background: cardBg, border: `1px solid ${borderColor}`, borderRadius: '8px', padding: '14px 18px', cursor: 'pointer' }}
-              className="hover:border-neutral-400 transition"
-            >
-              <div className="text-[10px] font-mono tracking-wider uppercase font-semibold" style={{ color: textSecondary }}>
-                NOT STARTED
-              </div>
-              <div className="text-2xl font-bold font-mono tracking-tight mt-1.5 text-neutral-500">
-                {stats.notStarted}
-              </div>
-            </div>
-
-            <div
-              onClick={() => setActiveTab('in_progress')}
-              style={{ background: cardBg, border: `1px solid ${borderColor}`, borderRadius: '8px', padding: '14px 18px', cursor: 'pointer' }}
-              className="hover:border-neutral-400 transition"
-            >
-              <div className="text-[10px] font-mono tracking-wider uppercase font-semibold flex items-center justify-between">
-                <span style={{ color: '#1F6C9F' }}>IN PROGRESS</span>
-                <span className="w-2 h-2 rounded-full bg-[#1F6C9F]" />
-              </div>
-              <div className="text-2xl font-bold font-mono tracking-tight mt-1.5" style={{ color: isDark ? '#60A5FA' : '#1F6C9F' }}>
-                {stats.inProgress}
-              </div>
-            </div>
-
-            <div
-              onClick={() => setActiveTab('pending_review')}
-              style={{
-                background: isDark ? 'rgba(245, 158, 11, 0.08)' : '#FEF8EE',
-                border: '1px solid #F59E0B',
-                borderRadius: '8px',
-                padding: '14px 18px',
-                cursor: 'pointer'
-              }}
-              className="shadow-2xs transition"
-            >
-              <div className="text-[10px] font-mono tracking-wider uppercase font-semibold flex items-center justify-between">
-                <span className="text-amber-700 dark:text-amber-400">UNDER REVIEW</span>
-                <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping" />
-              </div>
-              <div className="text-2xl font-bold font-mono tracking-tight mt-1.5 text-amber-600 dark:text-amber-400">
-                {stats.pendingReview}
-              </div>
-            </div>
-
-            <div
-              onClick={() => setActiveTab('revision')}
-              style={{ background: cardBg, border: `1px solid ${borderColor}`, borderRadius: '8px', padding: '14px 18px', cursor: 'pointer' }}
-              className="hover:border-neutral-400 transition"
-            >
-              <div className="text-[10px] font-mono tracking-wider uppercase font-semibold flex items-center justify-between">
-                <span className="text-rose-600 dark:text-rose-400">REVISION</span>
-                <span className="w-2 h-2 rounded-full bg-rose-500" />
-              </div>
-              <div className="text-2xl font-bold font-mono tracking-tight mt-1.5 text-rose-600 dark:text-rose-400">
-                {stats.revision}
-              </div>
-            </div>
-
-            <div
-              onClick={() => setActiveTab('approved')}
-              style={{ background: cardBg, border: `1px solid ${borderColor}`, borderRadius: '8px', padding: '14px 18px', cursor: 'pointer' }}
-              className="hover:border-neutral-400 transition"
-            >
-              <div className="text-[10px] font-mono tracking-wider uppercase font-semibold flex items-center justify-between">
-                <span style={{ color: '#346538' }}>APPROVED</span>
-                <span className="w-2 h-2 rounded-full bg-[#346538]" />
-              </div>
-              <div className="text-2xl font-bold font-mono tracking-tight mt-1.5" style={{ color: isDark ? '#4ADE80' : '#346538' }}>
-                {stats.approved}
-              </div>
-            </div>
-          </div>
-
-          {/* ── TABS NAVIGATION ── */}
+          {/* ── TABS NAVIGATION (HANYA ALL ROOMS) ── */}
           <div style={{ display: 'flex', borderBottom: `1px solid ${borderColor}`, marginBottom: '20px', gap: '20px', flexWrap: 'wrap' }}>
-            {[
-              { id: 'all', label: 'All Rooms', count: stats.total },
-              { id: 'pending_review', label: 'Under Review', count: stats.pendingReview, highlight: true },
-              { id: 'in_progress', label: 'In Progress', count: stats.inProgress },
-              { id: 'revision', label: 'Revision', count: stats.revision },
-              { id: 'approved', label: 'Approved', count: stats.approved },
-              { id: 'not_started', label: 'Not Started', count: stats.notStarted }
-            ].map(tab => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                style={{
-                  padding: '12px 0',
-                  fontSize: '13px',
-                  fontFamily: 'monospace',
-                  fontWeight: activeTab === tab.id ? 700 : 400,
-                  border: 'none',
-                  background: 'none',
-                  cursor: 'pointer',
-                  color: activeTab === tab.id ? (tab.highlight ? '#D97706' : textPrimary) : textSecondary,
-                  borderBottom: activeTab === tab.id ? (tab.highlight ? '2px solid #D97706' : `2px solid ${textPrimary}`) : '2px solid transparent',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  transition: 'all 0.15s ease'
-                }}
-              >
-                <span>{tab.label}</span>
-                <span className="text-[11px] opacity-75">({tab.count})</span>
-              </button>
-            ))}
+            <button
+              onClick={() => setActiveTab('all')}
+              style={{
+                padding: '12px 0',
+                fontSize: '13px',
+                fontFamily: 'monospace',
+                fontWeight: 700,
+                border: 'none',
+                background: 'none',
+                cursor: 'pointer',
+                color: textPrimary,
+                borderBottom: `2px solid ${textPrimary}`,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}
+            >
+              <span>All Rooms</span>
+              <span className="text-[11px] opacity-75">({rooms.length})</span>
+            </button>
           </div>
 
           {/* ── SEARCH, CLEANER FILTER & VIEW MODE TOOLBAR ── */}
@@ -1072,30 +1296,6 @@ export default function VendorChecklistDashboardPage() {
                 <option value="unassigned">Belum Ada PIC Cleaner ({unassignedRooms.length})</option>
               </select>
             </div>
-
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-neutral-400 font-mono">Tampilan:</span>
-              <div className="flex items-center rounded border p-0.5" style={{ borderColor, background: cardBg }}>
-                <button
-                  onClick={() => setViewMode('table')}
-                  className={`p-1.5 rounded text-xs transition cursor-pointer ${
-                    viewMode === 'table' ? 'bg-neutral-800 text-white dark:bg-white dark:text-neutral-900' : 'text-neutral-400'
-                  }`}
-                  title="Tampilan Tabel"
-                >
-                  <FontAwesomeIcon icon={faList} />
-                </button>
-                <button
-                  onClick={() => setViewMode('grid')}
-                  className={`p-1.5 rounded text-xs transition cursor-pointer ${
-                    viewMode === 'grid' ? 'bg-neutral-800 text-white dark:bg-white dark:text-neutral-900' : 'text-neutral-400'
-                  }`}
-                  title="Tampilan Kartu"
-                >
-                  <FontAwesomeIcon icon={faThLarge} />
-                </button>
-              </div>
-            </div>
           </div>
 
           {/* ── CONTENT AREA ── */}
@@ -1104,315 +1304,305 @@ export default function VendorChecklistDashboardPage() {
               <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
               <p className="text-xs font-mono" style={{ color: textSecondary }}>MEMUAT DATA CHECKLIST...</p>
             </div>
-          ) : filteredItems.length === 0 ? (
-            <div style={{ background: cardBg, border: `1px solid ${borderColor}`, borderRadius: '8px', padding: '48px 24px', textAlign: 'center' }}>
-              <FontAwesomeIcon icon={faBroom} className="text-3xl text-neutral-400 mb-3" />
-              <div className="font-semibold text-sm" style={{ color: textPrimary }}>Tidak Ada Ruangan Sesuai Filter</div>
-              <p className="text-xs text-neutral-400 max-w-sm mx-auto mt-1">
-                {searchQuery || activeTab !== 'all' || cleanerFilter !== 'all'
-                  ? 'Silakan ubah filter status, cleaner, atau kata kunci pencarian Anda.'
-                  : 'Belum ada ruangan yang terdaftar di master ruangan.'}
-              </p>
-            </div>
-          ) : viewMode === 'table' ? (
-            /* ── TABLE VIEW ── */
-            <div style={{ background: cardBg, border: `1px solid ${borderColor}`, borderRadius: '8px', overflow: 'hidden' }}>
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs border-collapse">
-                  <thead>
-                    <tr className="border-b" style={{ borderColor, background: isDark ? '#141416' : '#F9F9F8', color: textSecondary }}>
-                      <th className="py-3 px-4 font-mono font-semibold text-[11px] uppercase tracking-wider">Ruangan</th>
-                      <th className="py-3 px-4 font-mono font-semibold text-[11px] uppercase tracking-wider">Jadwal PIC Cleaner</th>
-                      <th className="py-3 px-4 font-mono font-semibold text-[11px] uppercase tracking-wider">Status</th>
-                      <th className="py-3 px-4 font-mono font-semibold text-[11px] uppercase tracking-wider">Dikerjakan Oleh</th>
-                      <th className="py-3 px-4 font-mono font-semibold text-[11px] uppercase tracking-wider">Waktu Upload</th>
-                      <th className="py-3 px-4 font-mono font-semibold text-[11px] uppercase tracking-wider">Bukti Foto (Before &amp; After)</th>
-                      <th className="py-3 px-4 font-mono font-semibold text-[11px] uppercase tracking-wider text-right">Aksi</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y" style={{ borderColor }}>
-                    {filteredItems.map(item => {
-                      return (
-                        <tr key={item.room_id} className="hover:bg-neutral-50/50 dark:hover:bg-neutral-800/40 transition">
-                          <td className="py-3.5 px-4 font-medium" style={{ color: textPrimary }}>
-                            <div className="font-semibold">{item.room_name}</div>
-                            <div className="font-mono text-[10px] text-neutral-400">ID #{item.room_id}</div>
-                          </td>
-                          <td className="py-3.5 px-4">
-                            {item.assigned_cleaners && item.assigned_cleaners.length > 0 ? (
-                              <div className="flex flex-wrap items-center gap-1.5">
-                                {item.assigned_cleaners.map(c => (
-                                  <span
-                                    key={c.user_id}
-                                    onClick={() => openEditRoomCleaners(item)}
-                                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 cursor-pointer hover:opacity-80"
-                                    title="Klik untuk mengubah petugas"
-                                  >
-                                    <FontAwesomeIcon icon={faUser} className="text-[9px]" />
-                                    {c.full_name}
-                                  </span>
-                                ))}
-                                <button
-                                  type="button"
-                                  onClick={() => openEditRoomCleaners(item)}
-                                  className="px-1.5 py-0.5 rounded text-[10px] font-mono text-neutral-500 hover:text-blue-600 dark:hover:text-blue-400 border border-transparent hover:border-neutral-300 dark:hover:border-neutral-700 cursor-pointer"
-                                  title="Atur siapa yang membersihkan ruangan ini"
-                                >
-                                  + Atur
-                                </button>
-                              </div>
-                            ) : (
-                              <button
-                                type="button"
-                                onClick={() => openEditRoomCleaners(item)}
-                                className="px-2.5 py-1 rounded text-[11px] font-mono font-semibold bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-800 hover:opacity-85 cursor-pointer"
-                              >
-                                + Atur Cleaner
-                              </button>
-                            )}
-                          </td>
-                          <td className="py-3.5 px-4">
-                            {renderStatusBadge(item.status)}
-                          </td>
-                          <td className="py-3.5 px-4 font-mono font-medium" style={{ color: textPrimary }}>
-                            {item.checklist?.vendor_worker_name ? (
-                              <span className="flex items-center gap-1.5">
-                                <FontAwesomeIcon icon={faUser} className="text-[10px] text-emerald-500" />
-                                {item.checklist.vendor_worker_name}
-                              </span>
-                            ) : (
-                              <span className="text-neutral-400">—</span>
-                            )}
-                          </td>
-                          <td className="py-3.5 px-4 font-mono text-neutral-500">
-                            {item.checklist?.end_time
-                              ? formatWibTime(item.checklist.end_time)
-                              : item.checklist?.start_time
-                              ? formatWibTime(item.checklist.start_time)
-                              : '—'}
-                          </td>
-                          <td className="py-3.5 px-4">
-                            {item.checklist ? (
-                              <div className="flex items-center gap-1.5 font-mono text-[10px]">
-                                {item.checklist.image_before_file && (
-                                  <button
-                                    onClick={() => openInspection(item)}
-                                    className="px-1.5 py-0.5 rounded border border-blue-200 dark:border-blue-900 bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 font-bold hover:opacity-80 cursor-pointer"
-                                    title="Lihat Foto Before"
-                                  >
-                                    Before
-                                  </button>
-                                )}
-                                {item.checklist.image_after_file && (
-                                  <button
-                                    onClick={() => openInspection(item)}
-                                    className="px-1.5 py-0.5 rounded border border-emerald-200 dark:border-emerald-900 bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 font-bold hover:opacity-80 cursor-pointer"
-                                    title="Lihat Foto After"
-                                  >
-                                    After
-                                  </button>
-                                )}
-                                {item.checklist.image_revision_file && (
-                                  <button
-                                    onClick={() => openInspection(item)}
-                                    className="px-1.5 py-0.5 rounded border border-rose-200 dark:border-rose-900 bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 font-bold hover:opacity-80 cursor-pointer"
-                                    title="Lihat Foto Revisi"
-                                  >
-                                    Revisi
-                                  </button>
-                                )}
-                              </div>
-                            ) : (
-                              <span className="font-mono text-neutral-400">—</span>
-                            )}
-                          </td>
-                          <td className="py-3.5 px-4 text-right">
-                            {item.checklist ? (
-                              <button
-                                onClick={() => openInspection(item)}
-                                style={{
-                                  background: item.status === 'pending_review' ? textPrimary : 'transparent',
-                                  color: item.status === 'pending_review' ? (isDark ? '#111' : '#FFF') : textPrimary,
-                                  border: `1px solid ${borderColor}`,
-                                  borderRadius: '4px',
-                                  fontSize: '11px',
-                                  fontWeight: 600,
-                                  padding: '5px 10px',
-                                  cursor: 'pointer',
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  gap: '4px'
-                                }}
-                              >
-                                <FontAwesomeIcon icon={faEye} className="text-[10px]" />
-                                <span>{item.status === 'pending_review' ? 'Tinjau' : 'Detail'}</span>
-                              </button>
-                            ) : (
-                              <span className="text-[11px] text-neutral-400 italic">Belum upload</span>
-                            )}
+          ) : (
+            /* ── KALENDER MINGGUAN MATRIKS (PETUGAS X HARI) ── */
+            <div className="space-y-4">
+              {/* Alert jika ada ruangan tanpa cleaner */}
+              {unassignedRooms.length > 0 && (
+                <div
+                  className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3.5 rounded-lg border text-xs font-mono"
+                  style={{
+                    background: isDark ? 'rgba(245, 158, 11, 0.1)' : '#FFFBEB',
+                    borderColor: isDark ? '#78350F' : '#FCD34D',
+                    color: isDark ? '#FCD34D' : '#92400E'
+                  }}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <FontAwesomeIcon icon={faExclamationCircle} className="text-amber-500 text-sm shrink-0" />
+                    <span>
+                      Terdapat <strong>{unassignedRooms.length} ruangan</strong> yang belum memiliki jadwal petugas cleaner.
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAssignmentCleanerFilter('unassigned')
+                      setAssignmentSearch('')
+                      setManageAssignmentsModalOpen(true)
+                    }}
+                    className="px-3 py-1 rounded bg-amber-600 hover:bg-amber-700 text-white font-semibold transition cursor-pointer shrink-0"
+                  >
+                    Atur Sekarang
+                  </button>
+                </div>
+              )}
+
+              <div
+                style={{
+                  background: cardBg,
+                  border: `1px solid ${borderColor}`,
+                  borderRadius: '10px'
+                }}
+                className="overflow-hidden shadow-2xs"
+              >
+                {/* Header Navigasi Kalender */}
+                <div
+                  className="p-3.5 sm:p-4 border-b flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3"
+                  style={{ borderColor, background: isDark ? '#141416' : '#F9F9F8' }}
+                >
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-xs font-mono font-bold tracking-wider uppercase text-neutral-500">
+                      MINGGU:
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => changeWeekBy(-1)}
+                      className="px-2 py-1 rounded border text-xs font-mono hover:bg-neutral-100 dark:hover:bg-neutral-800 transition cursor-pointer"
+                      style={{ borderColor, color: textPrimary }}
+                    >
+                      <FontAwesomeIcon icon={faChevronLeft} className="mr-1" />
+                      Sebelumnya
+                    </button>
+                    <span className="px-3 py-1 rounded border text-xs font-mono font-bold" style={{ borderColor, background: cardBg, color: textPrimary }}>
+                      {weekBounds.days[0]?.formatted} – {weekBounds.days[6]?.formatted} {selectedDate.slice(0, 4)}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => changeWeekBy(1)}
+                      className="px-2 py-1 rounded border text-xs font-mono hover:bg-neutral-100 dark:hover:bg-neutral-800 transition cursor-pointer"
+                      style={{ borderColor, color: textPrimary }}
+                    >
+                      Berikutnya
+                      <FontAwesomeIcon icon={faChevronRight} className="ml-1" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedDate(getWibDate())}
+                      className="px-2.5 py-1 rounded text-xs font-mono font-bold bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 hover:opacity-90 transition cursor-pointer"
+                    >
+                      Minggu Ini
+                    </button>
+                  </div>
+
+                  <div className="flex items-center gap-3 text-xs font-mono text-neutral-400">
+                    <span>
+                      <strong className="text-neutral-700 dark:text-neutral-200">{weeklyMatrixData.rows.length}</strong> Cleaner Aktif
+                    </span>
+                    <span>•</span>
+                    <span>
+                      <strong className="text-neutral-700 dark:text-neutral-200">{rooms.length}</strong> Ruangan Terdaftar
+                    </span>
+                  </div>
+                </div>
+
+                {/* Tabel Matriks Kalender */}
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead>
+                      <tr className="border-b font-mono text-[11px] uppercase tracking-wider" style={{ borderColor, background: isDark ? '#111113' : '#F4F4F3', color: textSecondary }}>
+                        <th className="py-3 px-4 font-semibold min-w-[200px]">PETUGAS CLEANER</th>
+                        {weekBounds.days.map(d => (
+                          <th
+                            key={d.dateStr}
+                            onClick={() => setSelectedDate(d.dateStr)}
+                            className={`py-2.5 px-3 font-semibold min-w-[125px] text-center cursor-pointer transition ${
+                              d.isToday
+                                ? 'bg-blue-50/70 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border-x border-blue-200 dark:border-blue-900'
+                                : d.isSelected
+                                ? 'bg-neutral-200/50 dark:bg-neutral-800/50 text-neutral-800 dark:text-neutral-200'
+                                : 'hover:bg-neutral-100 dark:hover:bg-neutral-800/40'
+                            }`}
+                          >
+                            <div className="flex items-center justify-center gap-1">
+                              <span>{d.dayShort}</span>
+                              {d.isToday && (
+                                <span className="text-[9px] px-1 py-0.2 rounded bg-blue-600 text-white font-bold">
+                                  HARI INI
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-[10px] opacity-75 font-normal mt-0.5">
+                              {d.formatted}
+                            </div>
+                          </th>
+                        ))}
+                        <th className="py-3 px-4 font-semibold min-w-[140px] text-center">PROGRES MINGGUAN</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y" style={{ borderColor }}>
+                      {weeklyMatrixData.rows.length === 0 ? (
+                        <tr>
+                          <td colSpan={9} className="py-12 text-center text-neutral-400">
+                            Belum ada jadwal penugasan cleaner yang terdaftar.
                           </td>
                         </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          ) : (
-            /* ── GRID VIEW ── */
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {filteredItems.map(item => {
-                return (
-                  <div
-                    key={item.room_id}
-                    style={{
-                      background: cardBg,
-                      border: `1px solid ${item.status === 'pending_review' ? '#F59E0B' : borderColor}`,
-                      borderRadius: '8px',
-                      padding: '16px'
-                    }}
-                    className="flex flex-col justify-between transition shadow-2xs hover:shadow-xs"
-                  >
-                    <div>
-                      <div className="flex items-start justify-between gap-2 mb-2">
-                        <div>
-                          <h3 className="font-bold text-sm tracking-tight line-clamp-1" style={{ color: textPrimary }}>
-                            {item.room_name}
-                          </h3>
-                          <p className="font-mono text-[10px] text-neutral-400">
-                            ID #{item.room_id}
-                          </p>
-                        </div>
-                        {renderStatusBadge(item.status)}
-                      </div>
-
-                      <div className="mt-3 space-y-1.5 text-xs font-mono">
-                        <div className="flex items-center justify-between text-neutral-500">
-                          <span>Jadwal PIC:</span>
-                          <button
-                            type="button"
-                            onClick={() => openEditRoomCleaners(item)}
-                            className="font-semibold text-blue-600 dark:text-blue-400 hover:underline truncate max-w-[160px] cursor-pointer text-right"
-                          >
-                            {item.assigned_cleaners && item.assigned_cleaners.length > 0
-                              ? item.assigned_cleaners.map(c => c.full_name).join(', ')
-                              : '+ Atur Cleaner'}
-                          </button>
-                        </div>
-                        <div className="flex items-center justify-between text-neutral-500">
-                          <span>Dikerjakan:</span>
-                          <span className="font-semibold text-neutral-700 dark:text-neutral-300">
-                            {item.checklist?.vendor_worker_name || '—'}
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-between text-neutral-500">
-                          <span>Waktu:</span>
-                          <span>
-                            {item.checklist?.end_time
-                              ? formatWibTime(item.checklist.end_time)
-                              : item.checklist?.start_time
-                              ? formatWibTime(item.checklist.start_time)
-                              : '—'}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Photo Thumbnails */}
-                      {item.checklist && (
-                        <div className="mt-3 pt-3 border-t grid grid-cols-2 gap-2" style={{ borderColor }}>
-                          <div
-                            onClick={() => openInspection(item)}
-                            className="rounded overflow-hidden bg-neutral-900 aspect-4/3 cursor-pointer relative border border-neutral-700"
-                          >
-                            {item.checklist.image_before_file ? (
-                              <img
-                                src={`/api/vendor-checklist/${item.checklist.id}/photo?type=before`}
-                                alt="Before"
-                                className="w-full h-full object-cover"
-                                loading="lazy"
-                              />
-                            ) : (
-                              <div className="h-full flex items-center justify-center text-[10px] text-neutral-400">No Photo</div>
-                            )}
-                            <span className="absolute bottom-1 left-1 bg-black/70 text-white font-mono text-[9px] px-1 rounded">
-                              Before
-                            </span>
-                          </div>
-
-                          <div
-                            onClick={() => openInspection(item)}
-                            className="rounded overflow-hidden bg-neutral-900 aspect-4/3 cursor-pointer relative border border-neutral-700"
-                          >
-                            {item.checklist.image_revision_file ? (
-                              <>
-                                <img
-                                  src={`/api/vendor-checklist/${item.checklist.id}/photo?type=revision`}
-                                  alt="Revision"
-                                  className="w-full h-full object-cover"
-                                  loading="lazy"
-                                />
-                                <span className="absolute bottom-1 left-1 bg-rose-600 text-white font-mono text-[9px] px-1 rounded">
-                                  Revisi
-                                </span>
-                              </>
-                            ) : item.checklist.image_after_file ? (
-                              <>
-                                <img
-                                  src={`/api/vendor-checklist/${item.checklist.id}/photo?type=after`}
-                                  alt="After"
-                                  className="w-full h-full object-cover"
-                                  loading="lazy"
-                                />
-                                <span className="absolute bottom-1 left-1 bg-emerald-600 text-white font-mono text-[9px] px-1 rounded">
-                                  After
-                                </span>
-                              </>
-                            ) : (
-                              <div className="h-full flex items-center justify-center text-[10px] text-neutral-400">In Progress</div>
-                            )}
-                          </div>
-                        </div>
-                      )}
-
-                      {item.checklist?.review_notes && (
-                        <div className="mt-2.5 p-2 rounded bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 text-[11px] text-rose-800 dark:text-rose-300">
-                          <span className="font-bold">Catatan:</span> &quot;{item.checklist.review_notes}&quot;
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="mt-4 pt-3 border-t" style={{ borderColor }}>
-                      {item.checklist ? (
-                        <button
-                          onClick={() => openInspection(item)}
-                          style={{
-                            background: item.status === 'pending_review' ? textPrimary : 'transparent',
-                            color: item.status === 'pending_review' ? (isDark ? '#111' : '#FFF') : textPrimary,
-                            border: `1px solid ${borderColor}`,
-                            borderRadius: '4px',
-                            fontSize: '11px',
-                            fontWeight: 600,
-                            width: '100%',
-                            padding: '6px',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: '6px'
-                          }}
-                        >
-                          <FontAwesomeIcon icon={faEye} className="text-xs" />
-                          <span>{item.status === 'pending_review' ? 'Tinjau & Verifikasi' : 'Lihat Detail'}</span>
-                        </button>
                       ) : (
-                        <div className="text-center py-1 text-[11px] text-neutral-400 italic">
-                          Belum upload foto Before &amp; After
-                        </div>
+                        weeklyMatrixData.rows.map(row => (
+                          <tr key={row.cleaner.user_id} className="hover:bg-neutral-50/30 dark:hover:bg-neutral-800/20 transition">
+                            {/* Kolom Profil Cleaner */}
+                            <td className="py-3.5 px-4 font-medium" style={{ color: textPrimary }}>
+                              <div className="font-bold text-xs">{row.cleaner.full_name}</div>
+                              <div className="font-mono text-[10px] text-blue-600 dark:text-blue-400 mt-0.5">
+                                {row.totalAssignedRooms} Ruangan Ditugaskan
+                              </div>
+                              <div className="text-[10px] text-neutral-400 mt-1 line-clamp-1" title={row.assignedRoomNames.join(', ')}>
+                                {row.assignedRoomNames.slice(0, 3).join(', ')}
+                                {row.assignedRoomNames.length > 3 ? ` +${row.assignedRoomNames.length - 3} lainnya` : ''}
+                              </div>
+                            </td>
+
+                            {/* 7 Kolom Hari */}
+                            {row.days.map(day => {
+                              const isCompleted = day.dayStatus === 'completed'
+                              const isPartial = day.dayStatus === 'partial'
+                              const isNotStarted = day.dayStatus === 'not_started'
+                              const isFuture = day.dayStatus === 'future'
+
+                              return (
+                                <td
+                                  key={day.dateStr}
+                                  onClick={() => openCleanerDayModal(row.cleaner, day)}
+                                  className={`py-2 px-2 text-center align-middle cursor-pointer transition border-r ${
+                                    day.isToday ? 'bg-blue-50/30 dark:bg-blue-950/20' : ''
+                                  }`}
+                                  style={{ borderColor }}
+                                  title={`Klik untuk melihat detail ruangan ${row.cleaner.full_name} pada ${day.dayName}, ${day.formatted}`}
+                                >
+                                  <div
+                                    className="p-2 rounded-md transition hover:scale-[1.02] border"
+                                    style={{
+                                      background: isCompleted
+                                        ? (isDark ? 'rgba(34, 197, 94, 0.12)' : '#F0FDF4')
+                                        : isPartial
+                                        ? (isDark ? 'rgba(245, 158, 11, 0.12)' : '#FFFBEB')
+                                        : isNotStarted
+                                        ? (isDark ? 'rgba(239, 68, 68, 0.12)' : '#FEF2F2')
+                                        : (isDark ? '#1F1F23' : '#F9F9F8'),
+                                      borderColor: isCompleted
+                                        ? (isDark ? '#15803D' : '#BBF7D0')
+                                        : isPartial
+                                        ? (isDark ? '#B45309' : '#FDE68A')
+                                        : isNotStarted
+                                        ? (isDark ? '#B91C1C' : '#FECDD3')
+                                        : borderColor
+                                    }}
+                                  >
+                                    {isCompleted ? (
+                                      <div>
+                                        <div className="inline-flex items-center gap-1 text-[10px] font-mono font-bold text-emerald-700 dark:text-emerald-300">
+                                          <FontAwesomeIcon icon={faCheck} className="text-[9px]" />
+                                          LENGKAP
+                                        </div>
+                                        <div className="font-mono text-[11px] font-bold text-emerald-800 dark:text-emerald-200 mt-0.5">
+                                          {day.completedCount}/{day.totalAssigned}
+                                        </div>
+                                        {/* Progress Bar 100% */}
+                                        <div className="w-full bg-emerald-200 dark:bg-emerald-950 h-1 rounded-full mt-1.5 overflow-hidden">
+                                          <div className="bg-emerald-500 h-full w-full rounded-full" />
+                                        </div>
+                                      </div>
+                                    ) : isPartial ? (
+                                      <div>
+                                        <div className="inline-flex items-center gap-1 text-[10px] font-mono font-bold text-amber-700 dark:text-amber-300">
+                                          <FontAwesomeIcon icon={faClock} className="text-[9px]" />
+                                          PROSES
+                                        </div>
+                                        <div className="font-mono text-[11px] font-bold text-amber-800 dark:text-amber-200 mt-0.5">
+                                          {day.completedCount}/{day.totalAssigned}
+                                        </div>
+                                        {/* Progress Bar */}
+                                        <div className="w-full bg-amber-200 dark:bg-amber-950 h-1 rounded-full mt-1.5 overflow-hidden">
+                                          <div
+                                            className="bg-amber-500 h-full rounded-full"
+                                            style={{ width: `${Math.round((day.completedCount / day.totalAssigned) * 100)}%` }}
+                                          />
+                                        </div>
+                                      </div>
+                                    ) : isNotStarted ? (
+                                      <div>
+                                        <div className="inline-flex items-center gap-1 text-[10px] font-mono font-bold text-rose-700 dark:text-rose-300">
+                                          <FontAwesomeIcon icon={faExclamationCircle} className="text-[9px]" />
+                                          BELUM LAPOR
+                                        </div>
+                                        <div className="font-mono text-[11px] font-bold text-rose-800 dark:text-rose-200 mt-0.5">
+                                          0/{day.totalAssigned}
+                                        </div>
+                                        <div className="w-full bg-rose-200 dark:bg-rose-950 h-1 rounded-full mt-1.5 overflow-hidden">
+                                          <div className="bg-rose-500 h-full w-0 rounded-full" />
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      <div>
+                                        <div className="text-[10px] font-mono text-neutral-400">
+                                          JADWAL
+                                        </div>
+                                        <div className="font-mono text-[11px] text-neutral-500 font-semibold mt-0.5">
+                                          {day.totalAssigned} Ruang
+                                        </div>
+                                        <div className="w-full bg-neutral-200 dark:bg-neutral-800 h-1 rounded-full mt-1.5" />
+                                      </div>
+                                    )}
+                                  </div>
+                                </td>
+                              )
+                            })}
+
+                            {/* Kolom Progres Mingguan */}
+                            <td className="py-3 px-4 text-center align-middle">
+                              <div className="font-mono text-xs font-bold" style={{ color: textPrimary }}>
+                                {row.weeklyStats.percent}%
+                              </div>
+                              <div className="w-full bg-neutral-200 dark:bg-neutral-800 h-1.5 rounded-full mt-1 overflow-hidden max-w-[100px] mx-auto">
+                                <div
+                                  className={`h-full rounded-full ${
+                                    row.weeklyStats.percent === 100
+                                      ? 'bg-emerald-500'
+                                      : row.weeklyStats.percent > 50
+                                      ? 'bg-blue-500'
+                                      : 'bg-amber-500'
+                                  }`}
+                                  style={{ width: `${row.weeklyStats.percent}%` }}
+                                />
+                              </div>
+                              <div className="text-[9px] font-mono text-neutral-400 mt-1">
+                                {row.weeklyStats.approved} Disetujui
+                              </div>
+                            </td>
+                          </tr>
+                        ))
                       )}
-                    </div>
-                  </div>
-                )
-              })}
+                    </tbody>
+
+                    {/* Ringkasan Total Sekolah di Baris Bawah */}
+                    <tfoot>
+                      <tr className="border-t font-mono text-[11px] font-bold" style={{ borderColor, background: isDark ? '#141416' : '#F9F9F8' }}>
+                        <td className="py-3 px-4 text-neutral-600 dark:text-neutral-300">
+                          TOTAL KELENGKAPAN SEKOLAH
+                        </td>
+                        {weeklyMatrixData.dayTotals.map(total => (
+                          <td key={total.dateStr} className={`py-3 px-2 text-center border-r ${total.isToday ? 'bg-blue-50/40 dark:bg-blue-950/30' : ''}`} style={{ borderColor }}>
+                            <div className="text-[11px]" style={{
+                              color: total.percent === 100
+                                ? '#16A34A'
+                                : total.percent > 0
+                                ? '#D97706'
+                                : textSecondary
+                            }}>
+                              {total.sumCompleted} / {total.sumAssigned}
+                            </div>
+                            <div className="text-[10px] text-neutral-400 font-normal">
+                              ({total.percent}%)
+                            </div>
+                          </td>
+                        ))}
+                        <td className="py-3 px-4 text-center text-neutral-400 text-[10px]">
+                          7 HARI
+                        </td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              </div>
             </div>
           )}
         </div>
@@ -1752,6 +1942,7 @@ export default function VendorChecklistDashboardPage() {
         onClose={() => setEditingRoomModal(null)}
         title={`Atur Petugas Cleaning: ${editingRoomModal?.room_name || ''}`}
         size="md"
+        zIndex="z-60"
       >
         {editingRoomModal && (
           <div className="space-y-4 text-xs">
@@ -2542,6 +2733,281 @@ export default function VendorChecklistDashboardPage() {
             )}
           </div>
         )}
+      </Modal>
+
+      {/* ── MODAL DETAIL TUGAS CLEANER PADA HARI TERTENTU ── */}
+      <Modal
+        isOpen={Boolean(cleanerDayModal)}
+        onClose={() => setCleanerDayModal(null)}
+        title={cleanerDayModal ? `Detail Tugas: ${cleanerDayModal.cleaner.full_name}` : ''}
+        maxWidth="max-w-4xl"
+      >
+        {cleanerDayModal && (
+          <div className="space-y-4">
+            {/* Header info */}
+            <div
+              className="p-3.5 rounded-lg flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border"
+              style={{ background: isDark ? '#141416' : '#F9F9F8', borderColor }}
+            >
+              <div>
+                <div className="font-bold text-sm" style={{ color: textPrimary }}>
+                  {cleanerDayModal.cleaner.full_name}
+                </div>
+                <div className="text-xs text-neutral-400 font-mono mt-0.5">
+                  Hari: <strong className="text-neutral-700 dark:text-neutral-200">{cleanerDayModal.day.dayName}, {cleanerDayModal.day.formatted} {cleanerDayModal.day.dateStr.slice(0, 4)}</strong>
+                  {cleanerDayModal.day.isToday && (
+                    <span className="ml-2 px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300 text-[10px] font-bold">
+                      HARI INI
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Status pills */}
+              <div className="flex items-center gap-1.5 flex-wrap text-xs font-mono">
+                <span className="px-2 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                  {cleanerDayModal.day.approved} Disetujui
+                </span>
+                <span className="px-2 py-0.5 rounded bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+                  {cleanerDayModal.day.pendingReview} Under Review
+                </span>
+                <span className="px-2 py-0.5 rounded bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800">
+                  {cleanerDayModal.day.notStarted} Belum Lapor
+                </span>
+              </div>
+            </div>
+
+            {/* List Ruangan Table */}
+            <div className="border rounded-lg overflow-hidden" style={{ borderColor }}>
+              <div className="overflow-x-auto max-h-[50vh]">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead className="sticky top-0 z-10">
+                    <tr className="border-b font-mono text-[11px] uppercase tracking-wider" style={{ borderColor, background: isDark ? '#141416' : '#F4F4F3', color: textSecondary }}>
+                      <th className="py-2.5 px-3">RUANGAN</th>
+                      <th className="py-2.5 px-3">STATUS</th>
+                      <th className="py-2.5 px-3">JAM SELESAI</th>
+                      <th className="py-2.5 px-3">BUKTI FOTO</th>
+                      <th className="py-2.5 px-3 text-right">AKSI</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y" style={{ borderColor }}>
+                    {cleanerDayModal.day.rooms.map(r => (
+                      <tr key={r.room_id} className="hover:bg-neutral-50/50 dark:hover:bg-neutral-800/30">
+                        <td className="py-2.5 px-3 font-semibold" style={{ color: textPrimary }}>
+                          {r.room_name}
+                        </td>
+                        <td className="py-2.5 px-3">
+                          {renderStatusBadge(r.status)}
+                        </td>
+                        <td className="py-2.5 px-3 font-mono text-neutral-400">
+                          {r.checklist?.end_time
+                            ? formatWibTime(r.checklist.end_time)
+                            : r.checklist?.start_time
+                            ? formatWibTime(r.checklist.start_time)
+                            : '—'}
+                        </td>
+                        <td className="py-2.5 px-3">
+                          {r.checklist ? (
+                            <div className="flex items-center gap-1.5 font-mono text-[10px]">
+                              {r.checklist.image_before_file && (
+                                <button
+                                  type="button"
+                                  onClick={() => openInspection(r)}
+                                  className="px-1.5 py-0.5 rounded border border-blue-200 dark:border-blue-900 bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 font-bold hover:opacity-80 cursor-pointer"
+                                >
+                                  Before
+                                </button>
+                              )}
+                              {r.checklist.image_after_file && (
+                                <button
+                                  type="button"
+                                  onClick={() => openInspection(r)}
+                                  className="px-1.5 py-0.5 rounded border border-emerald-200 dark:border-emerald-900 bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 font-bold hover:opacity-80 cursor-pointer"
+                                >
+                                  After
+                                </button>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="font-mono text-neutral-400 italic">Belum ada foto</span>
+                          )}
+                        </td>
+                        <td className="py-2.5 px-3 text-right">
+                          {r.checklist ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setCleanerDayModal(null)
+                                openInspection(r)
+                              }}
+                              className="px-2.5 py-1 rounded border text-[11px] font-semibold hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer"
+                              style={{ borderColor, color: textPrimary }}
+                            >
+                              {r.status === 'pending_review' ? 'Tinjau' : 'Detail'}
+                            </button>
+                          ) : (
+                            <span className="text-[11px] text-neutral-400 italic">—</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Modal footer buttons */}
+            <div className="flex items-center justify-between pt-2 border-t" style={{ borderColor }}>
+              <button
+                type="button"
+                onClick={() => {
+                  setAssignmentCleanerFilter(String(cleanerDayModal.cleaner.user_id))
+                  setAssignmentSearch('')
+                  setManageAssignmentsModalOpen(true)
+                  setCleanerDayModal(null)
+                }}
+                className="px-3 py-1.5 rounded border text-xs font-mono font-semibold flex items-center gap-1.5 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition cursor-pointer"
+                style={{ borderColor, color: textPrimary }}
+              >
+                <FontAwesomeIcon icon={faUsersCog} className="text-blue-500 text-xs" />
+                <span>Atur Ruangan Cleaner Ini</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setCleanerDayModal(null)}
+                className="px-4 py-1.5 rounded bg-neutral-800 hover:bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-200 text-xs font-semibold transition cursor-pointer"
+              >
+                Tutup
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* ── MODAL: KELOLA PENUGASAN PETUGAS RUANGAN (ROOM PIC) ── */}
+      <Modal
+        isOpen={manageAssignmentsModalOpen}
+        onClose={() => setManageAssignmentsModalOpen(false)}
+        title="Atur & Kelola Penugasan Petugas Ruangan"
+        size="lg"
+      >
+        <div className="space-y-4 text-xs">
+          {/* Header Description & Search Filter Toolbar */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pb-3 border-b" style={{ borderColor }}>
+            <div className="relative flex-1">
+              <FontAwesomeIcon icon={faSearch} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 text-xs" />
+              <input
+                type="text"
+                value={assignmentSearch}
+                onChange={(e) => setAssignmentSearch(e.target.value)}
+                placeholder="Cari nama ruangan atau nama cleaner..."
+                className="w-full pl-8 pr-3 py-1.5 rounded border text-xs outline-none font-mono"
+                style={{ background: cardBg, borderColor, color: textPrimary }}
+              />
+            </div>
+
+            <select
+              value={assignmentCleanerFilter}
+              onChange={(e) => setAssignmentCleanerFilter(e.target.value)}
+              className="px-3 py-1.5 rounded border text-xs font-mono font-semibold cursor-pointer focus:outline-none"
+              style={{ background: cardBg, borderColor, color: textPrimary }}
+            >
+              <option value="all">Semua Cleaner ({cleaners.length})</option>
+              {cleaners.map(c => (
+                <option key={c.user_id} value={String(c.user_id)}>
+                  Khusus: {c.full_name} ({(assignmentsMap[String(c.user_id)] || []).length} Ruangan)
+                </option>
+              ))}
+              <option value="unassigned">Belum Ada Petugas ({unassignedRooms.length})</option>
+            </select>
+          </div>
+
+          <div className="flex items-center justify-between text-neutral-500 font-mono text-[11px] flex-wrap gap-2">
+            <span>Menampilkan <strong>{filteredAssignmentRooms.length}</strong> dari <strong>{rooms.length}</strong> ruangan terdaftar</span>
+            <span className="italic text-neutral-400">Klik &quot;Ubah Petugas&quot; untuk mencentang/menghapus cleaner</span>
+          </div>
+
+          {/* Rooms Table */}
+          <div className="border rounded-lg overflow-hidden" style={{ borderColor }}>
+            <div className="overflow-x-auto max-h-[55vh]">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead className="sticky top-0 z-10">
+                  <tr className="border-b font-mono text-[11px] uppercase tracking-wider" style={{ borderColor, background: isDark ? '#141416' : '#F4F4F3', color: textSecondary }}>
+                    <th className="py-2.5 px-3">NAMA RUANGAN</th>
+                    <th className="py-2.5 px-3">PETUGAS CLEANER BERTUGAS</th>
+                    <th className="py-2.5 px-3 text-right">AKSI</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y" style={{ borderColor }}>
+                  {filteredAssignmentRooms.length === 0 ? (
+                    <tr>
+                      <td colSpan={3} className="py-8 text-center text-neutral-400 italic">
+                        Tidak ada ruangan yang cocok dengan filter atau kata kunci.
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredAssignmentRooms.map(rm => {
+                      const assignedCleaners = roomCleanersMap[rm.room_id] || []
+                      return (
+                        <tr key={rm.room_id} className="hover:bg-neutral-50/50 dark:hover:bg-neutral-800/30">
+                          <td className="py-2.5 px-3">
+                            <div className="font-semibold" style={{ color: textPrimary }}>
+                              {rm.room_name}
+                            </div>
+                            <div className="font-mono text-[10px] text-neutral-400">
+                              ID #{rm.room_id} {rm.qr_code_token ? `• Token: ${rm.qr_code_token}` : ''}
+                            </div>
+                          </td>
+                          <td className="py-2.5 px-3">
+                            {assignedCleaners.length === 0 ? (
+                              <span className="px-2 py-0.5 rounded text-[11px] font-mono font-semibold bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-900/60">
+                                Belum Ada Petugas
+                              </span>
+                            ) : (
+                              <div className="flex flex-wrap gap-1.5">
+                                {assignedCleaners.map(c => (
+                                  <span
+                                    key={c.user_id}
+                                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-900/60"
+                                  >
+                                    <FontAwesomeIcon icon={faUserCheck} className="text-[9px]" />
+                                    {c.full_name}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                          </td>
+                          <td className="py-2.5 px-3 text-right">
+                            <button
+                              type="button"
+                              onClick={() => openEditRoomCleaners(rm)}
+                              className="px-2.5 py-1 rounded text-xs font-semibold inline-flex items-center gap-1.5 transition cursor-pointer bg-neutral-800 text-white hover:bg-neutral-900 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-200"
+                            >
+                              <FontAwesomeIcon icon={faUsersCog} className="text-[10px]" />
+                              <span>Ubah Petugas</span>
+                            </button>
+                          </td>
+                        </tr>
+                      )
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Modal Footer */}
+          <div className="flex items-center justify-end pt-3 border-t" style={{ borderColor }}>
+            <button
+              type="button"
+              onClick={() => setManageAssignmentsModalOpen(false)}
+              className="px-4 py-1.5 rounded bg-neutral-800 hover:bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-200 text-xs font-semibold transition cursor-pointer"
+            >
+              Tutup
+            </button>
+          </div>
+        </div>
       </Modal>
 
     </div>

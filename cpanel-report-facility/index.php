@@ -667,15 +667,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         />
         <span class="brand-divider"></span>
         <div class="brand-meta">
-          <span class="brand-eyebrow">Facility Operations</span>
-          <span class="brand-title">Public Report</span>
+          <span class="brand-title">Report Facility</span>
         </div>
       </a>
-
-      <div class="qr-kbd">
-        <i class="ph-bold ph-qr-code"></i>
-        <span>QR GENERAL</span>
-      </div>
     </div>
   </header>
 
@@ -783,10 +777,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       </div>
     </section>
   </main>
-
-  <footer class="site-footer">
-    CHUNG CHUNG CHRISTIAN SCHOOL &mdash; FACILITY SANITATION &amp; MAINTENANCE SYSTEM
-  </footer>
 
   <script>
     let compressedBase64 = '';

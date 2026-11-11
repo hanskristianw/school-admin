@@ -83,6 +83,14 @@ export async function GET(request) {
 
       const formatted = (reports || []).map(r => {
         const isGeneralQr = !r.room_id || r.notes === 'GENERAL_QR'
+        const hostingUrl = r.hosting_url || 'https://ccs.sch.id/reportfacility/'
+        const cleanHost = hostingUrl.replace(/\/$/, '')
+        const photoUrl = r.photo_file
+          ? (r.photo_file.startsWith('http://') || r.photo_file.startsWith('https://')
+              ? r.photo_file
+              : `${cleanHost}/index.php?action=view_uploaded_photo&file=${encodeURIComponent(r.photo_file)}`)
+          : ''
+
         return {
           id: r.id,
           room_id: isGeneralQr ? null : r.room_id,
@@ -92,6 +100,7 @@ export async function GET(request) {
           reporter_contact: r.reporter_contact,
           issue_description: r.issue_description,
           photo_file: r.photo_file,
+          photo_url: photoUrl,
           hosting_url: r.hosting_url,
           status: r.status,
           created_at: r.created_at,
@@ -453,6 +462,33 @@ export async function POST(request) {
         return NextResponse.json({ success: false, message: 'Foto bukti penanganan komplain wajib diunggah' }, { status: 400 })
       }
 
+      // 1. Cek status laporan saat ini terlebih dahulu untuk mencegah race condition (2 cleaner menyelesaikan komplain yang sama)
+      const { data: existingReport } = await supabaseAdmin
+        .from('room_facility_reports')
+        .select('id, status, resolved_by_name, resolved_at')
+        .eq('id', reportId)
+        .maybeSingle()
+
+      if (!existingReport) {
+        return NextResponse.json({ success: false, message: 'Data komplain tidak ditemukan' }, { status: 404 })
+      }
+
+      if (existingReport.status === 'resolved') {
+        const resolver = existingReport.resolved_by_name || 'petugas lain'
+        let timeStr = ''
+        if (existingReport.resolved_at) {
+          try {
+            timeStr = new Date(existingReport.resolved_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' }) + ' WIB'
+          } catch (e) {}
+        }
+        return NextResponse.json({
+          success: false,
+          already_resolved: true,
+          message: `Komplain ini sudah diselesaikan lebih dulu oleh ${resolver}${timeStr ? ` pada pukul ${timeStr}` : ''}. Halaman Anda akan diperbarui.`
+        }, { status: 409 })
+      }
+
+      // 2. Lakukan atomic update hanya jika status masih pending atau in_progress
       const { data: updData, error: updErr } = await supabaseAdmin
         .from('room_facility_reports')
         .update({
@@ -465,12 +501,22 @@ export async function POST(request) {
           updated_at: nowISO
         })
         .eq('id', reportId)
+        .in('status', ['pending', 'in_progress'])
         .select()
         .maybeSingle()
 
       if (updErr) {
         console.error('[VendorChecklist API] Error resolving report:', updErr)
         return NextResponse.json({ success: false, message: updErr.message }, { status: 500 })
+      }
+
+      if (!updData) {
+        // Berarti rekan cleaner lain baru saja menekan tombol selesai beberapa detik sebelumnya
+        return NextResponse.json({
+          success: false,
+          already_resolved: true,
+          message: 'Komplain ini baru saja diselesaikan oleh rekan cleaner lain. Halaman Anda akan diperbarui.'
+        }, { status: 409 })
       }
 
       return NextResponse.json({
