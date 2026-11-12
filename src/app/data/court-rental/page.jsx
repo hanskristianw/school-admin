@@ -22,7 +22,11 @@ import {
   faPlus,
   faExclamationTriangle,
   faCopy,
-  faCheck
+  faCheck,
+  faToggleOn,
+  faToggleOff,
+  faBullhorn,
+  faComments
 } from '@fortawesome/free-solid-svg-icons'
 
 const SQL_MIGRATION = `-- ============================================================
@@ -54,6 +58,7 @@ CREATE TABLE IF NOT EXISTS public.court_rentals (
 );
 
 CREATE INDEX IF NOT EXISTS idx_court_rentals_date_slot ON public.court_rentals(booking_date, time_slot);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_court_rentals_unique_active_slot ON public.court_rentals(booking_date, time_slot) WHERE status IN ('pending_payment', 'payment_uploaded', 'approved');
 CREATE INDEX IF NOT EXISTS idx_court_rentals_status ON public.court_rentals(status);
 CREATE INDEX IF NOT EXISTS idx_court_rentals_code ON public.court_rentals(booking_code);
 
@@ -65,7 +70,37 @@ CREATE TABLE IF NOT EXISTS public.court_blackout_dates (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS idx_court_blackout_date ON public.court_blackout_dates(date);`
+CREATE INDEX IF NOT EXISTS idx_court_blackout_date ON public.court_blackout_dates(date);
+
+CREATE TABLE IF NOT EXISTS public.court_time_slots (
+    id BIGSERIAL PRIMARY KEY,
+    day_type VARCHAR(20) NOT NULL, -- 'weekday' | 'weekend'
+    start_time TIME NOT NULL,
+    end_time TIME NOT NULL,
+    time_slot VARCHAR(50) NOT NULL,
+    label VARCHAR(100),
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    sort_order INT NOT NULL DEFAULT 1,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_court_slots_day_active ON public.court_time_slots(day_type, is_active);
+
+-- Seed default time slots jika belum ada
+INSERT INTO public.court_time_slots (day_type, start_time, end_time, time_slot, label, sort_order)
+VALUES 
+    ('weekday', '16:00:00', '18:00:00', '16:00 - 18:00', 'Sesi Sore', 1),
+    ('weekday', '18:00:00', '20:00:00', '18:00 - 20:00', 'Sesi Malam 1', 2),
+    ('weekday', '20:00:00', '22:00:00', '20:00 - 22:00', 'Sesi Malam 2', 3),
+    ('weekend', '06:00:00', '08:00:00', '06:00 - 08:00', 'Sesi Pagi 1', 1),
+    ('weekend', '08:00:00', '10:00:00', '08:00 - 10:00', 'Sesi Pagi 2', 2),
+    ('weekend', '10:00:00', '12:00:00', '10:00 - 12:00', 'Sesi Siang', 3),
+    ('weekend', '14:00:00', '16:00:00', '14:00 - 16:00', 'Sesi Siang Menjelang Sore', 4),
+    ('weekend', '16:00:00', '18:00:00', '16:00 - 18:00', 'Sesi Sore', 5),
+    ('weekend', '18:00:00', '20:00:00', '18:00 - 20:00', 'Sesi Malam 1', 6),
+    ('weekend', '20:00:00', '22:00:00', '20:00 - 22:00', 'Sesi Malam 2', 7)
+ON CONFLICT DO NOTHING;`
 
 export default function CourtRentalPage() {
   const { theme, isDark } = useTheme()
@@ -103,6 +138,132 @@ export default function CourtRentalPage() {
   const [blackoutDates, setBlackoutDates] = useState([])
   const [blackoutLoading, setBlackoutLoading] = useState(false)
   const [newBlackout, setNewBlackout] = useState({ date: '', time_slot: '', reason: 'Kegiatan Resmi Sekolah' })
+
+  // Slots state (Master Sesi Jam Sewa)
+  const [slots, setSlots] = useState([])
+  const [slotsLoading, setSlotsLoading] = useState(false)
+  const [slotsTableExists, setSlotsTableExists] = useState(true)
+  const [dayTypeFilter, setDayTypeFilter] = useState('all') // 'all' | 'weekday' | 'weekend'
+  const [newSlotModalOpen, setNewSlotModalOpen] = useState(false)
+  const [newSlot, setNewSlot] = useState({
+    day_type: 'weekday',
+    start_time: '14:00',
+    end_time: '16:00',
+    label: '',
+    sort_order: 1,
+    is_active: true
+  })
+
+  // Markom & Notification Recipients State
+  const [markomModalOpen, setMarkomModalOpen] = useState(false)
+  const [markomLoading, setMarkomLoading] = useState(false)
+  const [markomSaving, setMarkomSaving] = useState(false)
+  const [markomRecipients, setMarkomRecipients] = useState([])
+  const [availableStaff, setAvailableStaff] = useState([])
+  const [selectedStaffId, setSelectedStaffId] = useState('')
+  const [markomSuccessMsg, setMarkomSuccessMsg] = useState('')
+
+  const fetchMarkomSettings = useCallback(async () => {
+    try {
+      setMarkomLoading(true)
+      const res = await fetch('/api/court-rental/markom')
+      const data = await res.json()
+      if (data.success) {
+        setMarkomRecipients(data.recipients || [])
+        setAvailableStaff(data.users || [])
+      }
+    } catch (err) {
+      console.error('Failed to load markom settings:', err)
+    } finally {
+      setMarkomLoading(false)
+    }
+  }, [])
+
+  const openMarkomModal = () => {
+    setMarkomModalOpen(true)
+    setMarkomSuccessMsg('')
+    fetchMarkomSettings()
+  }
+
+  const handleAddRecipient = () => {
+    if (!selectedStaffId) return
+    const staff = availableStaff.find(u => String(u.user_id) === String(selectedStaffId))
+    if (!staff) return
+
+    if (markomRecipients.some(r => String(r.user_id) === String(staff.user_id))) {
+      alert('Staf ini sudah terdaftar sebagai penerima notifikasi.')
+      return
+    }
+
+    const newRecipient = {
+      user_id: staff.user_id,
+      user_nama_depan: staff.user_nama_depan || '',
+      user_nama_belakang: staff.user_nama_belakang || '',
+      user_email: staff.user_email || '',
+      role_name: staff.role?.role_name || 'Staff',
+      notify_email: true,
+      notify_google_chat: true,
+      is_active: true
+    }
+
+    setMarkomRecipients(prev => [...prev, newRecipient])
+    setSelectedStaffId('')
+  }
+
+  const handleToggleRecipient = (userId, field) => {
+    setMarkomRecipients(prev => prev.map(r => {
+      if (String(r.user_id) === String(userId)) {
+        return { ...r, [field]: !r[field] }
+      }
+      return r
+    }))
+  }
+
+  const handleRemoveRecipient = (userId) => {
+    setMarkomRecipients(prev => prev.filter(r => String(r.user_id) !== String(userId)))
+  }
+
+  const handleSaveMarkom = async () => {
+    try {
+      setMarkomSaving(true)
+      const res = await fetch('/api/court-rental/markom', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ recipients: markomRecipients })
+      })
+      const data = await res.json()
+      if (data.success) {
+        setMarkomSuccessMsg('Pengaturan penerima notifikasi Markom berhasil disimpan!')
+        setTimeout(() => {
+          setMarkomModalOpen(false)
+          setMarkomSuccessMsg('')
+        }, 1200)
+      } else {
+        alert(data.message || 'Gagal menyimpan pengaturan.')
+      }
+    } catch (err) {
+      alert('Error: ' + err.message)
+    } finally {
+      setMarkomSaving(false)
+    }
+  }
+
+  // Fetch slots data
+  const fetchSlots = useCallback(async () => {
+    try {
+      setSlotsLoading(true)
+      const res = await fetch('/api/court-rental/slots')
+      const data = await res.json()
+      if (data.success) {
+        setSlots(data.slots || [])
+        setSlotsTableExists(data.tableExists !== false)
+      }
+    } catch (err) {
+      console.error('Failed to load slots:', err)
+    } finally {
+      setSlotsLoading(false)
+    }
+  }, [])
 
   // Fetch bookings data
   const fetchBookings = useCallback(async () => {
@@ -149,13 +310,16 @@ export default function CourtRentalPage() {
 
   useEffect(() => {
     fetchBookings()
-  }, [fetchBookings])
+    fetchSlots()
+  }, [fetchBookings, fetchSlots])
 
   useEffect(() => {
     if (activeTab === 'blackout') {
       fetchBlackoutDates()
+    } else if (activeTab === 'slots') {
+      fetchSlots()
     }
-  }, [activeTab, fetchBlackoutDates])
+  }, [activeTab, fetchBlackoutDates, fetchSlots])
 
   // Handle Approve
   const handleApprove = async () => {
@@ -252,6 +416,70 @@ export default function CourtRentalPage() {
     }
   }
 
+  // Handle Toggle Slot Active / Inactive
+  const handleToggleSlot = async (slot) => {
+    try {
+      const res = await fetch('/api/court-rental/slots', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: slot.id, is_active: !slot.is_active })
+      })
+      const data = await res.json()
+      if (data.success) {
+        fetchSlots()
+      } else {
+        alert(data.message || 'Gagal mengubah status sesi')
+      }
+    } catch (err) {
+      alert('Error: ' + err.message)
+    }
+  }
+
+  // Handle Create Slot
+  const handleCreateSlot = async (e) => {
+    e.preventDefault()
+    if (!newSlot.start_time || !newSlot.end_time) {
+      alert('Jam mulai dan jam selesai wajib diisi')
+      return
+    }
+    try {
+      setActionLoading(true)
+      const res = await fetch('/api/court-rental/slots', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newSlot)
+      })
+      const data = await res.json()
+      if (data.success) {
+        setNewSlotModalOpen(false)
+        setNewSlot({ day_type: 'weekday', start_time: '14:00', end_time: '16:00', label: '', sort_order: 1, is_active: true })
+        fetchSlots()
+      } else {
+        alert(data.message || 'Gagal menambahkan sesi')
+      }
+    } catch (err) {
+      alert('Error: ' + err.message)
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
+  // Handle Delete Slot
+  const handleDeleteSlot = async (slot) => {
+    if (!confirm(`Hapus sesi jam ${slot.time_slot} (${slot.day_type})?`)) return
+    try {
+      const res = await fetch(`/api/court-rental/slots?id=${slot.id}`, { method: 'DELETE' })
+      const data = await res.json()
+      if (data.success) {
+        fetchSlots()
+      } else {
+        alert(data.message || 'Gagal menghapus sesi')
+      }
+    } catch (err) {
+      alert('Error: ' + err.message)
+    }
+  }
+
   const copyMigrationSql = () => {
     navigator.clipboard.writeText(SQL_MIGRATION)
     setCopiedSql(true)
@@ -261,6 +489,9 @@ export default function CourtRentalPage() {
   const formatRupiah = (val) => {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(val || 0)
   }
+
+  // Filtered slots for Tab 3
+  const filteredSlots = slots.filter(s => dayTypeFilter === 'all' || s.day_type === dayTypeFilter)
 
   // Status Badges using Minimalist UI Muted Pastel tokens
   const renderStatusBadge = (status) => {
@@ -318,14 +549,31 @@ export default function CourtRentalPage() {
               <h1 className="text-xl font-bold tracking-tight" style={{ color: textPrimary, letterSpacing: '-0.02em', margin: 0 }}>
                 Sport Hall CCS Rental Management
               </h1>
-              <p className="text-xs" style={{ color: textSecondary, margin: '2px 0 0 0' }}>
-                Manage master reservations, verify payment proof streams, issue official booking approvals, and set operational blackout dates.
-              </p>
             </div>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
+          <button
+            onClick={openMarkomModal}
+            style={{
+              background: isDark ? 'rgba(59, 130, 246, 0.15)' : '#EFF6FF',
+              color: isDark ? '#93C5FD' : '#1D4ED8',
+              border: `1px solid ${isDark ? '#1E40AF' : '#BFDBFE'}`,
+              borderRadius: '6px',
+              fontSize: '12px',
+              fontWeight: 600,
+              padding: '7px 14px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}
+          >
+            <FontAwesomeIcon icon={faBullhorn} className="text-xs" />
+            Set Markom & Notifikasi
+          </button>
+
           <button
             onClick={() => fetchBookings()}
             style={{
@@ -468,6 +716,27 @@ export default function CourtRentalPage() {
         >
           <FontAwesomeIcon icon={faBan} style={{ fontSize: '13px' }} />
           School Events &amp; Blackout Dates ({blackoutDates.length})
+        </button>
+
+        <button
+          onClick={() => setActiveTab('slots')}
+          style={{
+            padding: '12px 0',
+            fontSize: '14px',
+            fontWeight: activeTab === 'slots' ? 600 : 400,
+            border: 'none',
+            background: 'none',
+            cursor: 'pointer',
+            color: activeTab === 'slots' ? textPrimary : textSecondary,
+            borderBottom: activeTab === 'slots' ? `2px solid ${textPrimary}` : '2px solid transparent',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            transition: 'all 0.15s ease'
+          }}
+        >
+          <FontAwesomeIcon icon={faClock} style={{ fontSize: '13px' }} />
+          Sesi Jam Sewa ({slots.length})
         </button>
       </div>
 
@@ -733,6 +1002,47 @@ export default function CourtRentalPage() {
       {activeTab === 'blackout' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           
+          {/* RECURRING CLUB CONTRACT (MAHAMERU BASKETBALL) */}
+          <div style={{ background: cardBg, border: `1px solid ${borderColor}`, borderRadius: '8px', padding: '18px 20px' }}>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-3">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                  <h3 style={{ fontSize: '14px', fontWeight: 600, margin: 0, color: textPrimary }}>
+                    Jadwal Kontrak Rutin: Mahameru Basketball Club
+                  </h3>
+                  <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300">
+                    MOU: 013/MARCOMCCS/XII/2025
+                  </span>
+                </div>
+                <p style={{ fontSize: '12px', color: textSecondary, margin: '4px 0 0 0' }}>
+                  Kontrak tahunan berlaku <strong>01 Januari 2026 s/d 31 Desember 2026</strong>. Sistem secara otomatis memblokir jadwal ini dari portal publik agar tidak dapat dipesan oleh pihak lain.
+                </p>
+              </div>
+              <span className="px-2.5 py-1 rounded text-[11px] font-mono font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                AUTO-BLOCKED (3 SESI/MINGGU)
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t text-xs font-mono" style={{ borderColor }}>
+              <div className="p-3 rounded border" style={{ background: isDark ? '#141417' : '#F9F9F8', borderColor }}>
+                <strong className="block text-[11px] text-indigo-600 dark:text-indigo-400">SETIAP SENIN</strong>
+                <span className="text-sm font-bold block my-0.5" style={{ color: textPrimary }}>19:00 - 21:00 WIB</span>
+                <span className="text-[10px] text-neutral-400 block">Memblokir slot malam (18:00 - 20:00 &amp; 20:00 - 22:00)</span>
+              </div>
+              <div className="p-3 rounded border" style={{ background: isDark ? '#141417' : '#F9F9F8', borderColor }}>
+                <strong className="block text-[11px] text-emerald-600 dark:text-emerald-400">SETIAP SABTU</strong>
+                <span className="text-sm font-bold block my-0.5" style={{ color: textPrimary }}>14:00 - 16:00 WIB</span>
+                <span className="text-[10px] text-neutral-400 block">Memblokir slot siang-sore (14:00 - 16:00)</span>
+              </div>
+              <div className="p-3 rounded border" style={{ background: isDark ? '#141417' : '#F9F9F8', borderColor }}>
+                <strong className="block text-[11px] text-amber-600 dark:text-amber-400">SETIAP MINGGU</strong>
+                <span className="text-sm font-bold block my-0.5" style={{ color: textPrimary }}>14:00 - 16:00 WIB</span>
+                <span className="text-[10px] text-neutral-400 block">Memblokir slot siang-sore (14:00 - 16:00)</span>
+              </div>
+            </div>
+          </div>
+
           {/* ADD BLACKOUT FORM */}
           <div style={{ background: cardBg, border: `1px solid ${borderColor}`, borderRadius: '8px', padding: '20px' }}>
             <h3 style={{ fontSize: '15px', fontWeight: 600, margin: '0 0 4px 0', color: textPrimary }}>
@@ -768,13 +1078,23 @@ export default function CourtRentalPage() {
                   style={{ background: isDark ? '#18181B' : '#FFFFFF', borderColor, color: textPrimary, borderRadius: '4px' }}
                 >
                   <option value="">Whole Day (All Sessions)</option>
-                  <option value="16:00 - 18:00">16:00 - 18:00 (Weekday / Weekend)</option>
-                  <option value="18:00 - 20:00">18:00 - 20:00 (Weekday / Weekend)</option>
-                  <option value="20:00 - 22:00">20:00 - 22:00 (Weekday / Weekend)</option>
-                  <option value="06:00 - 08:00">06:00 - 08:00 (Weekend)</option>
-                  <option value="08:00 - 10:00">08:00 - 10:00 (Weekend)</option>
-                  <option value="10:00 - 12:00">10:00 - 12:00 (Weekend)</option>
-                  <option value="14:00 - 16:00">14:00 - 16:00 (Weekend)</option>
+                  {slots && slots.length > 0 ? (
+                    slots.map(s => (
+                      <option key={s.id} value={s.time_slot}>
+                        {s.time_slot} ({s.day_type.toUpperCase()}{s.label ? ` - ${s.label}` : ''})
+                      </option>
+                    ))
+                  ) : (
+                    <>
+                      <option value="16:00 - 18:00">16:00 - 18:00 (Weekday / Weekend)</option>
+                      <option value="18:00 - 20:00">18:00 - 20:00 (Weekday / Weekend)</option>
+                      <option value="20:00 - 22:00">20:00 - 22:00 (Weekday / Weekend)</option>
+                      <option value="06:00 - 08:00">06:00 - 08:00 (Weekend)</option>
+                      <option value="08:00 - 10:00">08:00 - 10:00 (Weekend)</option>
+                      <option value="10:00 - 12:00">10:00 - 12:00 (Weekend)</option>
+                      <option value="14:00 - 16:00">14:00 - 16:00 (Weekend)</option>
+                    </>
+                  )}
                 </select>
               </div>
 
@@ -850,6 +1170,182 @@ export default function CourtRentalPage() {
                             onClick={() => handleDeleteBlackout(b.id)}
                             className="p-1 text-neutral-400 hover:text-rose-600 transition cursor-pointer"
                             title="Delete"
+                          >
+                            <FontAwesomeIcon icon={faTrash} className="text-xs" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── TAB 3: MASTER SESI JAM SEWA (COURT TIME SLOTS) ────────────────── */}
+      {activeTab === 'slots' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          
+          {/* HEADER & INFO CARD */}
+          <div style={{ background: cardBg, border: `1px solid ${borderColor}`, borderRadius: '8px', padding: '20px' }}>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div>
+                <h3 style={{ fontSize: '15px', fontWeight: 600, margin: '0 0 4px 0', color: textPrimary }}>
+                  Konfigurasi Master Sesi Jam Sewa (Court Time Slots)
+                </h3>
+                <p style={{ fontSize: '12px', color: textSecondary, margin: 0 }}>
+                  Atur jam sesi sewa lapangan yang tersedia untuk publik pada hari biasa (Weekday: Senin–Jumat) dan akhir pekan (Weekend: Sabtu–Minggu). Sesi yang dinonaktifkan tidak akan muncul pada formulir pemesanan publik.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setNewSlotModalOpen(true)}
+                style={{
+                  background: textPrimary,
+                  color: isDark ? '#111111' : '#FFFFFF',
+                  border: 'none',
+                  borderRadius: '4px',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  padding: '8px 16px',
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  whiteSpace: 'nowrap'
+                }}
+              >
+                <FontAwesomeIcon icon={faPlus} className="text-xs" />
+                Tambah Sesi Jam
+              </button>
+            </div>
+
+            {!slotsTableExists && (
+              <div className="mt-4 p-3 rounded text-xs border flex items-center justify-between" style={{ background: isDark ? '#2D1515' : '#FEF2F2', borderColor: '#FCA5A5' }}>
+                <span className="text-rose-700 dark:text-rose-300 font-mono">
+                  Tabel <code>court_time_slots</code> belum dibuat di Supabase. Sesi jam saat ini berjalan menggunakan konfigurasi default sistem. Silakan jalankan skrip migrasi SQL di Supabase SQL Editor.
+                </span>
+                <button
+                  type="button"
+                  onClick={copyMigrationSql}
+                  style={{
+                    background: '#9F2F2D',
+                    color: '#FFFFFF',
+                    border: 'none',
+                    borderRadius: '4px',
+                    fontSize: '11px',
+                    padding: '4px 8px',
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap'
+                  }}
+                >
+                  Salin SQL
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* TABLE WITH DAY FILTER */}
+          <div style={{ background: cardBg, border: `1px solid ${borderColor}`, borderRadius: '8px', overflow: 'hidden' }}>
+            <div className="px-4 py-3 border-b flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3" style={{ borderColor }}>
+              <div className="font-mono font-semibold text-[10px] uppercase tracking-wider" style={{ color: textSecondary }}>
+                DAFTAR SESI JAM OPERASIONAL ({filteredSlots.length})
+              </div>
+              {/* Day Type Filter Pills */}
+              <div className="flex items-center gap-1.5">
+                {[
+                  { id: 'all', label: 'Semua Hari' },
+                  { id: 'weekday', label: 'Weekday (Sen - Jum)' },
+                  { id: 'weekend', label: 'Weekend (Sab - Min)' }
+                ].map(tab => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setDayTypeFilter(tab.id)}
+                    style={{
+                      background: dayTypeFilter === tab.id ? (isDark ? '#27272A' : '#E4E4E7') : 'transparent',
+                      color: dayTypeFilter === tab.id ? textPrimary : textSecondary,
+                      border: `1px solid ${dayTypeFilter === tab.id ? borderColor : 'transparent'}`,
+                      borderRadius: '4px',
+                      padding: '4px 10px',
+                      fontSize: '11px',
+                      fontWeight: dayTypeFilter === tab.id ? 600 : 400,
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="border-b" style={{ background: isDark ? '#141417' : '#F9F9F8', borderColor }}>
+                    <th className="px-4 py-2.5 font-mono text-[10px] uppercase font-semibold text-center w-14" style={{ color: textSecondary }}>Urutan</th>
+                    <th className="px-4 py-2.5 font-mono text-[10px] uppercase font-semibold" style={{ color: textSecondary }}>Kategori Hari</th>
+                    <th className="px-4 py-2.5 font-mono text-[10px] uppercase font-semibold" style={{ color: textSecondary }}>Rentang Jam</th>
+                    <th className="px-4 py-2.5 font-mono text-[10px] uppercase font-semibold" style={{ color: textSecondary }}>Label / Keterangan</th>
+                    <th className="px-4 py-2.5 font-mono text-[10px] uppercase font-semibold text-center" style={{ color: textSecondary }}>Status Operasional</th>
+                    <th className="px-4 py-2.5 font-mono text-[10px] uppercase font-semibold text-right" style={{ color: textSecondary }}>Aksi</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y" style={{ borderColor }}>
+                  {slotsLoading ? (
+                    <tr>
+                      <td colSpan={6} className="text-center py-6 text-neutral-400 font-mono">Memuat data sesi jam...</td>
+                    </tr>
+                  ) : filteredSlots.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="text-center py-8 text-neutral-400 font-mono">Belum ada sesi jam terdaftar untuk kategori ini.</td>
+                    </tr>
+                  ) : (
+                    filteredSlots.map(s => (
+                      <tr key={s.id} className="hover:bg-neutral-50/50 transition">
+                        <td className="px-4 py-2.5 font-mono font-bold text-center" style={{ color: textSecondary }}>
+                          {s.sort_order}
+                        </td>
+                        <td className="px-4 py-2.5">
+                          <span
+                            className="inline-block px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase"
+                            style={{
+                              background: s.day_type === 'weekday' ? (isDark ? '#1E293B' : '#E0E7FF') : (isDark ? '#312E81' : '#EDE9FE'),
+                              color: s.day_type === 'weekday' ? (isDark ? '#93C5FD' : '#3730A3') : (isDark ? '#C4B5FD' : '#5B21B6')
+                            }}
+                          >
+                            {s.day_type === 'weekday' ? 'Weekday (Sen - Jum)' : 'Weekend (Sab - Min)'}
+                          </span>
+                        </td>
+                        <td className="px-4 py-2.5 font-mono font-bold" style={{ color: textPrimary }}>
+                          {s.time_slot}
+                        </td>
+                        <td className="px-4 py-2.5" style={{ color: textSecondary }}>
+                          {s.label || '—'}
+                        </td>
+                        <td className="px-4 py-2.5 text-center">
+                          <button
+                            type="button"
+                            onClick={() => handleToggleSlot(s)}
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-[11px] font-mono font-semibold transition cursor-pointer"
+                            style={{
+                              background: s.is_active ? (isDark ? '#14291E' : '#ECFDF5') : (isDark ? '#27272A' : '#F4F4F5'),
+                              color: s.is_active ? '#059669' : textSecondary,
+                              border: `1px solid ${s.is_active ? '#A7F3D0' : borderColor}`
+                            }}
+                            title={s.is_active ? 'Klik untuk nonaktifkan slot' : 'Klik untuk aktifkan slot'}
+                          >
+                            <FontAwesomeIcon icon={s.is_active ? faToggleOn : faToggleOff} className="text-sm" />
+                            {s.is_active ? 'AKTIF' : 'NONAKTIF'}
+                          </button>
+                        </td>
+                        <td className="px-4 py-2.5 text-right">
+                          <button
+                            onClick={() => handleDeleteSlot(s)}
+                            className="p-1 text-neutral-400 hover:text-rose-600 transition cursor-pointer"
+                            title="Hapus Sesi"
                           >
                             <FontAwesomeIcon icon={faTrash} className="text-xs" />
                           </button>
@@ -1086,6 +1582,360 @@ export default function CourtRentalPage() {
             </div>
           </div>
         )}
+      </Modal>
+
+      {/* ── MODAL: TAMBAH SESI JAM BARU ──────────────────────────────────── */}
+      <Modal
+        isOpen={newSlotModalOpen}
+        onClose={() => setNewSlotModalOpen(false)}
+        title="Tambah Sesi Jam Operasional"
+        size="md"
+        containerStyle={{ background: cardBg, borderColor, borderRadius: '8px' }}
+      >
+        <form onSubmit={handleCreateSlot} className="space-y-4 text-xs">
+          <div>
+            <label className="block text-[10px] font-mono uppercase font-semibold mb-1" style={{ color: textSecondary }}>
+              Kategori Hari *
+            </label>
+            <select
+              value={newSlot.day_type}
+              onChange={(e) => setNewSlot({ ...newSlot, day_type: e.target.value })}
+              className="w-full px-2.5 py-1.5 text-xs font-mono rounded border outline-none font-medium"
+              style={{ background: isDark ? '#18181B' : '#FFFFFF', borderColor, color: textPrimary, borderRadius: '4px' }}
+            >
+              <option value="weekday">Weekday (Senin – Jumat)</option>
+              <option value="weekend">Weekend (Sabtu – Minggu)</option>
+            </select>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-[10px] font-mono uppercase font-semibold mb-1" style={{ color: textSecondary }}>
+                Jam Mulai *
+              </label>
+              <input
+                type="time"
+                required
+                value={newSlot.start_time}
+                onChange={(e) => setNewSlot({ ...newSlot, start_time: e.target.value })}
+                className="w-full px-2.5 py-1.5 text-xs font-mono rounded border outline-none font-medium"
+                style={{ background: isDark ? '#18181B' : '#FFFFFF', borderColor, color: textPrimary, borderRadius: '4px' }}
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] font-mono uppercase font-semibold mb-1" style={{ color: textSecondary }}>
+                Jam Selesai *
+              </label>
+              <input
+                type="time"
+                required
+                value={newSlot.end_time}
+                onChange={(e) => setNewSlot({ ...newSlot, end_time: e.target.value })}
+                className="w-full px-2.5 py-1.5 text-xs font-mono rounded border outline-none font-medium"
+                style={{ background: isDark ? '#18181B' : '#FFFFFF', borderColor, color: textPrimary, borderRadius: '4px' }}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-[10px] font-mono uppercase font-semibold mb-1" style={{ color: textSecondary }}>
+                Label Keterangan (Opsional)
+              </label>
+              <input
+                type="text"
+                placeholder="Contoh: Sesi Sore, Sesi Malam"
+                value={newSlot.label}
+                onChange={(e) => setNewSlot({ ...newSlot, label: e.target.value })}
+                className="w-full px-2.5 py-1.5 text-xs rounded border outline-none font-medium"
+                style={{ background: isDark ? '#18181B' : '#FFFFFF', borderColor, color: textPrimary, borderRadius: '4px' }}
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] font-mono uppercase font-semibold mb-1" style={{ color: textSecondary }}>
+                Nomor Urutan Tampilan
+              </label>
+              <input
+                type="number"
+                min={1}
+                max={99}
+                value={newSlot.sort_order}
+                onChange={(e) => setNewSlot({ ...newSlot, sort_order: parseInt(e.target.value) || 1 })}
+                className="w-full px-2.5 py-1.5 text-xs font-mono rounded border outline-none font-medium"
+                style={{ background: isDark ? '#18181B' : '#FFFFFF', borderColor, color: textPrimary, borderRadius: '4px' }}
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 pt-2">
+            <input
+              type="checkbox"
+              id="slot_is_active"
+              checked={newSlot.is_active}
+              onChange={(e) => setNewSlot({ ...newSlot, is_active: e.target.checked })}
+              className="rounded"
+            />
+            <label htmlFor="slot_is_active" className="text-xs cursor-pointer font-medium" style={{ color: textPrimary }}>
+              Langsung aktifkan sesi jam ini untuk pemesanan publik
+            </label>
+          </div>
+
+          <div className="flex items-center justify-end gap-2 pt-3 border-t" style={{ borderColor }}>
+            <button
+              type="button"
+              onClick={() => setNewSlotModalOpen(false)}
+              style={{
+                background: 'transparent',
+                border: `1px solid ${borderColor}`,
+                borderRadius: '4px',
+                fontSize: '11px',
+                padding: '6px 12px',
+                cursor: 'pointer',
+                color: textSecondary
+              }}
+            >
+              Batal
+            </button>
+            <button
+              type="submit"
+              disabled={actionLoading}
+              style={{
+                background: textPrimary,
+                color: isDark ? '#111111' : '#FFFFFF',
+                border: 'none',
+                borderRadius: '4px',
+                fontSize: '11px',
+                fontWeight: 600,
+                padding: '6px 14px',
+                cursor: 'pointer',
+                opacity: actionLoading ? 0.5 : 1
+              }}
+            >
+              {actionLoading ? 'Menyimpan...' : 'Simpan Sesi Jam'}
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* ── MODAL SET MARKOM & NOTIFIKASI ─────────────────────────────────── */}
+      <Modal
+        isOpen={markomModalOpen}
+        onClose={() => setMarkomModalOpen(false)}
+        title="📢 Pengaturan Notifikasi Markom (Sport Hall CCS)"
+        maxWidth="max-w-2xl"
+      >
+        <div className="space-y-4">
+          <p className="text-xs" style={{ color: textSecondary, margin: 0, lineHeight: 1.5 }}>
+            Tentukan staf / tim Markom yang akan menerima pemberitahuan otomatis melalui <strong>Email</strong> dan <strong>Bot Google Chat</strong> secara real-time setiap kali ada reservasi baru yang diajukan oleh penyewa di website.
+          </p>
+
+          {markomSuccessMsg && (
+            <div className="p-3 rounded text-xs font-medium flex items-center gap-2" style={{ background: isDark ? 'rgba(16, 185, 129, 0.2)' : '#D1FAE5', color: isDark ? '#6EE7B7' : '#065F46', border: '1px solid #10B981' }}>
+              <FontAwesomeIcon icon={faCheck} className="text-xs" />
+              {markomSuccessMsg}
+            </div>
+          )}
+
+          {/* Form Tambah Staf */}
+          <div className="p-3.5 rounded border space-y-2.5" style={{ background: cardBg, borderColor }}>
+            <div className="text-[11px] font-mono uppercase font-semibold tracking-wider" style={{ color: textSecondary }}>
+              + Tambah Staf Penerima Notifikasi
+            </div>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <select
+                value={selectedStaffId}
+                onChange={(e) => setSelectedStaffId(e.target.value)}
+                disabled={markomLoading}
+                className="flex-1 px-3 py-2 text-xs rounded border outline-none font-medium"
+                style={{ background: isDark ? '#18181B' : '#FFFFFF', borderColor, color: textPrimary }}
+              >
+                <option value="">-- Pilih Staf / Tim Markom --</option>
+                {availableStaff.map((u) => {
+                  const isAlreadyAdded = markomRecipients.some(r => String(r.user_id) === String(u.user_id))
+                  return (
+                    <option key={u.user_id} value={u.user_id} disabled={isAlreadyAdded}>
+                      {u.user_nama_depan} {u.user_nama_belakang} ({u.role?.role_name || 'Staff'}) — {u.user_email} {isAlreadyAdded ? '✓ [Sudah Terdaftar]' : ''}
+                    </option>
+                  )
+                })}
+              </select>
+              <button
+                type="button"
+                onClick={handleAddRecipient}
+                disabled={!selectedStaffId || markomLoading}
+                style={{
+                  background: textPrimary,
+                  color: isDark ? '#111111' : '#FFFFFF',
+                  border: 'none',
+                  borderRadius: '6px',
+                  fontSize: '11px',
+                  fontWeight: 600,
+                  padding: '8px 16px',
+                  cursor: selectedStaffId ? 'pointer' : 'not-allowed',
+                  opacity: selectedStaffId ? 1 : 0.4,
+                  whiteSpace: 'nowrap',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
+              >
+                <FontAwesomeIcon icon={faPlus} className="text-xs" />
+                Tambahkan
+              </button>
+            </div>
+          </div>
+
+          {/* Tabel Daftar Penerima Notifikasi */}
+          <div className="border rounded overflow-hidden" style={{ borderColor }}>
+            <div className="px-3.5 py-2 border-b text-[11px] font-mono font-semibold tracking-wider uppercase flex items-center justify-between" style={{ background: isDark ? '#27272A' : '#F4F4F5', borderColor, color: textSecondary }}>
+              <span>Daftar Penerima Aktif ({markomRecipients.length})</span>
+              <span className="text-[10px] font-normal lowercase">Pemberitahuan otomatis real-time</span>
+            </div>
+
+            {markomLoading ? (
+              <div className="py-8 text-center text-xs" style={{ color: textSecondary }}>
+                <FontAwesomeIcon icon={faRotateRight} className="animate-spin text-sm mb-1" />
+                <div>Memuat daftar penerima...</div>
+              </div>
+            ) : markomRecipients.length === 0 ? (
+              <div className="py-8 text-center text-xs" style={{ color: textSecondary }}>
+                Belum ada staf Markom yang didaftarkan. Pilih staf di atas untuk mulai menerima notifikasi.
+              </div>
+            ) : (
+              <div className="divide-y" style={{ borderColor }}>
+                {markomRecipients.map((recipient) => (
+                  <div
+                    key={recipient.user_id}
+                    className="p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs"
+                    style={{ background: recipient.is_active ? cardBg : (isDark ? '#1C1917' : '#F5F5F4'), opacity: recipient.is_active ? 1 : 0.6 }}
+                  >
+                    <div className="min-w-0">
+                      <div className="font-semibold flex items-center gap-2" style={{ color: textPrimary }}>
+                        <span>{recipient.user_nama_depan} {recipient.user_nama_belakang}</span>
+                        <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-neutral-200 dark:bg-neutral-800" style={{ color: textSecondary }}>
+                          {recipient.role_name}
+                        </span>
+                      </div>
+                      <div className="text-[11px] font-mono mt-0.5" style={{ color: textSecondary }}>
+                        {recipient.user_email}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-3 shrink-0">
+                      {/* Toggle Email */}
+                      <label className="flex items-center gap-1.5 cursor-pointer text-[11px]" title="Kirim email pemberitahuan setiap ada booking baru">
+                        <input
+                          type="checkbox"
+                          checked={recipient.notify_email !== false}
+                          onChange={() => handleToggleRecipient(recipient.user_id, 'notify_email')}
+                          className="rounded text-blue-600"
+                        />
+                        <span style={{ color: textPrimary }}>
+                          <FontAwesomeIcon icon={faEnvelope} className="text-blue-500 mr-1" />
+                          Email
+                        </span>
+                      </label>
+
+                      {/* Toggle Google Chat */}
+                      <label className="flex items-center gap-1.5 cursor-pointer text-[11px]" title="Kirim direct message bot Google Chat setiap ada booking baru">
+                        <input
+                          type="checkbox"
+                          checked={recipient.notify_google_chat !== false}
+                          onChange={() => handleToggleRecipient(recipient.user_id, 'notify_google_chat')}
+                          className="rounded text-emerald-600"
+                        />
+                        <span style={{ color: textPrimary }}>
+                          <FontAwesomeIcon icon={faComments} className="text-emerald-500 mr-1" />
+                          Google Chat
+                        </span>
+                      </label>
+
+                      {/* Toggle Aktif */}
+                      <button
+                        type="button"
+                        onClick={() => handleToggleRecipient(recipient.user_id, 'is_active')}
+                        style={{
+                          background: 'transparent',
+                          border: 'none',
+                          cursor: 'pointer',
+                          color: recipient.is_active ? '#10B981' : textSecondary,
+                          fontSize: '15px'
+                        }}
+                        title={recipient.is_active ? 'Status: Aktif' : 'Status: Nonaktif'}
+                      >
+                        <FontAwesomeIcon icon={recipient.is_active ? faToggleOn : faToggleOff} />
+                      </button>
+
+                      {/* Hapus */}
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveRecipient(recipient.user_id)}
+                        style={{
+                          background: 'transparent',
+                          border: 'none',
+                          cursor: 'pointer',
+                          color: '#EF4444',
+                          fontSize: '12px',
+                          padding: '4px'
+                        }}
+                        title="Hapus dari daftar penerima"
+                      >
+                        <FontAwesomeIcon icon={faTrash} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="p-3 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900 rounded text-[11px] text-blue-900 dark:text-blue-300 flex items-start gap-2">
+            <FontAwesomeIcon icon={faComments} className="text-blue-500 mt-0.5 shrink-0" />
+            <div>
+              <strong>Integrasi Google Chat Bot CCS:</strong> Notifikasi Google Chat dikirimkan secara otomatis via Bot resmi CCS ke direct message (DM) akun Workspace Google Chat penerima (@ccs.sch.id).
+            </div>
+          </div>
+
+          <div className="flex items-center justify-end gap-2 pt-3 border-t" style={{ borderColor }}>
+            <button
+              type="button"
+              onClick={() => setMarkomModalOpen(false)}
+              style={{
+                background: 'transparent',
+                border: `1px solid ${borderColor}`,
+                borderRadius: '4px',
+                fontSize: '11px',
+                padding: '7px 14px',
+                cursor: 'pointer',
+                color: textSecondary
+              }}
+            >
+              Batal
+            </button>
+            <button
+              type="button"
+              onClick={handleSaveMarkom}
+              disabled={markomSaving}
+              style={{
+                background: textPrimary,
+                color: isDark ? '#111111' : '#FFFFFF',
+                border: 'none',
+                borderRadius: '4px',
+                fontSize: '11px',
+                fontWeight: 600,
+                padding: '7px 16px',
+                cursor: 'pointer',
+                opacity: markomSaving ? 0.5 : 1,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}
+            >
+              <FontAwesomeIcon icon={faCheck} className="text-xs" />
+              {markomSaving ? 'Menyimpan...' : 'Simpan Pengaturan'}
+            </button>
+          </div>
+        </div>
       </Modal>
     </div>
   )

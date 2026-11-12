@@ -734,6 +734,99 @@ export const emailTemplates = {
   },
 
   /**
+   * Email to renter: initial court booking submission confirmation
+   * params: { renterName, bookingCode, packageName, price, bookingDate, timeSlot, status, hostingUrl }
+   */
+  courtRentalSubmitted: ({
+    renterName,
+    bookingCode,
+    packageName,
+    price,
+    bookingDate,
+    timeSlot,
+    status = 'payment_uploaded',
+    hostingUrl
+  }) => {
+    const formattedPrice = typeof price === 'number' ? `Rp ${price.toLocaleString('id-ID')},-` : (price || '—')
+    const isPaymentUploaded = status === 'payment_uploaded'
+    const statusText = isPaymentUploaded ? 'Bukti Transfer Diunggah (Menunggu Verifikasi)' : 'Menunggu Pembayaran'
+    const cleanUrl = hostingUrl ? String(hostingUrl).replace(/\/$/, '') : ''
+    const checkUrl = cleanUrl ? `${cleanUrl}/?cek=${encodeURIComponent(bookingCode)}#cek-status` : ''
+
+    const subject = `📋 Konfirmasi Pengajuan Sewa Lapangan CCS — ${bookingCode}`
+    const html = wrapHtml(`
+      <div class="container">
+        <div class="header" style="background: linear-gradient(135deg, #1e3a8a, #0284c7); color: #fff; padding: 28px 24px; text-align: center;">
+          <h1 style="margin:0; font-size: 20px; font-weight: 700; color: #ffffff;">📋 Pengajuan Sewa Lapangan Diterima</h1>
+          <p style="margin:6px 0 0; opacity: 0.9; font-size: 13px; color: #e0f2fe;">Sport Hall — Chung Chung Christian School</p>
+        </div>
+        <div class="body" style="padding: 24px; color: #334155; line-height: 1.6;">
+          <p>Yth. <strong>${renterName || 'Bapak/Ibu Pemesan'}</strong>,</p>
+          <p>Terima kasih telah mengajukan reservasi sewa lapangan olahraga di <strong>Chung Chung Christian School (CCS)</strong>. Pengajuan reservasi Anda telah berhasil dicatat dalam sistem kami dengan rincian sebagai berikut:</p>
+          
+          <div class="detail-box review" style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 12px; padding: 16px; margin: 16px 0;">
+            <div class="detail-row" style="display:flex; justify-content:space-between; padding:6px 0; border-bottom: 1px dashed #e2e8f0; font-size: 14px;">
+              <span class="detail-label" style="color:#64748b;">Kode Booking:</span>
+              <span class="detail-value" style="font-weight:700; font-family:monospace; color:#0369a1; font-size: 15px;">${bookingCode}</span>
+            </div>
+            <div class="detail-row" style="display:flex; justify-content:space-between; padding:6px 0; border-bottom: 1px dashed #e2e8f0; font-size: 14px;">
+              <span class="detail-label" style="color:#64748b;">Paket Sewa:</span>
+              <span class="detail-value" style="font-weight:600; color:#0f172a;">${packageName || 'Price List Persewaan Lapangan CCS'}</span>
+            </div>
+            <div class="detail-row" style="display:flex; justify-content:space-between; padding:6px 0; border-bottom: 1px dashed #e2e8f0; font-size: 14px;">
+              <span class="detail-label" style="color:#64748b;">Total Biaya:</span>
+              <span class="detail-value" style="font-weight:700; color:#ea580c; font-family:monospace;">${formattedPrice}</span>
+            </div>
+            <div class="detail-row" style="display:flex; justify-content:space-between; padding:6px 0; border-bottom: 1px dashed #e2e8f0; font-size: 14px;">
+              <span class="detail-label" style="color:#64748b;">Tanggal Sewa:</span>
+              <span class="detail-value" style="font-weight:600; color:#0f172a;">${bookingDate}</span>
+            </div>
+            <div class="detail-row" style="display:flex; justify-content:space-between; padding:6px 0; border-bottom: 1px dashed #e2e8f0; font-size: 14px;">
+              <span class="detail-label" style="color:#64748b;">Sesi Jam:</span>
+              <span class="detail-value" style="font-weight:600; color:#0f172a;">${timeSlot}</span>
+            </div>
+            <div class="detail-row" style="display:flex; justify-content:space-between; padding:6px 0; font-size: 14px;">
+              <span class="detail-label" style="color:#64748b;">Status:</span>
+              <span class="detail-value"><span class="badge ${isPaymentUploaded ? 'badge-info' : 'badge-danger'}">${statusText}</span></span>
+            </div>
+          </div>
+
+          <div style="margin-top:16px;padding:14px 18px;background:#f0fdf4;border-left:4px solid #16a34a;border-radius:8px;font-size:13px;color:#166534;line-height:1.6;">
+            <strong>⏱️ Catatan Waktu Pemrosesan:</strong>
+            <p style="margin:4px 0 0 0;font-size:13.5px;font-weight:600;">
+              Pesanan Anda akan diproses kurang dari 1x24 jam, harap cek email secara berkala.
+            </p>
+          </div>
+
+          <div style="margin-top:14px;padding:14px 18px;background:#f8fafc;border-left:4px solid #1e3a8a;border-radius:8px;font-size:13px;color:#334155;line-height:1.6;">
+            <strong>Prosedur Verifikasi & Ketentuan:</strong>
+            <ul style="margin:6px 0 0 0;padding-left:18px;">
+              <li>Petugas Sarpras & Keuangan CCS akan memverifikasi bukti transfer dan jadwal yang Anda pilih pada jam operasional kerja (Senin–Jumat pukul 08.00–16.00 WIB).</li>
+              <li>Status booking lapangan akan resmi berubah menjadi <strong>Sukses</strong> ketika bukti pembayaran telah diverifikasi dan Anda menerima <strong>Email Konfirmasi Resmi</strong>.</li>
+              <li>Simpan Kode Booking <strong>${bookingCode}</strong> Anda dengan baik sebagai nomor referensi.</li>
+            </ul>
+          </div>
+
+          ${checkUrl ? `
+          <div style="margin-top:22px;text-align:center;">
+            <a href="${checkUrl}" style="display:inline-block;padding:11px 26px;background:#1e3a8a;color:#ffffff;text-decoration:none;border-radius:10px;font-weight:600;font-size:14px;">
+              🔍 Cek Status Reservasi Anda
+            </a>
+          </div>` : ''}
+
+          <p style="margin-top:22px;font-size:12.5px;color:#64748b;">
+            Jika ada pertanyaan lebih lanjut, silakan menghubungi Admin Sport Hall CCS via WhatsApp: <strong>+62 859-5986-0430</strong>.
+          </p>
+        </div>
+        <div class="footer">
+          Yayasan Pendidikan Mayapada School — Chung Chung Christian School (CCS)
+        </div>
+      </div>
+    `)
+    return { subject, html }
+  },
+
+  /**
    * Email to renter: their court booking has been approved
    * params: { renterName, bookingCode, packageName, price, bookingDate, timeSlot }
    */
@@ -815,6 +908,97 @@ export const emailTemplates = {
         </div>
         <div class="footer">
           Yayasan Pendidikan Mayapada School — Chung Chung Christian School (CCS)
+        </div>
+      </div>
+    `)
+    return { subject, html }
+  },
+
+  /**
+   * Email to Markom/Staff: alert when a new court rental booking is submitted
+   * params: { recipientName, bookingCode, renterName, renterPhone, renterEmail, renterOrg, renterPurpose, packageName, price, bookingDate, timeSlot, dashboardUrl }
+   */
+  courtRentalMarkomAlert: ({
+    recipientName,
+    bookingCode,
+    renterName,
+    renterPhone,
+    renterEmail,
+    renterOrg,
+    renterPurpose,
+    packageName,
+    price,
+    bookingDate,
+    timeSlot,
+    dashboardUrl = 'https://manageccs.online/data/court-rental'
+  }) => {
+    const formattedPrice = typeof price === 'number' ? `Rp ${price.toLocaleString('id-ID')},-` : (price || '—')
+    const subject = `🏸 [Markom Sport Hall] Pesanan Sewa Baru — ${bookingCode} (${renterName})`
+    const html = wrapHtml(`
+      <div class="container">
+        <div class="header" style="background: linear-gradient(135deg, #1e3a8a, #0d9488); color: #fff; padding: 28px 24px; text-align: center;">
+          <h1 style="margin:0; font-size: 20px; font-weight: 700; color: #ffffff;">🏸 Pesanan Sewa Lapangan Baru</h1>
+          <p style="margin:6px 0 0; opacity: 0.9; font-size: 13px; color: #ccfbf1;">Sport Hall CCS — Notifikasi Internal Tim Markom & Sarpras</p>
+        </div>
+        <div class="body" style="padding: 24px; color: #334155; line-height: 1.6;">
+          <p>Halo <strong>${recipientName || 'Tim Markom / Sarpras'}</strong>,</p>
+          <p>Terdapat permohonan reservasi sewa lapangan olahraga baru yang baru saja masuk melalui portal website:</p>
+          
+          <div class="detail-box review" style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 12px; padding: 16px; margin: 16px 0;">
+            <div class="detail-row" style="display:flex; justify-content:space-between; padding:6px 0; border-bottom: 1px dashed #e2e8f0; font-size: 14px;">
+              <span class="detail-label" style="color:#64748b;">Kode Booking:</span>
+              <span class="detail-value" style="font-weight:700; font-family:monospace; color:#0f766e; font-size: 15px;">${bookingCode}</span>
+            </div>
+            <div class="detail-row" style="display:flex; justify-content:space-between; padding:6px 0; border-bottom: 1px dashed #e2e8f0; font-size: 14px;">
+              <span class="detail-label" style="color:#64748b;">Nama Pemesan:</span>
+              <span class="detail-value" style="font-weight:600; color:#0f172a;">${renterName}</span>
+            </div>
+            <div class="detail-row" style="display:flex; justify-content:space-between; padding:6px 0; border-bottom: 1px dashed #e2e8f0; font-size: 14px;">
+              <span class="detail-label" style="color:#64748b;">Kontak WhatsApp:</span>
+              <span class="detail-value" style="font-weight:600; color:#0f172a;">${renterPhone || '-'}</span>
+            </div>
+            <div class="detail-row" style="display:flex; justify-content:space-between; padding:6px 0; border-bottom: 1px dashed #e2e8f0; font-size: 14px;">
+              <span class="detail-label" style="color:#64748b;">Email Pemesan:</span>
+              <span class="detail-value" style="font-weight:600; color:#0f172a;">${renterEmail || '-'}</span>
+            </div>
+            <div class="detail-row" style="display:flex; justify-content:space-between; padding:6px 0; border-bottom: 1px dashed #e2e8f0; font-size: 14px;">
+              <span class="detail-label" style="color:#64748b;">Klub / Komunitas:</span>
+              <span class="detail-value" style="font-weight:600; color:#0f172a;">${renterOrg || 'Pribadi / Umum'}</span>
+            </div>
+            <div class="detail-row" style="display:flex; justify-content:space-between; padding:6px 0; border-bottom: 1px dashed #e2e8f0; font-size: 14px;">
+              <span class="detail-label" style="color:#64748b;">Tujuan Sewa:</span>
+              <span class="detail-value" style="font-weight:600; color:#0f172a;">${renterPurpose || '-'}</span>
+            </div>
+            <div class="detail-row" style="display:flex; justify-content:space-between; padding:6px 0; border-bottom: 1px dashed #e2e8f0; font-size: 14px;">
+              <span class="detail-label" style="color:#64748b;">Paket Sewa:</span>
+              <span class="detail-value" style="font-weight:600; color:#0f172a;">${packageName}</span>
+            </div>
+            <div class="detail-row" style="display:flex; justify-content:space-between; padding:6px 0; border-bottom: 1px dashed #e2e8f0; font-size: 14px;">
+              <span class="detail-label" style="color:#64748b;">Total Tarif:</span>
+              <span class="detail-value" style="font-weight:700; color:#ea580c; font-family:monospace;">${formattedPrice}</span>
+            </div>
+            <div class="detail-row" style="display:flex; justify-content:space-between; padding:6px 0; border-bottom: 1px dashed #e2e8f0; font-size: 14px;">
+              <span class="detail-label" style="color:#64748b;">Tanggal Bermain:</span>
+              <span class="detail-value" style="font-weight:600; color:#0f172a;">${bookingDate}</span>
+            </div>
+            <div class="detail-row" style="display:flex; justify-content:space-between; padding:6px 0; font-size: 14px;">
+              <span class="detail-label" style="color:#64748b;">Sesi Jam:</span>
+              <span class="detail-value" style="font-weight:600; color:#0f172a;">${timeSlot}</span>
+            </div>
+          </div>
+
+          <div style="margin-top:16px;padding:12px 16px;background:#fef3c7;border-left:4px solid #f59e0b;border-radius:8px;font-size:13px;color:#92400e;">
+            <strong>Status Bukti Pembayaran:</strong> Berkas bukti transfer telah diunggah oleh pemesan dan menunggu verifikasi keabsahan dana di rekening Bank Mayapada.
+          </div>
+
+          <div style="margin-top:22px;text-align:center;">
+            <a href="${dashboardUrl}" style="display:inline-block;padding:12px 28px;background:#0d9488;color:#ffffff;text-decoration:none;border-radius:10px;font-weight:600;font-size:14px;">
+              🔍 Periksa & Verifikasi di Dashboard Admin
+            </a>
+          </div>
+        </div>
+        <div class="footer">
+          Sistem Otomatis Notifikasi Internal — Chung Chung Christian School
         </div>
       </div>
     `)

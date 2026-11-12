@@ -2917,3 +2917,70 @@ Stores document and screenshot attachments across the school system, including b
 - **Path format for feedback**: `feedback/{user_<id>|general}/{timestamp}_{random}.{ext}`
 - **File size limit**: 10 MB
 - **Allowed MIME types**: `image/png`, `image/jpeg`, `image/webp`, `image/gif`
+
+---
+
+## 20. Sport Hall / Court Rental System
+
+Module for managing commercial public reservations and school scheduling of the sport hall / badminton-futsal court.
+
+### 20.1 Tables
+
+#### `court_rentals`
+Stores public court bookings submitted from the external cPanel rental portal (`cpanel-sewa-lapangan/index.php`).
+
+| Column Name | Type | Description / Constraint |
+| --- | --- | --- |
+| `id` | `BIGSERIAL` | Primary Key |
+| `booking_code` | `VARCHAR(50)` | Unique public reservation code (e.g. `CCS-20261112-7A2F`) |
+| `package_type` | `VARCHAR(50)` | Package identifier: `'with_ac'` or `'without_ac'` |
+| `package_name` | `VARCHAR(150)` | Display name of the rental package |
+| `price` | `NUMERIC(12, 2)` | Rental price (IDR) |
+| `booking_date` | `DATE` | Reservation date |
+| `time_slot` | `VARCHAR(50)` | Scheduled 2-hour session (e.g. `'16:00 - 18:00'`) |
+| `renter_name` | `VARCHAR(150)` | Full name of the person or team booking |
+| `renter_phone` | `VARCHAR(50)` | WhatsApp / contact phone number |
+| `renter_email` | `VARCHAR(150)` | Email address |
+| `renter_org` | `VARCHAR(150)` | Organization or club name (optional) |
+| `renter_purpose` | `TEXT` | Purpose of play (optional) |
+| `payment_proof_file`| `TEXT` | Filename of payment transfer receipt stored in Hostinger `uploads/` |
+| `hosting_url` | `TEXT` | Public base URL of the cPanel hosting hosting the image file |
+| `status` | `VARCHAR(50)` | Lifecycle: `'pending_payment'`, `'payment_uploaded'`, `'approved'`, `'rejected'` |
+| `admin_notes` | `TEXT` | Approval or rejection reason recorded by admin |
+| `approved_by` | `VARCHAR(100)` | Name/identifier of approving staff member |
+| `approved_at` | `TIMESTAMPTZ` | Timestamp when approved |
+| `created_at` | `TIMESTAMPTZ` | Creation timestamp |
+| `updated_at` | `TIMESTAMPTZ` | Last update timestamp |
+
+**Indexes & Concurrency Protection for `court_rentals`:**
+- `idx_court_rentals_date_slot`: Standard B-tree index on `(booking_date, time_slot)` for lookup speed.
+- `idx_court_rentals_unique_active_slot`: **Partial Unique Index** on `(booking_date, time_slot) WHERE status IN ('pending_payment', 'payment_uploaded', 'approved')` ensuring 100% database ACID guarantee against race conditions and double-booking at the exact same microsecond.
+- `idx_court_rentals_status`: Index on `(status)` for admin dashboard filtering.
+- `idx_court_rentals_code`: Unique index on `(booking_code)`.
+
+#### `court_blackout_dates`
+School agenda blocking dates/sessions from public reservation (exams, ceremonies, maintenance).
+
+| Column Name | Type | Description / Constraint |
+| --- | --- | --- |
+| `id` | `BIGSERIAL` | Primary Key |
+| `date` | `DATE` | Blocked date |
+| `time_slot` | `VARCHAR(50)` | Specific time slot (or `NULL` / empty for whole-day block) |
+| `reason` | `TEXT` | School event or maintenance description |
+| `created_at` | `TIMESTAMPTZ` | Registration timestamp |
+
+#### `court_time_slots`
+Master configuration of operational 2-hour rental sessions available for public reservation, differentiated by day category.
+
+| Column Name | Type | Description / Constraint |
+| --- | --- | --- |
+| `id` | `BIGSERIAL` | Primary Key |
+| `day_type` | `VARCHAR(20)` | Day category: `'weekday'` (Mon–Fri) or `'weekend'` (Sat–Sun) |
+| `start_time` | `TIME` | Session start time (e.g. `'16:00:00'`) |
+| `end_time` | `TIME` | Session end time (e.g. `'18:00:00'`) |
+| `time_slot` | `VARCHAR(50)` | Standard formatted slot label (e.g. `'16:00 - 18:00'`) |
+| `label` | `VARCHAR(100)` | Human-readable label (e.g. `'Sesi Sore'`, `'Sesi Malam 1'`) |
+| `is_active` | `BOOLEAN` | Operational switch (`true` = available for booking, `false` = disabled) |
+| `sort_order` | `INT` | Display order (1, 2, 3...) |
+| `created_at` | `TIMESTAMPTZ` | Creation timestamp |
+| `updated_at` | `TIMESTAMPTZ` | Last update timestamp |

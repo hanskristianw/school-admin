@@ -29,6 +29,7 @@ CREATE TABLE IF NOT EXISTS public.court_rentals (
 
 -- Indeks untuk performa pencarian & filter jadwal
 CREATE INDEX IF NOT EXISTS idx_court_rentals_date_slot ON public.court_rentals(booking_date, time_slot);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_court_rentals_unique_active_slot ON public.court_rentals(booking_date, time_slot) WHERE status IN ('pending_payment', 'payment_uploaded', 'approved');
 CREATE INDEX IF NOT EXISTS idx_court_rentals_status ON public.court_rentals(status);
 CREATE INDEX IF NOT EXISTS idx_court_rentals_code ON public.court_rentals(booking_code);
 

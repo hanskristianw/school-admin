@@ -436,7 +436,7 @@
       "label": "callNextApi()",
       "file_type": "code",
       "source_file": "cpanel-sewa-lapangan/index.php",
-      "source_location": "L292",
+      "source_location": "L298",
       "_origin": "ast",
       "id": "cpanel_sewa_lapangan_index_callnextapi",
       "community": 360,
@@ -447,12 +447,23 @@
       "label": "getSlotsForDay()",
       "file_type": "code",
       "source_file": "cpanel-sewa-lapangan/index.php",
-      "source_location": "L363",
+      "source_location": "L369",
       "_origin": "ast",
       "id": "cpanel_sewa_lapangan_index_getslotsforday",
       "community": 360,
       "community_name": "index.php",
       "norm_label": "getslotsforday()"
+    },
+    {
+      "label": "getRoutineClubBlocksPhp()",
+      "file_type": "code",
+      "source_file": "cpanel-sewa-lapangan/index.php",
+      "source_location": "L390",
+      "_origin": "ast",
+      "id": "cpanel_sewa_lapangan_index_getroutineclubblocksphp",
+      "community": 360,
+      "community_name": "index.php",
+      "norm_label": "getroutineclubblocksphp()"
     },
     {
       "label": "config.php",
@@ -3516,7 +3527,7 @@
       "source_location": "L35",
       "_origin": "ast",
       "id": "package_dependencies_tiptap_pm",
-      "community": 408,
+      "community": 441,
       "community_name": "@tiptap/pm",
       "norm_label": "@tiptap/pm"
     },
@@ -3527,7 +3538,7 @@
       "source_location": "L35",
       "_origin": "ast",
       "id": "tiptap_pm",
-      "community": 408,
+      "community": 441,
       "community_name": "@tiptap/pm",
       "norm_label": "@tiptap/pm"
     },
@@ -3582,8 +3593,8 @@
       "source_location": "L38",
       "_origin": "ast",
       "id": "package_dependencies_bcryptjs",
-      "community": 133,
-      "community_name": "Module 133",
+      "community": 346,
+      "community_name": "bcryptjs",
       "norm_label": "bcryptjs"
     },
     {
@@ -3593,8 +3604,8 @@
       "source_location": "L38",
       "_origin": "ast",
       "id": "bcryptjs",
-      "community": 133,
-      "community_name": "Module 133",
+      "community": 346,
+      "community_name": "bcryptjs",
       "norm_label": "bcryptjs"
     },
     {
@@ -3604,8 +3615,8 @@
       "source_location": "L39",
       "_origin": "ast",
       "id": "package_dependencies_browser_image_compression",
-      "community": 432,
-      "community_name": "browser-image-compression",
+      "community": 133,
+      "community_name": "Module 133",
       "norm_label": "browser-image-compression"
     },
     {
@@ -3615,8 +3626,8 @@
       "source_location": "L39",
       "_origin": "ast",
       "id": "browser_image_compression",
-      "community": 432,
-      "community_name": "browser-image-compression",
+      "community": 133,
+      "community_name": "Module 133",
       "norm_label": "browser-image-compression"
     },
     {
@@ -3692,8 +3703,8 @@
       "source_location": "L43",
       "_origin": "ast",
       "id": "package_dependencies_dotenv",
-      "community": 420,
-      "community_name": "**3. Assessment System**",
+      "community": 278,
+      "community_name": "docx",
       "norm_label": "dotenv"
     },
     {
@@ -3703,8 +3714,8 @@
       "source_location": "L43",
       "_origin": "ast",
       "id": "dotenv",
-      "community": 420,
-      "community_name": "**3. Assessment System**",
+      "community": 278,
+      "community_name": "docx",
       "norm_label": "dotenv"
     },
     {
@@ -4044,8 +4055,8 @@
       "source_location": "L59",
       "_origin": "ast",
       "id": "package_dependencies_pngjs",
-      "community": 278,
-      "community_name": "docx",
+      "community": 440,
+      "community_name": "pngjs",
       "norm_label": "pngjs"
     },
     {
@@ -4055,8 +4066,8 @@
       "source_location": "L59",
       "_origin": "ast",
       "id": "pngjs",
-      "community": 278,
-      "community_name": "docx",
+      "community": 440,
+      "community_name": "pngjs",
       "norm_label": "pngjs"
     },
     {
@@ -6284,6 +6295,50 @@
     {
       "label": "route.js",
       "file_type": "code",
+      "source_file": "src/app/api/court-rental/markom/route.js",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "src_app_api_court_rental_markom_route",
+      "community": 429,
+      "community_name": "route.js",
+      "norm_label": "route.js"
+    },
+    {
+      "label": "supabaseAdmin",
+      "file_type": "code",
+      "source_file": "src/app/api/court-rental/markom/route.js",
+      "source_location": "L6",
+      "_origin": "ast",
+      "id": "src_app_api_court_rental_markom_route_supabaseadmin",
+      "community": 429,
+      "community_name": "route.js",
+      "norm_label": "supabaseadmin"
+    },
+    {
+      "label": "GET()",
+      "file_type": "code",
+      "source_file": "src/app/api/court-rental/markom/route.js",
+      "source_location": "L14",
+      "_origin": "ast",
+      "id": "src_app_api_court_rental_markom_route_get",
+      "community": 429,
+      "community_name": "route.js",
+      "norm_label": "get()"
+    },
+    {
+      "label": "POST()",
+      "file_type": "code",
+      "source_file": "src/app/api/court-rental/markom/route.js",
+      "source_location": "L71",
+      "_origin": "ast",
+      "id": "src_app_api_court_rental_markom_route_post",
+      "community": 429,
+      "community_name": "route.js",
+      "norm_label": "post()"
+    },
+    {
+      "label": "route.js",
+      "file_type": "code",
       "source_file": "src/app/api/court-rental/route.js",
       "source_location": "L1",
       "_origin": "ast",
@@ -6313,6 +6368,83 @@
       "community": 364,
       "community_name": "route.js",
       "norm_label": "get()"
+    },
+    {
+      "label": "route.js",
+      "file_type": "code",
+      "source_file": "src/app/api/court-rental/slots/route.js",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "src_app_api_court_rental_slots_route",
+      "community": 142,
+      "community_name": "2026-07-16 \u2014 Timetable Refactor + Weekly Plan Dates + Weekly Overview",
+      "norm_label": "route.js"
+    },
+    {
+      "label": "supabaseAdmin",
+      "file_type": "code",
+      "source_file": "src/app/api/court-rental/slots/route.js",
+      "source_location": "L4",
+      "_origin": "ast",
+      "id": "src_app_api_court_rental_slots_route_supabaseadmin",
+      "community": 142,
+      "community_name": "2026-07-16 \u2014 Timetable Refactor + Weekly Plan Dates + Weekly Overview",
+      "norm_label": "supabaseadmin"
+    },
+    {
+      "label": "DEFAULT_COURT_SLOTS",
+      "file_type": "code",
+      "source_file": "src/app/api/court-rental/slots/route.js",
+      "source_location": "L9",
+      "_origin": "ast",
+      "id": "src_app_api_court_rental_slots_route_default_court_slots",
+      "community": 142,
+      "community_name": "2026-07-16 \u2014 Timetable Refactor + Weekly Plan Dates + Weekly Overview",
+      "norm_label": "default_court_slots"
+    },
+    {
+      "label": "GET()",
+      "file_type": "code",
+      "source_file": "src/app/api/court-rental/slots/route.js",
+      "source_location": "L25",
+      "_origin": "ast",
+      "id": "src_app_api_court_rental_slots_route_get",
+      "community": 142,
+      "community_name": "2026-07-16 \u2014 Timetable Refactor + Weekly Plan Dates + Weekly Overview",
+      "norm_label": "get()"
+    },
+    {
+      "label": "POST()",
+      "file_type": "code",
+      "source_file": "src/app/api/court-rental/slots/route.js",
+      "source_location": "L64",
+      "_origin": "ast",
+      "id": "src_app_api_court_rental_slots_route_post",
+      "community": 142,
+      "community_name": "2026-07-16 \u2014 Timetable Refactor + Weekly Plan Dates + Weekly Overview",
+      "norm_label": "post()"
+    },
+    {
+      "label": "PUT()",
+      "file_type": "code",
+      "source_file": "src/app/api/court-rental/slots/route.js",
+      "source_location": "L109",
+      "_origin": "ast",
+      "id": "src_app_api_court_rental_slots_route_put",
+      "community": 142,
+      "community_name": "2026-07-16 \u2014 Timetable Refactor + Weekly Plan Dates + Weekly Overview",
+      "norm_label": "put()"
+    },
+    {
+      "label": "DELETE()",
+      "file_type": "code",
+      "source_file": "src/app/api/court-rental/slots/route.js",
+      "source_location": "L149",
+      "_origin": "ast",
+      "id": "src_app_api_court_rental_slots_route_delete",
+      "community": 142,
+      "community_name": "2026-07-16 \u2014 Timetable Refactor + Weekly Plan Dates + Weekly Overview",
+      "norm_label": "delete()"
     },
     {
       "label": "route.js",
@@ -7165,7 +7297,7 @@
       "label": "supabaseAdmin",
       "file_type": "code",
       "source_file": "src/app/api/public/court-rental/route.js",
-      "source_location": "L6",
+      "source_location": "L9",
       "_origin": "ast",
       "id": "src_app_api_public_court_rental_route_supabaseadmin",
       "community": 301,
@@ -7176,7 +7308,7 @@
       "label": "verifyAuth()",
       "file_type": "code",
       "source_file": "src/app/api/public/court-rental/route.js",
-      "source_location": "L13",
+      "source_location": "L16",
       "_origin": "ast",
       "id": "src_app_api_public_court_rental_route_verifyauth",
       "community": 301,
@@ -7187,7 +7319,7 @@
       "label": "getWibTodayStr()",
       "file_type": "code",
       "source_file": "src/app/api/public/court-rental/route.js",
-      "source_location": "L20",
+      "source_location": "L23",
       "_origin": "ast",
       "id": "src_app_api_public_court_rental_route_getwibtodaystr",
       "community": 301,
@@ -7198,7 +7330,7 @@
       "label": "addDaysToDateStr()",
       "file_type": "code",
       "source_file": "src/app/api/public/court-rental/route.js",
-      "source_location": "L26",
+      "source_location": "L29",
       "_origin": "ast",
       "id": "src_app_api_public_court_rental_route_adddaystodatestr",
       "community": 301,
@@ -7206,10 +7338,21 @@
       "norm_label": "adddaystodatestr()"
     },
     {
+      "label": "getRoutineClubBlocks()",
+      "file_type": "code",
+      "source_file": "src/app/api/public/court-rental/route.js",
+      "source_location": "L40",
+      "_origin": "ast",
+      "id": "src_app_api_public_court_rental_route_getroutineclubblocks",
+      "community": 301,
+      "community_name": "driver.js",
+      "norm_label": "getroutineclubblocks()"
+    },
+    {
       "label": "POST()",
       "file_type": "code",
       "source_file": "src/app/api/public/court-rental/route.js",
-      "source_location": "L33",
+      "source_location": "L69",
       "_origin": "ast",
       "id": "src_app_api_public_court_rental_route_post",
       "community": 301,
@@ -7220,7 +7363,7 @@
       "label": "GET()",
       "file_type": "code",
       "source_file": "src/app/api/public/court-rental/route.js",
-      "source_location": "L168",
+      "source_location": "L350",
       "_origin": "ast",
       "id": "src_app_api_public_court_rental_route_get",
       "community": 301,
@@ -9431,7 +9574,7 @@
       "label": "CourtRentalPage()",
       "file_type": "code",
       "source_file": "src/app/data/court-rental/page.jsx",
-      "source_location": "L70",
+      "source_location": "L105",
       "_origin": "ast",
       "id": "src_app_data_court_rental_page_courtrentalpage",
       "community": 366,
@@ -10149,8 +10292,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_app_data_psikotest_lib_psikotestpdfgenerator",
-      "community": 142,
-      "community_name": "2026-07-16 \u2014 Timetable Refactor + Weekly Plan Dates + Weekly Overview",
+      "community": 245,
+      "community_name": "Module 245",
       "norm_label": "psikotestpdfgenerator.js"
     },
     {
@@ -10160,8 +10303,8 @@
       "source_location": "L7",
       "_origin": "ast",
       "id": "src_app_data_psikotest_lib_psikotestpdfgenerator_loadimgbase64",
-      "community": 142,
-      "community_name": "2026-07-16 \u2014 Timetable Refactor + Weekly Plan Dates + Weekly Overview",
+      "community": 245,
+      "community_name": "Module 245",
       "norm_label": "loadimgbase64()"
     },
     {
@@ -10171,8 +10314,8 @@
       "source_location": "L28",
       "_origin": "ast",
       "id": "src_app_data_psikotest_lib_psikotestpdfgenerator_formatindonesiandate",
-      "community": 142,
-      "community_name": "2026-07-16 \u2014 Timetable Refactor + Weekly Plan Dates + Weekly Overview",
+      "community": 245,
+      "community_name": "Module 245",
       "norm_label": "formatindonesiandate()"
     },
     {
@@ -10182,8 +10325,8 @@
       "source_location": "L42",
       "_origin": "ast",
       "id": "src_app_data_psikotest_lib_psikotestpdfgenerator_generatepsikotestpdf",
-      "community": 142,
-      "community_name": "2026-07-16 \u2014 Timetable Refactor + Weekly Plan Dates + Weekly Overview",
+      "community": 245,
+      "community_name": "Module 245",
       "norm_label": "generatepsikotestpdf()"
     },
     {
@@ -10193,8 +10336,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_app_data_psikotest_page",
-      "community": 142,
-      "community_name": "2026-07-16 \u2014 Timetable Refactor + Weekly Plan Dates + Weekly Overview",
+      "community": 245,
+      "community_name": "Module 245",
       "norm_label": "page.jsx"
     },
     {
@@ -10204,8 +10347,8 @@
       "source_location": "L30",
       "_origin": "ast",
       "id": "src_app_data_psikotest_page_psikotestmanagementpage",
-      "community": 142,
-      "community_name": "2026-07-16 \u2014 Timetable Refactor + Weekly Plan Dates + Weekly Overview",
+      "community": 245,
+      "community_name": "Module 245",
       "norm_label": "psikotestmanagementpage()"
     },
     {
@@ -15803,8 +15946,8 @@
       "source_location": "L43",
       "_origin": "ast",
       "id": "agents_skills_design_taste_frontend_skill_1_the_three_dials_core_configuration",
-      "community": 112,
-      "community_name": "Module 112",
+      "community": 293,
+      "community_name": "SKILL.md",
       "norm_label": "1. the three dials (core configuration)"
     },
     {
@@ -15814,8 +15957,8 @@
       "source_location": "L53",
       "_origin": "ast",
       "id": "agents_skills_design_taste_frontend_skill_1_a_dial_inference_design_read_dial_values",
-      "community": 112,
-      "community_name": "Module 112",
+      "community": 293,
+      "community_name": "SKILL.md",
       "norm_label": "1.a dial inference (design read \u2192 dial values)"
     },
     {
@@ -15825,8 +15968,8 @@
       "source_location": "L64",
       "_origin": "ast",
       "id": "agents_skills_design_taste_frontend_skill_1_b_use_case_presets",
-      "community": 112,
-      "community_name": "Module 112",
+      "community": 293,
+      "community_name": "SKILL.md",
       "norm_label": "1.b use-case presets"
     },
     {
@@ -15836,8 +15979,8 @@
       "source_location": "L77",
       "_origin": "ast",
       "id": "agents_skills_design_taste_frontend_skill_1_c_how_the_dials_drive_output",
-      "community": 112,
-      "community_name": "Module 112",
+      "community": 293,
+      "community_name": "SKILL.md",
       "norm_label": "1.c how the dials drive output"
     },
     {
@@ -16221,8 +16364,8 @@
       "source_location": "L552",
       "_origin": "ast",
       "id": "agents_skills_design_taste_frontend_skill_7_dial_definitions_technical_reference",
-      "community": 245,
-      "community_name": "Module 245",
+      "community": 112,
+      "community_name": "Module 112",
       "norm_label": "7. dial definitions (technical reference)"
     },
     {
@@ -16232,8 +16375,8 @@
       "source_location": "L554",
       "_origin": "ast",
       "id": "agents_skills_design_taste_frontend_skill_design_variance_level_1_10",
-      "community": 245,
-      "community_name": "Module 245",
+      "community": 112,
+      "community_name": "Module 112",
       "norm_label": "design_variance (level 1-10)"
     },
     {
@@ -16243,8 +16386,8 @@
       "source_location": "L560",
       "_origin": "ast",
       "id": "agents_skills_design_taste_frontend_skill_motion_intensity_level_1_10",
-      "community": 245,
-      "community_name": "Module 245",
+      "community": 112,
+      "community_name": "Module 112",
       "norm_label": "motion_intensity (level 1-10)"
     },
     {
@@ -16254,8 +16397,8 @@
       "source_location": "L565",
       "_origin": "ast",
       "id": "agents_skills_design_taste_frontend_skill_visual_density_level_1_10",
-      "community": 245,
-      "community_name": "Module 245",
+      "community": 112,
+      "community_name": "Module 112",
       "norm_label": "visual_density (level 1-10)"
     },
     {
@@ -21545,8 +21688,8 @@
       "source_location": "L1035",
       "_origin": "ast",
       "id": "database_schema_6_assessment_grading_domain_data_topic_new_reports",
-      "community": 116,
-      "community_name": "Module 116",
+      "community": 434,
+      "community_name": "6.1 Tables",
       "norm_label": "6. assessment & grading domain (`/data/topic-new` / reports)"
     },
     {
@@ -21556,8 +21699,8 @@
       "source_location": "L1039",
       "_origin": "ast",
       "id": "database_schema_6_1_tables",
-      "community": 116,
-      "community_name": "Module 116",
+      "community": 434,
+      "community_name": "6.1 Tables",
       "norm_label": "6.1 tables"
     },
     {
@@ -21567,8 +21710,8 @@
       "source_location": "L1041",
       "_origin": "ast",
       "id": "database_schema_assessment_grades",
-      "community": 116,
-      "community_name": "Module 116",
+      "community": 434,
+      "community_name": "6.1 Tables",
       "norm_label": "`assessment_grades`"
     },
     {
@@ -21578,8 +21721,8 @@
       "source_location": "L1064",
       "_origin": "ast",
       "id": "database_schema_assessment_grade_strands",
-      "community": 116,
-      "community_name": "Module 116",
+      "community": 434,
+      "community_name": "6.1 Tables",
       "norm_label": "`assessment_grade_strands`"
     },
     {
@@ -21589,8 +21732,8 @@
       "source_location": "L1075",
       "_origin": "ast",
       "id": "database_schema_6_2_erd_relationships_assessment_grading",
-      "community": 116,
-      "community_name": "Module 116",
+      "community": 434,
+      "community_name": "6.1 Tables",
       "norm_label": "6.2 erd / relationships (assessment & grading)"
     },
     {
@@ -21600,8 +21743,8 @@
       "source_location": "L1105",
       "_origin": "ast",
       "id": "database_schema_7_menu_role_permissions_domain_data_menu_management",
-      "community": 293,
-      "community_name": "SKILL.md",
+      "community": 243,
+      "community_name": "**Key Components**",
       "norm_label": "7. menu & role permissions domain (`/data/menu_management`)"
     },
     {
@@ -21611,8 +21754,8 @@
       "source_location": "L1109",
       "_origin": "ast",
       "id": "database_schema_7_1_tables",
-      "community": 293,
-      "community_name": "SKILL.md",
+      "community": 243,
+      "community_name": "**Key Components**",
       "norm_label": "7.1 tables"
     },
     {
@@ -21622,8 +21765,8 @@
       "source_location": "L1111",
       "_origin": "ast",
       "id": "database_schema_menus",
-      "community": 293,
-      "community_name": "SKILL.md",
+      "community": 243,
+      "community_name": "**Key Components**",
       "norm_label": "`menus`"
     },
     {
@@ -21633,8 +21776,8 @@
       "source_location": "L1124",
       "_origin": "ast",
       "id": "database_schema_menu_permissions",
-      "community": 293,
-      "community_name": "SKILL.md",
+      "community": 243,
+      "community_name": "**Key Components**",
       "norm_label": "`menu_permissions`"
     },
     {
@@ -21644,8 +21787,8 @@
       "source_location": "L1136",
       "_origin": "ast",
       "id": "database_schema_7_2_erd_relationships_menu_domain",
-      "community": 293,
-      "community_name": "SKILL.md",
+      "community": 243,
+      "community_name": "**Key Components**",
       "norm_label": "7.2 erd / relationships (menu domain)"
     },
     {
@@ -21831,8 +21974,8 @@
       "source_location": "L1437",
       "_origin": "ast",
       "id": "database_schema_10_duty_greeter_devotion_schedule_domain_data_door_greeter",
-      "community": 116,
-      "community_name": "Module 116",
+      "community": 273,
+      "community_name": "\ud83d\udd27 **Technical Implementation**",
       "norm_label": "10. duty, greeter & devotion schedule domain (`/data/door_greeter`)"
     },
     {
@@ -21842,8 +21985,8 @@
       "source_location": "L1441",
       "_origin": "ast",
       "id": "database_schema_10_1_tables",
-      "community": 116,
-      "community_name": "Module 116",
+      "community": 273,
+      "community_name": "\ud83d\udd27 **Technical Implementation**",
       "norm_label": "10.1 tables"
     },
     {
@@ -21853,8 +21996,8 @@
       "source_location": "L1443",
       "_origin": "ast",
       "id": "database_schema_duty_schedules",
-      "community": 116,
-      "community_name": "Module 116",
+      "community": 273,
+      "community_name": "\ud83d\udd27 **Technical Implementation**",
       "norm_label": "`duty_schedules`"
     },
     {
@@ -21864,8 +22007,8 @@
       "source_location": "L1472",
       "_origin": "ast",
       "id": "database_schema_duty_settings",
-      "community": 116,
-      "community_name": "Module 116",
+      "community": 273,
+      "community_name": "\ud83d\udd27 **Technical Implementation**",
       "norm_label": "`duty_settings`"
     },
     {
@@ -21875,8 +22018,8 @@
       "source_location": "L1486",
       "_origin": "ast",
       "id": "database_schema_10_2_erd_relationships_duty_devotion_schedule_domain",
-      "community": 116,
-      "community_name": "Module 116",
+      "community": 273,
+      "community_name": "\ud83d\udd27 **Technical Implementation**",
       "norm_label": "10.2 erd / relationships (duty & devotion schedule domain)"
     },
     {
@@ -21886,8 +22029,8 @@
       "source_location": "L1526",
       "_origin": "ast",
       "id": "database_schema_11_uniform_stock_management_domain_sales_uniform_stock_uniform_add_stock_uniform_initial_stock_uniform_po_settings_data_uniform_data_uniform_size",
-      "community": 103,
-      "community_name": "Module 103",
+      "community": 116,
+      "community_name": "Module 116",
       "norm_label": "11. uniform & stock management domain (`/sales/uniform`, `/stock/uniform/add`, `/stock/uniform/initial`, `/stock/uniform/po-settings`, `/data/uniform`, `/data/uniform-size`)"
     },
     {
@@ -22051,8 +22194,8 @@
       "source_location": "L1735",
       "_origin": "ast",
       "id": "database_schema_11_2_erd_relationships_uniform_stock_domain",
-      "community": 103,
-      "community_name": "Module 103",
+      "community": 116,
+      "community_name": "Module 116",
       "norm_label": "11.2 erd / relationships (uniform & stock domain)"
     },
     {
@@ -22062,8 +22205,8 @@
       "source_location": "L1817",
       "_origin": "ast",
       "id": "database_schema_11_3_initial_stock_inventory_ledger_workflows_stock_uniform_initial",
-      "community": 103,
-      "community_name": "Module 103",
+      "community": 116,
+      "community_name": "Module 116",
       "norm_label": "11.3 initial stock & inventory ledger workflows (`/stock/uniform/initial`)"
     },
     {
@@ -22073,8 +22216,8 @@
       "source_location": "L1840",
       "_origin": "ast",
       "id": "database_schema_11_4_pos_uniform_sales_workflows_sales_uniform",
-      "community": 103,
-      "community_name": "Module 103",
+      "community": 116,
+      "community_name": "Module 116",
       "norm_label": "11.4 pos uniform sales workflows (`/sales/uniform`)"
     },
     {
@@ -22637,6 +22780,61 @@
       "community": 152,
       "community_name": "Module 152",
       "norm_label": "`attachments` (public)"
+    },
+    {
+      "label": "20. Sport Hall / Court Rental System",
+      "file_type": "document",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L2923",
+      "_origin": "ast",
+      "id": "database_schema_20_sport_hall_court_rental_system",
+      "community": 116,
+      "community_name": "Module 116",
+      "norm_label": "20. sport hall / court rental system"
+    },
+    {
+      "label": "20.1 Tables",
+      "file_type": "document",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L2927",
+      "_origin": "ast",
+      "id": "database_schema_20_1_tables",
+      "community": 116,
+      "community_name": "Module 116",
+      "norm_label": "20.1 tables"
+    },
+    {
+      "label": "`court_rentals`",
+      "file_type": "document",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L2929",
+      "_origin": "ast",
+      "id": "database_schema_court_rentals",
+      "community": 116,
+      "community_name": "Module 116",
+      "norm_label": "`court_rentals`"
+    },
+    {
+      "label": "`court_blackout_dates`",
+      "file_type": "document",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L2961",
+      "_origin": "ast",
+      "id": "database_schema_court_blackout_dates",
+      "community": 116,
+      "community_name": "Module 116",
+      "norm_label": "`court_blackout_dates`"
+    },
+    {
+      "label": "`court_time_slots`",
+      "file_type": "document",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L2972",
+      "_origin": "ast",
+      "id": "database_schema_court_time_slots",
+      "community": 116,
+      "community_name": "Module 116",
+      "norm_label": "`court_time_slots`"
     },
     {
       "label": "DELETE_VOID_IMPLEMENTATION.md",
@@ -23547,7 +23745,7 @@
       "source_location": "L287",
       "_origin": "ast",
       "id": "main_documentation_database_structure",
-      "community": 265,
+      "community": 408,
       "community_name": "\ufffd\ud83c\udfd7\ufe0f **Database Structure**",
       "norm_label": "\ufffd\ud83c\udfd7\ufe0f **database structure**"
     },
@@ -23558,7 +23756,7 @@
       "source_location": "L289",
       "_origin": "ast",
       "id": "main_documentation_core_tables",
-      "community": 265,
+      "community": 408,
       "community_name": "\ufffd\ud83c\udfd7\ufe0f **Database Structure**",
       "norm_label": "**core tables:**"
     },
@@ -23569,7 +23767,7 @@
       "source_location": "L524",
       "_origin": "ast",
       "id": "main_documentation_grades_nilai_table",
-      "community": 265,
+      "community": 408,
       "community_name": "\ufffd\ud83c\udfd7\ufe0f **Database Structure**",
       "norm_label": "grades (nilai) table"
     },
@@ -23580,7 +23778,7 @@
       "source_location": "L539",
       "_origin": "ast",
       "id": "main_documentation_attendance_qr_tables",
-      "community": 265,
+      "community": 408,
       "community_name": "\ufffd\ud83c\udfd7\ufe0f **Database Structure**",
       "norm_label": "attendance (qr) tables"
     },
@@ -23624,8 +23822,8 @@
       "source_location": "L618",
       "_origin": "ast",
       "id": "main_documentation_3_assessment_system",
-      "community": 346,
-      "community_name": "SKILL.md",
+      "community": 432,
+      "community_name": "browser-image-compression",
       "norm_label": "**3. assessment system**"
     },
     {
@@ -23635,8 +23833,8 @@
       "source_location": "L619",
       "_origin": "ast",
       "id": "main_documentation_teacher_workflow",
-      "community": 346,
-      "community_name": "SKILL.md",
+      "community": 432,
+      "community_name": "browser-image-compression",
       "norm_label": "**teacher workflow**:"
     },
     {
@@ -23646,8 +23844,8 @@
       "source_location": "L628",
       "_origin": "ast",
       "id": "main_documentation_admin_workflow",
-      "community": 346,
-      "community_name": "SKILL.md",
+      "community": 432,
+      "community_name": "browser-image-compression",
       "norm_label": "**admin workflow**:"
     },
     {
@@ -23778,7 +23976,7 @@
       "source_location": "L812",
       "_origin": "ast",
       "id": "main_documentation_technical_implementation",
-      "community": 273,
+      "community": 420,
       "community_name": "\ud83d\udd27 **Technical Implementation**",
       "norm_label": "\ud83d\udd27 **technical implementation**"
     },
@@ -23789,7 +23987,7 @@
       "source_location": "L814",
       "_origin": "ast",
       "id": "main_documentation_frontend_stack",
-      "community": 273,
+      "community": 420,
       "community_name": "\ud83d\udd27 **Technical Implementation**",
       "norm_label": "**frontend stack:**"
     },
@@ -23800,7 +23998,7 @@
       "source_location": "L821",
       "_origin": "ast",
       "id": "main_documentation_backend_database",
-      "community": 273,
+      "community": 420,
       "community_name": "\ud83d\udd27 **Technical Implementation**",
       "norm_label": "**backend & database:**"
     },
@@ -23811,7 +24009,7 @@
       "source_location": "L827",
       "_origin": "ast",
       "id": "main_documentation_key_technical_notes",
-      "community": 273,
+      "community": 420,
       "community_name": "\ud83d\udd27 **Technical Implementation**",
       "norm_label": "**key technical notes:**"
     },
@@ -24130,8 +24328,8 @@
       "source_location": "L1119",
       "_origin": "ast",
       "id": "main_documentation_key_components",
-      "community": 243,
-      "community_name": "**Key Components**",
+      "community": 265,
+      "community_name": "\ufffd\ud83c\udfd7\ufe0f **Database Structure**",
       "norm_label": "**key components**"
     },
     {
@@ -24141,8 +24339,8 @@
       "source_location": "L1121",
       "_origin": "ast",
       "id": "main_documentation_1_myp_year_level_selection",
-      "community": 243,
-      "community_name": "**Key Components**",
+      "community": 265,
+      "community_name": "\ufffd\ud83c\udfd7\ufe0f **Database Structure**",
       "norm_label": "**1. myp year level selection**"
     },
     {
@@ -24152,8 +24350,8 @@
       "source_location": "L1128",
       "_origin": "ast",
       "id": "main_documentation_2_criterion_grades_a_b_c_d",
-      "community": 243,
-      "community_name": "**Key Components**",
+      "community": 265,
+      "community_name": "\ufffd\ud83c\udfd7\ufe0f **Database Structure**",
       "norm_label": "**2. criterion grades (a, b, c, d)**"
     },
     {
@@ -24163,8 +24361,8 @@
       "source_location": "L1138",
       "_origin": "ast",
       "id": "main_documentation_3_strand_grades",
-      "community": 243,
-      "community_name": "**Key Components**",
+      "community": 265,
+      "community_name": "\ufffd\ud83c\udfd7\ufe0f **Database Structure**",
       "norm_label": "**3. strand grades**"
     },
     {
@@ -24174,8 +24372,8 @@
       "source_location": "L1147",
       "_origin": "ast",
       "id": "main_documentation_4_final_grade_1_7",
-      "community": 243,
-      "community_name": "**Key Components**",
+      "community": 265,
+      "community_name": "\ufffd\ud83c\udfd7\ufe0f **Database Structure**",
       "norm_label": "**4. final grade (1-7)**"
     },
     {
@@ -24251,7 +24449,7 @@
       "source_location": "L1221",
       "_origin": "ast",
       "id": "main_documentation_project_structure",
-      "community": 429,
+      "community": 435,
       "community_name": "\ud83d\udcc1 **Project Structure**",
       "norm_label": "\ud83d\udcc1 **project structure**"
     },
@@ -24262,7 +24460,7 @@
       "source_location": "L1223",
       "_origin": "ast",
       "id": "main_documentation_key_directories",
-      "community": 429,
+      "community": 435,
       "community_name": "\ud83d\udcc1 **Project Structure**",
       "norm_label": "**key directories:**"
     },
@@ -24273,7 +24471,7 @@
       "source_location": "L1229",
       "_origin": "ast",
       "id": "main_documentation_important_files",
-      "community": 429,
+      "community": 435,
       "community_name": "\ud83d\udcc1 **Project Structure**",
       "norm_label": "**important files:**"
     },
@@ -28380,7 +28578,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "cpanel-sewa-lapangan/index.php",
-      "source_location": "L292",
+      "source_location": "L298",
       "weight": 1.0,
       "_origin": "ast",
       "source": "cpanel_sewa_lapangan_index",
@@ -28391,7 +28589,18 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "cpanel-sewa-lapangan/index.php",
-      "source_location": "L363",
+      "source_location": "L390",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "cpanel_sewa_lapangan_index",
+      "target": "cpanel_sewa_lapangan_index_getroutineclubblocksphp",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "cpanel-sewa-lapangan/index.php",
+      "source_location": "L369",
       "weight": 1.0,
       "_origin": "ast",
       "source": "cpanel_sewa_lapangan_index",
@@ -34666,6 +34875,39 @@
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
+      "source_file": "src/app/api/court-rental/markom/route.js",
+      "source_location": "L14",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_api_court_rental_markom_route",
+      "target": "src_app_api_court_rental_markom_route_get",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/court-rental/markom/route.js",
+      "source_location": "L71",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_api_court_rental_markom_route",
+      "target": "src_app_api_court_rental_markom_route_post",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/court-rental/markom/route.js",
+      "source_location": "L6",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_api_court_rental_markom_route",
+      "target": "src_app_api_court_rental_markom_route_supabaseadmin",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
       "source_file": "src/app/api/court-rental/route.js",
       "source_location": "L9",
       "weight": 1.0,
@@ -34683,6 +34925,72 @@
       "_origin": "ast",
       "source": "src_app_api_court_rental_route",
       "target": "src_app_api_court_rental_route_supabaseadmin",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/court-rental/slots/route.js",
+      "source_location": "L9",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_api_court_rental_slots_route",
+      "target": "src_app_api_court_rental_slots_route_default_court_slots",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/court-rental/slots/route.js",
+      "source_location": "L149",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_api_court_rental_slots_route",
+      "target": "src_app_api_court_rental_slots_route_delete",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/court-rental/slots/route.js",
+      "source_location": "L25",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_api_court_rental_slots_route",
+      "target": "src_app_api_court_rental_slots_route_get",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/court-rental/slots/route.js",
+      "source_location": "L64",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_api_court_rental_slots_route",
+      "target": "src_app_api_court_rental_slots_route_post",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/court-rental/slots/route.js",
+      "source_location": "L109",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_api_court_rental_slots_route",
+      "target": "src_app_api_court_rental_slots_route_put",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/court-rental/slots/route.js",
+      "source_location": "L4",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_api_court_rental_slots_route",
+      "target": "src_app_api_court_rental_slots_route_supabaseadmin",
       "confidence_score": 1.0
     },
     {
@@ -35605,7 +35913,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/app/api/public/court-rental/route.js",
-      "source_location": "L26",
+      "source_location": "L29",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_api_public_court_rental_route",
@@ -35616,7 +35924,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/app/api/public/court-rental/route.js",
-      "source_location": "L168",
+      "source_location": "L350",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_api_public_court_rental_route",
@@ -35627,7 +35935,18 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/app/api/public/court-rental/route.js",
-      "source_location": "L20",
+      "source_location": "L40",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_api_public_court_rental_route",
+      "target": "src_app_api_public_court_rental_route_getroutineclubblocks",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/public/court-rental/route.js",
+      "source_location": "L23",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_api_public_court_rental_route",
@@ -35638,7 +35957,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/app/api/public/court-rental/route.js",
-      "source_location": "L33",
+      "source_location": "L69",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_api_public_court_rental_route",
@@ -35649,7 +35968,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/app/api/public/court-rental/route.js",
-      "source_location": "L6",
+      "source_location": "L9",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_api_public_court_rental_route",
@@ -35660,7 +35979,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/app/api/public/court-rental/route.js",
-      "source_location": "L13",
+      "source_location": "L16",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_api_public_court_rental_route",
@@ -35672,7 +35991,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/app/api/public/court-rental/route.js",
-      "source_location": "L35",
+      "source_location": "L71",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_api_public_court_rental_route_post",
@@ -35684,7 +36003,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/app/api/public/court-rental/route.js",
-      "source_location": "L68",
+      "source_location": "L104",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_api_public_court_rental_route_post",
@@ -35696,11 +36015,35 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/app/api/public/court-rental/route.js",
-      "source_location": "L69",
+      "source_location": "L105",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_api_public_court_rental_route_post",
       "target": "src_app_api_public_court_rental_route_adddaystodatestr",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/public/court-rental/route.js",
+      "source_location": "L446",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_api_public_court_rental_route_get",
+      "target": "src_app_api_public_court_rental_route_getroutineclubblocks",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/public/court-rental/route.js",
+      "source_location": "L157",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_api_public_court_rental_route_post",
+      "target": "src_app_api_public_court_rental_route_getroutineclubblocks",
       "confidence_score": 1.0
     },
     {
@@ -38171,7 +38514,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/app/data/court-rental/page.jsx",
-      "source_location": "L70",
+      "source_location": "L105",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_court_rental_page",
@@ -51574,6 +51917,17 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L2923",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "database_schema_database_schema_relationships",
+      "target": "database_schema_20_sport_hall_court_rental_system",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "DATABASE_SCHEMA.md",
       "source_location": "L198",
       "weight": 1.0,
       "_origin": "ast",
@@ -53207,6 +53561,50 @@
       "_origin": "ast",
       "source": "database_schema_19_2_storage_buckets",
       "target": "database_schema_attachments_public",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L2927",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "database_schema_20_sport_hall_court_rental_system",
+      "target": "database_schema_20_1_tables",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L2961",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "database_schema_20_1_tables",
+      "target": "database_schema_court_blackout_dates",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L2929",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "database_schema_20_1_tables",
+      "target": "database_schema_court_rentals",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L2972",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "database_schema_20_1_tables",
+      "target": "database_schema_court_time_slots",
       "confidence_score": 1.0
     },
     {
@@ -58377,5 +58775,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "733016abc1ee0e00d46984b533f787154d005111"
+  "built_at_commit": "25215b2a6402a8e23f392102abe84ef5aca35925"
 }

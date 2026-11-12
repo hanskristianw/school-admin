@@ -14,33 +14,78 @@ export const SYSTEM_RELEASES = [
     "date": "2026-11-12",
     "isLatest": true,
     "summary": {
-      "id": "Penghapusan penuh database SQLite lokal pada portal Sewa Lapangan (cpanel-sewa-lapangan/index.php) sehingga 100% terhubung langsung secara real-time ke Supabase (Hostinger khusus untuk antarmuka publik & penyimpanan berkas bukti transfer uploads/), pengamanan konsol admin legacy, dukungan pratinjau PDF & auto-retry bukti transfer, serta penyempurnaan kontrol Blackout Dates.",
-      "en": "Complete removal of local SQLite database from the Court Rental portal (cpanel-sewa-lapangan/index.php) so 100% of data operations connect directly in real-time to Supabase (Hostinger used strictly for public UI & payment proof file storage in uploads/), legacy admin console removal, PDF & auto-retry payment proof preview, and standardized Blackout Dates time-slot selector.",
-      "zh": "全面移除球场租赁门户（cpanel-sewa-lapangan/index.php）中的本地 SQLite 数据库，实现 100% 实时直连 Supabase（Hostinger 仅用于公共前端与 uploads/ 转账凭证文件存储），移除旧版内置管理入口，支持 PDF 与自动重试转账凭证预览，并规范化学校活动封锁时段（Blackout Dates）选择器。"
+      "id": "Penghapusan penuh database SQLite lokal pada portal Sewa Lapangan (cpanel-sewa-lapangan/index.php) sehingga 100% terhubung langsung ke Supabase, perancangan modul konfigurasi master sesi jam bermain (Court Time Slots) dengan toggle aktif/nonaktif di admin dan integrasi dinamis ke formulir publik, pengamanan konsol admin legacy, serta pratinjau PDF & auto-retry bukti transfer.",
+      "en": "Complete removal of local SQLite from Court Rental portal with 100% direct Supabase integration, dedicated Court Time Slots operational manager with live active/inactive toggles in admin and dynamic public form loading, legacy admin console removal, and robust PDF proof preview with auto-retry.",
+      "zh": "彻底移除场地租赁系统中的本地 SQLite 数据库并 100% 直连 Supabase，新增球场营业时段主数据管理（Court Time Slots）支持后台实时启停切换及公共预约表单动态加载，移除旧版管理台，并支持 PDF 凭证预览与自动重试机制。"
     },
     "sections": {
       "added": [
         {
+          "id": "Mekanisme dan modul konfigurasi master sesi jam operasional sewa lapangan (Court Time Slots) melalui endpoint CRUD terpadu (/api/court-rental/slots) dan tabel Supabase court_time_slots (dengan fallback aman ke default slots jika tabel belum dibuat), mendukung pembedaan jam operasional hari biasa (Weekday: Senin–Jumat mulai 16:00) dan akhir pekan (Weekend: Sabtu–Minggu sejak 06:00).",
+          "en": "Dedicated master court operational time slots mechanism via unified CRUD API (/api/court-rental/slots) and Supabase table court_time_slots (with graceful fallback to default slots), supporting distinct hours for Weekdays (Mon-Fri from 16:00) and Weekends (Sat-Sun from 06:00).",
+          "zh": "通过统一 CRUD 接口（/api/court-rental/slots）和 Supabase 表 court_time_slots 构建球场营业时段主数据机制（附带无表平滑回退），支持平日（周一至周五 16:00 起）与周末（周六至周日 06:00 起）差异化营业时段。"
+        },
+        {
+          "id": "Tab 3 'Sesi Jam Sewa' pada antarmuka admin /data/court-rental yang memungkinkan pengelola mengaktifkan/menonaktifkan (toggle switch) sesi bermain secara instan, menambah sesi jam baru melalui modal formulir, menghapus sesi, dan memfilter berdasarkan kategori hari (Semua Hari, Weekday, Weekend).",
+          "en": "Tab 3 'Sesi Jam Sewa' in /data/court-rental admin page enabling managers to toggle sessions active/inactive instantly, register new time slots via modal dialog, delete slots, and filter by day type (All, Weekday, Weekend).",
+          "zh": "在 /data/court-rental 后台新增 Tab 3「Sesi Jam Sewa（时段配置）」，管理员可一键启停时段、弹窗新增营业时段、删除时段并按平日/周末分类筛选。"
+        },
+        {
+          "id": "Mekanisme penguncian otomatis jadwal kontrak rutin klub mitra (Recurring Routine Block) berdasarkan PKS Mahameru Basketball Club (MOU No: 013/MARCOMCCS/XII/2025): setiap hari Senin (19:00 - 21:00 WIB yang memblokir slot 18:00 - 20:00 & 20:00 - 22:00) serta setiap Sabtu & Minggu (14:00 - 16:00 WIB) otomatis berstatus terpesan/terblokir di portal publik, dilengkapi kartu informasi kontrak rutin pada tab Agenda Sekolah di admin /data/court-rental.",
+          "en": "Automated recurring routine schedule blocking for partner club contracts based on Mahameru Basketball Club agreement (MOU No: 013/MARCOMCCS/XII/2025): every Monday (19:00 - 21:00 WIB blocking 18:00 - 20:00 & 20:00 - 22:00) and every Saturday & Sunday (14:00 - 16:00 WIB) automatically marked as reserved/blocked on the public portal, accompanied by an agreement overview card in /data/court-rental.",
+          "zh": "上线合作俱乐部常规长期合约时段自动封锁机制（基于 Mahameru 篮球俱乐部 MOU 协议 013/MARCOMCCS/XII/2025）：每周一（19:00 - 21:00 占用 18:00 - 20:00 与 20:00 - 22:00 晚间时段）及每周六、周日（14:00 - 16:00）在公共门户自动锁定为已占用状态，并在管理后台新增常规合约卡片展示。"
+        },
+        {
           "id": "Endpoint pencarian kode booking langsung ke Supabase (?booking_code= pada /api/public/court-rental) sehingga fitur Cek Status Booking di portal publik menampilkan status real-time (Pending, Approved, Rejected) beserta catatan petugas langsung dari Supabase.",
           "en": "Direct Supabase booking code lookup endpoint (?booking_code= on /api/public/court-rental) so the public Check Booking Status feature displays real-time status (Pending, Approved, Rejected) and staff notes directly from Supabase.",
           "zh": "在 /api/public/court-rental 新增直连 Supabase 的预约代码查询端点（?booking_code=），使公共门户的预约状态查询实时显示 Supabase 中的最新审批状态及管理员备注。"
+        },
+        {
+          "id": "Notifikasi email otomatis ke penyewa saat pengajuan reservasi lapangan baru berhasil diajukan (courtRentalSubmitted) melalui Resend API (sesuai standar arsitektur modul Admission), memuat rincian lengkap kode booking, paket, total biaya, tanggal, sesi jam, serta pengingat pemrosesan kurang dari 1x24 jam.",
+          "en": "Automated email notification dispatched to renter upon successful court rental submission (courtRentalSubmitted) via Resend API (aligned with Admission module architecture), containing booking code, package, pricing, schedule, and 24-hour processing time notice.",
+          "zh": "上线通过 Resend API 自动向承租人发送预约受理邮件通知（courtRentalSubmitted，对齐招生管理模块规范），详细包含预约代码、套餐、金额、日期时段及 24 小时内完成审核的时效提醒。"
+        },
+        {
+          "id": "Fitur Pengaturan Tim Markom & Notifikasi Pemesanan ('Set Markom & Notifikasi') pada toolbar utama /data/court-rental melalui modal terpadu dan endpoint /api/court-rental/markom: memungkinkan pengelola menugaskan staf penerima notifikasi otomatis melalui Email (Resend) dan bot Google Chat (Workspace DM) saat ada reservasi baru masuk.",
+          "en": "Markom & Notification Team setup feature ('Set Markom & Notifikasi') on the main toolbar of /data/court-rental via a unified modal dialog and /api/court-rental/markom endpoint: enabling managers to configure staff recipients for automated Email (Resend) and Google Chat (Workspace DM) bot notifications upon new bookings.",
+          "zh": "在 /data/court-rental 主工具栏新增「Set Markom & Notifikasi（配置营销团队与通知）」按钮与模态弹窗，配合 /api/court-rental/markom 接口：支持配置在有新预约产生时自动接收邮件通知（Resend）与 Google Chat 官方机器人私聊推送的员工名单。"
         }
       ],
       "changed": [
+        {
+          "id": "Integrasi dinamis sesi jam pemesanan publik pada formulir cPanel (cpanel-sewa-lapangan/index.php) dan API publik (/api/public/court-rental): daftar slot yang muncul pada formulir publik kini bersumber langsung secara dinamis dari tabel court_time_slots yang berstatus aktif di Supabase.",
+          "en": "Dynamic public booking slot loading in cPanel form (cpanel-sewa-lapangan/index.php) and public API (/api/public/court-rental): available slots on the public form now dynamically fetch directly from active records in Supabase court_time_slots.",
+          "zh": "cPanel 公共预约表单（cpanel-sewa-lapangan/index.php）及公共 API（/api/public/court-rental）动态化：表单展示的可选时段改为直接实时读取 Supabase 中处于启用状态的 court_time_slots 数据。"
+        },
         {
           "id": "Menghapus seluruh kode dan ketergantungan SQLite (sewa_lapangan.db & folder data/) dari cpanel-sewa-lapangan/index.php dan menyeragamkan arsitekturnya seperti Vendor Checklist: seluruh pembacaan slot jadwal, penyimpanan reservasi baru, dan pengecekan status terhubung 100% ke Supabase melalui API Next.js, sementara Hostinger khusus menyimpan file bukti transfer di folder uploads/.",
           "en": "Removed all SQLite code and dependencies (sewa_lapangan.db & data/ directory) from cpanel-sewa-lapangan/index.php and unified its architecture with Vendor Checklist: all schedule slot lookups, new booking submissions, and status checks connect 100% to Supabase via the Next.js API, while Hostinger strictly stores payment proof files in uploads/.",
           "zh": "从 cpanel-sewa-lapangan/index.php 中彻底移除所有 SQLite 代码与依赖（sewa_lapangan.db 与 data/ 目录），并与保洁巡检系统统一架构：所有时段查询、新预约提交与状态查询 100% 通过 Next.js API 直连 Supabase，Hostinger 仅负责在 uploads/ 目录存储转账凭证文件。"
         },
         {
-          "id": "Mengganti kolom input teks bebas Time Slot pada formulir Blackout Dates (/data/court-rental) menjadi dropdown pilihan sesi resmi 2 jam (Whole Day, 06:00 - 08:00 s/d 20:00 - 22:00) serta menghapus tombol duplikat 'Approve This Payment' di dalam modal pratinjau bukti transfer sesuai Single Action / Anti-Duplication Button Rule.",
-          "en": "Replaced the free-text Time Slot input on the Blackout Dates form (/data/court-rental) with a standardized 2-hour session dropdown selector (Whole Day, 06:00 - 08:00 through 20:00 - 22:00) and removed the duplicate 'Approve This Payment' button inside the payment proof preview modal in compliance with the Single Action / Anti-Duplication Button Rule.",
-          "zh": "将 /data/court-rental 学校活动封锁日期（Blackout Dates）表单中的自由文本时段输入框替换为标准 2 小时官方时段下拉菜单（全天、06:00 - 08:00 至 20:00 - 22:00），并遵循防按钮冗余规则移除转账凭证预览弹窗内的重复 'Approve This Payment' 按钮。"
+          "id": "Mengganti kolom input teks bebas Time Slot pada formulir Blackout Dates (/data/court-rental) menjadi dropdown dinamis yang terhubung langsung ke master court_time_slots serta menghapus tombol duplikat 'Approve This Payment' di dalam modal pratinjau bukti transfer sesuai Single Action / Anti-Duplication Button Rule.",
+          "en": "Replaced the free-text Time Slot input on the Blackout Dates form (/data/court-rental) with a dynamic dropdown populated from court_time_slots and removed the duplicate 'Approve This Payment' button inside the payment proof preview modal in compliance with the Single Action / Anti-Duplication Button Rule.",
+          "zh": "将 /data/court-rental 学校活动封锁日期（Blackout Dates）表单中的时段选择器升级为直连 court_time_slots 主数据的动态下拉菜单，并遵循防按钮冗余规则移除转账凭证预览弹窗内的重复 'Approve This Payment' 按钮。"
         },
         {
           "id": "Menghapus konsol admin legacy (?admin=1) beserta tautan ikon gembok di footer pada cpanel-sewa-lapangan/index.php agar seluruh pengelolaan reservasi dan penutupan jadwal terpusat secara aman di dashboard Next.js (/data/court-rental).",
           "en": "Removed the legacy admin console (?admin=1) and footer lock link in cpanel-sewa-lapangan/index.php so all reservation and blackout management is securely centralized in the Next.js dashboard (/data/court-rental).",
           "zh": "移除 cpanel-sewa-lapangan/index.php 中的旧版内置管理台（?admin=1）及页脚锁形图标链接，将所有场地预约审批与活动封锁管理安全集中于 Next.js 管理后台（/data/court-rental）。"
+        },
+        {
+          "id": "Pembersihan teks deskripsi header pada halaman /data/court-rental untuk menghasilkan tata letak judul yang lebih ringkas, rapi, dan konsisten dengan modul operasional lainnya.",
+          "en": "Cleaned up header subtitle description on /data/court-rental page for a more compact, clean header layout consistent with other operational modules.",
+          "zh": "精简 /data/court-rental 页面顶部副标题说明文字，使标题区域更加紧凑整洁并与其他运营管理页面风格统一。"
+        },
+        {
+          "id": "Menambahkan banner pemberitahuan estimasi waktu proses verifikasi ('Pesanan Anda akan diproses kurang dari 1x24 jam, harap cek email secara berkala') pada portal publik cpanel-sewa-lapangan/index.php, yang ditampilkan di atas tombol submit formulir, kartu konfirmasi sukses reservasi, dan kartu pelacakan status booking dengan dukungan 3 bahasa (ID, EN, CN).",
+          "en": "Added verification processing estimate notice ('Your booking will be processed within 24 hours, please check your email regularly') to the public portal cpanel-sewa-lapangan/index.php, displayed above form submit button, on the booking success confirmation card, and on the status lookup card with trilingual support (ID, EN, CN).",
+          "zh": "在 cpanel-sewa-lapangan/index.php 公共门户中新增审核时效提醒（「您的预约将在 24 小时内处理，请定期查收电子邮箱」），在表单提交按钮上方、预约成功确认卡片及状态查询卡片中多语言展示（印尼语、英语、中文）。"
+        },
+        {
+          "id": "Reposisi seksi Cek Status Pemesanan Lapangan pada portal publik (cpanel-sewa-lapangan/index.php) menjadi di paling atas halaman (Section 1) agar memudahkan pelacakan jadwal real-time tanpa perlu menggulir ke bawah, pengalihan otomatis ke puncak halaman (#top) saat selesai submit, serta penambahan keterangan bahwa kode booking juga dapat dilihat pada email yang dikirimkan ke penyewa.",
+          "en": "Repositioned the Check Booking Status section on the public portal (cpanel-sewa-lapangan/index.php) to the very top of the page (Section 1) for effortless schedule tracking without scrolling down, automatic scroll to top (#top) upon booking submission, and added clear notice that booking code is also visible in the confirmation email.",
+          "zh": "将公共门户（cpanel-sewa-lapangan/index.php）中的「查询预约状态」版块调整至页面最顶部（第一板块），承租人无需向下翻滚即可实时查单；完成预约后自动跳转至页面顶部（#top），并新增提醒预约代码已同步发送至邮箱查收。"
         }
       ],
       "fixed": [

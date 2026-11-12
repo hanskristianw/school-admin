@@ -78,6 +78,8 @@ $i18n = [
         'modal_error_desc' => 'Terdapat beberapa data wajib yang belum diisi atau belum sesuai. Mohon lengkapi bagian berikut:',
         'modal_error_btn' => 'Lengkapi Formulir Sekarang',
         'btn_submit' => 'Ajukan Permohonan Sewa Lapangan',
+        'notice_processing_time' => 'Pesanan Anda akan diproses kurang dari 1x24 jam, harap cek email secara berkala.',
+        'success_email_notice' => 'Kode booking serta rincian lengkap telah dikirimkan ke email Anda. Harap periksa kotak masuk (atau folder spam/junk) secara berkala.',
         'status_section_title' => 'Cek Status Pemesanan Lapangan',
         'status_input_ph' => 'Contoh: CCS-2609-ABC123',
         'btn_check' => 'Cek Status',
@@ -152,6 +154,8 @@ $i18n = [
         'modal_error_desc' => 'Some required fields are missing or invalid. Please correct the following items:',
         'modal_error_btn' => 'Complete Form Now',
         'btn_submit' => 'Submit Court Rental Booking',
+        'notice_processing_time' => 'Your booking will be processed within 24 hours, please check your email regularly.',
+        'success_email_notice' => 'Your booking code and complete details have also been sent to your email. Please check your inbox (or spam/junk folder) regularly.',
         'status_section_title' => 'Check Booking Status',
         'status_input_ph' => 'Example: CCS-2609-ABC123',
         'btn_check' => 'Check Status',
@@ -226,6 +230,8 @@ $i18n = [
         'modal_error_desc' => '有几项必填信息尚未填写或不符合要求，请补充完善：',
         'modal_error_btn' => '立即完善表单',
         'btn_submit' => '提交场地租赁预约',
+        'notice_processing_time' => '您的预约将在 24 小时内处理，请定期查收电子邮箱。',
+        'success_email_notice' => '预约代码及订单完整详情已同步发送至您的电子邮箱，请定期查收收件箱（或垃圾邮件箱）。',
         'status_section_title' => '查询预约状态',
         'status_input_ph' => '例如：CCS-2609-ABC123',
         'btn_check' => '查询状态',
@@ -380,6 +386,28 @@ function getSlotsForDay($dayOfWeek) {
     }
 }
 
+// Helper: Jadwal Rutin Klub Mitra (MOU Mahameru Basketball No: 013/MARCOMCCS/XII/2025)
+function getRoutineClubBlocksPhp($dateStr) {
+    if (!$dateStr || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $dateStr)) return [];
+    $ts = strtotime($dateStr);
+    $year = (int)date('Y', $ts);
+    $w = (int)date('w', $ts); // 0 = Sun, 1 = Mon, ..., 6 = Sat
+
+    if ($year === 2026) {
+        if ($w === 1) { // Senin (19:00 - 21:00 WIB)
+            return [
+                '18:00 - 20:00' => 'Jadwal Rutin: Mahameru Basketball Club (19:00 - 21:00)',
+                '20:00 - 22:00' => 'Jadwal Rutin: Mahameru Basketball Club (19:00 - 21:00)'
+            ];
+        } elseif ($w === 6 || $w === 0) { // Sabtu atau Minggu (14:00 - 16:00 WIB)
+            return [
+                '14:00 - 16:00' => 'Jadwal Rutin: Mahameru Basketball Club'
+            ];
+        }
+    }
+    return [];
+}
+
 // ─── 2.5 PROTECTED STREAMING BUKTI TRANSFER DARI HOSTINGER ───────────
 if (isset($_GET['action']) && $_GET['action'] === 'view_proof') {
     $token = $_GET['token'] ?? '';
@@ -463,6 +491,11 @@ if (isset($_GET['action']) && $_GET['action'] === 'get_slots') {
         exit;
     }
 
+    // Gunakan master sesi jam dinamis dari Supabase jika tersedia
+    if (!empty($apiRes['available_slots']) && is_array($apiRes['available_slots'])) {
+        $availableSlots = $apiRes['available_slots'];
+    }
+
     if (!empty($apiRes['blackouts']) && is_array($apiRes['blackouts'])) {
         foreach ($apiRes['blackouts'] as $b) {
             if (empty($b['time_slot'])) {
@@ -477,6 +510,14 @@ if (isset($_GET['action']) && $_GET['action'] === 'get_slots') {
 
     if (!empty($apiRes['bookedSlots']) && is_array($apiRes['bookedSlots'])) {
         $bookedSlots = $apiRes['bookedSlots'];
+    }
+
+    // Pastikan jadwal rutin klub mitra (MOU Mahameru) selalu terblokir
+    $routineBlocks = getRoutineClubBlocksPhp($date);
+    foreach ($routineBlocks as $rSlot => $rReason) {
+        if (!isset($blackoutSlots[$rSlot])) {
+            $blackoutSlots[$rSlot] = $rReason;
+        }
     }
 
     if ($isWholeDayBlocked) {
@@ -549,6 +590,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $errorMessage = ($currLang === 'en') ? 'Please complete all required fields (Package, Date, Time Slot, Name, WhatsApp, Email, and Purpose).' : (($currLang === 'cn') ? '请完整填写所有必填信息（套餐、日期、时段、姓名、WhatsApp、电子邮箱及使用目的）。' : 'Mohon lengkapi semua data wajib (Paket, Tanggal, Jam, Nama, No. WhatsApp, Alamat Email, dan Tujuan Penggunaan Lapangan).');
     } elseif ($tsBooking < $minAllowedDate) {
         $errorMessage = ($currLang === 'en') ? 'Court reservations must be made at least 2 days in advance (D+2). You cannot book for today or tomorrow.' : (($currLang === 'cn') ? '场地预约须至少提前 2 天（预约日+2天），不可预约今天或明天。' : 'Pemesanan lapangan minimal 2 hari setelah tanggal pemesanan (H+2). Anda tidak dapat memesan untuk hari ini atau besok.');
+    } elseif (isset(getRoutineClubBlocksPhp($bookingDate)[$timeSlot])) {
+        $rReason = getRoutineClubBlocksPhp($bookingDate)[$timeSlot];
+        $errorMessage = ($currLang === 'en')
+            ? 'Sorry, this time slot is unavailable because it is reserved for ' . $rReason . '.'
+            : (($currLang === 'cn') ? '抱歉，该时段已被占用（' . $rReason . '），暂不对外开放。' : 'Maaf, sesi jam tersebut tidak dapat disewa untuk umum karena telah terisi ' . $rReason . '.');
     } elseif (!filter_var($renterEmail, FILTER_VALIDATE_EMAIL)) {
         $errorMessage = ($currLang === 'en') ? 'Please enter a valid email address.' : (($currLang === 'cn') ? '请输入有效的电子邮箱地址。' : 'Format alamat email tidak valid. Pastikan penulisan email benar.');
     } elseif (!isset($_FILES['payment_proof']) || $_FILES['payment_proof']['error'] === UPLOAD_ERR_NO_FILE) {
@@ -619,7 +665,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                         'has_proof' => true
                     ];
 
-                    header('Location: ?success=1' . ($currLang !== 'id' ? '&lang=' . $currLang : ''));
+                    header('Location: ?success=1' . ($currLang !== 'id' ? '&lang=' . $currLang : '') . '#top');
                     exit;
                 }
             }
@@ -836,7 +882,7 @@ if (!empty($searchQuery)) {
     }
   </style>
 </head>
-<body class="min-h-screen flex flex-col justify-between">
+<body id="top" class="min-h-screen flex flex-col justify-between">
 
   <!-- ═══════════════════════════════════════════════════════════════════════ -->
   <!-- 1. TOP BAR BAHASA BERFUNGSI AKTIF (ENGLISH | BAHASA | 中文)             -->
@@ -924,6 +970,11 @@ if (!empty($searchQuery)) {
             <p class="text-xs text-gray-500 mt-2">Simpan kode booking ini untuk mengecek status atau ditunjukkan saat tiba di Sport Hall CCS.</p>
           </div>
 
+          <div class="p-3 bg-emerald-50 border border-emerald-200 rounded-2xl text-xs text-emerald-900 flex items-center justify-center gap-2">
+            <i class="fas fa-envelope text-emerald-600 text-sm shrink-0"></i>
+            <span><?= htmlspecialchars($L['success_email_notice']) ?></span>
+          </div>
+
           <div class="bg-gray-50 rounded-2xl p-5 text-sm text-left grid grid-cols-2 gap-4 border border-gray-200">
             <div>
               <span class="text-gray-400 text-xs block">Paket:</span>
@@ -943,6 +994,11 @@ if (!empty($searchQuery)) {
             </div>
           </div>
 
+          <div class="bg-blue-50 border border-blue-200 rounded-2xl p-4 text-xs text-blue-900 flex items-center justify-center gap-2.5">
+            <i class="fas fa-clock text-blue-600 text-sm shrink-0"></i>
+            <span><?= htmlspecialchars($L['notice_processing_time']) ?></span>
+          </div>
+
           <div class="space-y-3 pt-2">
             <a href="?cek=<?= urlencode($successBooking['code']) ?>&lang=<?= $currLang ?>" class="thm-btn w-full sm:w-auto">
               <i class="fas fa-eye"></i> Cek Status Reservasi Ini
@@ -955,13 +1011,119 @@ if (!empty($searchQuery)) {
       <?php endif; ?>
 
       <!-- ═══════════════════════════════════════════════════════════════════ -->
-      <!-- SECTION 1: PRICE LIST PERSEWAAN LAPANGAN CCS                        -->
+      <!-- SECTION 1: CEK STATUS PEMESANAN LAPANGAN (PALING ATAS)              -->
+      <!-- ═══════════════════════════════════════════════════════════════════ -->
+      <section id="cek-status" class="bg-white border border-gray-200 rounded-3xl p-6 sm:p-8 shadow-sm space-y-6">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between border-b border-gray-200 pb-3 gap-2">
+          <div>
+            <span class="text-xs font-bold text-ccsOrange uppercase tracking-wider block">Pelacakan Jadwal Real-Time</span>
+            <h2 class="text-2xl font-bold text-ccsHeading"><?= htmlspecialchars($L['status_section_title']) ?></h2>
+          </div>
+          <a href="#formulir" class="inline-flex items-center gap-1.5 text-xs font-semibold text-ccsNavy hover:text-ccsOrange transition">
+            <i class="fas fa-calendar-plus text-xs"></i> Pesan Lapangan Baru &darr;
+          </a>
+        </div>
+
+        <form method="GET" class="flex flex-wrap sm:flex-nowrap gap-3 max-w-xl">
+          <input type="hidden" name="lang" value="<?= htmlspecialchars($currLang) ?>" />
+          <input
+            type="text"
+            name="cek"
+            value="<?= htmlspecialchars($searchQuery) ?>"
+            placeholder="<?= htmlspecialchars($L['status_input_ph']) ?>"
+            required
+            class="w-full px-4 py-3 border border-gray-300 rounded-2xl text-sm font-mono font-semibold uppercase outline-none focus:border-ccsOrange shadow-inner"
+          />
+          <button type="submit" class="thm-btn px-7 py-3 whitespace-nowrap text-xs font-semibold">
+            <i class="fas fa-search"></i> <?= htmlspecialchars($L['btn_check']) ?>
+          </button>
+        </form>
+
+        <?php if (!empty($searchError)): ?>
+          <div class="p-4 bg-rose-50 border border-rose-200 text-rose-700 text-sm rounded-2xl">
+            <i class="fas fa-times-circle mr-1 text-rose-500"></i> <?= htmlspecialchars($searchError) ?>
+          </div>
+        <?php endif; ?>
+
+        <?php if ($searchResult): ?>
+          <div class="bg-gray-50 border border-gray-200 rounded-2xl p-6 space-y-4 max-w-2xl">
+            <div class="flex items-center justify-between border-b border-gray-200 pb-3">
+              <div>
+                <span class="text-xs text-gray-400 uppercase font-semibold"><?= htmlspecialchars($L['lbl_code']) ?></span>
+                <div class="text-xl font-bold font-mono text-ccsHeading"><?= htmlspecialchars($searchResult['booking_code']) ?></div>
+              </div>
+              <div>
+                <?php
+                  $sMap = [
+                    'pending_payment' => ['bg-amber-100 text-amber-800', ($currLang === 'en' ? 'Pending Payment' : ($currLang === 'cn' ? '等待付款' : 'Menunggu Pembayaran'))],
+                    'payment_uploaded' => ['bg-blue-100 text-blue-800', ($currLang === 'en' ? 'Verifying Proof' : ($currLang === 'cn' ? '凭证审核中' : 'Verifikasi Staf Lapangan'))],
+                    'approved' => ['bg-emerald-100 text-emerald-800', ($currLang === 'en' ? 'Approved / Scheduled' : ($currLang === 'cn' ? '已批准 / 已排期' : 'Disetujui / Terjadwal'))],
+                    'rejected' => ['bg-rose-100 text-rose-800', ($currLang === 'en' ? 'Rejected' : ($currLang === 'cn' ? '已拒绝' : 'Ditolak'))],
+                    'completed' => ['bg-gray-100 text-gray-800', ($currLang === 'en' ? 'Completed' : ($currLang === 'cn' ? '已完成' : 'Selesai'))]
+                  ][$searchResult['status']] ?? ['bg-gray-100 text-gray-800', $searchResult['status']];
+                ?>
+                <span class="px-3.5 py-1 rounded-full text-xs font-bold <?= $sMap[0] ?>">
+                  <?= $sMap[1] ?>
+                </span>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 sm:grid-cols-3 gap-4 text-sm">
+              <div>
+                <span class="text-gray-400 block text-xs"><?= htmlspecialchars($L['lbl_name']) ?></span>
+                <strong class="text-gray-800"><?= htmlspecialchars($searchResult['renter_name']) ?></strong>
+              </div>
+              <div>
+                <span class="text-gray-400 block text-xs">Paket</span>
+                <strong class="text-gray-800"><?= htmlspecialchars($searchResult['package_name']) ?></strong>
+              </div>
+              <div>
+                <span class="text-gray-400 block text-xs">Total</span>
+                <strong class="text-ccsOrange font-mono font-bold text-base">Rp <?= number_format($searchResult['price'], 0, ',', '.') ?></strong>
+              </div>
+              <div>
+                <span class="text-gray-400 block text-xs"><?= htmlspecialchars($L['lbl_date']) ?></span>
+                <strong class="text-gray-800"><?= htmlspecialchars($searchResult['booking_date']) ?></strong>
+              </div>
+              <div>
+                <span class="text-gray-400 block text-xs"><?= htmlspecialchars($L['lbl_slots']) ?></span>
+                <strong class="text-gray-800"><?= htmlspecialchars($searchResult['time_slot']) ?></strong>
+              </div>
+              <div>
+                <span class="text-gray-400 block text-xs">Bukti</span>
+                <?php if ($searchResult['payment_proof']): ?>
+                  <span class="text-emerald-600 font-semibold"><i class="fas fa-check"></i> <?= $currLang === 'en' ? 'Uploaded' : ($currLang === 'cn' ? '已上传' : 'Sudah Diunggah') ?></span>
+                <?php else: ?>
+                  <span class="text-amber-600 font-semibold"><i class="fas fa-clock"></i> <?= $currLang === 'en' ? 'Not uploaded' : ($currLang === 'cn' ? '未上传' : 'Belum Diunggah') ?></span>
+                <?php endif; ?>
+              </div>
+            </div>
+
+            <?php if (!empty($searchResult['admin_notes'])): ?>
+              <div class="p-3.5 bg-white border border-gray-200 rounded-xl text-xs text-gray-700">
+                <span class="font-bold text-ccsHeading block mb-1">Catatan Petugas Lapangan:</span>
+                <?= htmlspecialchars($searchResult['admin_notes']) ?>
+              </div>
+            <?php endif; ?>
+
+            <?php if ($searchResult['status'] === 'payment_uploaded'): ?>
+              <div class="p-3 bg-blue-50 border border-blue-200 rounded-xl text-xs text-blue-900 flex items-center gap-2.5">
+                <i class="fas fa-clock text-blue-600 text-sm shrink-0"></i>
+                <span><?= htmlspecialchars($L['notice_processing_time']) ?></span>
+              </div>
+            <?php endif; ?>
+          </div>
+        <?php endif; ?>
+      </section>
+
+      <!-- ═══════════════════════════════════════════════════════════════════ -->
+      <!-- SECTION 2: PRICE LIST PERSEWAAN LAPANGAN CCS                        -->
       <!-- ═══════════════════════════════════════════════════════════════════ -->
       <section id="daftar-paket" class="space-y-6">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between border-b border-gray-200 pb-3 gap-3">
           <h2 class="text-2xl font-bold text-ccsHeading"><?= htmlspecialchars($L['price_list_title']) ?></h2>
-          <a href="#cek-status" class="inline-flex items-center gap-2 text-xs font-semibold text-ccsHeading hover:text-ccsOrange transition">
-            <i class="fas fa-search text-xs"></i> <?= htmlspecialchars($L['btn_check_status']) ?>
+          <a href="#formulir" class="inline-flex items-center gap-2 text-xs font-semibold text-ccsHeading hover:text-ccsOrange transition">
+            <i class="fas fa-calendar-check text-xs"></i> Langsung ke Formulir Booking &darr;
           </a>
         </div>
 
@@ -1298,8 +1460,16 @@ if (!empty($searchQuery)) {
             </div>
           </div>
 
+          <!-- KETERANGAN ESTIMASI PROSES VERIFIKASI -->
+          <div class="p-4 bg-blue-50 border border-blue-200 rounded-2xl text-xs text-blue-900 flex items-start sm:items-center gap-3">
+            <i class="fas fa-clock text-blue-600 text-base shrink-0 mt-0.5 sm:mt-0"></i>
+            <div>
+              <strong><?= $currLang === 'en' ? 'Processing Notice:' : ($currLang === 'cn' ? '审核提醒：' : 'Informasi Verifikasi:') ?></strong> <?= htmlspecialchars($L['notice_processing_time']) ?>
+            </div>
+          </div>
+
           <!-- TOMBOL SUBMIT -->
-          <div class="pt-4 text-center sm:text-right">
+          <div class="pt-2 text-center sm:text-right">
             <button type="submit" class="thm-btn w-full sm:w-auto px-10 py-3.5 text-base font-semibold">
               <i class="fas fa-paper-plane"></i> <?= htmlspecialchars($L['btn_submit']) ?>
             </button>
@@ -1307,99 +1477,6 @@ if (!empty($searchQuery)) {
 
         </form>
 
-      </section>
-
-      <!-- ═══════════════════════════════════════════════════════════════════ -->
-      <!-- SECTION 3: CEK STATUS PEMESANAN LAPANGAN                           -->
-      <!-- ═══════════════════════════════════════════════════════════════════ -->
-      <section id="cek-status" class="bg-white border border-gray-200 rounded-2xl p-6 sm:p-8 shadow-sm space-y-6">
-        <div class="border-b border-gray-200 pb-3">
-          <h2 class="text-2xl font-bold text-ccsHeading"><?= htmlspecialchars($L['status_section_title']) ?></h2>
-        </div>
-
-        <form method="GET" class="flex flex-wrap sm:flex-nowrap gap-3 max-w-lg">
-          <input type="hidden" name="lang" value="<?= htmlspecialchars($currLang) ?>" />
-          <input
-            type="text"
-            name="cek"
-            value="<?= htmlspecialchars($searchQuery) ?>"
-            placeholder="<?= htmlspecialchars($L['status_input_ph']) ?>"
-            required
-            class="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm font-mono font-semibold uppercase outline-none focus:border-ccsOrange"
-          />
-          <button type="submit" class="thm-btn px-6 py-2.5 whitespace-nowrap text-xs font-semibold">
-            <i class="fas fa-search"></i> <?= htmlspecialchars($L['btn_check']) ?>
-          </button>
-        </form>
-
-        <?php if (!empty($searchError)): ?>
-          <div class="p-4 bg-rose-50 border border-rose-200 text-rose-700 text-sm rounded-2xl">
-            <i class="fas fa-times-circle mr-1 text-rose-500"></i> <?= htmlspecialchars($searchError) ?>
-          </div>
-        <?php endif; ?>
-
-        <?php if ($searchResult): ?>
-          <div class="bg-gray-50 border border-gray-200 rounded-2xl p-6 space-y-4 max-w-2xl">
-            <div class="flex items-center justify-between border-b border-gray-200 pb-3">
-              <div>
-                <span class="text-xs text-gray-400 uppercase font-semibold"><?= htmlspecialchars($L['lbl_code']) ?></span>
-                <div class="text-xl font-bold font-mono text-ccsHeading"><?= htmlspecialchars($searchResult['booking_code']) ?></div>
-              </div>
-              <div>
-                <?php
-                  $sMap = [
-                    'pending_payment' => ['bg-amber-100 text-amber-800', ($currLang === 'en' ? 'Pending Payment' : ($currLang === 'cn' ? '等待付款' : 'Menunggu Pembayaran'))],
-                    'payment_uploaded' => ['bg-blue-100 text-blue-800', ($currLang === 'en' ? 'Verifying Proof' : ($currLang === 'cn' ? '凭证审核中' : 'Verifikasi Staf Lapangan'))],
-                    'approved' => ['bg-emerald-100 text-emerald-800', ($currLang === 'en' ? 'Approved / Scheduled' : ($currLang === 'cn' ? '已批准 / 已排期' : 'Disetujui / Terjadwal'))],
-                    'rejected' => ['bg-rose-100 text-rose-800', ($currLang === 'en' ? 'Rejected' : ($currLang === 'cn' ? '已拒绝' : 'Ditolak'))],
-                    'completed' => ['bg-gray-100 text-gray-800', ($currLang === 'en' ? 'Completed' : ($currLang === 'cn' ? '已完成' : 'Selesai'))]
-                  ][$searchResult['status']] ?? ['bg-gray-100 text-gray-800', $searchResult['status']];
-                ?>
-                <span class="px-3.5 py-1 rounded-full text-xs font-bold <?= $sMap[0] ?>">
-                  <?= $sMap[1] ?>
-                </span>
-              </div>
-            </div>
-
-            <div class="grid grid-cols-2 sm:grid-cols-3 gap-4 text-sm">
-              <div>
-                <span class="text-gray-400 block text-xs"><?= htmlspecialchars($L['lbl_name']) ?></span>
-                <strong class="text-gray-800"><?= htmlspecialchars($searchResult['renter_name']) ?></strong>
-              </div>
-              <div>
-                <span class="text-gray-400 block text-xs">Paket</span>
-                <strong class="text-gray-800"><?= htmlspecialchars($searchResult['package_name']) ?></strong>
-              </div>
-              <div>
-                <span class="text-gray-400 block text-xs">Total</span>
-                <strong class="text-ccsOrange font-mono font-bold text-base">Rp <?= number_format($searchResult['price'], 0, ',', '.') ?></strong>
-              </div>
-              <div>
-                <span class="text-gray-400 block text-xs"><?= htmlspecialchars($L['lbl_date']) ?></span>
-                <strong class="text-gray-800"><?= htmlspecialchars($searchResult['booking_date']) ?></strong>
-              </div>
-              <div>
-                <span class="text-gray-400 block text-xs"><?= htmlspecialchars($L['lbl_slots']) ?></span>
-                <strong class="text-gray-800"><?= htmlspecialchars($searchResult['time_slot']) ?></strong>
-              </div>
-              <div>
-                <span class="text-gray-400 block text-xs">Bukti</span>
-                <?php if ($searchResult['payment_proof']): ?>
-                  <span class="text-emerald-600 font-semibold"><i class="fas fa-check"></i> <?= $currLang === 'en' ? 'Uploaded' : ($currLang === 'cn' ? '已上传' : 'Sudah Diunggah') ?></span>
-                <?php else: ?>
-                  <span class="text-amber-600 font-semibold"><i class="fas fa-clock"></i> <?= $currLang === 'en' ? 'Not uploaded' : ($currLang === 'cn' ? '未上传' : 'Belum Diunggah') ?></span>
-                <?php endif; ?>
-              </div>
-            </div>
-
-            <?php if (!empty($searchResult['admin_notes'])): ?>
-              <div class="p-3.5 bg-white border border-gray-200 rounded-xl text-xs text-gray-700">
-                <span class="font-bold text-ccsHeading block mb-1">Catatan Petugas Lapangan:</span>
-                <?= htmlspecialchars($searchResult['admin_notes']) ?>
-              </div>
-            <?php endif; ?>
-          </div>
-        <?php endif; ?>
       </section>
 
   </main>
