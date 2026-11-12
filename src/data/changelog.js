@@ -10,9 +10,57 @@
 
 export const SYSTEM_RELEASES = [
   {
+    "version": "0.6.2",
+    "date": "2026-11-12",
+    "isLatest": true,
+    "summary": {
+      "id": "Penghapusan penuh database SQLite lokal pada portal Sewa Lapangan (cpanel-sewa-lapangan/index.php) sehingga 100% terhubung langsung secara real-time ke Supabase (Hostinger khusus untuk antarmuka publik & penyimpanan berkas bukti transfer uploads/), pengamanan konsol admin legacy, dukungan pratinjau PDF & auto-retry bukti transfer, serta penyempurnaan kontrol Blackout Dates.",
+      "en": "Complete removal of local SQLite database from the Court Rental portal (cpanel-sewa-lapangan/index.php) so 100% of data operations connect directly in real-time to Supabase (Hostinger used strictly for public UI & payment proof file storage in uploads/), legacy admin console removal, PDF & auto-retry payment proof preview, and standardized Blackout Dates time-slot selector.",
+      "zh": "全面移除球场租赁门户（cpanel-sewa-lapangan/index.php）中的本地 SQLite 数据库，实现 100% 实时直连 Supabase（Hostinger 仅用于公共前端与 uploads/ 转账凭证文件存储），移除旧版内置管理入口，支持 PDF 与自动重试转账凭证预览，并规范化学校活动封锁时段（Blackout Dates）选择器。"
+    },
+    "sections": {
+      "added": [
+        {
+          "id": "Endpoint pencarian kode booking langsung ke Supabase (?booking_code= pada /api/public/court-rental) sehingga fitur Cek Status Booking di portal publik menampilkan status real-time (Pending, Approved, Rejected) beserta catatan petugas langsung dari Supabase.",
+          "en": "Direct Supabase booking code lookup endpoint (?booking_code= on /api/public/court-rental) so the public Check Booking Status feature displays real-time status (Pending, Approved, Rejected) and staff notes directly from Supabase.",
+          "zh": "在 /api/public/court-rental 新增直连 Supabase 的预约代码查询端点（?booking_code=），使公共门户的预约状态查询实时显示 Supabase 中的最新审批状态及管理员备注。"
+        }
+      ],
+      "changed": [
+        {
+          "id": "Menghapus seluruh kode dan ketergantungan SQLite (sewa_lapangan.db & folder data/) dari cpanel-sewa-lapangan/index.php dan menyeragamkan arsitekturnya seperti Vendor Checklist: seluruh pembacaan slot jadwal, penyimpanan reservasi baru, dan pengecekan status terhubung 100% ke Supabase melalui API Next.js, sementara Hostinger khusus menyimpan file bukti transfer di folder uploads/.",
+          "en": "Removed all SQLite code and dependencies (sewa_lapangan.db & data/ directory) from cpanel-sewa-lapangan/index.php and unified its architecture with Vendor Checklist: all schedule slot lookups, new booking submissions, and status checks connect 100% to Supabase via the Next.js API, while Hostinger strictly stores payment proof files in uploads/.",
+          "zh": "从 cpanel-sewa-lapangan/index.php 中彻底移除所有 SQLite 代码与依赖（sewa_lapangan.db 与 data/ 目录），并与保洁巡检系统统一架构：所有时段查询、新预约提交与状态查询 100% 通过 Next.js API 直连 Supabase，Hostinger 仅负责在 uploads/ 目录存储转账凭证文件。"
+        },
+        {
+          "id": "Mengganti kolom input teks bebas Time Slot pada formulir Blackout Dates (/data/court-rental) menjadi dropdown pilihan sesi resmi 2 jam (Whole Day, 06:00 - 08:00 s/d 20:00 - 22:00) serta menghapus tombol duplikat 'Approve This Payment' di dalam modal pratinjau bukti transfer sesuai Single Action / Anti-Duplication Button Rule.",
+          "en": "Replaced the free-text Time Slot input on the Blackout Dates form (/data/court-rental) with a standardized 2-hour session dropdown selector (Whole Day, 06:00 - 08:00 through 20:00 - 22:00) and removed the duplicate 'Approve This Payment' button inside the payment proof preview modal in compliance with the Single Action / Anti-Duplication Button Rule.",
+          "zh": "将 /data/court-rental 学校活动封锁日期（Blackout Dates）表单中的自由文本时段输入框替换为标准 2 小时官方时段下拉菜单（全天、06:00 - 08:00 至 20:00 - 22:00），并遵循防按钮冗余规则移除转账凭证预览弹窗内的重复 'Approve This Payment' 按钮。"
+        },
+        {
+          "id": "Menghapus konsol admin legacy (?admin=1) beserta tautan ikon gembok di footer pada cpanel-sewa-lapangan/index.php agar seluruh pengelolaan reservasi dan penutupan jadwal terpusat secara aman di dashboard Next.js (/data/court-rental).",
+          "en": "Removed the legacy admin console (?admin=1) and footer lock link in cpanel-sewa-lapangan/index.php so all reservation and blackout management is securely centralized in the Next.js dashboard (/data/court-rental).",
+          "zh": "移除 cpanel-sewa-lapangan/index.php 中的旧版内置管理台（?admin=1）及页脚锁形图标链接，将所有场地预约审批与活动封锁管理安全集中于 Next.js 管理后台（/data/court-rental）。"
+        }
+      ],
+      "fixed": [
+        {
+          "id": "Memperbaiki validasi submit_booking pada Sewa Lapangan agar langsung tervalidasi terhadap tabel court_rentals dan court_blackout_dates di Supabase, serta menghapus otomatis file bukti transfer di Hostinger apabila jadwal ditolak oleh server.",
+          "en": "Fixed submit_booking validation in Court Rental to validate directly against the court_rentals and court_blackout_dates tables in Supabase, automatically cleaning up the uploaded proof file on Hostinger if the schedule is rejected by the server.",
+          "zh": "修复场地租赁预约提交（submit_booking）校验，直接针对 Supabase 的 court_rentals 与 court_blackout_dates 表进行实时验证，并在服务器拒绝排期时自动清理 Hostinger 上已上传的凭证文件。"
+        },
+        {
+          "id": "Menambahkan dukungan pratinjau dokumen PDF (<iframe>) selain gambar, mekanisme auto-retry 3 kali pada proxy /api/court-rental/[id]/proof, tombol 'Retry / Coba Lagi' di modal pratinjau, serta standardisasi zona waktu WIB (Asia/Jakarta, UTC+7) untuk validasi batas pemesanan minimal H+2.",
+          "en": "Added PDF document preview support (<iframe>) alongside images, a 3-attempt auto-retry mechanism in the /api/court-rental/[id]/proof proxy, an interactive 'Retry / Coba Lagi' button in the preview modal, and WIB timezone standardization (Asia/Jakarta, UTC+7) for minimum D+2 booking validation.",
+          "zh": "在 /api/court-rental/[id]/proof 代理接口中新增 PDF 凭证内嵌预览（<iframe>）、3 次自动重试机制、弹窗内交互式重试按钮，并统一采用印尼西部时间（Asia/Jakarta, UTC+7）校验提前 2 天（H+2）预约限制。"
+        }
+      ]
+    }
+  },
+  {
     "version": "0.6.1",
     "date": "2026-11-10",
-    "isLatest": true,
+    "isLatest": false,
     "summary": {
       "id": "Perombakan sistem kebersihan vendor & pelaporan fasilitas (pemisahan Portal QR General Pelapor, penugasan ruangan tetap Many-to-Many per petugas cleaning, serta upload foto Before & After 1 halaman di portal cleaner), ditambah standardisasi bahasa Inggris penuh pada Health Report Card.",
       "en": "Overhaul of the vendor cleaning & facility reporting system (dedicated General QR Reporter Portal, Many-to-Many static room assignments per cleaner, and single-page Before & After photo upload in the cleaner portal), plus full English standardization on Health Report Card.",

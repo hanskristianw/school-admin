@@ -11,6 +11,7 @@
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
+date_default_timezone_set('Asia/Jakarta');
 
 // ─── 0. SISTEM MULTI-BAHASA (INDONESIA, ENGLISH, CHINESE) ─────────────
 if (isset($_GET['lang'])) {
@@ -268,70 +269,94 @@ if (!defined('BANK_AN')) define('BANK_AN', 'Yayasan Pendidikan Mayapada School')
 if (!defined('CONTACT_PHONE')) define('CONTACT_PHONE', '031 8788 4800');
 if (!defined('CONTACT_WA')) define('CONTACT_WA', '+62 859-5986-0430');
 if (!defined('SCHOOL_ADDRESS')) define('SCHOOL_ADDRESS', 'Gunung Anyar Sawah No. 18, Surabaya Timur');
-if (!defined('ADMIN_PASS')) define('ADMIN_PASS', 'adminccs2026');
 
-// Konfigurasi Integrasi Next.js Admin & Keamanan Bukti Transfer
-// Nilai rahasia diatur di config.php (atau environment variable) sehingga TIDAK tersimpan di Git
-if (!defined('API_SECRET_TOKEN')) define('API_SECRET_TOKEN', getenv('COURT_RENTAL_SECRET_KEY') ?: '');
+// Konfigurasi Integrasi Next.js Admin (Supabase) & Keamanan Bukti Transfer
+if (!defined('API_SECRET_TOKEN')) define('API_SECRET_TOKEN', getenv('COURT_RENTAL_SECRET_KEY') ?: 'ccs_court_auth_2026_x7k9p2m4');
 if (!defined('NEXTJS_API_URL')) define('NEXTJS_API_URL', 'https://www.manageccs.online/api/public/court-rental');
 
-// Folder penyimpanan internal
-define('DATA_DIR', __DIR__ . '/data');
+// Folder penyimpanan berkas bukti transfer di Hostinger
 define('UPLOAD_DIR', __DIR__ . '/uploads');
-define('DB_FILE', DATA_DIR . '/sewa_lapangan.db');
 
-// Inisialisasi folder & proteksi keamanan
-if (!file_exists(DATA_DIR)) {
-    @mkdir(DATA_DIR, 0755, true);
-    @file_put_contents(DATA_DIR . '/.htaccess', "Order Deny,Allow\nDeny from all\n");
-}
 if (!file_exists(UPLOAD_DIR)) {
     @mkdir(UPLOAD_DIR, 0755, true);
 }
-// Pilihan Keamanan A: Kunci total folder uploads/ dari akses web publik (Deny from all)
-@file_put_contents(UPLOAD_DIR . '/.htaccess', "Options -Indexes\nOrder Deny,Allow\nDeny from all\n<IfModule mod_authz_core.c>\nRequire all denied\n</IfModule>\n<FilesMatch \"\\.(php|phtml|php5|pl|py|cgi|sh)$\">\nRequire all denied\n</FilesMatch>\n");
-@file_put_contents(UPLOAD_DIR . '/index.html', '<!DOCTYPE html><html><head><title>403 Forbidden</title></head><body><h1>Directory access is forbidden.</h1></body></html>');
+// Kunci total folder uploads/ dari akses web publik (Deny from all)
+if (!file_exists(UPLOAD_DIR . '/.htaccess')) {
+    @file_put_contents(UPLOAD_DIR . '/.htaccess', "Options -Indexes\nOrder Deny,Allow\nDeny from all\n<IfModule mod_authz_core.c>\nRequire all denied\n</IfModule>\n<FilesMatch \"\\.(php|phtml|php5|pl|py|cgi|sh)$\">\nRequire all denied\n</FilesMatch>\n");
+}
+if (!file_exists(UPLOAD_DIR . '/index.html')) {
+    @file_put_contents(UPLOAD_DIR . '/index.html', '<!DOCTYPE html><html><head><title>403 Forbidden</title></head><body><h1>Directory access is forbidden.</h1></body></html>');
+}
 
-
-// ─── 2. KONEKSI DATABASE (SQLite) ────────────────────────────────────
-function getDb() {
-    static $pdo = null;
-    if ($pdo === null) {
-        $pdo = new PDO('sqlite:' . DB_FILE);
-        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-        $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
-
-        $pdo->exec("
-            CREATE TABLE IF NOT EXISTS bookings (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                booking_code TEXT UNIQUE,
-                package_type TEXT,
-                package_name TEXT,
-                price INTEGER,
-                booking_date TEXT,
-                time_slot TEXT,
-                renter_name TEXT,
-                renter_phone TEXT,
-                renter_email TEXT,
-                renter_org TEXT,
-                renter_purpose TEXT,
-                payment_proof TEXT,
-                status TEXT DEFAULT 'pending_payment',
-                admin_notes TEXT,
-                created_at TEXT,
-                updated_at TEXT
-            );
-
-            CREATE TABLE IF NOT EXISTS blackout_dates (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                date TEXT,
-                time_slot TEXT,
-                reason TEXT,
-                created_at TEXT
-            );
-        ");
+// ─── 2. HELPER KOMUNIKASI KE NEXT.JS API (SUPABASE) ──────────────────
+function callNextApi($method, $queryParams = [], $jsonPayload = null) {
+    $url = NEXTJS_API_URL;
+    if (!empty($queryParams)) {
+        $url .= (strpos($url, '?') === false ? '?' : '&') . http_build_query($queryParams);
     }
-    return $pdo;
+
+    $headers = [
+        'Accept: application/json',
+        'Authorization: Bearer ' . API_SECRET_TOKEN
+    ];
+
+    if ($jsonPayload !== null) {
+        $headers[] = 'Content-Type: application/json';
+    }
+
+    if (function_exists('curl_init')) {
+        $ch = curl_init($url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $method);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 12);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+
+        if ($jsonPayload !== null) {
+            curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($jsonPayload));
+        }
+
+        $resp = curl_exec($ch);
+        $httpCode = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $err = curl_error($ch);
+        curl_close($ch);
+
+        if ($resp === false) {
+            return ['success' => false, 'http_code' => 500, 'message' => 'Gagal menghubungi server utama: ' . $err];
+        }
+
+        $decoded = json_decode($resp, true);
+        if (!is_array($decoded)) {
+            return ['success' => false, 'http_code' => $httpCode ?: 500, 'message' => 'Respons server tidak valid'];
+        }
+        $decoded['http_code'] = $httpCode;
+        return $decoded;
+    } else {
+        $opts = [
+            'http' => [
+                'method' => $method,
+                'header' => implode("\r\n", $headers) . "\r\n",
+                'timeout' => 12,
+                'ignore_errors' => true
+            ]
+        ];
+        if ($jsonPayload !== null) {
+            $opts['http']['content'] = json_encode($jsonPayload);
+        }
+        $ctx = stream_context_create($opts);
+        $resp = @file_get_contents($url, false, $ctx);
+        $httpCode = 500;
+        if (isset($http_response_header[0]) && preg_match('/HTTP\/\S+\s+(\d+)/', $http_response_header[0], $m)) {
+            $httpCode = (int)$m[1];
+        }
+        $decoded = json_decode((string)$resp, true);
+        if (!is_array($decoded)) {
+            return ['success' => false, 'http_code' => $httpCode, 'message' => 'Gagal menghubungi server utama'];
+        }
+        $decoded['http_code'] = $httpCode;
+        return $decoded;
+    }
 }
 
 // Helper Slot Waktu Berdasarkan Hari
@@ -355,7 +380,7 @@ function getSlotsForDay($dayOfWeek) {
     }
 }
 
-// ─── 2.5 PROTECTED STREAMING BUKTI TRANSFER (KEAMANAN OPSI A) ────────
+// ─── 2.5 PROTECTED STREAMING BUKTI TRANSFER DARI HOSTINGER ───────────
 if (isset($_GET['action']) && $_GET['action'] === 'view_proof') {
     $token = $_GET['token'] ?? '';
     if ($token !== API_SECRET_TOKEN) {
@@ -393,7 +418,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'view_proof') {
     exit;
 }
 
-// ─── 3. API AJAX SLOT AVAILABILITY ────────────────────────────────────
+// ─── 3. API AJAX SLOT AVAILABILITY (100% DARI SUPABASE) ──────────────
 if (isset($_GET['action']) && $_GET['action'] === 'get_slots') {
     header('Content-Type: application/json');
     $date = $_GET['date'] ?? '';
@@ -421,7 +446,6 @@ if (isset($_GET['action']) && $_GET['action'] === 'get_slots') {
         exit;
     }
 
-    $db = getDb();
     $dayOfWeek = (int)date('w', $ts);
     $availableSlots = getSlotsForDay($dayOfWeek);
 
@@ -430,57 +454,29 @@ if (isset($_GET['action']) && $_GET['action'] === 'get_slots') {
     $blockReason = '';
     $bookedSlots = [];
 
-    // Coba ambil sinkronisasi dari Next.js API terlebih dahulu
-    if (defined('NEXTJS_API_URL') && !empty(NEXTJS_API_URL)) {
-        $apiCheckUrl = NEXTJS_API_URL . '?date=' . urlencode($date);
-        $remoteData = null;
-        if (function_exists('curl_init')) {
-            $ch = curl_init($apiCheckUrl);
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_TIMEOUT, 2);
-            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-            curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-            $remoteData = @curl_exec($ch);
-            @curl_close($ch);
-        } else {
-            $ctx = stream_context_create(['http' => ['timeout' => 2]]);
-            $remoteData = @file_get_contents($apiCheckUrl, false, $ctx);
-        }
+    $apiRes = callNextApi('GET', ['date' => $date]);
+    if (empty($apiRes['success'])) {
+        echo json_encode([
+            'status' => 'error',
+            'message' => $apiRes['message'] ?? 'Gagal memuat ketersediaan jadwal dari server.'
+        ]);
+        exit;
+    }
 
-        if ($remoteData) {
-            $json = json_decode($remoteData, true);
-            if (isset($json['success']) && $json['success']) {
-                if (!empty($json['blackouts'])) {
-                    foreach ($json['blackouts'] as $b) {
-                        if (empty($b['time_slot'])) {
-                            $isWholeDayBlocked = true;
-                            $blockReason = $b['reason'] ?: 'Kegiatan Khusus Sekolah';
-                            break;
-                        } else {
-                            $blackoutSlots[$b['time_slot']] = $b['reason'] ?: 'Kegiatan Sekolah';
-                        }
-                    }
-                }
-                if (!empty($json['bookedSlots'])) {
-                    $bookedSlots = $json['bookedSlots'];
-                }
+    if (!empty($apiRes['blackouts']) && is_array($apiRes['blackouts'])) {
+        foreach ($apiRes['blackouts'] as $b) {
+            if (empty($b['time_slot'])) {
+                $isWholeDayBlocked = true;
+                $blockReason = $b['reason'] ?: 'Kegiatan Khusus Sekolah';
+                break;
+            } else {
+                $blackoutSlots[$b['time_slot']] = $b['reason'] ?: 'Kegiatan Sekolah';
             }
         }
     }
 
-    // Gabungkan dengan SQLite lokal
-    $stmt = $db->prepare("SELECT time_slot, reason FROM blackout_dates WHERE date = ?");
-    $stmt->execute([$date]);
-    $blackouts = $stmt->fetchAll();
-    
-    foreach ($blackouts as $b) {
-        if (empty($b['time_slot'])) {
-            $isWholeDayBlocked = true;
-            $blockReason = $b['reason'] ?: 'Kegiatan Khusus Sekolah';
-            break;
-        } else {
-            $blackoutSlots[$b['time_slot']] = $b['reason'] ?: 'Kegiatan Sekolah';
-        }
+    if (!empty($apiRes['bookedSlots']) && is_array($apiRes['bookedSlots'])) {
+        $bookedSlots = $apiRes['bookedSlots'];
     }
 
     if ($isWholeDayBlocked) {
@@ -493,12 +489,6 @@ if (isset($_GET['action']) && $_GET['action'] === 'get_slots') {
         exit;
     }
 
-    $stmt = $db->prepare("SELECT time_slot FROM bookings WHERE booking_date = ? AND status IN ('pending_payment', 'payment_uploaded', 'approved')");
-    $stmt->execute([$date]);
-    $bookedRows = $stmt->fetchAll();
-    $localBooked = array_column($bookedRows, 'time_slot');
-    $bookedSlots = array_unique(array_merge($bookedSlots, $localBooked));
-
     $resultSlots = [];
     foreach ($availableSlots as $slot) {
         $status = 'available';
@@ -507,7 +497,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'get_slots') {
         if (isset($blackoutSlots[$slot])) {
             $status = 'school_event';
             $note = $blackoutSlots[$slot] ?: $labelMap['school'];
-        } elseif (in_array($slot, $bookedSlots)) {
+        } elseif (in_array($slot, $bookedSlots, true)) {
             $status = 'booked';
             $note = $labelMap['booked'];
         }
@@ -527,7 +517,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'get_slots') {
     exit;
 }
 
-// ─── 4. PENGIRIMAN FORMULIR BOOKING (POST) ───────────────────────────
+// ─── 4. PENGIRIMAN FORMULIR BOOKING (POST KE SUPABASE + FILE DI HOSTINGER) ─
 $successBooking = null;
 $errorMessage = null;
 
@@ -577,63 +567,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         } elseif ($fileSize > 5 * 1024 * 1024) {
             $errorMessage = ($currLang === 'en') ? 'Payment proof file exceeds maximum limit of 5 MB.' : 'Ukuran berkas bukti transfer melebihi batas maksimal 5 MB.';
         } else {
-            $db = getDb();
-
-            $stmt = $db->prepare("SELECT COUNT(*) FROM bookings WHERE booking_date = ? AND time_slot = ? AND status IN ('pending_payment', 'payment_uploaded', 'approved')");
-            $stmt->execute([$bookingDate, $timeSlot]);
-            if ($stmt->fetchColumn() > 0) {
-                $errorMessage = ($currLang === 'en') ? 'Sorry, this time slot has just been booked. Please choose another.' : 'Maaf, sesi jam tersebut baru saja dipesan orang lain. Silakan pilih sesi lain.';
+            // Simpan file bukti transfer ke folder uploads/ di Hostinger
+            $newFileName = 'bukti_' . date('Ymd_His') . '_' . bin2hex(random_bytes(4)) . '.' . $fileExt;
+            if (!move_uploaded_file($fileTmp, UPLOAD_DIR . '/' . $newFileName)) {
+                $errorMessage = ($currLang === 'en') ? 'Failed to save payment proof file to server.' : 'Gagal menyimpan berkas bukti transfer ke server hosting.';
             } else {
-                $stmt = $db->prepare("SELECT COUNT(*) FROM blackout_dates WHERE date = ? AND (time_slot = ? OR time_slot = '' OR time_slot IS NULL)");
-                $stmt->execute([$bookingDate, $timeSlot]);
-                if ($stmt->fetchColumn() > 0) {
-                    $errorMessage = ($currLang === 'en') ? 'Sorry, this time slot is reserved for a school event.' : 'Maaf, sesi jam tersebut sedang digunakan untuk kegiatan sekolah mendadak.';
-                } else {
-                    $newFileName = 'bukti_' . date('Ymd_His') . '_' . bin2hex(random_bytes(4)) . '.' . $fileExt;
-                    if (!move_uploaded_file($fileTmp, UPLOAD_DIR . '/' . $newFileName)) {
-                        $errorMessage = ($currLang === 'en') ? 'Failed to save payment proof file to server.' : 'Gagal menyimpan berkas bukti transfer ke server hosting.';
-                    } else {
-                        $paymentProofFile = $newFileName;
-                        $initialStatus = 'payment_uploaded';
-
+                $paymentProofFile = $newFileName;
+                $initialStatus = 'payment_uploaded';
                 $bookingCode = 'CCS-' . date('ym') . '-' . strtoupper(bin2hex(random_bytes(3)));
                 $selectedPkg = $validPkgs[$pkgKey];
-                $now = date('Y-m-d H:i:s');
 
-                $stmt = $db->prepare("
-                    INSERT INTO bookings (
-                        booking_code, package_type, package_name, price,
-                        booking_date, time_slot, renter_name, renter_phone,
-                        renter_email, renter_org, renter_purpose,
-                        payment_proof, status, created_at, updated_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ");
-
-                $stmt->execute([
-                    $bookingCode,
-                    $pkgKey,
-                    $selectedPkg['name'],
-                    $selectedPkg['price'],
-                    $bookingDate,
-                    $timeSlot,
-                    $renterName,
-                    $renterPhone,
-                    $renterEmail,
-                    $renterOrg,
-                    $renterPurpose,
-                    $paymentProofFile,
-                    $initialStatus,
-                    $now,
-                    $now
-                ]);
-
-                // Sinkronisasi otomatis ke Next.js Admin API (Supabase)
                 $scheme = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ? 'https' : 'http';
                 $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
                 $scriptPath = dirname($_SERVER['SCRIPT_NAME'] ?? $_SERVER['PHP_SELF'] ?? '');
                 $hostingUrl = rtrim($scheme . '://' . $host . $scriptPath, '/');
 
-                $payload = json_encode([
+                // Simpan seluruh metadata reservasi langsung ke Supabase melalui Next.js API
+                $apiRes = callNextApi('POST', [], [
                     'booking_code' => $bookingCode,
                     'package_type' => $pkgKey,
                     'package_name' => $selectedPkg['name'],
@@ -650,55 +600,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                     'status' => $initialStatus
                 ]);
 
-                // Sinkronisasi otomatis ke Next.js API (dengan API_SECRET_TOKEN aman)
-                if (defined('NEXTJS_API_URL') && !empty(NEXTJS_API_URL)) {
-                    if (function_exists('curl_init')) {
-                        $ch = curl_init(NEXTJS_API_URL);
-                        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-                        curl_setopt($ch, CURLOPT_POST, true);
-                        curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
-                        curl_setopt($ch, CURLOPT_HTTPHEADER, [
-                            'Content-Type: application/json',
-                            'Authorization: Bearer ' . API_SECRET_TOKEN
-                        ]);
-                        curl_setopt($ch, CURLOPT_TIMEOUT, 5);
-                        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-                        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-                        $syncResp = @curl_exec($ch);
-                        $syncCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-                        @curl_close($ch);
-                        @file_put_contents(DATA_DIR . '/sync.log', date('Y-m-d H:i:s') . " | HTTP: $syncCode | Token: " . (API_SECRET_TOKEN ? 'Present' : 'EMPTY') . " | Resp: " . substr((string)$syncResp, 0, 150) . "\n", FILE_APPEND);
-                    } else {
-                        $opts = [
-                            'http' => [
-                                'method'  => 'POST',
-                                'header'  => "Content-Type: application/json\r\n" .
-                                             "Authorization: Bearer " . API_SECRET_TOKEN . "\r\n",
-                                'content' => $payload,
-                                'timeout' => 5
-                            ]
-                        ];
-                        $context = stream_context_create($opts);
-                        @file_get_contents(NEXTJS_API_URL, false, $context);
-                    }
-                }
+                if (empty($apiRes['success'])) {
+                    // Hapus file bukti jika ditolak oleh Supabase (misal slot bentrok / tanggal blackout / gagal koneksi)
+                    @unlink(UPLOAD_DIR . '/' . $newFileName);
+                    $errorMessage = !empty($apiRes['message'])
+                        ? $apiRes['message']
+                        : 'Maaf, gagal menyimpan reservasi ke server. Silakan periksa kembali jadwal atau coba beberapa saat lagi.';
+                } else {
+                    $_SESSION['last_booking'] = [
+                        'code' => $bookingCode,
+                        'package' => $selectedPkg['name'],
+                        'price' => $selectedPkg['formatted_price'],
+                        'date' => $bookingDate,
+                        'slot' => $timeSlot,
+                        'name' => $renterName,
+                        'phone' => $renterPhone,
+                        'status' => $initialStatus,
+                        'has_proof' => true
+                    ];
 
-
-                $_SESSION['last_booking'] = [
-                    'code' => $bookingCode,
-                    'package' => $selectedPkg['name'],
-                    'price' => $selectedPkg['formatted_price'],
-                    'date' => $bookingDate,
-                    'slot' => $timeSlot,
-                    'name' => $renterName,
-                    'phone' => $renterPhone,
-                    'status' => $initialStatus,
-                    'has_proof' => !empty($paymentProofFile)
-                ];
-
-                header('Location: ?success=1' . ($currLang !== 'id' ? '&lang=' . $currLang : ''));
-                exit;
-                    }
+                    header('Location: ?success=1' . ($currLang !== 'id' ? '&lang=' . $currLang : ''));
+                    exit;
                 }
             }
         }
@@ -709,77 +631,32 @@ if (isset($_GET['success']) && isset($_SESSION['last_booking'])) {
     $successBooking = $_SESSION['last_booking'];
 }
 
-// ─── 5. PANEL ADMIN INTERN ────────────────────────────────────────────
-$isAdminView = isset($_GET['admin']);
-$adminAuth = false;
-$adminError = '';
-
-if ($isAdminView) {
-    if (isset($_POST['admin_login'])) {
-        if (($_POST['password'] ?? '') === ADMIN_PASS) {
-            $_SESSION['ccs_admin_auth'] = true;
-        } else {
-            $adminError = 'Kata sandi akses admin salah.';
-        }
-    }
-
-    if (isset($_GET['logout'])) {
-        unset($_SESSION['ccs_admin_auth']);
-        header('Location: ?admin=1');
-        exit;
-    }
-
-    $adminAuth = !empty($_SESSION['ccs_admin_auth']);
-
-    if ($adminAuth && isset($_POST['update_status'])) {
-        $db = getDb();
-        $code = $_POST['booking_code'] ?? '';
-        $newStatus = $_POST['status'] ?? '';
-        $notes = $_POST['admin_notes'] ?? '';
-        $now = date('Y-m-d H:i:s');
-
-        $stmt = $db->prepare("UPDATE bookings SET status = ?, admin_notes = ?, updated_at = ? WHERE booking_code = ?");
-        $stmt->execute([$newStatus, $notes, $now, $code]);
-        header('Location: ?admin=1&msg=Status+berhasil+diperbarui');
-        exit;
-    }
-
-    if ($adminAuth && isset($_POST['add_blackout'])) {
-        $db = getDb();
-        $bDate = $_POST['blackout_date'] ?? '';
-        $bSlot = $_POST['blackout_slot'] ?? '';
-        $bReason = $_POST['blackout_reason'] ?? '';
-        $now = date('Y-m-d H:i:s');
-
-        if ($bDate) {
-            $stmt = $db->prepare("INSERT INTO blackout_dates (date, time_slot, reason, created_at) VALUES (?, ?, ?, ?)");
-            $stmt->execute([$bDate, $bSlot, $bReason, $now]);
-        }
-        header('Location: ?admin=1&msg=Jadwal+kegiatan+sekolah+berhasil+ditetapkan');
-        exit;
-    }
-
-    if ($adminAuth && isset($_GET['del_blackout'])) {
-        $db = getDb();
-        $delId = (int)$_GET['del_blackout'];
-        $db->prepare("DELETE FROM blackout_dates WHERE id = ?")->execute([$delId]);
-        header('Location: ?admin=1&msg=Jadwal+kegiatan+dihapus');
-        exit;
-    }
-}
-
-// ─── 6. PENCARIAN STATUS BOOKING PUBLIK ───────────────────────────────
-$searchQuery = trim($_GET['cek'] ?? '');
+// ─── 5. PENCARIAN STATUS BOOKING PUBLIK (100% DARI SUPABASE) ─────────
+$searchQuery = strtoupper(trim($_GET['cek'] ?? ''));
 $searchResult = null;
 $searchError = '';
 
 if (!empty($searchQuery)) {
-    $db = getDb();
-    $stmt = $db->prepare("SELECT * FROM bookings WHERE booking_code = ?");
-    $stmt->execute([$searchQuery]);
-    $searchResult = $stmt->fetch();
-    if (!$searchResult) {
-        $searchError = "Kode pemesanan '{$searchQuery}' tidak ditemukan dalam sistem.";
+    $statusRes = callNextApi('GET', ['booking_code' => $searchQuery]);
+    if (!empty($statusRes['success']) && !empty($statusRes['booking'])) {
+        $rb = $statusRes['booking'];
+        $searchResult = [
+            'booking_code' => $rb['booking_code'],
+            'package_name' => $rb['package_name'],
+            'price' => $rb['price'],
+            'booking_date' => $rb['booking_date'],
+            'time_slot' => $rb['time_slot'],
+            'renter_name' => $rb['renter_name'],
+            'payment_proof' => $rb['payment_proof_file'] ?? '',
+            'status' => $rb['status'],
+            'admin_notes' => $rb['admin_notes'] ?? ''
+        ];
+    } else {
+        $searchError = ($currLang === 'en')
+            ? "Booking code '{$searchQuery}' was not found in our system."
+            : (($currLang === 'cn')
+                ? "系统中未找到预约代码 '{$searchQuery}'。"
+                : "Kode pemesanan '{$searchQuery}' tidak ditemukan dalam sistem.");
     }
 }
 ?>
@@ -1029,256 +906,6 @@ if (!empty($searchQuery)) {
   <!-- 3. KONTEN UTAMA: DAFTAR PAKET & FORMULIR RESERVASI                     -->
   <!-- ═══════════════════════════════════════════════════════════════════════ -->
   <main class="max-w-6xl mx-auto px-4 sm:px-6 py-10 flex-1 w-full space-y-12">
-
-    <?php if ($isAdminView): ?>
-      <!-- ═══════════════════════════════════════════════════════════════════ -->
-      <!-- ADMIN CONSOLE KHUSUS PETUGAS CCS                                    -->
-      <!-- ═══════════════════════════════════════════════════════════════════ -->
-      <?php if (!$adminAuth): ?>
-        <div class="max-w-md mx-auto my-12 bg-white p-8 border border-gray-200 rounded-2xl shadow-sm space-y-5 text-center">
-          <div class="w-14 h-14 mx-auto rounded-full bg-orange-100 flex items-center justify-center text-ccsOrange text-2xl">
-            <i class="fas fa-user-shield"></i>
-          </div>
-          <div>
-            <h2 class="text-xl font-bold text-ccsHeading">Konsol Petugas Lapangan</h2>
-            <p class="text-xs text-gray-500 mt-1">Khusus staf dan pengelola Sport Hall Chung Chung Christian School</p>
-          </div>
-
-          <?php if (!empty($adminError)): ?>
-            <div class="p-3.5 bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl text-left font-medium">
-              <i class="fas fa-exclamation-circle mr-1"></i> <?= htmlspecialchars($adminError) ?>
-            </div>
-          <?php endif; ?>
-
-          <form method="POST" class="space-y-4 text-left">
-            <div>
-              <label class="block text-xs font-semibold text-gray-700 mb-1">Kata Sandi Akses</label>
-              <input
-                type="password"
-                name="password"
-                required
-                placeholder="Masukkan kata sandi..."
-                class="w-full px-3.5 py-2.5 border border-gray-300 rounded-xl text-xs focus:ring-2 focus:ring-ccsOrange focus:border-ccsOrange outline-none"
-                autofocus
-              />
-            </div>
-            <button
-              type="submit"
-              name="admin_login"
-              class="w-full thm-btn py-2.5 text-xs font-semibold"
-            >
-              Masuk Konsol
-            </button>
-          </form>
-          <div class="text-xs text-gray-400">Password default: <span class="font-mono font-semibold text-gray-600">adminccs2026</span></div>
-          <div class="pt-2">
-            <a href="?lang=<?= $currLang ?>" class="text-xs text-gray-500 hover:text-ccsHeading underline">
-              &larr; <?= htmlspecialchars($L['btn_back_form']) ?>
-            </a>
-          </div>
-        </div>
-
-      <?php else: ?>
-        <?php
-          $db = getDb();
-          $allBookings = $db->query("SELECT * FROM bookings ORDER BY id DESC")->fetchAll();
-          $blackoutList = $db->query("SELECT * FROM blackout_dates ORDER BY date ASC")->fetchAll();
-          $msg = $_GET['msg'] ?? '';
-        ?>
-        <div class="space-y-8">
-          <div class="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm flex flex-wrap items-center justify-between gap-4">
-            <div>
-              <span class="text-xs font-bold text-ccsOrange uppercase tracking-wider">INTERNAL ADMIN CONSOLE</span>
-              <h2 class="text-2xl font-bold text-ccsHeading">Manajemen Reservasi Sport Hall</h2>
-            </div>
-            <div class="flex items-center gap-3 text-xs">
-              <a href="?lang=<?= $currLang ?>" class="px-4 py-2 rounded-full border border-gray-300 text-gray-700 hover:bg-gray-100 font-medium">
-                Lihat Halaman Publik
-              </a>
-              <a href="?admin=1&logout=1" class="px-4 py-2 rounded-full bg-red-50 text-red-600 hover:bg-red-100 font-medium">
-                Keluar
-              </a>
-            </div>
-          </div>
-
-          <?php if ($msg): ?>
-            <div class="p-3.5 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs rounded-xl flex items-center gap-2">
-              <i class="fas fa-check-circle text-emerald-600"></i> <?= htmlspecialchars($msg) ?>
-            </div>
-          <?php endif; ?>
-
-          <!-- Penutupan Jadwal / Kegiatan Sekolah Mendadak -->
-          <section class="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm space-y-4">
-            <div class="border-b border-gray-100 pb-3">
-              <h3 class="text-base font-bold text-ccsHeading flex items-center gap-2">
-                <i class="fas fa-calendar-times text-ccsOrange"></i> Penutupan Jadwal (Kegiatan Sekolah Mendadak)
-              </h3>
-              <p class="text-xs text-gray-500 mt-1">
-                Sesuai aturan sekolah: Tanggal atau jam yang ditambahkan di sini <strong>otomatis tidak akan muncul / tidak bisa dipilih</strong> oleh penyewa di formulir pemesanan.
-              </p>
-            </div>
-
-            <form method="POST" class="grid grid-cols-1 md:grid-cols-4 gap-3 text-xs">
-              <div>
-                <label class="block text-gray-700 font-medium mb-1">Tanggal Kegiatan</label>
-                <input type="date" name="blackout_date" required class="w-full px-3 py-2.5 border border-gray-300 rounded-xl outline-none focus:border-ccsOrange" />
-              </div>
-              <div>
-                <label class="block text-gray-700 font-medium mb-1">Slot Waktu</label>
-                <select name="blackout_slot" class="w-full px-3 py-2.5 border border-gray-300 rounded-xl outline-none focus:border-ccsOrange">
-                  <option value="">Seharian Penuh</option>
-                  <option value="16:00 - 18:00">16:00 - 18:00</option>
-                  <option value="18:00 - 20:00">18:00 - 20:00</option>
-                  <option value="20:00 - 22:00">20:00 - 22:00</option>
-                  <option value="06:00 - 08:00">06:00 - 08:00 (Weekend)</option>
-                  <option value="08:00 - 10:00">08:00 - 10:00 (Weekend)</option>
-                  <option value="10:00 - 12:00">10:00 - 12:00 (Weekend)</option>
-                  <option value="14:00 - 16:00">14:00 - 16:00 (Weekend)</option>
-                </select>
-              </div>
-              <div>
-                <label class="block text-gray-700 font-medium mb-1">Keterangan Kegiatan</label>
-                <input type="text" name="blackout_reason" placeholder="Contoh: Pertandingan Antar Kelas CCS" class="w-full px-3 py-2.5 border border-gray-300 rounded-xl outline-none focus:border-ccsOrange" />
-              </div>
-              <div class="flex items-end">
-                <button type="submit" name="add_blackout" class="w-full thm-btn py-2.5 text-xs">
-                  Kunci Tanggal Ini
-                </button>
-              </div>
-            </form>
-
-            <?php if (count($blackoutList) > 0): ?>
-              <div class="pt-3">
-                <table class="w-full text-xs border border-gray-200 rounded-xl overflow-hidden">
-                  <thead class="bg-gray-50 text-gray-600 font-semibold">
-                    <tr>
-                      <th class="p-2.5 text-left border-b border-gray-200">Tanggal</th>
-                      <th class="p-2.5 text-left border-b border-gray-200">Sesi Jam</th>
-                      <th class="p-2.5 text-left border-b border-gray-200">Alasan</th>
-                      <th class="p-2.5 text-center border-b border-gray-200 w-20">Aksi</th>
-                    </tr>
-                  </thead>
-                  <tbody class="divide-y divide-gray-100">
-                    <?php foreach ($blackoutList as $bo): ?>
-                      <tr class="hover:bg-gray-50">
-                        <td class="p-2.5 font-medium text-gray-900"><?= htmlspecialchars($bo['date']) ?></td>
-                        <td class="p-2.5"><?= htmlspecialchars($bo['time_slot'] ?: 'Seharian Penuh') ?></td>
-                        <td class="p-2.5 text-gray-600"><?= htmlspecialchars($bo['reason'] ?: 'Kegiatan Sekolah') ?></td>
-                        <td class="p-2.5 text-center">
-                          <a href="?admin=1&del_blackout=<?= $bo['id'] ?>" onclick="return confirm('Buka kembali slot ini untuk publik?')" class="text-red-600 hover:underline">Hapus</a>
-                        </td>
-                      </tr>
-                    <?php endforeach; ?>
-                  </tbody>
-                </table>
-              </div>
-            <?php endif; ?>
-          </section>
-
-          <!-- Bookings Table -->
-          <section class="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm space-y-4">
-            <div class="flex items-baseline justify-between border-b border-gray-100 pb-3">
-              <h3 class="text-base font-bold text-ccsHeading flex items-center gap-2">
-                <i class="fas fa-list-alt text-ccsTeal"></i> Permohonan Reservasi Masuk (<?= count($allBookings) ?> Data)
-              </h3>
-            </div>
-
-            <div class="overflow-x-auto">
-              <table class="w-full text-xs border border-gray-200 rounded-xl overflow-hidden">
-                <thead class="bg-gray-50 text-gray-600 font-semibold text-[11px]">
-                  <tr>
-                    <th class="p-3 text-left border-b border-gray-200">Kode & Tanggal Buat</th>
-                    <th class="p-3 text-left border-b border-gray-200">Jadwal Main</th>
-                    <th class="p-3 text-left border-b border-gray-200">Data Penyewa</th>
-                    <th class="p-3 text-left border-b border-gray-200">Paket & Total</th>
-                    <th class="p-3 text-center border-b border-gray-200">Bukti Transfer</th>
-                    <th class="p-3 text-center border-b border-gray-200">Status</th>
-                    <th class="p-3 text-right border-b border-gray-200">Update Status</th>
-                  </tr>
-                </thead>
-                <tbody class="divide-y divide-gray-100">
-                  <?php if (count($allBookings) === 0): ?>
-                    <tr><td colspan="7" class="p-8 text-center text-gray-400 italic">Belum ada permohonan sewa lapangan yang masuk.</td></tr>
-                  <?php else: ?>
-                    <?php foreach ($allBookings as $bk): ?>
-                      <tr class="hover:bg-blue-50/40 transition">
-                        <td class="p-3 align-top">
-                          <div class="font-bold text-ccsHeading font-mono"><?= htmlspecialchars($bk['booking_code']) ?></div>
-                          <div class="text-[10px] text-gray-400"><?= htmlspecialchars($bk['created_at']) ?></div>
-                        </td>
-                        <td class="p-3 align-top">
-                          <div class="font-semibold text-gray-800"><?= htmlspecialchars($bk['booking_date']) ?></div>
-                          <div class="text-[11px] text-gray-500 font-medium"><?= htmlspecialchars($bk['time_slot']) ?></div>
-                        </td>
-                        <td class="p-3 align-top">
-                          <div class="font-semibold text-gray-900"><?= htmlspecialchars($bk['renter_name']) ?></div>
-                          <div class="text-[11px] text-gray-600"><?= htmlspecialchars($bk['renter_phone']) ?></div>
-                          <div class="text-[10px] text-gray-400"><?= htmlspecialchars($bk['renter_email']) ?></div>
-                          <?php if ($bk['renter_org']): ?>
-                            <div class="text-[10px] text-gray-500 italic mt-0.5">Instansi: <?= htmlspecialchars($bk['renter_org']) ?></div>
-                          <?php endif; ?>
-                        </td>
-                        <td class="p-3 align-top">
-                          <div class="font-medium text-gray-800"><?= htmlspecialchars($bk['package_name']) ?></div>
-                          <div class="font-bold text-ccsOrange font-mono text-sm">Rp <?= number_format($bk['price'], 0, ',', '.') ?></div>
-                        </td>
-                        <td class="p-3 text-center align-top">
-                          <?php if (!empty($bk['payment_proof'])): ?>
-                            <a href="uploads/<?= htmlspecialchars($bk['payment_proof']) ?>" target="_blank" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-gray-300 text-[11px] text-ccsHeading hover:bg-gray-100 font-medium">
-                              <i class="fas fa-image text-ccsTeal"></i> Buka Foto
-                            </a>
-                          <?php else: ?>
-                            <span class="text-gray-400 text-[11px] italic">Belum Ada</span>
-                          <?php endif; ?>
-                        </td>
-                        <td class="p-3 text-center align-top">
-                          <?php
-                            $stMap = [
-                              'pending_payment' => ['bg-amber-100 text-amber-800', 'Menunggu Bayar'],
-                              'payment_uploaded' => ['bg-blue-100 text-blue-800', 'Verifikasi Bukti'],
-                              'approved' => ['bg-emerald-100 text-emerald-800', 'Disetujui'],
-                              'rejected' => ['bg-rose-100 text-rose-800', 'Ditolak'],
-                              'completed' => ['bg-gray-100 text-gray-800', 'Selesai']
-                            ][$bk['status']] ?? ['bg-gray-100 text-gray-700', $bk['status']];
-                          ?>
-                          <span class="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold <?= $stMap[0] ?>">
-                            <?= $stMap[1] ?>
-                          </span>
-                        </td>
-                        <td class="p-3 text-right align-top space-y-1.5">
-                          <form method="POST" class="flex flex-col gap-1 items-end">
-                            <input type="hidden" name="booking_code" value="<?= htmlspecialchars($bk['booking_code']) ?>" />
-                            <select name="status" class="px-2 py-1 border border-gray-300 rounded text-[11px] bg-white">
-                              <option value="pending_payment" <?= $bk['status'] === 'pending_payment' ? 'selected' : '' ?>>Menunggu Bayar</option>
-                              <option value="payment_uploaded" <?= $bk['status'] === 'payment_uploaded' ? 'selected' : '' ?>>Verifikasi Bukti</option>
-                              <option value="approved" <?= $bk['status'] === 'approved' ? 'selected' : '' ?>>Disetujui</option>
-                              <option value="rejected" <?= $bk['status'] === 'rejected' ? 'selected' : '' ?>>Ditolak</option>
-                              <option value="completed" <?= $bk['status'] === 'completed' ? 'selected' : '' ?>>Selesai</option>
-                            </select>
-                            <button type="submit" name="update_status" class="px-2.5 py-1 bg-ccsHeading text-white rounded text-[10px] font-semibold hover:bg-ccsNavy">
-                              Simpan
-                            </button>
-                            <?php
-                              $waNum = preg_replace('/[^0-9]/', '', $bk['renter_phone']);
-                              if (substr($waNum, 0, 1) === '0') $waNum = '62' . substr($waNum, 1);
-                              $waMsg = urlencode("Halo Bapak/Ibu {$bk['renter_name']},\n\nKami dari Petugas Sport Hall Chung Chung Christian School (CCS) mengonfirmasi permohonan booking Anda:\n- Kode: *{$bk['booking_code']}*\n- Paket: {$bk['package_name']}\n- Jadwal: {$bk['booking_date']}, {$bk['time_slot']}\n- Status Saat Ini: *" . strtoupper($bk['status']) . "*\n\nTerima kasih.");
-                            ?>
-                            <a href="https://wa.me/<?= $waNum ?>?text=<?= $waMsg ?>" target="_blank" class="inline-flex items-center gap-1 text-[11px] text-emerald-600 hover:underline pt-0.5 font-medium">
-                              <i class="fab fa-whatsapp"></i> Chat WA
-                            </a>
-                          </form>
-                        </td>
-                      </tr>
-                    <?php endforeach; ?>
-                  <?php endif; ?>
-                </tbody>
-              </table>
-            </div>
-          </section>
-        </div>
-      <?php endif; ?>
-
-    <?php else: ?>
 
       <!-- ═══════════════════════════════════════════════════════════════════ -->
       <!-- NOTIFIKASI SUKSES BOOKING                                           -->
@@ -1775,8 +1402,6 @@ if (!empty($searchQuery)) {
         <?php endif; ?>
       </section>
 
-    <?php endif; ?>
-
   </main>
 
   <!-- ═══════════════════════════════════════════════════════════════════════ -->
@@ -1787,9 +1412,6 @@ if (!empty($searchQuery)) {
       <p class="site-footer__copy text-[#94a3ac] text-[15px] font-medium m-0 tracking-normal">
         &copy; <?= date('Y') ?> Chung Chung Christian School. All Right Reserved
       </p>
-      <a href="?admin=1" class="text-[#012237] hover:text-[#94a3ac] text-xs transition ml-2 inline-block" title="Staf CCS">
-        <i class="fas fa-lock"></i>
-      </a>
     </div>
   </footer>
 

@@ -27,6 +27,7 @@ export async function POST(request, { params }) {
       )
     }
 
+    // 1. Update status ke rejected di Supabase (Single Source of Truth -> slot langsung terbuka kembali)
     const { data: updated, error: updateErr } = await supabaseAdmin
       .from('court_rentals')
       .update({
@@ -45,6 +46,7 @@ export async function POST(request, { params }) {
       )
     }
 
+    // 2. Kirim Email Pemberitahuan Penolakan ke Penyewa via Resend
     let emailSent = false
     if (notifyEmail && booking.renter_email) {
       try {

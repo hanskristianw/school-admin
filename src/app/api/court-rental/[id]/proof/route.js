@@ -8,6 +8,29 @@ const supabaseAdmin = createClient(
 
 const EXPECTED_SECRET = process.env.COURT_RENTAL_SECRET_KEY || process.env.ADMISSION_SECRET_KEY || 'ccs_court_auth_2026_x7k9p2m4'
 
+async function fetchWithRetry(url, options = {}, retries = 3, delayMs = 600) {
+  let lastError
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 8000)
+    try {
+      const res = await fetch(url, { ...options, signal: controller.signal })
+      clearTimeout(timeoutId)
+      if (res.ok || res.status === 404 || res.status === 403) {
+        return res
+      }
+      lastError = new Error(`HTTP ${res.status}`)
+    } catch (err) {
+      clearTimeout(timeoutId)
+      lastError = err
+    }
+    if (attempt < retries) {
+      await new Promise(resolve => setTimeout(resolve, delayMs * attempt))
+    }
+  }
+  throw lastError
+}
+
 export async function GET(request, { params }) {
   try {
     const { id } = await params
@@ -29,7 +52,7 @@ export async function GET(request, { params }) {
     const cleanHostingUrl = hostingUrl.replace(/\/index\.php$/i, '').replace(/\/$/, '')
     const targetUrl = `${cleanHostingUrl}/index.php?action=view_proof&file=${encodeURIComponent(booking.payment_proof_file)}&token=${encodeURIComponent(EXPECTED_SECRET)}`
 
-    const res = await fetch(targetUrl, {
+    const res = await fetchWithRetry(targetUrl, {
       method: 'GET',
       headers: {
         'User-Agent': 'SchoolAdmin-CourtProxy/1.0'
@@ -38,12 +61,14 @@ export async function GET(request, { params }) {
 
     if (!res.ok) {
       return NextResponse.json(
-        { success: false, message: `Gagal mengambil gambar dari hosting (${res.status})` },
+        { success: false, message: `Gagal mengambil berkas bukti dari hosting (${res.status})` },
         { status: res.status }
       )
     }
 
-    const contentType = res.headers.get('content-type') || 'image/jpeg'
+    const ext = booking.payment_proof_file.split('.').pop()?.toLowerCase()
+    const fallbackType = ext === 'pdf' ? 'application/pdf' : ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : 'image/jpeg'
+    const contentType = res.headers.get('content-type') || fallbackType
     const arrayBuffer = await res.arrayBuffer()
 
     return new NextResponse(Buffer.from(arrayBuffer), {

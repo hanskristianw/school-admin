@@ -96,6 +96,8 @@ export default function CourtRentalPage() {
   const [actionLoading, setActionLoading] = useState(false)
   const [rejectReason, setRejectReason] = useState('')
   const [copiedSql, setCopiedSql] = useState(false)
+  const [proofError, setProofError] = useState(false)
+  const [proofRetryKey, setProofRetryKey] = useState(0)
 
   // Blackout dates state
   const [blackoutDates, setBlackoutDates] = useState([])
@@ -638,6 +640,8 @@ export default function CourtRentalPage() {
                             <button
                               onClick={() => {
                                 setSelectedBooking(b)
+                                setProofError(false)
+                                setProofRetryKey(Date.now())
                                 setProofModalOpen(true)
                               }}
                               style={{
@@ -755,16 +759,23 @@ export default function CourtRentalPage() {
 
               <div>
                 <label className="block text-[10px] font-mono uppercase font-semibold mb-1" style={{ color: textSecondary }}>
-                  Time Slot (Leave blank for whole day)
+                  Time Slot
                 </label>
-                <input
-                  type="text"
-                  placeholder="e.g. 16:00 - 18:00"
+                <select
                   value={newBlackout.time_slot}
                   onChange={(e) => setNewBlackout({ ...newBlackout, time_slot: e.target.value })}
                   className="w-full px-2.5 py-1.5 text-xs font-mono rounded border outline-none font-medium"
                   style={{ background: isDark ? '#18181B' : '#FFFFFF', borderColor, color: textPrimary, borderRadius: '4px' }}
-                />
+                >
+                  <option value="">Whole Day (All Sessions)</option>
+                  <option value="16:00 - 18:00">16:00 - 18:00 (Weekday / Weekend)</option>
+                  <option value="18:00 - 20:00">18:00 - 20:00 (Weekday / Weekend)</option>
+                  <option value="20:00 - 22:00">20:00 - 22:00 (Weekday / Weekend)</option>
+                  <option value="06:00 - 08:00">06:00 - 08:00 (Weekend)</option>
+                  <option value="08:00 - 10:00">08:00 - 10:00 (Weekend)</option>
+                  <option value="10:00 - 12:00">10:00 - 12:00 (Weekend)</option>
+                  <option value="14:00 - 16:00">14:00 - 16:00 (Weekend)</option>
+                </select>
               </div>
 
               <div>
@@ -882,21 +893,60 @@ export default function CourtRentalPage() {
               </div>
             </div>
 
-            {/* Protected stream image */}
-            <div className="p-2 rounded border flex items-center justify-center min-h-[320px] overflow-hidden" style={{ background: isDark ? '#09090B' : '#FFFFFF', borderColor }}>
-              <img
-                src={`/api/court-rental/${selectedBooking.id}/proof?t=${Date.now()}`}
-                alt="Payment Proof"
-                className="max-h-[460px] w-auto max-w-full rounded object-contain"
-                onError={(e) => {
-                  e.target.onerror = null
-                  e.target.style.display = 'none'
-                  const parent = e.target.parentElement
-                  if (parent) {
-                    parent.innerHTML = '<div class="text-xs text-neutral-400 py-10 text-center font-mono"><p class="font-bold text-rose-500">Failed to stream image from hosting.</p><p class="text-[11px] mt-1">Ensure file exists in uploads/ on cPanel hosting.</p></div>'
-                  }
-                }}
-              />
+            {/* Protected stream image or PDF */}
+            <div className="p-2 rounded border flex flex-col items-center justify-center min-h-[320px] overflow-hidden" style={{ background: isDark ? '#09090B' : '#FFFFFF', borderColor }}>
+              {selectedBooking.payment_proof_file?.toLowerCase().endsWith('.pdf') ? (
+                <div className="w-full space-y-2">
+                  <iframe
+                    src={`/api/court-rental/${selectedBooking.id}/proof?t=${proofRetryKey}`}
+                    title="Payment Proof PDF"
+                    className="w-full h-[460px] rounded border-0"
+                  />
+                  <div className="text-right">
+                    <a
+                      href={`/api/court-rental/${selectedBooking.id}/proof?t=${proofRetryKey}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[11px] font-mono underline"
+                      style={{ color: textPrimary }}
+                    >
+                      Open PDF in New Tab ↗
+                    </a>
+                  </div>
+                </div>
+              ) : proofError ? (
+                <div className="text-xs text-neutral-400 py-10 text-center font-mono space-y-3">
+                  <p className="font-bold text-rose-500">Failed to stream image from hosting.</p>
+                  <p className="text-[11px]">Ensure file exists in uploads/ on cPanel hosting or check connection.</p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setProofError(false)
+                      setProofRetryKey(Date.now())
+                    }}
+                    style={{
+                      background: textPrimary,
+                      color: isDark ? '#111111' : '#FFFFFF',
+                      border: 'none',
+                      borderRadius: '4px',
+                      fontSize: '11px',
+                      fontWeight: 600,
+                      padding: '6px 14px',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Retry / Coba Lagi
+                  </button>
+                </div>
+              ) : (
+                <img
+                  key={proofRetryKey}
+                  src={`/api/court-rental/${selectedBooking.id}/proof?t=${proofRetryKey}`}
+                  alt="Payment Proof"
+                  className="max-h-[460px] w-auto max-w-full rounded object-contain"
+                  onError={() => setProofError(true)}
+                />
+              )}
             </div>
 
             <div className="flex items-center justify-end gap-2 pt-3 border-t" style={{ borderColor }}>
@@ -914,26 +964,6 @@ export default function CourtRentalPage() {
               >
                 Close
               </button>
-              {selectedBooking.status !== 'approved' && (
-                <button
-                  onClick={() => {
-                    setProofModalOpen(false)
-                    setApproveModalOpen(true)
-                  }}
-                  style={{
-                    background: textPrimary,
-                    color: isDark ? '#111111' : '#FFFFFF',
-                    border: 'none',
-                    borderRadius: '4px',
-                    fontSize: '11px',
-                    fontWeight: 600,
-                    padding: '6px 14px',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Approve This Payment
-                </button>
-              )}
             </div>
           </div>
         )}

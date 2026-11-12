@@ -14,7 +14,7 @@ export async function POST(request, { params }) {
     const body = await request.json().catch(() => ({}))
     const { adminName = 'Admin Sarpras CCS' } = body
 
-    // 1. Ambil data booking
+    // 1. Ambil data booking dari Supabase
     const { data: booking, error: fetchErr } = await supabaseAdmin
       .from('court_rentals')
       .select('*')
@@ -28,7 +28,7 @@ export async function POST(request, { params }) {
       )
     }
 
-    // 2. Update status ke approved
+    // 2. Update status ke approved di Supabase (Single Source of Truth)
     const { data: updated, error: updateErr } = await supabaseAdmin
       .from('court_rentals')
       .update({
