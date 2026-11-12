@@ -161,6 +161,7 @@ export default function CourtRentalPage() {
   const [markomRecipients, setMarkomRecipients] = useState([])
   const [availableStaff, setAvailableStaff] = useState([])
   const [selectedStaffId, setSelectedStaffId] = useState('')
+  const [staffSearchQuery, setStaffSearchQuery] = useState('')
   const [markomSuccessMsg, setMarkomSuccessMsg] = useState('')
 
   const fetchMarkomSettings = useCallback(async () => {
@@ -182,16 +183,14 @@ export default function CourtRentalPage() {
   const openMarkomModal = () => {
     setMarkomModalOpen(true)
     setMarkomSuccessMsg('')
+    setStaffSearchQuery('')
+    setSelectedStaffId('')
     fetchMarkomSettings()
   }
 
-  const handleAddRecipient = () => {
-    if (!selectedStaffId) return
-    const staff = availableStaff.find(u => String(u.user_id) === String(selectedStaffId))
+  const handleAddRecipientStaff = (staff) => {
     if (!staff) return
-
     if (markomRecipients.some(r => String(r.user_id) === String(staff.user_id))) {
-      alert('Staf ini sudah terdaftar sebagai penerima notifikasi.')
       return
     }
 
@@ -208,6 +207,20 @@ export default function CourtRentalPage() {
 
     setMarkomRecipients(prev => [...prev, newRecipient])
     setSelectedStaffId('')
+    setStaffSearchQuery('')
+  }
+
+  const handleAddRecipient = () => {
+    if (!selectedStaffId) return
+    const staff = availableStaff.find(u => String(u.user_id) === String(selectedStaffId))
+    if (!staff) return
+
+    if (markomRecipients.some(r => String(r.user_id) === String(staff.user_id))) {
+      alert('Staf ini sudah terdaftar sebagai penerima notifikasi.')
+      return
+    }
+
+    handleAddRecipientStaff(staff)
   }
 
   const handleToggleRecipient = (userId, field) => {
@@ -1721,166 +1734,314 @@ export default function CourtRentalPage() {
       <Modal
         isOpen={markomModalOpen}
         onClose={() => setMarkomModalOpen(false)}
-        title="📢 Pengaturan Notifikasi Markom (Sport Hall CCS)"
-        maxWidth="max-w-2xl"
+        size="lg"
+        title={
+          <div className="flex items-center gap-3">
+            <div
+              className="w-8 h-8 rounded-lg flex items-center justify-center text-sm shrink-0"
+              style={{
+                background: isDark ? 'rgba(59, 130, 246, 0.2)' : '#EFF6FF',
+                color: isDark ? '#93C5FD' : '#2563EB',
+                border: `1px solid ${isDark ? '#1D4ED8' : '#DBEAFE'}`
+              }}
+            >
+              <FontAwesomeIcon icon={faBullhorn} />
+            </div>
+            <div>
+              <div className="font-bold text-sm tracking-tight" style={{ color: textPrimary }}>
+                Pengaturan Notifikasi Markom
+              </div>
+              <div className="text-[11px] font-normal" style={{ color: textSecondary }}>
+                Sport Hall CCS — Notifikasi Instan Reservasi Masuk
+              </div>
+            </div>
+          </div>
+        }
       >
-        <div className="space-y-4">
-          <p className="text-xs" style={{ color: textSecondary, margin: 0, lineHeight: 1.5 }}>
-            Tentukan staf / tim Markom yang akan menerima pemberitahuan otomatis melalui <strong>Email</strong> dan <strong>Bot Google Chat</strong> secara real-time setiap kali ada reservasi baru yang diajukan oleh penyewa di website.
+        <div className="space-y-4 max-w-full overflow-hidden">
+          <p className="text-xs leading-relaxed" style={{ color: textSecondary, margin: 0 }}>
+            Tentukan staf atau tim Markom/Sarpras yang akan menerima pemberitahuan otomatis melalui <strong>Email (Resend)</strong> dan <strong>Bot Google Chat (DM Workspace)</strong> secara real-time setiap kali ada reservasi baru yang diajukan oleh penyewa di website.
           </p>
 
           {markomSuccessMsg && (
-            <div className="p-3 rounded text-xs font-medium flex items-center gap-2" style={{ background: isDark ? 'rgba(16, 185, 129, 0.2)' : '#D1FAE5', color: isDark ? '#6EE7B7' : '#065F46', border: '1px solid #10B981' }}>
-              <FontAwesomeIcon icon={faCheck} className="text-xs" />
-              {markomSuccessMsg}
+            <div
+              className="p-3 rounded-xl text-xs font-medium flex items-center gap-2 border"
+              style={{
+                background: isDark ? 'rgba(16, 185, 129, 0.15)' : '#ECFDF5',
+                color: isDark ? '#6EE7B7' : '#065F46',
+                borderColor: isDark ? '#059669' : '#A7F3D0'
+              }}
+            >
+              <FontAwesomeIcon icon={faCheck} className="text-xs shrink-0" />
+              <span>{markomSuccessMsg}</span>
             </div>
           )}
 
           {/* Form Tambah Staf */}
-          <div className="p-3.5 rounded border space-y-2.5" style={{ background: cardBg, borderColor }}>
-            <div className="text-[11px] font-mono uppercase font-semibold tracking-wider" style={{ color: textSecondary }}>
-              + Tambah Staf Penerima Notifikasi
+          <div
+            className="p-4 rounded-xl border space-y-3"
+            style={{
+              background: isDark ? '#18181B' : '#F9FAFB',
+              borderColor
+            }}
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold" style={{ color: textPrimary }}>
+                + Tambah Staf Penerima Notifikasi
+              </span>
+              <span className="text-[11px]" style={{ color: textSecondary }}>
+                Total {availableStaff.length} staf aktif dengan email
+              </span>
             </div>
+
+            {/* Kolom Pencarian & Dropdown Responsif (Bebas Overflow) */}
             <div className="flex flex-col sm:flex-row gap-2">
-              <select
-                value={selectedStaffId}
-                onChange={(e) => setSelectedStaffId(e.target.value)}
-                disabled={markomLoading}
-                className="flex-1 px-3 py-2 text-xs rounded border outline-none font-medium"
-                style={{ background: isDark ? '#18181B' : '#FFFFFF', borderColor, color: textPrimary }}
-              >
-                <option value="">-- Pilih Staf / Tim Markom --</option>
-                {availableStaff.map((u) => {
-                  const isAlreadyAdded = markomRecipients.some(r => String(r.user_id) === String(u.user_id))
-                  return (
-                    <option key={u.user_id} value={u.user_id} disabled={isAlreadyAdded}>
-                      {u.user_nama_depan} {u.user_nama_belakang} ({u.role?.role_name || 'Staff'}) — {u.user_email} {isAlreadyAdded ? '✓ [Sudah Terdaftar]' : ''}
-                    </option>
-                  )
-                })}
-              </select>
+              <div className="relative flex-1 min-w-0">
+                <select
+                  value={selectedStaffId}
+                  onChange={(e) => setSelectedStaffId(e.target.value)}
+                  disabled={markomLoading}
+                  className="w-full min-w-0 px-3 py-2 text-xs rounded-lg border outline-none font-medium truncate"
+                  style={{
+                    background: isDark ? '#111111' : '#FFFFFF',
+                    borderColor,
+                    color: textPrimary
+                  }}
+                >
+                  <option value="">-- Pilih Staf / Tim Markom --</option>
+                  {availableStaff.map((u) => {
+                    const isAlreadyAdded = markomRecipients.some(r => String(r.user_id) === String(u.user_id))
+                    return (
+                      <option key={u.user_id} value={u.user_id} disabled={isAlreadyAdded}>
+                        {u.user_nama_depan} {u.user_nama_belakang} ({u.role?.role_name || 'Staff'}) {isAlreadyAdded ? '✓ [Sudah Terdaftar]' : ''}
+                      </option>
+                    )
+                  })}
+                </select>
+              </div>
+
               <button
                 type="button"
                 onClick={handleAddRecipient}
                 disabled={!selectedStaffId || markomLoading}
+                className="shrink-0 px-4 py-2 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all shadow-xs"
                 style={{
-                  background: textPrimary,
-                  color: isDark ? '#111111' : '#FFFFFF',
-                  border: 'none',
-                  borderRadius: '6px',
-                  fontSize: '11px',
-                  fontWeight: 600,
-                  padding: '8px 16px',
+                  background: selectedStaffId ? (isDark ? '#FFFFFF' : '#111827') : (isDark ? '#27272A' : '#E5E7EB'),
+                  color: selectedStaffId ? (isDark ? '#111827' : '#FFFFFF') : (isDark ? '#71717A' : '#9CA3AF'),
                   cursor: selectedStaffId ? 'pointer' : 'not-allowed',
-                  opacity: selectedStaffId ? 1 : 0.4,
-                  whiteSpace: 'nowrap',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px'
+                  border: 'none'
                 }}
               >
                 <FontAwesomeIcon icon={faPlus} className="text-xs" />
-                Tambahkan
+                <span>Tambahkan</span>
               </button>
             </div>
+
+            {/* Quick Filter Search Box */}
+            <div className="relative">
+              <FontAwesomeIcon icon={faSearch} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 text-xs" />
+              <input
+                type="text"
+                value={staffSearchQuery}
+                onChange={(e) => setStaffSearchQuery(e.target.value)}
+                placeholder="Atau ketik nama/email staf untuk pencarian cepat..."
+                className="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg border outline-none"
+                style={{
+                  background: isDark ? '#111111' : '#FFFFFF',
+                  borderColor,
+                  color: textPrimary
+                }}
+              />
+            </div>
+
+            {/* Live Search Quick Results */}
+            {staffSearchQuery.trim() && (
+              <div
+                className="max-h-40 overflow-y-auto rounded-lg border divide-y text-xs"
+                style={{
+                  background: isDark ? '#111111' : '#FFFFFF',
+                  borderColor
+                }}
+              >
+                {availableStaff
+                  .filter(u => {
+                    const q = staffSearchQuery.toLowerCase()
+                    const name = `${u.user_nama_depan} ${u.user_nama_belakang}`.toLowerCase()
+                    const email = (u.user_email || '').toLowerCase()
+                    const role = (u.role?.role_name || '').toLowerCase()
+                    return name.includes(q) || email.includes(q) || role.includes(q)
+                  })
+                  .slice(0, 5)
+                  .map((u) => {
+                    const isAlreadyAdded = markomRecipients.some(r => String(r.user_id) === String(u.user_id))
+                    return (
+                      <div
+                        key={u.user_id}
+                        className="p-2.5 flex items-center justify-between gap-2 hover:bg-neutral-50 dark:hover:bg-neutral-900 transition"
+                      >
+                        <div className="min-w-0 truncate">
+                          <div className="font-semibold" style={{ color: textPrimary }}>
+                            {u.user_nama_depan} {u.user_nama_belakang}
+                            <span className="ml-2 text-[10px] font-normal px-1.5 py-0.5 rounded bg-neutral-100 dark:bg-neutral-800 text-neutral-500">
+                              {u.role?.role_name || 'Staff'}
+                            </span>
+                          </div>
+                          <div className="text-[11px] font-mono text-neutral-400 truncate">
+                            {u.user_email}
+                          </div>
+                        </div>
+
+                        {isAlreadyAdded ? (
+                          <span className="text-[11px] font-medium text-emerald-600 dark:text-emerald-400 shrink-0">
+                            ✓ Terdaftar
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => handleAddRecipientStaff(u)}
+                            className="px-2.5 py-1 text-[11px] font-semibold rounded bg-blue-600 text-white hover:bg-blue-700 shrink-0 transition"
+                          >
+                            + Tambah
+                          </button>
+                        )}
+                      </div>
+                    )
+                  })}
+              </div>
+            )}
           </div>
 
-          {/* Tabel Daftar Penerima Notifikasi */}
-          <div className="border rounded overflow-hidden" style={{ borderColor }}>
-            <div className="px-3.5 py-2 border-b text-[11px] font-mono font-semibold tracking-wider uppercase flex items-center justify-between" style={{ background: isDark ? '#27272A' : '#F4F4F5', borderColor, color: textSecondary }}>
-              <span>Daftar Penerima Aktif ({markomRecipients.length})</span>
-              <span className="text-[10px] font-normal lowercase">Pemberitahuan otomatis real-time</span>
+          {/* Daftar Penerima Notifikasi Aktif */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between px-1">
+              <span className="text-xs font-semibold" style={{ color: textPrimary }}>
+                Daftar Penerima Notifikasi ({markomRecipients.length})
+              </span>
+              <span className="text-[11px]" style={{ color: textSecondary }}>
+                Status & Jalur Pengiriman
+              </span>
             </div>
 
             {markomLoading ? (
-              <div className="py-8 text-center text-xs" style={{ color: textSecondary }}>
-                <FontAwesomeIcon icon={faRotateRight} className="animate-spin text-sm mb-1" />
-                <div>Memuat daftar penerima...</div>
+              <div className="py-10 text-center text-xs" style={{ color: textSecondary }}>
+                <FontAwesomeIcon icon={faRotateRight} className="animate-spin text-base mb-2 text-blue-500" />
+                <div>Memuat daftar penerima notifikasi...</div>
               </div>
             ) : markomRecipients.length === 0 ? (
-              <div className="py-8 text-center text-xs" style={{ color: textSecondary }}>
-                Belum ada staf Markom yang didaftarkan. Pilih staf di atas untuk mulai menerima notifikasi.
+              <div
+                className="py-10 px-4 text-center rounded-xl border border-dashed flex flex-col items-center justify-center"
+                style={{ borderColor }}
+              >
+                <div
+                  className="w-11 h-11 rounded-full flex items-center justify-center text-base mb-2.5"
+                  style={{
+                    background: isDark ? '#27272A' : '#F3F4F6',
+                    color: textSecondary
+                  }}
+                >
+                  <FontAwesomeIcon icon={faBullhorn} />
+                </div>
+                <div className="font-semibold text-xs" style={{ color: textPrimary }}>
+                  Belum Ada Penerima Notifikasi
+                </div>
+                <div className="text-[11px] max-w-sm mt-1 leading-relaxed" style={{ color: textSecondary }}>
+                  Pilih staf melalui kolom di atas untuk mulai menerima notifikasi email dan direct message (DM) bot Google Chat secara otomatis setiap kali ada reservasi baru.
+                </div>
               </div>
             ) : (
-              <div className="divide-y" style={{ borderColor }}>
+              <div className="space-y-2 max-h-[320px] overflow-y-auto pr-1">
                 {markomRecipients.map((recipient) => (
                   <div
                     key={recipient.user_id}
-                    className="p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs"
-                    style={{ background: recipient.is_active ? cardBg : (isDark ? '#1C1917' : '#F5F5F4'), opacity: recipient.is_active ? 1 : 0.6 }}
+                    className="p-3.5 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs transition-all"
+                    style={{
+                      background: recipient.is_active
+                        ? (isDark ? '#18181B' : '#FFFFFF')
+                        : (isDark ? '#141416' : '#F9FAFB'),
+                      borderColor: recipient.is_active
+                        ? (isDark ? '#27272A' : '#E5E7EB')
+                        : (isDark ? '#1F1F23' : '#F3F4F6'),
+                      opacity: recipient.is_active ? 1 : 0.65
+                    }}
                   >
-                    <div className="min-w-0">
-                      <div className="font-semibold flex items-center gap-2" style={{ color: textPrimary }}>
-                        <span>{recipient.user_nama_depan} {recipient.user_nama_belakang}</span>
-                        <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-neutral-200 dark:bg-neutral-800" style={{ color: textSecondary }}>
-                          {recipient.role_name}
-                        </span>
+                    {/* Info Staf */}
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div
+                        className="w-9 h-9 rounded-full flex items-center justify-center font-bold text-xs shrink-0"
+                        style={{
+                          background: isDark ? 'rgba(59, 130, 246, 0.15)' : '#EFF6FF',
+                          color: isDark ? '#93C5FD' : '#2563EB',
+                          border: `1px solid ${isDark ? '#1E40AF' : '#DBEAFE'}`
+                        }}
+                      >
+                        {recipient.user_nama_depan?.[0]}{recipient.user_nama_belakang?.[0] || ''}
                       </div>
-                      <div className="text-[11px] font-mono mt-0.5" style={{ color: textSecondary }}>
-                        {recipient.user_email}
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-semibold text-sm truncate" style={{ color: textPrimary }}>
+                            {recipient.user_nama_depan} {recipient.user_nama_belakang}
+                          </span>
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400">
+                            {recipient.role_name}
+                          </span>
+                        </div>
+                        <div className="text-[11px] font-mono text-neutral-400 mt-0.5 truncate">
+                          {recipient.user_email}
+                        </div>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-3 shrink-0">
-                      {/* Toggle Email */}
-                      <label className="flex items-center gap-1.5 cursor-pointer text-[11px]" title="Kirim email pemberitahuan setiap ada booking baru">
-                        <input
-                          type="checkbox"
-                          checked={recipient.notify_email !== false}
-                          onChange={() => handleToggleRecipient(recipient.user_id, 'notify_email')}
-                          className="rounded text-blue-600"
-                        />
-                        <span style={{ color: textPrimary }}>
-                          <FontAwesomeIcon icon={faEnvelope} className="text-blue-500 mr-1" />
-                          Email
-                        </span>
-                      </label>
+                    {/* Kontrol & Toggle */}
+                    <div className="flex items-center gap-2.5 shrink-0 self-end sm:self-auto">
+                      {/* Toggle Email Button */}
+                      <button
+                        type="button"
+                        onClick={() => handleToggleRecipient(recipient.user_id, 'notify_email')}
+                        className={`px-2.5 py-1 rounded-lg text-[11px] font-medium border flex items-center gap-1.5 transition-all ${
+                          recipient.notify_email
+                            ? 'bg-blue-50 border-blue-200 text-blue-700 dark:bg-blue-950/40 dark:border-blue-800 dark:text-blue-300'
+                            : 'bg-neutral-50 border-neutral-200 text-neutral-400 dark:bg-neutral-900 dark:border-neutral-800'
+                        }`}
+                        title="Kirim notifikasi email via Resend"
+                      >
+                        <FontAwesomeIcon icon={faEnvelope} className="text-xs" />
+                        <span>Email {recipient.notify_email ? 'ON' : 'OFF'}</span>
+                      </button>
 
-                      {/* Toggle Google Chat */}
-                      <label className="flex items-center gap-1.5 cursor-pointer text-[11px]" title="Kirim direct message bot Google Chat setiap ada booking baru">
-                        <input
-                          type="checkbox"
-                          checked={recipient.notify_google_chat !== false}
-                          onChange={() => handleToggleRecipient(recipient.user_id, 'notify_google_chat')}
-                          className="rounded text-emerald-600"
-                        />
-                        <span style={{ color: textPrimary }}>
-                          <FontAwesomeIcon icon={faComments} className="text-emerald-500 mr-1" />
-                          Google Chat
-                        </span>
-                      </label>
+                      {/* Toggle Google Chat Button */}
+                      <button
+                        type="button"
+                        onClick={() => handleToggleRecipient(recipient.user_id, 'notify_google_chat')}
+                        className={`px-2.5 py-1 rounded-lg text-[11px] font-medium border flex items-center gap-1.5 transition-all ${
+                          recipient.notify_google_chat
+                            ? 'bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-950/40 dark:border-emerald-800 dark:text-emerald-300'
+                            : 'bg-neutral-50 border-neutral-200 text-neutral-400 dark:bg-neutral-900 dark:border-neutral-800'
+                        }`}
+                        title="Kirim direct message bot Google Chat (@ccs.sch.id)"
+                      >
+                        <FontAwesomeIcon icon={faComments} className="text-xs" />
+                        <span>Chat {recipient.notify_google_chat ? 'ON' : 'OFF'}</span>
+                      </button>
 
-                      {/* Toggle Aktif */}
+                      {/* Master Switch Status Aktif */}
                       <button
                         type="button"
                         onClick={() => handleToggleRecipient(recipient.user_id, 'is_active')}
-                        style={{
-                          background: 'transparent',
-                          border: 'none',
-                          cursor: 'pointer',
-                          color: recipient.is_active ? '#10B981' : textSecondary,
-                          fontSize: '15px'
-                        }}
-                        title={recipient.is_active ? 'Status: Aktif' : 'Status: Nonaktif'}
+                        className="px-1 text-base transition"
+                        style={{ color: recipient.is_active ? '#10B981' : textSecondary }}
+                        title={recipient.is_active ? 'Penerima Aktif' : 'Penerima Dinonaktifkan'}
                       >
                         <FontAwesomeIcon icon={recipient.is_active ? faToggleOn : faToggleOff} />
                       </button>
 
-                      {/* Hapus */}
+                      {/* Hapus Penerima */}
                       <button
                         type="button"
                         onClick={() => handleRemoveRecipient(recipient.user_id)}
-                        style={{
-                          background: 'transparent',
-                          border: 'none',
-                          cursor: 'pointer',
-                          color: '#EF4444',
-                          fontSize: '12px',
-                          padding: '4px'
-                        }}
+                        className="w-7 h-7 rounded-lg flex items-center justify-center text-neutral-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 transition"
                         title="Hapus dari daftar penerima"
                       >
-                        <FontAwesomeIcon icon={faTrash} />
+                        <FontAwesomeIcon icon={faTrash} className="text-xs" />
                       </button>
                     </div>
                   </div>
@@ -1889,24 +2050,32 @@ export default function CourtRentalPage() {
             )}
           </div>
 
-          <div className="p-3 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900 rounded text-[11px] text-blue-900 dark:text-blue-300 flex items-start gap-2">
-            <FontAwesomeIcon icon={faComments} className="text-blue-500 mt-0.5 shrink-0" />
-            <div>
-              <strong>Integrasi Google Chat Bot CCS:</strong> Notifikasi Google Chat dikirimkan secara otomatis via Bot resmi CCS ke direct message (DM) akun Workspace Google Chat penerima (@ccs.sch.id).
+          {/* Info Card Google Chat Workspace */}
+          <div
+            className="p-3.5 rounded-xl border flex items-start gap-3"
+            style={{
+              background: isDark ? 'rgba(59, 130, 246, 0.08)' : '#F0F9FF',
+              borderColor: isDark ? 'rgba(59, 130, 246, 0.25)' : '#BAE6FD'
+            }}
+          >
+            <div className="w-7 h-7 rounded-lg bg-blue-500/10 dark:bg-blue-400/20 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0 mt-0.5">
+              <FontAwesomeIcon icon={faComments} className="text-xs" />
+            </div>
+            <div className="text-xs leading-relaxed" style={{ color: isDark ? '#93C5FD' : '#0369A1' }}>
+              <strong className="font-semibold block mb-0.5">Integrasi Bot Resmi Google Chat Workspace:</strong>
+              Pesan notifikasi pesanan sewa baru dikirimkan secara otomatis oleh Bot CCS langsung ke Direct Message (DM) Google Chat akun email resmi (@ccs.sch.id) staf yang dipilih.
             </div>
           </div>
 
+          {/* Action Footer */}
           <div className="flex items-center justify-end gap-2 pt-3 border-t" style={{ borderColor }}>
             <button
               type="button"
               onClick={() => setMarkomModalOpen(false)}
+              className="px-4 py-2 rounded-lg text-xs font-medium border transition"
               style={{
                 background: 'transparent',
-                border: `1px solid ${borderColor}`,
-                borderRadius: '4px',
-                fontSize: '11px',
-                padding: '7px 14px',
-                cursor: 'pointer',
+                borderColor,
                 color: textSecondary
               }}
             >
@@ -1916,23 +2085,16 @@ export default function CourtRentalPage() {
               type="button"
               onClick={handleSaveMarkom}
               disabled={markomSaving}
+              className="px-5 py-2 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-all"
               style={{
                 background: textPrimary,
                 color: isDark ? '#111111' : '#FFFFFF',
-                border: 'none',
-                borderRadius: '4px',
-                fontSize: '11px',
-                fontWeight: 600,
-                padding: '7px 16px',
-                cursor: 'pointer',
-                opacity: markomSaving ? 0.5 : 1,
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px'
+                opacity: markomSaving ? 0.6 : 1,
+                cursor: markomSaving ? 'not-allowed' : 'pointer'
               }}
             >
               <FontAwesomeIcon icon={faCheck} className="text-xs" />
-              {markomSaving ? 'Menyimpan...' : 'Simpan Pengaturan'}
+              <span>{markomSaving ? 'Menyimpan...' : 'Simpan Pengaturan'}</span>
             </button>
           </div>
         </div>
