@@ -179,49 +179,6 @@ export async function generateAgilityPDF({ result, items, summary, logoUrl = '/i
 
   curY += 29
 
-  // Tabel Ringkasan per Dimensi
-  if (Array.isArray(summary.dimensions) && summary.dimensions.length > 0) {
-    doc.setFont('helvetica', 'bold')
-    doc.setFontSize(9.5)
-    doc.setTextColor(15, 23, 42)
-    doc.text('Rincian Skor per Dimensi', ml, curY)
-    curY += 3
-
-    autoTable(doc, {
-      startY: curY,
-      margin: { left: ml, right: mr },
-      head: [['Dimensi', 'Jawaban Benar', 'Total Soal', 'Persentase']],
-      body: summary.dimensions.map(d => [
-        { content: d.dimension, styles: { fontStyle: 'bold' } },
-        { content: String(d.correct), styles: { halign: 'center' } },
-        { content: String(d.total), styles: { halign: 'center' } },
-        { content: `${d.percentage}%`, styles: { halign: 'center', fontStyle: 'bold' } }
-      ]),
-      theme: 'grid',
-      headStyles: {
-        fillColor: [30, 41, 59],
-        textColor: [255, 255, 255],
-        fontSize: 8,
-        fontStyle: 'bold',
-        halign: 'center'
-      },
-      styles: {
-        cellPadding: 2.2,
-        fontSize: 8,
-        lineColor: [203, 213, 225],
-        lineWidth: 0.2
-      },
-      columnStyles: {
-        0: { cellWidth: 72 },
-        1: { cellWidth: 36 },
-        2: { cellWidth: 36 },
-        3: { cellWidth: 38 }
-      }
-    })
-
-    curY = doc.lastAutoTable.finalY + 7
-  }
-
   // Tabel Panduan Penilaian Resmi HR
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(9.5)
@@ -289,11 +246,11 @@ export async function generateAgilityPDF({ result, items, summary, logoUrl = '/i
   autoTable(doc, {
     startY: curY,
     margin: { left: ml, right: mr, bottom: mb + 8 },
-    head: [['No', 'Dimensi & Pertanyaan', 'Pilihan Peserta', 'Kunci', 'Status']],
+    head: [['No', 'Pertanyaan & Pilihan', 'Pilihan Peserta', 'Kunci', 'Status']],
     body: (items || []).map(item => [
       { content: String(item.question_no), styles: { halign: 'center', fontStyle: 'bold' } },
       {
-        content: `[${item.dimension || '-'}]\n${item.question_text || ''}\n\n• Dipilih: ${optionTextFor(item, item.selected_option)}`,
+        content: `${item.question_text || ''}\n\n• Dipilih: ${optionTextFor(item, item.selected_option)}`,
         styles: { fontSize: 7.3 }
       },
       { content: item.selected_option || '-', styles: { halign: 'center', fontStyle: 'bold' } },
