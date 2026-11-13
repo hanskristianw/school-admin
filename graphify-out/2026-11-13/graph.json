@@ -3065,8 +3065,8 @@
       "source_location": "L12",
       "_origin": "ast",
       "id": "package_dependencies_fortawesome_fontawesome_svg_core",
-      "community": 133,
-      "community_name": "Module 133",
+      "community": 425,
+      "community_name": "clsx",
       "norm_label": "@fortawesome/fontawesome-svg-core"
     },
     {
@@ -3076,8 +3076,8 @@
       "source_location": "L12",
       "_origin": "ast",
       "id": "fortawesome_fontawesome_svg_core",
-      "community": 133,
-      "community_name": "Module 133",
+      "community": 425,
+      "community_name": "clsx",
       "norm_label": "@fortawesome/fontawesome-svg-core"
     },
     {
@@ -3703,8 +3703,8 @@
       "source_location": "L41",
       "_origin": "ast",
       "id": "package_dependencies_clsx",
-      "community": 425,
-      "community_name": "clsx",
+      "community": 133,
+      "community_name": "Module 133",
       "norm_label": "clsx"
     },
     {
@@ -3714,8 +3714,8 @@
       "source_location": "L41",
       "_origin": "ast",
       "id": "clsx",
-      "community": 425,
-      "community_name": "clsx",
+      "community": 133,
+      "community_name": "Module 133",
       "norm_label": "clsx"
     },
     {
@@ -13765,7 +13765,7 @@
       "label": "iconMap",
       "file_type": "code",
       "source_file": "src/components/sidebar.jsx",
-      "source_location": "L121",
+      "source_location": "L122",
       "_origin": "ast",
       "id": "src_components_sidebar_iconmap",
       "community": 89,
@@ -13776,7 +13776,7 @@
       "label": "Sidebar",
       "file_type": "code",
       "source_file": "src/components/sidebar.jsx",
-      "source_location": "L375",
+      "source_location": "L379",
       "_origin": "ast",
       "id": "src_components_sidebar_sidebar",
       "community": 89,
@@ -45683,7 +45683,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/components/sidebar.jsx",
-      "source_location": "L121",
+      "source_location": "L122",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_sidebar",
@@ -45694,7 +45694,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/components/sidebar.jsx",
-      "source_location": "L375",
+      "source_location": "L379",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_sidebar",
@@ -60268,5 +60268,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "0e985f7a7fae4f67853349feb9dba324d441fbc4"
+  "built_at_commit": "79247bb15d4c14a2eeef1e57637ea5f0b84a4f57"
 }

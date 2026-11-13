@@ -3109,8 +3109,8 @@
       "source_location": "L14",
       "_origin": "ast",
       "id": "package_dependencies_fortawesome_react_fontawesome",
-      "community": 133,
-      "community_name": "Module 133",
+      "community": 344,
+      "community_name": "8. DARK MODE PROTOCOL",
       "norm_label": "@fortawesome/react-fontawesome"
     },
     {
@@ -3120,8 +3120,8 @@
       "source_location": "L14",
       "_origin": "ast",
       "id": "fortawesome_react_fontawesome",
-      "community": 133,
-      "community_name": "Module 133",
+      "community": 344,
+      "community_name": "8. DARK MODE PROTOCOL",
       "norm_label": "@fortawesome/react-fontawesome"
     },
     {
@@ -3175,8 +3175,8 @@
       "source_location": "L17",
       "_origin": "ast",
       "id": "package_dependencies_hookform_resolvers",
-      "community": 133,
-      "community_name": "Module 133",
+      "community": 346,
+      "community_name": "bcryptjs",
       "norm_label": "@hookform/resolvers"
     },
     {
@@ -3186,8 +3186,8 @@
       "source_location": "L17",
       "_origin": "ast",
       "id": "hookform_resolvers",
-      "community": 133,
-      "community_name": "Module 133",
+      "community": 346,
+      "community_name": "bcryptjs",
       "norm_label": "@hookform/resolvers"
     },
     {
@@ -3241,8 +3241,8 @@
       "source_location": "L20",
       "_origin": "ast",
       "id": "package_dependencies_radix_ui_react_slot",
-      "community": 133,
-      "community_name": "Module 133",
+      "community": 394,
+      "community_name": "react-hook-form",
       "norm_label": "@radix-ui/react-slot"
     },
     {
@@ -3252,8 +3252,8 @@
       "source_location": "L20",
       "_origin": "ast",
       "id": "radix_ui_react_slot",
-      "community": 133,
-      "community_name": "Module 133",
+      "community": 394,
+      "community_name": "react-hook-form",
       "norm_label": "@radix-ui/react-slot"
     },
     {
@@ -3307,8 +3307,8 @@
       "source_location": "L23",
       "_origin": "ast",
       "id": "package_dependencies_tiptap_extension_color",
-      "community": 387,
-      "community_name": "\ud83d\udcc1 **Project Structure**",
+      "community": 133,
+      "community_name": "Module 133",
       "norm_label": "@tiptap/extension-color"
     },
     {
@@ -3318,8 +3318,8 @@
       "source_location": "L23",
       "_origin": "ast",
       "id": "tiptap_extension_color",
-      "community": 387,
-      "community_name": "\ud83d\udcc1 **Project Structure**",
+      "community": 133,
+      "community_name": "Module 133",
       "norm_label": "@tiptap/extension-color"
     },
     {
@@ -3329,8 +3329,8 @@
       "source_location": "L24",
       "_origin": "ast",
       "id": "package_dependencies_tiptap_extension_font_family",
-      "community": 133,
-      "community_name": "Module 133",
+      "community": 404,
+      "community_name": "@tiptap/extension-task-list",
       "norm_label": "@tiptap/extension-font-family"
     },
     {
@@ -3340,8 +3340,8 @@
       "source_location": "L24",
       "_origin": "ast",
       "id": "tiptap_extension_font_family",
-      "community": 133,
-      "community_name": "Module 133",
+      "community": 404,
+      "community_name": "@tiptap/extension-task-list",
       "norm_label": "@tiptap/extension-font-family"
     },
     {
@@ -3351,8 +3351,8 @@
       "source_location": "L25",
       "_origin": "ast",
       "id": "package_dependencies_tiptap_extension_highlight",
-      "community": 344,
-      "community_name": "8. DARK MODE PROTOCOL",
+      "community": 133,
+      "community_name": "Module 133",
       "norm_label": "@tiptap/extension-highlight"
     },
     {
@@ -3362,8 +3362,8 @@
       "source_location": "L25",
       "_origin": "ast",
       "id": "tiptap_extension_highlight",
-      "community": 344,
-      "community_name": "8. DARK MODE PROTOCOL",
+      "community": 133,
+      "community_name": "Module 133",
       "norm_label": "@tiptap/extension-highlight"
     },
     {
@@ -3483,8 +3483,8 @@
       "source_location": "L31",
       "_origin": "ast",
       "id": "package_dependencies_tiptap_extension_task_list",
-      "community": 404,
-      "community_name": "@tiptap/extension-task-list",
+      "community": 133,
+      "community_name": "Module 133",
       "norm_label": "@tiptap/extension-task-list"
     },
     {
@@ -3494,8 +3494,8 @@
       "source_location": "L31",
       "_origin": "ast",
       "id": "tiptap_extension_task_list",
-      "community": 404,
-      "community_name": "@tiptap/extension-task-list",
+      "community": 133,
+      "community_name": "Module 133",
       "norm_label": "@tiptap/extension-task-list"
     },
     {
@@ -3571,8 +3571,8 @@
       "source_location": "L35",
       "_origin": "ast",
       "id": "package_dependencies_tiptap_pm",
-      "community": 441,
-      "community_name": "@tiptap/pm",
+      "community": 133,
+      "community_name": "Module 133",
       "norm_label": "@tiptap/pm"
     },
     {
@@ -3582,8 +3582,8 @@
       "source_location": "L35",
       "_origin": "ast",
       "id": "tiptap_pm",
-      "community": 441,
-      "community_name": "@tiptap/pm",
+      "community": 133,
+      "community_name": "Module 133",
       "norm_label": "@tiptap/pm"
     },
     {
@@ -3681,8 +3681,8 @@
       "source_location": "L40",
       "_origin": "ast",
       "id": "package_dependencies_class_variance_authority",
-      "community": 331,
-      "community_name": "class-variance-authority",
+      "community": 133,
+      "community_name": "Module 133",
       "norm_label": "class-variance-authority"
     },
     {
@@ -3692,8 +3692,8 @@
       "source_location": "L40",
       "_origin": "ast",
       "id": "class_variance_authority",
-      "community": 331,
-      "community_name": "class-variance-authority",
+      "community": 133,
+      "community_name": "Module 133",
       "norm_label": "class-variance-authority"
     },
     {
@@ -3791,8 +3791,8 @@
       "source_location": "L45",
       "_origin": "ast",
       "id": "package_dependencies_exceljs",
-      "community": 422,
-      "community_name": "exceljs",
+      "community": 133,
+      "community_name": "Module 133",
       "norm_label": "exceljs"
     },
     {
@@ -3802,8 +3802,8 @@
       "source_location": "L45",
       "_origin": "ast",
       "id": "exceljs",
-      "community": 422,
-      "community_name": "exceljs",
+      "community": 133,
+      "community_name": "Module 133",
       "norm_label": "exceljs"
     },
     {
@@ -3813,8 +3813,8 @@
       "source_location": "L46",
       "_origin": "ast",
       "id": "package_dependencies_google_auth_library",
-      "community": 259,
-      "community_name": "DDL",
+      "community": 133,
+      "community_name": "Module 133",
       "norm_label": "google-auth-library"
     },
     {
@@ -3824,8 +3824,8 @@
       "source_location": "L46",
       "_origin": "ast",
       "id": "google_auth_library",
-      "community": 259,
-      "community_name": "DDL",
+      "community": 133,
+      "community_name": "Module 133",
       "norm_label": "google-auth-library"
     },
     {
@@ -3835,8 +3835,8 @@
       "source_location": "L47",
       "_origin": "ast",
       "id": "package_dependencies_googleapis",
-      "community": 346,
-      "community_name": "bcryptjs",
+      "community": 133,
+      "community_name": "Module 133",
       "norm_label": "googleapis"
     },
     {
@@ -3846,8 +3846,8 @@
       "source_location": "L47",
       "_origin": "ast",
       "id": "googleapis",
-      "community": 346,
-      "community_name": "bcryptjs",
+      "community": 133,
+      "community_name": "Module 133",
       "norm_label": "googleapis"
     },
     {
@@ -3967,8 +3967,8 @@
       "source_location": "L53",
       "_origin": "ast",
       "id": "package_dependencies_jszip",
-      "community": 0,
-      "community_name": "Admission Management",
+      "community": 145,
+      "community_name": "Module 145",
       "norm_label": "jszip"
     },
     {
@@ -3978,8 +3978,8 @@
       "source_location": "L53",
       "_origin": "ast",
       "id": "jszip",
-      "community": 0,
-      "community_name": "Admission Management",
+      "community": 145,
+      "community_name": "Module 145",
       "norm_label": "jszip"
     },
     {
@@ -3989,8 +3989,8 @@
       "source_location": "L54",
       "_origin": "ast",
       "id": "package_dependencies_lucide_react",
-      "community": 133,
-      "community_name": "Module 133",
+      "community": 387,
+      "community_name": "\ud83d\udcc1 **Project Structure**",
       "norm_label": "lucide-react"
     },
     {
@@ -4000,8 +4000,8 @@
       "source_location": "L54",
       "_origin": "ast",
       "id": "lucide_react",
-      "community": 133,
-      "community_name": "Module 133",
+      "community": 387,
+      "community_name": "\ud83d\udcc1 **Project Structure**",
       "norm_label": "lucide-react"
     },
     {
@@ -4231,8 +4231,8 @@
       "source_location": "L65",
       "_origin": "ast",
       "id": "package_dependencies_react_hook_form",
-      "community": 394,
-      "community_name": "react-hook-form",
+      "community": 133,
+      "community_name": "Module 133",
       "norm_label": "react-hook-form"
     },
     {
@@ -4242,8 +4242,8 @@
       "source_location": "L65",
       "_origin": "ast",
       "id": "react_hook_form",
-      "community": 394,
-      "community_name": "react-hook-form",
+      "community": 133,
+      "community_name": "Module 133",
       "norm_label": "react-hook-form"
     },
     {
@@ -8532,8 +8532,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_app_data_admission_unifiedadmissionmodal",
-      "community": 0,
-      "community_name": "Admission Management",
+      "community": 329,
+      "community_name": "@fortawesome/fontawesome-svg-core",
       "norm_label": "unifiedadmissionmodal.jsx"
     },
     {
@@ -8543,8 +8543,8 @@
       "source_location": "L41",
       "_origin": "ast",
       "id": "src_app_data_admission_unifiedadmissionmodal_unifiedadmissionmodal",
-      "community": 0,
-      "community_name": "Admission Management",
+      "community": 329,
+      "community_name": "@fortawesome/fontawesome-svg-core",
       "norm_label": "unifiedadmissionmodal()"
     },
     {
@@ -8598,8 +8598,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_app_data_admission_page",
-      "community": 0,
-      "community_name": "Admission Management",
+      "community": 329,
+      "community_name": "@fortawesome/fontawesome-svg-core",
       "norm_label": "page.jsx"
     },
     {
@@ -8609,8 +8609,8 @@
       "source_location": "L65",
       "_origin": "ast",
       "id": "src_app_data_admission_page_statusconfig",
-      "community": 0,
-      "community_name": "Admission Management",
+      "community": 329,
+      "community_name": "@fortawesome/fontawesome-svg-core",
       "norm_label": "statusconfig"
     },
     {
@@ -8620,8 +8620,8 @@
       "source_location": "L96",
       "_origin": "ast",
       "id": "src_app_data_admission_page_getemailtypelabel",
-      "community": 0,
-      "community_name": "Admission Management",
+      "community": 329,
+      "community_name": "@fortawesome/fontawesome-svg-core",
       "norm_label": "getemailtypelabel()"
     },
     {
@@ -8631,8 +8631,8 @@
       "source_location": "L109",
       "_origin": "ast",
       "id": "src_app_data_admission_page_getemailstatuslabel",
-      "community": 0,
-      "community_name": "Admission Management",
+      "community": 329,
+      "community_name": "@fortawesome/fontawesome-svg-core",
       "norm_label": "getemailstatuslabel()"
     },
     {
@@ -8642,8 +8642,8 @@
       "source_location": "L120",
       "_origin": "ast",
       "id": "src_app_data_admission_page_admissionmanagement",
-      "community": 0,
-      "community_name": "Admission Management",
+      "community": 329,
+      "community_name": "@fortawesome/fontawesome-svg-core",
       "norm_label": "admissionmanagement()"
     },
     {
@@ -11150,8 +11150,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_app_data_room_lib_roompdfgenerator",
-      "community": 105,
-      "community_name": "Module 105",
+      "community": 0,
+      "community_name": "Admission Management",
       "norm_label": "roompdfgenerator.js"
     },
     {
@@ -11161,8 +11161,8 @@
       "source_location": "L9",
       "_origin": "ast",
       "id": "src_app_data_room_lib_roompdfgenerator_getgeneralreportqrdataurl",
-      "community": 105,
-      "community_name": "Module 105",
+      "community": 0,
+      "community_name": "Admission Management",
       "norm_label": "getgeneralreportqrdataurl()"
     },
     {
@@ -11172,8 +11172,8 @@
       "source_location": "L23",
       "_origin": "ast",
       "id": "src_app_data_room_lib_roompdfgenerator_getroomqrdataurl",
-      "community": 105,
-      "community_name": "Module 105",
+      "community": 0,
+      "community_name": "Admission Management",
       "norm_label": "getroomqrdataurl()"
     },
     {
@@ -11183,8 +11183,8 @@
       "source_location": "L32",
       "_origin": "ast",
       "id": "src_app_data_room_lib_roompdfgenerator_rendergeneralreporterstickerpage",
-      "community": 105,
-      "community_name": "Module 105",
+      "community": 0,
+      "community_name": "Admission Management",
       "norm_label": "rendergeneralreporterstickerpage()"
     },
     {
@@ -11194,8 +11194,8 @@
       "source_location": "L133",
       "_origin": "ast",
       "id": "src_app_data_room_lib_roompdfgenerator_generategeneralreporterpdf",
-      "community": 105,
-      "community_name": "Module 105",
+      "community": 0,
+      "community_name": "Admission Management",
       "norm_label": "generategeneralreporterpdf()"
     },
     {
@@ -11205,8 +11205,8 @@
       "source_location": "L170",
       "_origin": "ast",
       "id": "src_app_data_room_lib_roompdfgenerator_renderroomstickerpage",
-      "community": 105,
-      "community_name": "Module 105",
+      "community": 0,
+      "community_name": "Admission Management",
       "norm_label": "renderroomstickerpage()"
     },
     {
@@ -11216,8 +11216,8 @@
       "source_location": "L174",
       "_origin": "ast",
       "id": "src_app_data_room_lib_roompdfgenerator_generatesingleroompdf",
-      "community": 105,
-      "community_name": "Module 105",
+      "community": 0,
+      "community_name": "Admission Management",
       "norm_label": "generatesingleroompdf()"
     },
     {
@@ -11227,8 +11227,8 @@
       "source_location": "L178",
       "_origin": "ast",
       "id": "src_app_data_room_lib_roompdfgenerator_generatebatchroompdf",
-      "community": 105,
-      "community_name": "Module 105",
+      "community": 0,
+      "community_name": "Admission Management",
       "norm_label": "generatebatchroompdf()"
     },
     {
@@ -11238,8 +11238,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_app_data_room_page",
-      "community": 105,
-      "community_name": "Module 105",
+      "community": 0,
+      "community_name": "Admission Management",
       "norm_label": "page.jsx"
     },
     {
@@ -11249,8 +11249,8 @@
       "source_location": "L33",
       "_origin": "ast",
       "id": "src_app_data_room_page_generalreporterstickercard",
-      "community": 105,
-      "community_name": "Module 105",
+      "community": 0,
+      "community_name": "Admission Management",
       "norm_label": "generalreporterstickercard()"
     },
     {
@@ -11260,8 +11260,8 @@
       "source_location": "L94",
       "_origin": "ast",
       "id": "src_app_data_room_page_roommasterpage",
-      "community": 105,
-      "community_name": "Module 105",
+      "community": 0,
+      "community_name": "Admission Management",
       "norm_label": "roommasterpage()"
     },
     {
@@ -13707,10 +13707,32 @@
       "norm_label": "themednavbar.jsx"
     },
     {
+      "label": "SIDEBAR_ROUTE_PREFIXES",
+      "file_type": "code",
+      "source_file": "src/components/ThemedNavbar.jsx",
+      "source_location": "L11",
+      "_origin": "ast",
+      "id": "src_components_themednavbar_sidebar_route_prefixes",
+      "community": 222,
+      "community_name": "Module 222",
+      "norm_label": "sidebar_route_prefixes"
+    },
+    {
+      "label": "isSidebarRoute()",
+      "file_type": "code",
+      "source_file": "src/components/ThemedNavbar.jsx",
+      "source_location": "L24",
+      "_origin": "ast",
+      "id": "src_components_themednavbar_issidebarroute",
+      "community": 222,
+      "community_name": "Module 222",
+      "norm_label": "issidebarroute()"
+    },
+    {
       "label": "ThemedNavbar()",
       "file_type": "code",
       "source_file": "src/components/ThemedNavbar.jsx",
-      "source_location": "L10",
+      "source_location": "L32",
       "_origin": "ast",
       "id": "src_components_themednavbar_themednavbar",
       "community": 222,
@@ -24075,8 +24097,8 @@
       "source_location": "L5",
       "_origin": "ast",
       "id": "main_documentation_2026_07_16_timetable_refactor_weekly_plan_dates_weekly_overview",
-      "community": 102,
-      "community_name": "Module 102",
+      "community": 259,
+      "community_name": "DDL",
       "norm_label": "2026-07-16 \u2014 timetable refactor + weekly plan dates + weekly overview"
     },
     {
@@ -24086,8 +24108,8 @@
       "source_location": "L7",
       "_origin": "ast",
       "id": "main_documentation_timetable_refactor_data_timetable",
-      "community": 102,
-      "community_name": "Module 102",
+      "community": 259,
+      "community_name": "DDL",
       "norm_label": "timetable refactor (`/data/timetable`)"
     },
     {
@@ -24097,8 +24119,8 @@
       "source_location": "L17",
       "_origin": "ast",
       "id": "main_documentation_timetable_exceptions_timetable_exception_new_table",
-      "community": 102,
-      "community_name": "Module 102",
+      "community": 259,
+      "community_name": "DDL",
       "norm_label": "timetable exceptions (`timetable_exception`) \u2014 new table"
     },
     {
@@ -24108,8 +24130,8 @@
       "source_location": "L46",
       "_origin": "ast",
       "id": "main_documentation_weekly_plan_dates_topic_weekly_plan_week_date",
-      "community": 102,
-      "community_name": "Module 102",
+      "community": 259,
+      "community_name": "DDL",
       "norm_label": "weekly plan dates \u2014 `topic_weekly_plan.week_date`"
     },
     {
@@ -24119,8 +24141,8 @@
       "source_location": "L54",
       "_origin": "ast",
       "id": "main_documentation_weekly_overview_data_weekly_overview_new_page",
-      "community": 102,
-      "community_name": "Module 102",
+      "community": 259,
+      "community_name": "DDL",
       "norm_label": "weekly overview (`/data/weekly-overview`) \u2014 new page"
     },
     {
@@ -24130,8 +24152,8 @@
       "source_location": "L73",
       "_origin": "ast",
       "id": "main_documentation_weekly_overview_draft_table_new",
-      "community": 102,
-      "community_name": "Module 102",
+      "community": 259,
+      "community_name": "DDL",
       "norm_label": "`weekly_overview_draft` table \u2014 new"
     },
     {
@@ -24141,8 +24163,8 @@
       "source_location": "L87",
       "_origin": "ast",
       "id": "main_documentation_topic_weekly_plan_complete_schema_reference",
-      "community": 102,
-      "community_name": "Module 102",
+      "community": 259,
+      "community_name": "DDL",
       "norm_label": "`topic_weekly_plan` \u2014 complete schema reference"
     },
     {
@@ -24152,8 +24174,8 @@
       "source_location": "L103",
       "_origin": "ast",
       "id": "main_documentation_full_data_flow_timetable_weekly_overview",
-      "community": 102,
-      "community_name": "Module 102",
+      "community": 259,
+      "community_name": "DDL",
       "norm_label": "full data flow: timetable \u2192 weekly overview"
     },
     {
@@ -24306,8 +24328,8 @@
       "source_location": "L287",
       "_origin": "ast",
       "id": "main_documentation_database_structure",
-      "community": 420,
-      "community_name": "\ufffd\ud83c\udfd7\ufe0f **Database Structure**",
+      "community": 101,
+      "community_name": "Module 101",
       "norm_label": "\ufffd\ud83c\udfd7\ufe0f **database structure**"
     },
     {
@@ -24317,8 +24339,8 @@
       "source_location": "L289",
       "_origin": "ast",
       "id": "main_documentation_core_tables",
-      "community": 420,
-      "community_name": "\ufffd\ud83c\udfd7\ufe0f **Database Structure**",
+      "community": 101,
+      "community_name": "Module 101",
       "norm_label": "**core tables:**"
     },
     {
@@ -24328,8 +24350,8 @@
       "source_location": "L524",
       "_origin": "ast",
       "id": "main_documentation_grades_nilai_table",
-      "community": 420,
-      "community_name": "\ufffd\ud83c\udfd7\ufe0f **Database Structure**",
+      "community": 101,
+      "community_name": "Module 101",
       "norm_label": "grades (nilai) table"
     },
     {
@@ -24339,8 +24361,8 @@
       "source_location": "L539",
       "_origin": "ast",
       "id": "main_documentation_attendance_qr_tables",
-      "community": 420,
-      "community_name": "\ufffd\ud83c\udfd7\ufe0f **Database Structure**",
+      "community": 101,
+      "community_name": "Module 101",
       "norm_label": "attendance (qr) tables"
     },
     {
@@ -24383,8 +24405,8 @@
       "source_location": "L618",
       "_origin": "ast",
       "id": "main_documentation_3_assessment_system",
-      "community": 435,
-      "community_name": "**3. Assessment System**",
+      "community": 80,
+      "community_name": "Module 80",
       "norm_label": "**3. assessment system**"
     },
     {
@@ -24394,8 +24416,8 @@
       "source_location": "L619",
       "_origin": "ast",
       "id": "main_documentation_teacher_workflow",
-      "community": 435,
-      "community_name": "**3. Assessment System**",
+      "community": 80,
+      "community_name": "Module 80",
       "norm_label": "**teacher workflow**:"
     },
     {
@@ -24405,8 +24427,8 @@
       "source_location": "L628",
       "_origin": "ast",
       "id": "main_documentation_admin_workflow",
-      "community": 435,
-      "community_name": "**3. Assessment System**",
+      "community": 80,
+      "community_name": "Module 80",
       "norm_label": "**admin workflow**:"
     },
     {
@@ -24537,8 +24559,8 @@
       "source_location": "L812",
       "_origin": "ast",
       "id": "main_documentation_technical_implementation",
-      "community": 432,
-      "community_name": "\ud83d\udd27 **Technical Implementation**",
+      "community": 101,
+      "community_name": "Module 101",
       "norm_label": "\ud83d\udd27 **technical implementation**"
     },
     {
@@ -24548,8 +24570,8 @@
       "source_location": "L814",
       "_origin": "ast",
       "id": "main_documentation_frontend_stack",
-      "community": 432,
-      "community_name": "\ud83d\udd27 **Technical Implementation**",
+      "community": 101,
+      "community_name": "Module 101",
       "norm_label": "**frontend stack:**"
     },
     {
@@ -24559,8 +24581,8 @@
       "source_location": "L821",
       "_origin": "ast",
       "id": "main_documentation_backend_database",
-      "community": 432,
-      "community_name": "\ud83d\udd27 **Technical Implementation**",
+      "community": 101,
+      "community_name": "Module 101",
       "norm_label": "**backend & database:**"
     },
     {
@@ -24570,8 +24592,8 @@
       "source_location": "L827",
       "_origin": "ast",
       "id": "main_documentation_key_technical_notes",
-      "community": 432,
-      "community_name": "\ud83d\udd27 **Technical Implementation**",
+      "community": 101,
+      "community_name": "Module 101",
       "norm_label": "**key technical notes:**"
     },
     {
@@ -24581,8 +24603,8 @@
       "source_location": "L881",
       "_origin": "ast",
       "id": "main_documentation_setup_deployment",
-      "community": 101,
-      "community_name": "Module 101",
+      "community": 331,
+      "community_name": "class-variance-authority",
       "norm_label": "\ud83d\ude80 **setup & deployment**"
     },
     {
@@ -24592,8 +24614,8 @@
       "source_location": "L883",
       "_origin": "ast",
       "id": "main_documentation_database_migration_files_execute_in_order",
-      "community": 101,
-      "community_name": "Module 101",
+      "community": 331,
+      "community_name": "class-variance-authority",
       "norm_label": "**database migration files (execute in order):**"
     },
     {
@@ -24603,8 +24625,8 @@
       "source_location": "L911",
       "_origin": "ast",
       "id": "main_documentation_development",
-      "community": 101,
-      "community_name": "Module 101",
+      "community": 331,
+      "community_name": "class-variance-authority",
       "norm_label": "**development:**"
     },
     {
@@ -24614,8 +24636,8 @@
       "source_location": "L918",
       "_origin": "ast",
       "id": "main_documentation_key_environment",
-      "community": 101,
-      "community_name": "Module 101",
+      "community": 331,
+      "community_name": "class-variance-authority",
       "norm_label": "**key environment:**"
     },
     {
@@ -24625,8 +24647,8 @@
       "source_location": "L928",
       "_origin": "ast",
       "id": "main_documentation_additional_files",
-      "community": 101,
-      "community_name": "Module 101",
+      "community": 331,
+      "community_name": "class-variance-authority",
       "norm_label": "**additional files:**"
     },
     {
@@ -24889,8 +24911,8 @@
       "source_location": "L1119",
       "_origin": "ast",
       "id": "main_documentation_key_components",
-      "community": 329,
-      "community_name": "@fortawesome/fontawesome-svg-core",
+      "community": 106,
+      "community_name": "Module 106",
       "norm_label": "**key components**"
     },
     {
@@ -24900,8 +24922,8 @@
       "source_location": "L1121",
       "_origin": "ast",
       "id": "main_documentation_1_myp_year_level_selection",
-      "community": 329,
-      "community_name": "@fortawesome/fontawesome-svg-core",
+      "community": 106,
+      "community_name": "Module 106",
       "norm_label": "**1. myp year level selection**"
     },
     {
@@ -24911,8 +24933,8 @@
       "source_location": "L1128",
       "_origin": "ast",
       "id": "main_documentation_2_criterion_grades_a_b_c_d",
-      "community": 329,
-      "community_name": "@fortawesome/fontawesome-svg-core",
+      "community": 106,
+      "community_name": "Module 106",
       "norm_label": "**2. criterion grades (a, b, c, d)**"
     },
     {
@@ -24922,8 +24944,8 @@
       "source_location": "L1138",
       "_origin": "ast",
       "id": "main_documentation_3_strand_grades",
-      "community": 329,
-      "community_name": "@fortawesome/fontawesome-svg-core",
+      "community": 106,
+      "community_name": "Module 106",
       "norm_label": "**3. strand grades**"
     },
     {
@@ -24933,8 +24955,8 @@
       "source_location": "L1147",
       "_origin": "ast",
       "id": "main_documentation_4_final_grade_1_7",
-      "community": 329,
-      "community_name": "@fortawesome/fontawesome-svg-core",
+      "community": 106,
+      "community_name": "Module 106",
       "norm_label": "**4. final grade (1-7)**"
     },
     {
@@ -25010,8 +25032,8 @@
       "source_location": "L1221",
       "_origin": "ast",
       "id": "main_documentation_project_structure",
-      "community": 442,
-      "community_name": "\ud83d\udcc1 **Project Structure**",
+      "community": 101,
+      "community_name": "Module 101",
       "norm_label": "\ud83d\udcc1 **project structure**"
     },
     {
@@ -25021,8 +25043,8 @@
       "source_location": "L1223",
       "_origin": "ast",
       "id": "main_documentation_key_directories",
-      "community": 442,
-      "community_name": "\ud83d\udcc1 **Project Structure**",
+      "community": 101,
+      "community_name": "Module 101",
       "norm_label": "**key directories:**"
     },
     {
@@ -25032,8 +25054,8 @@
       "source_location": "L1229",
       "_origin": "ast",
       "id": "main_documentation_important_files",
-      "community": 442,
-      "community_name": "\ud83d\udcc1 **Project Structure**",
+      "community": 101,
+      "community_name": "Module 101",
       "norm_label": "**important files:**"
     },
     {
@@ -45661,11 +45683,57 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/components/ThemedNavbar.jsx",
-      "source_location": "L10",
+      "source_location": "L24",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_components_themednavbar",
+      "target": "src_components_themednavbar_issidebarroute",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/components/ThemedNavbar.jsx",
+      "source_location": "L11",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_components_themednavbar",
+      "target": "src_components_themednavbar_sidebar_route_prefixes",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/components/ThemedNavbar.jsx",
+      "source_location": "L32",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_themednavbar",
       "target": "src_components_themednavbar_themednavbar",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/components/ThemedNavbar.jsx",
+      "source_location": "L29",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_components_themednavbar_issidebarroute",
+      "target": "src_components_themednavbar_sidebar_route_prefixes"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/components/ThemedNavbar.jsx",
+      "source_location": "L63",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_components_themednavbar_themednavbar",
+      "target": "src_components_themednavbar_issidebarroute",
       "confidence_score": 1.0
     },
     {
@@ -60268,5 +60336,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "79247bb15d4c14a2eeef1e57637ea5f0b84a4f57"
+  "built_at_commit": "3d43d9f91b69c9f155202d88a07a7b7cc506f6e5"
 }

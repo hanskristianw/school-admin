@@ -1270,8 +1270,8 @@
     "semantic_hash": "104123e0baacb9dd57b2a1a1962da5d0"
   },
   "src/components/sidebar.jsx": {
-    "mtime": 1793935361.7041614,
-    "ast_hash": "574298635a03a0e1b4b581262a47a338",
+    "mtime": 1794549311.1956737,
+    "ast_hash": "9c8a9c28244cbfe3f6939ba19a2da591",
     "semantic_hash": ""
   },
   "src/components/ui/button.jsx": {

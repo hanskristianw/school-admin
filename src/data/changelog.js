@@ -118,6 +118,11 @@ export const SYSTEM_RELEASES = [
           "id": "Menambahkan dukungan pratinjau dokumen PDF (<iframe>) selain gambar, mekanisme auto-retry 3 kali pada proxy /api/court-rental/[id]/proof, tombol 'Retry / Coba Lagi' di modal pratinjau, serta standardisasi zona waktu WIB (Asia/Jakarta, UTC+7) untuk validasi batas pemesanan minimal H+2.",
           "en": "Added PDF document preview support (<iframe>) alongside images, a 3-attempt auto-retry mechanism in the /api/court-rental/[id]/proof proxy, an interactive 'Retry / Coba Lagi' button in the preview modal, and WIB timezone standardization (Asia/Jakarta, UTC+7) for minimum D+2 booking validation.",
           "zh": "在 /api/court-rental/[id]/proof 代理接口中新增 PDF 凭证内嵌预览（<iframe>）、3 次自动重试机制、弹窗内交互式重试按钮，并统一采用印尼西部时间（Asia/Jakarta, UTC+7）校验提前 2 天（H+2）预约限制。"
+        },
+        {
+          "id": "Memperbaiki tata letak responsif ThemedNavbar (src/components/ThemedNavbar.jsx) dan Sidebar (src/components/sidebar.jsx) pada tampilan mobile/tablet: memindahkan tombol hamburger menu mobile ke dalam slot flex kiri navbar sehingga tidak lagi mengambang menimpa tombol Bug Reporting, menerapkan whitespace-nowrap, serta menyembunyikan teks sekunder di layar sempit agar seluruh kontrol navbar muat rapi satu baris di perangkat apa pun.",
+          "en": "Fixed responsive layout in ThemedNavbar (src/components/ThemedNavbar.jsx) and Sidebar (src/components/sidebar.jsx) on mobile/tablet screens: docked the mobile hamburger toggle inside the navbar's left flex slot so it no longer floats over the Bug Reporting button, added whitespace-nowrap, and progressively collapsed secondary labels on narrow viewports so navbar controls stay on a single row across all devices.",
+          "zh": "修复移动端/平板端 ThemedNavbar（src/components/ThemedNavbar.jsx）与 Sidebar（src/components/sidebar.jsx）响应式布局：将移动端菜单按钮嵌入顶部导航栏左侧弹性槽位，彻底解决按钮悬浮遮挡 Bug Reporting 按钮的问题，并添加 whitespace-nowrap 及窄屏次级文字隐藏，确保导航栏在各类设备均单行整齐显示。"
         }
       ]
     }

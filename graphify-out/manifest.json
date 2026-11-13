@@ -1255,8 +1255,8 @@
     "semantic_hash": "9741f3cad9176a610cab1c15be3001fa"
   },
   "src/components/ThemedNavbar.jsx": {
-    "mtime": 1794294542.1965957,
-    "ast_hash": "891ccb7ec932db0ab9fd418388c98419",
+    "mtime": 1794560496.8252163,
+    "ast_hash": "dc76f82bafe8683d2a9cbc8ae073da08",
     "semantic_hash": ""
   },
   "src/components/header.jsx": {
@@ -1270,8 +1270,8 @@
     "semantic_hash": "104123e0baacb9dd57b2a1a1962da5d0"
   },
   "src/components/sidebar.jsx": {
-    "mtime": 1794549311.1956737,
-    "ast_hash": "9c8a9c28244cbfe3f6939ba19a2da591",
+    "mtime": 1794560494.8204036,
+    "ast_hash": "f0bcf596a8d7521f536d0b0ab4920549",
     "semantic_hash": ""
   },
   "src/components/ui/button.jsx": {
@@ -2495,8 +2495,8 @@
     "semantic_hash": ""
   },
   "src/data/changelog.js": {
-    "mtime": 1794546643.2977414,
-    "ast_hash": "73730cd555e50f3d601516b3f9a4231c",
+    "mtime": 1794560536.7886932,
+    "ast_hash": "eb9412ecf9392d309ac688ee7c780da2",
     "semantic_hash": ""
   },
   "src/app/api/system-feedback/upload/route.js": {

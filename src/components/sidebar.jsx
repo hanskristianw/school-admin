@@ -423,6 +423,22 @@ const Sidebar = memo(({ isOpen, setIsOpen }) => {
     }
   }, [])
 
+  // Sync mobile drawer trigger & open state with ThemedNavbar so hamburger never overlaps navbar controls
+  useEffect(() => {
+    const handleToggle = () => {
+      if (setIsOpen) setIsOpen(prev => !prev)
+    }
+    window.addEventListener('toggle-mobile-sidebar', handleToggle)
+    return () => window.removeEventListener('toggle-mobile-sidebar', handleToggle)
+  }, [setIsOpen])
+
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent('sidebar-state', { detail: { mounted: true, isOpen } }))
+    return () => {
+      window.dispatchEvent(new CustomEvent('sidebar-state', { detail: { mounted: false, isOpen: false } }))
+    }
+  }, [isOpen])
+
   // Close popup in collapsed mode on outside click
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -912,21 +928,11 @@ const Sidebar = memo(({ isOpen, setIsOpen }) => {
 
   return (
     <>
-      {/* Mobile trigger */}
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="lg:hidden fixed top-3 left-3 z-50 p-2 rounded border"
-        style={{ background: theme.cardBg, borderColor: theme.border }}
-        aria-label="Toggle menu"
-      >
-        <FontAwesomeIcon icon={isOpen ? faXmark : faBars} className="w-3.5 h-3.5" style={{ color: theme.textPrimary }} />
-      </button>
-
       {/* Backdrop */}
       {isOpen && (
         <div
-          className="lg:hidden fixed inset-0 z-40"
-          style={{ background: 'rgba(0,0,0,0.3)' }}
+          className="lg:hidden fixed inset-0 z-50"
+          style={{ background: 'rgba(0,0,0,0.35)' }}
           onClick={() => setIsOpen(false)}
         />
       )}
@@ -934,7 +940,7 @@ const Sidebar = memo(({ isOpen, setIsOpen }) => {
       {/* Utilitarian Minimalist Docked Sidebar */}
       <aside
         className={`
-          fixed top-0 left-0 z-40 h-screen flex flex-col
+          fixed top-0 left-0 z-[60] lg:z-40 h-screen flex flex-col
           transform transition-all duration-200 ease-out
           ${isOpen ? 'translate-x-0' : '-translate-x-full'}
           ${isCollapsed ? 'lg:w-16' : 'lg:w-60'}
@@ -964,19 +970,31 @@ const Sidebar = memo(({ isOpen, setIsOpen }) => {
             )}
           </div>
 
-          <button
-            onClick={() => setIsCollapsed(!isCollapsed)}
-            className="hidden lg:flex items-center justify-center w-6 h-6 rounded border transition-colors cursor-pointer"
-            style={{ borderColor: theme.border, color: theme.textSecondary, background: 'transparent' }}
-            onMouseEnter={e => { e.currentTarget.style.background = theme.subtleBg; e.currentTarget.style.color = theme.textPrimary }}
-            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = theme.textSecondary }}
-            title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-          >
-            <FontAwesomeIcon
-              icon={isCollapsed ? faChevronRight : faBars}
-              className="w-2.5 h-2.5"
-            />
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => setIsOpen && setIsOpen(false)}
+              className="lg:hidden flex items-center justify-center w-6 h-6 rounded border transition-colors cursor-pointer"
+              style={{ borderColor: theme.border, color: theme.textSecondary, background: 'transparent' }}
+              aria-label="Close sidebar"
+            >
+              <FontAwesomeIcon icon={faXmark} className="w-3 h-3" />
+            </button>
+
+            <button
+              onClick={() => setIsCollapsed(!isCollapsed)}
+              className="hidden lg:flex items-center justify-center w-6 h-6 rounded border transition-colors cursor-pointer"
+              style={{ borderColor: theme.border, color: theme.textSecondary, background: 'transparent' }}
+              onMouseEnter={e => { e.currentTarget.style.background = theme.subtleBg; e.currentTarget.style.color = theme.textPrimary }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = theme.textSecondary }}
+              title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            >
+              <FontAwesomeIcon
+                icon={isCollapsed ? faChevronRight : faBars}
+                className="w-2.5 h-2.5"
+              />
+            </button>
+          </div>
         </div>
 
         {/* Minimalist Search Input */}
