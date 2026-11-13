@@ -1,7 +1,7 @@
 # Graph Report - school-admin  (2026-11-13)
 
 ## Corpus Check
-- 490 files · ~827,677 words
+- 490 files · ~827,533 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
@@ -10,7 +10,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `0e985f7a`
+- Built from commit: `79247bb1`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -785,7 +785,7 @@ Nodes (8): 18.1 Key Features & Architecture, 18.2 Tables, 18.3 Storage Buckets, 
 
 ### Community 133 - "Module 133"
 Cohesion: 0.15
-Nodes (13): @fortawesome/fontawesome-svg-core, @fortawesome/react-fontawesome, @hookform/resolvers, lucide-react, dependencies, @fortawesome/fontawesome-svg-core, @fortawesome/react-fontawesome, @hookform/resolvers (+5 more)
+Nodes (13): clsx, @fortawesome/react-fontawesome, @hookform/resolvers, lucide-react, dependencies, clsx, @fortawesome/react-fontawesome, @hookform/resolvers (+5 more)
 
 ### Community 135 - "Module 135"
 Cohesion: 0.29

@@ -237,6 +237,50 @@
     {
       "label": "config.php",
       "file_type": "code",
+      "source_file": "cpanel-agility-check/config.php",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "cpanel_agility_check_config",
+      "community": 446,
+      "community_name": "config.php",
+      "norm_label": "config.php"
+    },
+    {
+      "label": "callNextJsApi()",
+      "file_type": "code",
+      "source_file": "cpanel-agility-check/config.php",
+      "source_location": "L14",
+      "_origin": "ast",
+      "id": "cpanel_agility_check_config_callnextjsapi",
+      "community": 446,
+      "community_name": "config.php",
+      "norm_label": "callnextjsapi()"
+    },
+    {
+      "label": "index.php",
+      "file_type": "code",
+      "source_file": "cpanel-agility-check/index.php",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "cpanel_agility_check_index",
+      "community": 448,
+      "community_name": "index.php",
+      "norm_label": "index.php"
+    },
+    {
+      "label": "submit.php",
+      "file_type": "code",
+      "source_file": "cpanel-agility-check/submit.php",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "cpanel_agility_check_submit",
+      "community": 449,
+      "community_name": "submit.php",
+      "norm_label": "submit.php"
+    },
+    {
+      "label": "config.php",
+      "file_type": "code",
       "source_file": "cpanel-psikotest/config.php",
       "source_location": "L1",
       "_origin": "ast",
@@ -3021,8 +3065,8 @@
       "source_location": "L12",
       "_origin": "ast",
       "id": "package_dependencies_fortawesome_fontawesome_svg_core",
-      "community": 329,
-      "community_name": "@fortawesome/fontawesome-svg-core",
+      "community": 133,
+      "community_name": "Module 133",
       "norm_label": "@fortawesome/fontawesome-svg-core"
     },
     {
@@ -3032,8 +3076,8 @@
       "source_location": "L12",
       "_origin": "ast",
       "id": "fortawesome_fontawesome_svg_core",
-      "community": 329,
-      "community_name": "@fortawesome/fontawesome-svg-core",
+      "community": 133,
+      "community_name": "Module 133",
       "norm_label": "@fortawesome/fontawesome-svg-core"
     },
     {
@@ -3593,8 +3637,8 @@
       "source_location": "L38",
       "_origin": "ast",
       "id": "package_dependencies_bcryptjs",
-      "community": 133,
-      "community_name": "Module 133",
+      "community": 445,
+      "community_name": "bcryptjs",
       "norm_label": "bcryptjs"
     },
     {
@@ -3604,8 +3648,8 @@
       "source_location": "L38",
       "_origin": "ast",
       "id": "bcryptjs",
-      "community": 133,
-      "community_name": "Module 133",
+      "community": 445,
+      "community_name": "bcryptjs",
       "norm_label": "bcryptjs"
     },
     {
@@ -6449,6 +6493,138 @@
     {
       "label": "route.js",
       "file_type": "code",
+      "source_file": "src/app/api/data/agility-check/[id]/route.js",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "src_app_api_data_agility_check_id_route",
+      "community": 443,
+      "community_name": "route.js",
+      "norm_label": "route.js"
+    },
+    {
+      "label": "GET()",
+      "file_type": "code",
+      "source_file": "src/app/api/data/agility-check/[id]/route.js",
+      "source_location": "L5",
+      "_origin": "ast",
+      "id": "src_app_api_data_agility_check_id_route_get",
+      "community": 443,
+      "community_name": "route.js",
+      "norm_label": "get()"
+    },
+    {
+      "label": "DELETE()",
+      "file_type": "code",
+      "source_file": "src/app/api/data/agility-check/[id]/route.js",
+      "source_location": "L113",
+      "_origin": "ast",
+      "id": "src_app_api_data_agility_check_id_route_delete",
+      "community": 443,
+      "community_name": "route.js",
+      "norm_label": "delete()"
+    },
+    {
+      "label": "route.js",
+      "file_type": "code",
+      "source_file": "src/app/api/data/agility-check/questions/route.js",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "src_app_api_data_agility_check_questions_route",
+      "community": 273,
+      "community_name": "\ud83d\udd27 **Technical Implementation**",
+      "norm_label": "route.js"
+    },
+    {
+      "label": "VALID_OPTIONS",
+      "file_type": "code",
+      "source_file": "src/app/api/data/agility-check/questions/route.js",
+      "source_location": "L4",
+      "_origin": "ast",
+      "id": "src_app_api_data_agility_check_questions_route_valid_options",
+      "community": 273,
+      "community_name": "\ud83d\udd27 **Technical Implementation**",
+      "norm_label": "valid_options"
+    },
+    {
+      "label": "validateQuestionPayload()",
+      "file_type": "code",
+      "source_file": "src/app/api/data/agility-check/questions/route.js",
+      "source_location": "L6",
+      "_origin": "ast",
+      "id": "src_app_api_data_agility_check_questions_route_validatequestionpayload",
+      "community": 273,
+      "community_name": "\ud83d\udd27 **Technical Implementation**",
+      "norm_label": "validatequestionpayload()"
+    },
+    {
+      "label": "GET()",
+      "file_type": "code",
+      "source_file": "src/app/api/data/agility-check/questions/route.js",
+      "source_location": "L45",
+      "_origin": "ast",
+      "id": "src_app_api_data_agility_check_questions_route_get",
+      "community": 273,
+      "community_name": "\ud83d\udd27 **Technical Implementation**",
+      "norm_label": "get()"
+    },
+    {
+      "label": "POST()",
+      "file_type": "code",
+      "source_file": "src/app/api/data/agility-check/questions/route.js",
+      "source_location": "L74",
+      "_origin": "ast",
+      "id": "src_app_api_data_agility_check_questions_route_post",
+      "community": 273,
+      "community_name": "\ud83d\udd27 **Technical Implementation**",
+      "norm_label": "post()"
+    },
+    {
+      "label": "PUT()",
+      "file_type": "code",
+      "source_file": "src/app/api/data/agility-check/questions/route.js",
+      "source_location": "L99",
+      "_origin": "ast",
+      "id": "src_app_api_data_agility_check_questions_route_put",
+      "community": 273,
+      "community_name": "\ud83d\udd27 **Technical Implementation**",
+      "norm_label": "put()"
+    },
+    {
+      "label": "DELETE()",
+      "file_type": "code",
+      "source_file": "src/app/api/data/agility-check/questions/route.js",
+      "source_location": "L151",
+      "_origin": "ast",
+      "id": "src_app_api_data_agility_check_questions_route_delete",
+      "community": 273,
+      "community_name": "\ud83d\udd27 **Technical Implementation**",
+      "norm_label": "delete()"
+    },
+    {
+      "label": "route.js",
+      "file_type": "code",
+      "source_file": "src/app/api/data/agility-check/route.js",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "src_app_api_data_agility_check_route",
+      "community": 447,
+      "community_name": "route.js",
+      "norm_label": "route.js"
+    },
+    {
+      "label": "GET()",
+      "file_type": "code",
+      "source_file": "src/app/api/data/agility-check/route.js",
+      "source_location": "L4",
+      "_origin": "ast",
+      "id": "src_app_api_data_agility_check_route_get",
+      "community": 447,
+      "community_name": "route.js",
+      "norm_label": "get()"
+    },
+    {
+      "label": "route.js",
+      "file_type": "code",
       "source_file": "src/app/api/data/psikotest/[id]/route.js",
       "source_location": "L1",
       "_origin": "ast",
@@ -7279,6 +7455,39 @@
       "_origin": "ast",
       "id": "src_app_api_public_admission_route_post",
       "community": 368,
+      "community_name": "route.js",
+      "norm_label": "post()"
+    },
+    {
+      "label": "route.js",
+      "file_type": "code",
+      "source_file": "src/app/api/public/agility-check/route.js",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "src_app_api_public_agility_check_route",
+      "community": 444,
+      "community_name": "route.js",
+      "norm_label": "route.js"
+    },
+    {
+      "label": "GET()",
+      "file_type": "code",
+      "source_file": "src/app/api/public/agility-check/route.js",
+      "source_location": "L9",
+      "_origin": "ast",
+      "id": "src_app_api_public_agility_check_route_get",
+      "community": 444,
+      "community_name": "route.js",
+      "norm_label": "get()"
+    },
+    {
+      "label": "POST()",
+      "file_type": "code",
+      "source_file": "src/app/api/public/agility-check/route.js",
+      "source_location": "L44",
+      "_origin": "ast",
+      "id": "src_app_api_public_agility_check_route_post",
+      "community": 444,
       "community_name": "route.js",
       "norm_label": "post()"
     },
@@ -8491,6 +8700,83 @@
       "community": 0,
       "community_name": "Admission Management",
       "norm_label": "feesimulationpage()"
+    },
+    {
+      "label": "agilityPdfGenerator.js",
+      "file_type": "code",
+      "source_file": "src/app/data/agility-check/lib/agilityPdfGenerator.js",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "src_app_data_agility_check_lib_agilitypdfgenerator",
+      "community": 110,
+      "community_name": "Module 110",
+      "norm_label": "agilitypdfgenerator.js"
+    },
+    {
+      "label": "loadImgBase64()",
+      "file_type": "code",
+      "source_file": "src/app/data/agility-check/lib/agilityPdfGenerator.js",
+      "source_location": "L5",
+      "_origin": "ast",
+      "id": "src_app_data_agility_check_lib_agilitypdfgenerator_loadimgbase64",
+      "community": 110,
+      "community_name": "Module 110",
+      "norm_label": "loadimgbase64()"
+    },
+    {
+      "label": "formatIndonesianDate()",
+      "file_type": "code",
+      "source_file": "src/app/data/agility-check/lib/agilityPdfGenerator.js",
+      "source_location": "L23",
+      "_origin": "ast",
+      "id": "src_app_data_agility_check_lib_agilitypdfgenerator_formatindonesiandate",
+      "community": 110,
+      "community_name": "Module 110",
+      "norm_label": "formatindonesiandate()"
+    },
+    {
+      "label": "generateAgilityPDF()",
+      "file_type": "code",
+      "source_file": "src/app/data/agility-check/lib/agilityPdfGenerator.js",
+      "source_location": "L37",
+      "_origin": "ast",
+      "id": "src_app_data_agility_check_lib_agilitypdfgenerator_generateagilitypdf",
+      "community": 110,
+      "community_name": "Module 110",
+      "norm_label": "generateagilitypdf()"
+    },
+    {
+      "label": "page.jsx",
+      "file_type": "code",
+      "source_file": "src/app/data/agility-check/page.jsx",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "src_app_data_agility_check_page",
+      "community": 110,
+      "community_name": "Module 110",
+      "norm_label": "page.jsx"
+    },
+    {
+      "label": "EMPTY_QUESTION_FORM",
+      "file_type": "code",
+      "source_file": "src/app/data/agility-check/page.jsx",
+      "source_location": "L30",
+      "_origin": "ast",
+      "id": "src_app_data_agility_check_page_empty_question_form",
+      "community": 110,
+      "community_name": "Module 110",
+      "norm_label": "empty_question_form"
+    },
+    {
+      "label": "AgilityCheckManagementPage()",
+      "file_type": "code",
+      "source_file": "src/app/data/agility-check/page.jsx",
+      "source_location": "L43",
+      "_origin": "ast",
+      "id": "src_app_data_agility_check_page_agilitycheckmanagementpage",
+      "community": 110,
+      "community_name": "Module 110",
+      "norm_label": "agilitycheckmanagementpage()"
     },
     {
       "label": "page.jsx",
@@ -11348,8 +11634,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_app_data_topic_new_components_googleclassroomconnector",
-      "community": 110,
-      "community_name": "Module 110",
+      "community": 145,
+      "community_name": "Module 145",
       "norm_label": "googleclassroomconnector.jsx"
     },
     {
@@ -11359,8 +11645,8 @@
       "source_location": "L22",
       "_origin": "ast",
       "id": "src_app_data_topic_new_components_googleclassroomconnector_googleclassroomicon",
-      "community": 110,
-      "community_name": "Module 110",
+      "community": 145,
+      "community_name": "Module 145",
       "norm_label": "googleclassroomicon()"
     },
     {
@@ -11370,8 +11656,8 @@
       "source_location": "L39",
       "_origin": "ast",
       "id": "src_app_data_topic_new_components_googleclassroomconnector_google_classroom_scopes",
-      "community": 110,
-      "community_name": "Module 110",
+      "community": 145,
+      "community_name": "Module 145",
       "norm_label": "google_classroom_scopes"
     },
     {
@@ -11381,8 +11667,8 @@
       "source_location": "L48",
       "_origin": "ast",
       "id": "src_app_data_topic_new_components_googleclassroomconnector_getstoredclassroomtoken",
-      "community": 110,
-      "community_name": "Module 110",
+      "community": 145,
+      "community_name": "Module 145",
       "norm_label": "getstoredclassroomtoken()"
     },
     {
@@ -11392,8 +11678,8 @@
       "source_location": "L59",
       "_origin": "ast",
       "id": "src_app_data_topic_new_components_googleclassroomconnector_setstoredclassroomtoken",
-      "community": 110,
-      "community_name": "Module 110",
+      "community": 145,
+      "community_name": "Module 145",
       "norm_label": "setstoredclassroomtoken()"
     },
     {
@@ -11403,8 +11689,8 @@
       "source_location": "L66",
       "_origin": "ast",
       "id": "src_app_data_topic_new_components_googleclassroomconnector_clearstoredclassroomtoken",
-      "community": 110,
-      "community_name": "Module 110",
+      "community": 145,
+      "community_name": "Module 145",
       "norm_label": "clearstoredclassroomtoken()"
     },
     {
@@ -11414,8 +11700,8 @@
       "source_location": "L76",
       "_origin": "ast",
       "id": "src_app_data_topic_new_components_googleclassroomconnector_refreshclassroomtoken",
-      "community": 110,
-      "community_name": "Module 110",
+      "community": 145,
+      "community_name": "Module 145",
       "norm_label": "refreshclassroomtoken()"
     },
     {
@@ -11425,8 +11711,8 @@
       "source_location": "L103",
       "_origin": "ast",
       "id": "src_app_data_topic_new_components_googleclassroomconnector_getvalidclassroomtoken",
-      "community": 110,
-      "community_name": "Module 110",
+      "community": 145,
+      "community_name": "Module 145",
       "norm_label": "getvalidclassroomtoken()"
     },
     {
@@ -11436,8 +11722,8 @@
       "source_location": "L120",
       "_origin": "ast",
       "id": "src_app_data_topic_new_components_googleclassroomconnector_authorizegoogleclassroom",
-      "community": 110,
-      "community_name": "Module 110",
+      "community": 145,
+      "community_name": "Module 145",
       "norm_label": "authorizegoogleclassroom()"
     },
     {
@@ -11447,8 +11733,8 @@
       "source_location": "L203",
       "_origin": "ast",
       "id": "src_app_data_topic_new_components_googleclassroomconnector_extractclassroomlinks",
-      "community": 110,
-      "community_name": "Module 110",
+      "community": 145,
+      "community_name": "Module 145",
       "norm_label": "extractclassroomlinks()"
     },
     {
@@ -11458,8 +11744,8 @@
       "source_location": "L214",
       "_origin": "ast",
       "id": "src_app_data_topic_new_components_googleclassroomconnector_googleclassroomconnector",
-      "community": 110,
-      "community_name": "Module 110",
+      "community": 145,
+      "community_name": "Module 145",
       "norm_label": "googleclassroomconnector()"
     },
     {
@@ -13958,6 +14244,94 @@
       "community": 430,
       "community_name": "changelog.js",
       "norm_label": "system_releases"
+    },
+    {
+      "label": "agilityCalculator.js",
+      "file_type": "code",
+      "source_file": "src/lib/agilityCalculator.js",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "src_lib_agilitycalculator",
+      "community": 110,
+      "community_name": "Module 110",
+      "norm_label": "agilitycalculator.js"
+    },
+    {
+      "label": "AGILITY_INTERPRETATION_BANDS",
+      "file_type": "code",
+      "source_file": "src/lib/agilityCalculator.js",
+      "source_location": "L13",
+      "_origin": "ast",
+      "id": "src_lib_agilitycalculator_agility_interpretation_bands",
+      "community": 110,
+      "community_name": "Module 110",
+      "norm_label": "agility_interpretation_bands"
+    },
+    {
+      "label": "getAgilityInterpretation()",
+      "file_type": "code",
+      "source_file": "src/lib/agilityCalculator.js",
+      "source_location": "L52",
+      "_origin": "ast",
+      "id": "src_lib_agilitycalculator_getagilityinterpretation",
+      "community": 110,
+      "community_name": "Module 110",
+      "norm_label": "getagilityinterpretation()"
+    },
+    {
+      "label": "calculateAgilityScore()",
+      "file_type": "code",
+      "source_file": "src/lib/agilityCalculator.js",
+      "source_location": "L81",
+      "_origin": "ast",
+      "id": "src_lib_agilitycalculator_calculateagilityscore",
+      "community": 110,
+      "community_name": "Module 110",
+      "norm_label": "calculateagilityscore()"
+    },
+    {
+      "label": "agilityServer.js",
+      "file_type": "code",
+      "source_file": "src/lib/agilityServer.js",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "src_lib_agilityserver",
+      "community": 433,
+      "community_name": "agilityServer.js",
+      "norm_label": "agilityserver.js"
+    },
+    {
+      "label": "getSupabaseAdmin()",
+      "file_type": "code",
+      "source_file": "src/lib/agilityServer.js",
+      "source_location": "L8",
+      "_origin": "ast",
+      "id": "src_lib_agilityserver_getsupabaseadmin",
+      "community": 433,
+      "community_name": "agilityServer.js",
+      "norm_label": "getsupabaseadmin()"
+    },
+    {
+      "label": "isMissingTableError()",
+      "file_type": "code",
+      "source_file": "src/lib/agilityServer.js",
+      "source_location": "L27",
+      "_origin": "ast",
+      "id": "src_lib_agilityserver_ismissingtableerror",
+      "community": 433,
+      "community_name": "agilityServer.js",
+      "norm_label": "ismissingtableerror()"
+    },
+    {
+      "label": "verifyAgilityPublicAuth()",
+      "file_type": "code",
+      "source_file": "src/lib/agilityServer.js",
+      "source_location": "L46",
+      "_origin": "ast",
+      "id": "src_lib_agilityserver_verifyagilitypublicauth",
+      "community": 433,
+      "community_name": "agilityServer.js",
+      "norm_label": "verifyagilitypublicauth()"
     },
     {
       "label": "auth.js",
@@ -22914,6 +23288,116 @@
       "norm_label": "`court_time_slots`"
     },
     {
+      "label": "21. Recruitment Assessments Domain (`/data/psikotest`, `/data/agility-check`)",
+      "file_type": "document",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L2990",
+      "_origin": "ast",
+      "id": "database_schema_21_recruitment_assessments_domain_data_psikotest_data_agility_check",
+      "community": 245,
+      "community_name": "Module 245",
+      "norm_label": "21. recruitment assessments domain (`/data/psikotest`, `/data/agility-check`)"
+    },
+    {
+      "label": "21.1 Psychological Test (DISC) Tables",
+      "file_type": "document",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L2994",
+      "_origin": "ast",
+      "id": "database_schema_21_1_psychological_test_disc_tables",
+      "community": 245,
+      "community_name": "Module 245",
+      "norm_label": "21.1 psychological test (disc) tables"
+    },
+    {
+      "label": "`psychotest_questions`",
+      "file_type": "document",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L2996",
+      "_origin": "ast",
+      "id": "database_schema_psychotest_questions",
+      "community": 245,
+      "community_name": "Module 245",
+      "norm_label": "`psychotest_questions`"
+    },
+    {
+      "label": "`psychotest_results`",
+      "file_type": "document",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L3009",
+      "_origin": "ast",
+      "id": "database_schema_psychotest_results",
+      "community": 245,
+      "community_name": "Module 245",
+      "norm_label": "`psychotest_results`"
+    },
+    {
+      "label": "`psychotest_answers`",
+      "file_type": "document",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L3020",
+      "_origin": "ast",
+      "id": "database_schema_psychotest_answers",
+      "community": 245,
+      "community_name": "Module 245",
+      "norm_label": "`psychotest_answers`"
+    },
+    {
+      "label": "21.2 Agility Check Tables",
+      "file_type": "document",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L3032",
+      "_origin": "ast",
+      "id": "database_schema_21_2_agility_check_tables",
+      "community": 245,
+      "community_name": "Module 245",
+      "norm_label": "21.2 agility check tables"
+    },
+    {
+      "label": "`agility_questions`",
+      "file_type": "document",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L3034",
+      "_origin": "ast",
+      "id": "database_schema_agility_questions",
+      "community": 245,
+      "community_name": "Module 245",
+      "norm_label": "`agility_questions`"
+    },
+    {
+      "label": "`agility_results`",
+      "file_type": "document",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L3052",
+      "_origin": "ast",
+      "id": "database_schema_agility_results",
+      "community": 245,
+      "community_name": "Module 245",
+      "norm_label": "`agility_results`"
+    },
+    {
+      "label": "`agility_answers`",
+      "file_type": "document",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L3066",
+      "_origin": "ast",
+      "id": "database_schema_agility_answers",
+      "community": 245,
+      "community_name": "Module 245",
+      "norm_label": "`agility_answers`"
+    },
+    {
+      "label": "21.3 ERD / Relationships (Recruitment Assessments Domain)",
+      "file_type": "document",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L3079",
+      "_origin": "ast",
+      "id": "database_schema_21_3_erd_relationships_recruitment_assessments_domain",
+      "community": 245,
+      "community_name": "Module 245",
+      "norm_label": "21.3 erd / relationships (recruitment assessments domain)"
+    },
+    {
       "label": "DELETE_VOID_IMPLEMENTATION.md",
       "file_type": "document",
       "source_file": "DELETE_VOID_IMPLEMENTATION.md",
@@ -23591,8 +24075,8 @@
       "source_location": "L5",
       "_origin": "ast",
       "id": "main_documentation_2026_07_16_timetable_refactor_weekly_plan_dates_weekly_overview",
-      "community": 245,
-      "community_name": "Module 245",
+      "community": 102,
+      "community_name": "Module 102",
       "norm_label": "2026-07-16 \u2014 timetable refactor + weekly plan dates + weekly overview"
     },
     {
@@ -23602,8 +24086,8 @@
       "source_location": "L7",
       "_origin": "ast",
       "id": "main_documentation_timetable_refactor_data_timetable",
-      "community": 245,
-      "community_name": "Module 245",
+      "community": 102,
+      "community_name": "Module 102",
       "norm_label": "timetable refactor (`/data/timetable`)"
     },
     {
@@ -23613,8 +24097,8 @@
       "source_location": "L17",
       "_origin": "ast",
       "id": "main_documentation_timetable_exceptions_timetable_exception_new_table",
-      "community": 245,
-      "community_name": "Module 245",
+      "community": 102,
+      "community_name": "Module 102",
       "norm_label": "timetable exceptions (`timetable_exception`) \u2014 new table"
     },
     {
@@ -23624,8 +24108,8 @@
       "source_location": "L46",
       "_origin": "ast",
       "id": "main_documentation_weekly_plan_dates_topic_weekly_plan_week_date",
-      "community": 245,
-      "community_name": "Module 245",
+      "community": 102,
+      "community_name": "Module 102",
       "norm_label": "weekly plan dates \u2014 `topic_weekly_plan.week_date`"
     },
     {
@@ -23635,8 +24119,8 @@
       "source_location": "L54",
       "_origin": "ast",
       "id": "main_documentation_weekly_overview_data_weekly_overview_new_page",
-      "community": 245,
-      "community_name": "Module 245",
+      "community": 102,
+      "community_name": "Module 102",
       "norm_label": "weekly overview (`/data/weekly-overview`) \u2014 new page"
     },
     {
@@ -23646,8 +24130,8 @@
       "source_location": "L73",
       "_origin": "ast",
       "id": "main_documentation_weekly_overview_draft_table_new",
-      "community": 245,
-      "community_name": "Module 245",
+      "community": 102,
+      "community_name": "Module 102",
       "norm_label": "`weekly_overview_draft` table \u2014 new"
     },
     {
@@ -23657,8 +24141,8 @@
       "source_location": "L87",
       "_origin": "ast",
       "id": "main_documentation_topic_weekly_plan_complete_schema_reference",
-      "community": 245,
-      "community_name": "Module 245",
+      "community": 102,
+      "community_name": "Module 102",
       "norm_label": "`topic_weekly_plan` \u2014 complete schema reference"
     },
     {
@@ -23668,8 +24152,8 @@
       "source_location": "L103",
       "_origin": "ast",
       "id": "main_documentation_full_data_flow_timetable_weekly_overview",
-      "community": 245,
-      "community_name": "Module 245",
+      "community": 102,
+      "community_name": "Module 102",
       "norm_label": "full data flow: timetable \u2192 weekly overview"
     },
     {
@@ -23822,8 +24306,8 @@
       "source_location": "L287",
       "_origin": "ast",
       "id": "main_documentation_database_structure",
-      "community": 101,
-      "community_name": "Module 101",
+      "community": 420,
+      "community_name": "\ufffd\ud83c\udfd7\ufe0f **Database Structure**",
       "norm_label": "\ufffd\ud83c\udfd7\ufe0f **database structure**"
     },
     {
@@ -23833,8 +24317,8 @@
       "source_location": "L289",
       "_origin": "ast",
       "id": "main_documentation_core_tables",
-      "community": 101,
-      "community_name": "Module 101",
+      "community": 420,
+      "community_name": "\ufffd\ud83c\udfd7\ufe0f **Database Structure**",
       "norm_label": "**core tables:**"
     },
     {
@@ -23844,8 +24328,8 @@
       "source_location": "L524",
       "_origin": "ast",
       "id": "main_documentation_grades_nilai_table",
-      "community": 101,
-      "community_name": "Module 101",
+      "community": 420,
+      "community_name": "\ufffd\ud83c\udfd7\ufe0f **Database Structure**",
       "norm_label": "grades (nilai) table"
     },
     {
@@ -23855,8 +24339,8 @@
       "source_location": "L539",
       "_origin": "ast",
       "id": "main_documentation_attendance_qr_tables",
-      "community": 101,
-      "community_name": "Module 101",
+      "community": 420,
+      "community_name": "\ufffd\ud83c\udfd7\ufe0f **Database Structure**",
       "norm_label": "attendance (qr) tables"
     },
     {
@@ -23899,8 +24383,8 @@
       "source_location": "L618",
       "_origin": "ast",
       "id": "main_documentation_3_assessment_system",
-      "community": 80,
-      "community_name": "Module 80",
+      "community": 435,
+      "community_name": "**3. Assessment System**",
       "norm_label": "**3. assessment system**"
     },
     {
@@ -23910,8 +24394,8 @@
       "source_location": "L619",
       "_origin": "ast",
       "id": "main_documentation_teacher_workflow",
-      "community": 80,
-      "community_name": "Module 80",
+      "community": 435,
+      "community_name": "**3. Assessment System**",
       "norm_label": "**teacher workflow**:"
     },
     {
@@ -23921,8 +24405,8 @@
       "source_location": "L628",
       "_origin": "ast",
       "id": "main_documentation_admin_workflow",
-      "community": 80,
-      "community_name": "Module 80",
+      "community": 435,
+      "community_name": "**3. Assessment System**",
       "norm_label": "**admin workflow**:"
     },
     {
@@ -24053,8 +24537,8 @@
       "source_location": "L812",
       "_origin": "ast",
       "id": "main_documentation_technical_implementation",
-      "community": 101,
-      "community_name": "Module 101",
+      "community": 432,
+      "community_name": "\ud83d\udd27 **Technical Implementation**",
       "norm_label": "\ud83d\udd27 **technical implementation**"
     },
     {
@@ -24064,8 +24548,8 @@
       "source_location": "L814",
       "_origin": "ast",
       "id": "main_documentation_frontend_stack",
-      "community": 101,
-      "community_name": "Module 101",
+      "community": 432,
+      "community_name": "\ud83d\udd27 **Technical Implementation**",
       "norm_label": "**frontend stack:**"
     },
     {
@@ -24075,8 +24559,8 @@
       "source_location": "L821",
       "_origin": "ast",
       "id": "main_documentation_backend_database",
-      "community": 101,
-      "community_name": "Module 101",
+      "community": 432,
+      "community_name": "\ud83d\udd27 **Technical Implementation**",
       "norm_label": "**backend & database:**"
     },
     {
@@ -24086,8 +24570,8 @@
       "source_location": "L827",
       "_origin": "ast",
       "id": "main_documentation_key_technical_notes",
-      "community": 101,
-      "community_name": "Module 101",
+      "community": 432,
+      "community_name": "\ud83d\udd27 **Technical Implementation**",
       "norm_label": "**key technical notes:**"
     },
     {
@@ -24097,8 +24581,8 @@
       "source_location": "L881",
       "_origin": "ast",
       "id": "main_documentation_setup_deployment",
-      "community": 273,
-      "community_name": "\ud83d\udd27 **Technical Implementation**",
+      "community": 101,
+      "community_name": "Module 101",
       "norm_label": "\ud83d\ude80 **setup & deployment**"
     },
     {
@@ -24108,8 +24592,8 @@
       "source_location": "L883",
       "_origin": "ast",
       "id": "main_documentation_database_migration_files_execute_in_order",
-      "community": 273,
-      "community_name": "\ud83d\udd27 **Technical Implementation**",
+      "community": 101,
+      "community_name": "Module 101",
       "norm_label": "**database migration files (execute in order):**"
     },
     {
@@ -24119,8 +24603,8 @@
       "source_location": "L911",
       "_origin": "ast",
       "id": "main_documentation_development",
-      "community": 273,
-      "community_name": "\ud83d\udd27 **Technical Implementation**",
+      "community": 101,
+      "community_name": "Module 101",
       "norm_label": "**development:**"
     },
     {
@@ -24130,8 +24614,8 @@
       "source_location": "L918",
       "_origin": "ast",
       "id": "main_documentation_key_environment",
-      "community": 273,
-      "community_name": "\ud83d\udd27 **Technical Implementation**",
+      "community": 101,
+      "community_name": "Module 101",
       "norm_label": "**key environment:**"
     },
     {
@@ -24141,8 +24625,8 @@
       "source_location": "L928",
       "_origin": "ast",
       "id": "main_documentation_additional_files",
-      "community": 273,
-      "community_name": "\ud83d\udd27 **Technical Implementation**",
+      "community": 101,
+      "community_name": "Module 101",
       "norm_label": "**additional files:**"
     },
     {
@@ -24405,8 +24889,8 @@
       "source_location": "L1119",
       "_origin": "ast",
       "id": "main_documentation_key_components",
-      "community": 106,
-      "community_name": "Module 106",
+      "community": 329,
+      "community_name": "@fortawesome/fontawesome-svg-core",
       "norm_label": "**key components**"
     },
     {
@@ -24416,8 +24900,8 @@
       "source_location": "L1121",
       "_origin": "ast",
       "id": "main_documentation_1_myp_year_level_selection",
-      "community": 106,
-      "community_name": "Module 106",
+      "community": 329,
+      "community_name": "@fortawesome/fontawesome-svg-core",
       "norm_label": "**1. myp year level selection**"
     },
     {
@@ -24427,8 +24911,8 @@
       "source_location": "L1128",
       "_origin": "ast",
       "id": "main_documentation_2_criterion_grades_a_b_c_d",
-      "community": 106,
-      "community_name": "Module 106",
+      "community": 329,
+      "community_name": "@fortawesome/fontawesome-svg-core",
       "norm_label": "**2. criterion grades (a, b, c, d)**"
     },
     {
@@ -24438,8 +24922,8 @@
       "source_location": "L1138",
       "_origin": "ast",
       "id": "main_documentation_3_strand_grades",
-      "community": 106,
-      "community_name": "Module 106",
+      "community": 329,
+      "community_name": "@fortawesome/fontawesome-svg-core",
       "norm_label": "**3. strand grades**"
     },
     {
@@ -24449,8 +24933,8 @@
       "source_location": "L1147",
       "_origin": "ast",
       "id": "main_documentation_4_final_grade_1_7",
-      "community": 106,
-      "community_name": "Module 106",
+      "community": 329,
+      "community_name": "@fortawesome/fontawesome-svg-core",
       "norm_label": "**4. final grade (1-7)**"
     },
     {
@@ -24526,8 +25010,8 @@
       "source_location": "L1221",
       "_origin": "ast",
       "id": "main_documentation_project_structure",
-      "community": 101,
-      "community_name": "Module 101",
+      "community": 442,
+      "community_name": "\ud83d\udcc1 **Project Structure**",
       "norm_label": "\ud83d\udcc1 **project structure**"
     },
     {
@@ -24537,8 +25021,8 @@
       "source_location": "L1223",
       "_origin": "ast",
       "id": "main_documentation_key_directories",
-      "community": 101,
-      "community_name": "Module 101",
+      "community": 442,
+      "community_name": "\ud83d\udcc1 **Project Structure**",
       "norm_label": "**key directories:**"
     },
     {
@@ -24548,8 +25032,8 @@
       "source_location": "L1229",
       "_origin": "ast",
       "id": "main_documentation_important_files",
-      "community": 101,
-      "community_name": "Module 101",
+      "community": 442,
+      "community_name": "\ud83d\udcc1 **Project Structure**",
       "norm_label": "**important files:**"
     },
     {
@@ -27041,6 +27525,83 @@
     {
       "label": "README.md",
       "file_type": "document",
+      "source_file": "cpanel-agility-check/README.md",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "cpanel_agility_check_readme",
+      "community": 265,
+      "community_name": "Panduan Integrasi Agility Check Hostinger/cPanel ke Next.js & Supabase",
+      "norm_label": "readme.md"
+    },
+    {
+      "label": "Panduan Integrasi Agility Check Hostinger/cPanel ke Next.js & Supabase",
+      "file_type": "document",
+      "source_file": "cpanel-agility-check/README.md",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "cpanel_agility_check_readme_panduan_integrasi_agility_check_hostinger_cpanel_ke_next_js_supabase",
+      "community": 265,
+      "community_name": "Panduan Integrasi Agility Check Hostinger/cPanel ke Next.js & Supabase",
+      "norm_label": "panduan integrasi agility check hostinger/cpanel ke next.js & supabase"
+    },
+    {
+      "label": "\ud83d\udcc1 Daftar File",
+      "file_type": "document",
+      "source_file": "cpanel-agility-check/README.md",
+      "source_location": "L7",
+      "_origin": "ast",
+      "id": "cpanel_agility_check_readme_daftar_file",
+      "community": 265,
+      "community_name": "Panduan Integrasi Agility Check Hostinger/cPanel ke Next.js & Supabase",
+      "norm_label": "\ud83d\udcc1 daftar file"
+    },
+    {
+      "label": "\ud83d\ude80 Langkah Instalasi",
+      "file_type": "document",
+      "source_file": "cpanel-agility-check/README.md",
+      "source_location": "L17",
+      "_origin": "ast",
+      "id": "cpanel_agility_check_readme_langkah_instalasi",
+      "community": 265,
+      "community_name": "Panduan Integrasi Agility Check Hostinger/cPanel ke Next.js & Supabase",
+      "norm_label": "\ud83d\ude80 langkah instalasi"
+    },
+    {
+      "label": "Langkah 1: Jalankan Migrasi SQL di Supabase",
+      "file_type": "document",
+      "source_file": "cpanel-agility-check/README.md",
+      "source_location": "L19",
+      "_origin": "ast",
+      "id": "cpanel_agility_check_readme_langkah_1_jalankan_migrasi_sql_di_supabase",
+      "community": 265,
+      "community_name": "Panduan Integrasi Agility Check Hostinger/cPanel ke Next.js & Supabase",
+      "norm_label": "langkah 1: jalankan migrasi sql di supabase"
+    },
+    {
+      "label": "Langkah 2: Unggah File PHP ke Hostinger / cPanel",
+      "file_type": "document",
+      "source_file": "cpanel-agility-check/README.md",
+      "source_location": "L24",
+      "_origin": "ast",
+      "id": "cpanel_agility_check_readme_langkah_2_unggah_file_php_ke_hostinger_cpanel",
+      "community": 265,
+      "community_name": "Panduan Integrasi Agility Check Hostinger/cPanel ke Next.js & Supabase",
+      "norm_label": "langkah 2: unggah file php ke hostinger / cpanel"
+    },
+    {
+      "label": "\ud83d\udd12 Keamanan & Pengelolaan",
+      "file_type": "document",
+      "source_file": "cpanel-agility-check/README.md",
+      "source_location": "L32",
+      "_origin": "ast",
+      "id": "cpanel_agility_check_readme_keamanan_pengelolaan",
+      "community": 265,
+      "community_name": "Panduan Integrasi Agility Check Hostinger/cPanel ke Next.js & Supabase",
+      "norm_label": "\ud83d\udd12 keamanan & pengelolaan"
+    },
+    {
+      "label": "README.md",
+      "file_type": "document",
       "source_file": "cpanel-psikotest/README.md",
       "source_location": "L1",
       "_origin": "ast",
@@ -28583,6 +29144,17 @@
       "_origin": "ast",
       "source": "c_users_ccs_laptop2627_5_documents_github_school_admin_components_aliases",
       "target": "c_users_ccs_laptop2627_5_documents_github_school_admin_components_aliases_utils",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "cpanel-agility-check/config.php",
+      "source_location": "L14",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "cpanel_agility_check_config",
+      "target": "cpanel_agility_check_config_callnextjsapi",
       "confidence_score": 1.0
     },
     {
@@ -32121,6 +32693,18 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
+      "source_file": "src/app/data/agility-check/lib/agilityPdfGenerator.js",
+      "source_location": "L60",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_agility_check_lib_agilitypdfgenerator_generateagilitypdf",
+      "target": "package_dependencies_jspdf"
+    },
+    {
+      "relation": "references",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
       "source_file": "src/app/data/psikotest/lib/psikotestPdfGenerator.js",
       "source_location": "L67",
       "weight": 1.0,
@@ -35073,6 +35657,141 @@
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
+      "source_file": "src/app/api/data/agility-check/[id]/route.js",
+      "source_location": "L113",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_api_data_agility_check_id_route",
+      "target": "src_app_api_data_agility_check_id_route_delete",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/data/agility-check/[id]/route.js",
+      "source_location": "L5",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_api_data_agility_check_id_route",
+      "target": "src_app_api_data_agility_check_id_route_get",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/data/agility-check/questions/route.js",
+      "source_location": "L151",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_api_data_agility_check_questions_route",
+      "target": "src_app_api_data_agility_check_questions_route_delete",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/data/agility-check/questions/route.js",
+      "source_location": "L45",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_api_data_agility_check_questions_route",
+      "target": "src_app_api_data_agility_check_questions_route_get",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/data/agility-check/questions/route.js",
+      "source_location": "L74",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_api_data_agility_check_questions_route",
+      "target": "src_app_api_data_agility_check_questions_route_post",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/data/agility-check/questions/route.js",
+      "source_location": "L99",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_api_data_agility_check_questions_route",
+      "target": "src_app_api_data_agility_check_questions_route_put",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/data/agility-check/questions/route.js",
+      "source_location": "L4",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_api_data_agility_check_questions_route",
+      "target": "src_app_api_data_agility_check_questions_route_valid_options",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/data/agility-check/questions/route.js",
+      "source_location": "L6",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_api_data_agility_check_questions_route",
+      "target": "src_app_api_data_agility_check_questions_route_validatequestionpayload",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/app/api/data/agility-check/questions/route.js",
+      "source_location": "L26",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_api_data_agility_check_questions_route_validatequestionpayload",
+      "target": "src_app_api_data_agility_check_questions_route_valid_options"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/data/agility-check/questions/route.js",
+      "source_location": "L77",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_api_data_agility_check_questions_route_post",
+      "target": "src_app_api_data_agility_check_questions_route_validatequestionpayload",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/data/agility-check/questions/route.js",
+      "source_location": "L129",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_api_data_agility_check_questions_route_put",
+      "target": "src_app_api_data_agility_check_questions_route_validatequestionpayload",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/data/agility-check/route.js",
+      "source_location": "L4",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_api_data_agility_check_route",
+      "target": "src_app_api_data_agility_check_route_get",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
       "source_file": "src/app/api/data/psikotest/[id]/route.js",
       "source_location": "L93",
       "weight": 1.0,
@@ -35985,6 +36704,28 @@
       "source": "src_app_api_public_admission_route_post",
       "target": "src_app_api_public_admission_route_extractschedulemeta",
       "confidence_score": 0.5
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/public/agility-check/route.js",
+      "source_location": "L9",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_api_public_agility_check_route",
+      "target": "src_app_api_public_agility_check_route_get",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/public/agility-check/route.js",
+      "source_location": "L44",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_api_public_agility_check_route",
+      "target": "src_app_api_public_agility_check_route_post",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -37259,6 +38000,157 @@
       "source": "src_app_data_admission_simulation_page_feesimulationpage",
       "target": "src_app_data_admission_simulation_page_formatdateid",
       "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/agility-check/lib/agilityPdfGenerator.js",
+      "source_location": "L23",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_agility_check_lib_agilitypdfgenerator",
+      "target": "src_app_data_agility_check_lib_agilitypdfgenerator_formatindonesiandate",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/agility-check/lib/agilityPdfGenerator.js",
+      "source_location": "L37",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_agility_check_lib_agilitypdfgenerator",
+      "target": "src_app_data_agility_check_lib_agilitypdfgenerator_generateagilitypdf",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/agility-check/lib/agilityPdfGenerator.js",
+      "source_location": "L5",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_agility_check_lib_agilitypdfgenerator",
+      "target": "src_app_data_agility_check_lib_agilitypdfgenerator_loadimgbase64",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/agility-check/page.jsx",
+      "source_location": "L28",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_agility_check_page",
+      "target": "src_app_data_agility_check_lib_agilitypdfgenerator",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/agility-check/lib/agilityPdfGenerator.js",
+      "source_location": "L54",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_agility_check_lib_agilitypdfgenerator_generateagilitypdf",
+      "target": "src_app_data_agility_check_lib_agilitypdfgenerator_loadimgbase64",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/agility-check/lib/agilityPdfGenerator.js",
+      "source_location": "L137",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_agility_check_lib_agilitypdfgenerator_generateagilitypdf",
+      "target": "src_app_data_agility_check_lib_agilitypdfgenerator_formatindonesiandate",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/agility-check/page.jsx",
+      "source_location": "L28",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_agility_check_page",
+      "target": "src_app_data_agility_check_lib_agilitypdfgenerator_formatindonesiandate",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/app/data/agility-check/page.jsx",
+      "source_location": "L597",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_agility_check_page_agilitycheckmanagementpage",
+      "target": "src_app_data_agility_check_lib_agilitypdfgenerator_formatindonesiandate"
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/agility-check/page.jsx",
+      "source_location": "L28",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_agility_check_page",
+      "target": "src_app_data_agility_check_lib_agilitypdfgenerator_generateagilitypdf",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/app/data/agility-check/page.jsx",
+      "source_location": "L163",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_agility_check_page_agilitycheckmanagementpage",
+      "target": "src_app_data_agility_check_lib_agilitypdfgenerator_generateagilitypdf"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/agility-check/page.jsx",
+      "source_location": "L43",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_agility_check_page",
+      "target": "src_app_data_agility_check_page_agilitycheckmanagementpage",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/agility-check/page.jsx",
+      "source_location": "L30",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_agility_check_page",
+      "target": "src_app_data_agility_check_page_empty_question_form",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/app/data/agility-check/page.jsx",
+      "source_location": "L316",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_agility_check_page_agilitycheckmanagementpage",
+      "target": "src_lib_agilitycalculator_agility_interpretation_bands"
     },
     {
       "relation": "contains",
@@ -45322,6 +46214,84 @@
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
+      "source_file": "src/lib/agilityCalculator.js",
+      "source_location": "L13",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_lib_agilitycalculator",
+      "target": "src_lib_agilitycalculator_agility_interpretation_bands",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/lib/agilityCalculator.js",
+      "source_location": "L81",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_lib_agilitycalculator",
+      "target": "src_lib_agilitycalculator_calculateagilityscore",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/lib/agilityCalculator.js",
+      "source_location": "L52",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_lib_agilitycalculator",
+      "target": "src_lib_agilitycalculator_getagilityinterpretation",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/lib/agilityCalculator.js",
+      "source_location": "L147",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_lib_agilitycalculator_calculateagilityscore",
+      "target": "src_lib_agilitycalculator_getagilityinterpretation",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/lib/agilityServer.js",
+      "source_location": "L8",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_lib_agilityserver",
+      "target": "src_lib_agilityserver_getsupabaseadmin",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/lib/agilityServer.js",
+      "source_location": "L27",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_lib_agilityserver",
+      "target": "src_lib_agilityserver_ismissingtableerror",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/lib/agilityServer.js",
+      "source_location": "L46",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_lib_agilityserver",
+      "target": "src_lib_agilityserver_verifyagilitypublicauth",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
       "source_file": "src/lib/auth.js",
       "source_location": "L22",
       "weight": 1.0,
@@ -52275,6 +53245,17 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L2990",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "database_schema_database_schema_relationships",
+      "target": "database_schema_21_recruitment_assessments_domain_data_psikotest_data_agility_check",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "DATABASE_SCHEMA.md",
       "source_location": "L198",
       "weight": 1.0,
       "_origin": "ast",
@@ -53952,6 +54933,105 @@
       "_origin": "ast",
       "source": "database_schema_20_1_tables",
       "target": "database_schema_court_time_slots",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L2994",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "database_schema_21_recruitment_assessments_domain_data_psikotest_data_agility_check",
+      "target": "database_schema_21_1_psychological_test_disc_tables",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L3032",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "database_schema_21_recruitment_assessments_domain_data_psikotest_data_agility_check",
+      "target": "database_schema_21_2_agility_check_tables",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L3079",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "database_schema_21_recruitment_assessments_domain_data_psikotest_data_agility_check",
+      "target": "database_schema_21_3_erd_relationships_recruitment_assessments_domain",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L3020",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "database_schema_21_1_psychological_test_disc_tables",
+      "target": "database_schema_psychotest_answers",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L2996",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "database_schema_21_1_psychological_test_disc_tables",
+      "target": "database_schema_psychotest_questions",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L3009",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "database_schema_21_1_psychological_test_disc_tables",
+      "target": "database_schema_psychotest_results",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L3066",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "database_schema_21_2_agility_check_tables",
+      "target": "database_schema_agility_answers",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L3034",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "database_schema_21_2_agility_check_tables",
+      "target": "database_schema_agility_questions",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L3052",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "database_schema_21_2_agility_check_tables",
+      "target": "database_schema_agility_results",
       "confidence_score": 1.0
     },
     {
@@ -57939,6 +59019,72 @@
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
+      "source_file": "cpanel-agility-check/README.md",
+      "source_location": "L1",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "cpanel_agility_check_readme",
+      "target": "cpanel_agility_check_readme_panduan_integrasi_agility_check_hostinger_cpanel_ke_next_js_supabase",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "cpanel-agility-check/README.md",
+      "source_location": "L7",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "cpanel_agility_check_readme_panduan_integrasi_agility_check_hostinger_cpanel_ke_next_js_supabase",
+      "target": "cpanel_agility_check_readme_daftar_file",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "cpanel-agility-check/README.md",
+      "source_location": "L32",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "cpanel_agility_check_readme_panduan_integrasi_agility_check_hostinger_cpanel_ke_next_js_supabase",
+      "target": "cpanel_agility_check_readme_keamanan_pengelolaan",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "cpanel-agility-check/README.md",
+      "source_location": "L17",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "cpanel_agility_check_readme_panduan_integrasi_agility_check_hostinger_cpanel_ke_next_js_supabase",
+      "target": "cpanel_agility_check_readme_langkah_instalasi",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "cpanel-agility-check/README.md",
+      "source_location": "L19",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "cpanel_agility_check_readme_langkah_instalasi",
+      "target": "cpanel_agility_check_readme_langkah_1_jalankan_migrasi_sql_di_supabase",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "cpanel-agility-check/README.md",
+      "source_location": "L24",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "cpanel_agility_check_readme_langkah_instalasi",
+      "target": "cpanel_agility_check_readme_langkah_2_unggah_file_php_ke_hostinger_cpanel",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
       "source_file": "cpanel-psikotest/README.md",
       "source_location": "L1",
       "weight": 1.0,
@@ -59122,5 +60268,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "cbd852bcb950979ddcf984a671b45e257db46355"
+  "built_at_commit": "0e985f7a7fae4f67853349feb9dba324d441fbc4"
 }

@@ -114,6 +114,7 @@ import {
   faBoxesStacked,
   faBoxOpen,
   faFutbol,
+  faBolt,
   faCheckToSlot
 } from "@fortawesome/free-solid-svg-icons"
 
@@ -126,6 +127,9 @@ const iconMap = {
   'faVoteYea': faCheckToSlot,
   'vote-yea': faCheckToSlot,
   'fas fa-futbol': faFutbol,
+  'fas fa-bolt': faBolt,
+  'faBolt': faBolt,
+  'bolt': faBolt,
   'fas fa-brain': faBrain,
   'faBrain': faBrain,
   'brain': faBrain,
