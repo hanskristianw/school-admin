@@ -5,18 +5,18 @@
 // 2. An entry for every single version.
 // 3. Grouped categories: Added, Changed, Fixed, Security, Deprecated, Removed.
 // 4. Chronological order (latest first) with release dates.
-// 5. Daily Release Cadence: 1 single consolidated release per date.
+// 5. Weekly Release Cadence: 1 single consolidated release per calendar week (Mon–Sun).
 // ==============================================================================
 
 export const SYSTEM_RELEASES = [
   {
     "version": "0.6.2",
-    "date": "2026-11-12",
+    "date": "2026-11-13",
     "isLatest": true,
     "summary": {
-      "id": "Penghapusan penuh database SQLite lokal pada portal Sewa Lapangan (cpanel-sewa-lapangan/index.php) sehingga 100% terhubung langsung ke Supabase, perancangan modul konfigurasi master sesi jam bermain (Court Time Slots) dengan toggle aktif/nonaktif di admin dan integrasi dinamis ke formulir publik, pengamanan konsol admin legacy, serta pratinjau PDF & auto-retry bukti transfer.",
-      "en": "Complete removal of local SQLite from Court Rental portal with 100% direct Supabase integration, dedicated Court Time Slots operational manager with live active/inactive toggles in admin and dynamic public form loading, legacy admin console removal, and robust PDF proof preview with auto-retry.",
-      "zh": "彻底移除场地租赁系统中的本地 SQLite 数据库并 100% 直连 Supabase，新增球场营业时段主数据管理（Court Time Slots）支持后台实时启停切换及公共预约表单动态加载，移除旧版管理台，并支持 PDF 凭证预览与自动重试机制。"
+      "id": "Penghapusan penuh database SQLite lokal pada portal Sewa Lapangan (cpanel-sewa-lapangan/index.php) sehingga 100% terhubung langsung ke Supabase, perancangan modul konfigurasi master sesi jam bermain (Court Time Slots) dengan toggle aktif/nonaktif di admin dan integrasi dinamis ke formulir publik, pengamanan konsol admin legacy, serta pratinjau PDF & auto-retry bukti transfer, serta perbaikan pemuatan Subject Criteria & Task-Specific Clarification (TSC) pada /data/topic-new beserta validasi pilihan MYP Year eksplisit.",
+      "en": "Complete removal of local SQLite from Court Rental portal with 100% direct Supabase integration, dedicated Court Time Slots operational manager with live active/inactive toggles in admin and dynamic public form loading, legacy admin console removal, and robust PDF proof preview with auto-retry, plus fixed Subject Criteria & Task-Specific Clarification (TSC) loading in /data/topic-new with explicit MYP Year selection warnings.",
+      "zh": "彻底移除场地租赁系统中的本地 SQLite 数据库并 100% 直连 Supabase，新增球场营业时段主数据管理（Court Time Slots）支持后台实时启停切换及公共预约表单动态加载，移除旧版管理台，并支持 PDF 凭证预览与自动重试机制，同时修复 /data/topic-new 的 Subject Criteria 与 TSC 加载问题并完善未选 MYP 学年提醒。"
     },
     "sections": {
       "added": [
@@ -52,6 +52,11 @@ export const SYSTEM_RELEASES = [
         }
       ],
       "changed": [
+        {
+          "id": "Menghadirkan kembali pilihan Unit Number (Unit 1–4) dan tampilan Semester otomatis pada editor dokumen Unit Planner (/data/topic-new) yang sebelumnya hilang pasca-migrasi dari wizard, lengkap dengan aturan otomatis sekolah: Unit 1–2 = Semester 1 dan Unit 3–4 = Semester 2; Grade 7 (Unit 1–4) = MYP 1; Grade 8 (Unit 1–2) = MYP 1 & (Unit 3–4) = MYP 3; Grade 9 (Unit 1–2) = MYP 3 & (Unit 3–4) = MYP 5; Grade 10 = MYP 5; serta peringatan langsung apabila Class, Unit Number, atau MYP Year belum dipilih.",
+          "en": "Restored Unit Number (Unit 1–4) selection and automatic Semester display in the Unit Planner document editor (/data/topic-new) that were omitted after migrating from the legacy wizard, enforcing school curriculum mapping rules: Unit 1–2 = Semester 1 and Unit 3–4 = Semester 2; Grade 7 (Unit 1–4) = MYP 1; Grade 8 (Unit 1–2) = MYP 1 & (Unit 3–4) = MYP 3; Grade 9 (Unit 1–2) = MYP 3 & (Unit 3–4) = MYP 5; Grade 10 = MYP 5; plus inline warnings whenever Class, Unit Number, or MYP Year is not yet selected.",
+          "zh": "在 /data/topic-new 单元计划文档编辑器中恢复从旧版向导迁移时遗漏的单元编号（Unit 1–4）选择与自动学期显示，并严格落实学校映射规则：Unit 1–2 = 第 1 学期、Unit 3–4 = 第 2 学期；7 年级（Unit 1–4）= MYP 1；8 年级（Unit 1–2）= MYP 1、（Unit 3–4）= MYP 3；9 年级（Unit 1–2）= MYP 3、（Unit 3–4）= MYP 5；10 年级 = MYP 5，同时在未选择班级、单元编号或 MYP 学年时显示明确提示。"
+        },
         {
           "id": "Integrasi dinamis sesi jam pemesanan publik pada formulir cPanel (cpanel-sewa-lapangan/index.php) dan API publik (/api/public/court-rental): daftar slot yang muncul pada formulir publik kini bersumber langsung secara dinamis dari tabel court_time_slots yang berstatus aktif di Supabase.",
           "en": "Dynamic public booking slot loading in cPanel form (cpanel-sewa-lapangan/index.php) and public API (/api/public/court-rental): available slots on the public form now dynamically fetch directly from active records in Supabase court_time_slots.",
@@ -89,6 +94,16 @@ export const SYSTEM_RELEASES = [
         }
       ],
       "fixed": [
+        {
+          "id": "Menambahkan resolver fallback year_level IB MYP (src/app/data/topic-new/lib/mypStrandsHelper.js) dan menerapkannya pada fetchStrandsForCriteria, editor dokumen Unit Planner, serta ekspor PDF/Word (pdfGenerators.js) agar unit dengan topic_year = 2 atau 4 (seperti Civics Grade 8) tetap memuat strands & rubrics secara lengkap.",
+          "en": "Added an IB MYP year_level fallback resolver (src/app/data/topic-new/lib/mypStrandsHelper.js) and applied it across fetchStrandsForCriteria, the Unit Planner document editor, and PDF/Word exporters (pdfGenerators.js) so units with topic_year = 2 or 4 (e.g. Grade 8 Civics) load strands and rubrics properly.",
+          "zh": "新增 IB MYP 学年层级回退解析器（src/app/data/topic-new/lib/mypStrandsHelper.js）并应用于 fetchStrandsForCriteria、单元计划文档编辑器以及 PDF/Word 导出（pdfGenerators.js），确保 topic_year 为 2 或 4 的单元（如 8 年级公民课）正常显示评估标准与量规。"
+        },
+        {
+          "id": "Mencegah infinite re-fetch loop pada UnitPlannerDocumentEditor ketika strands belum tersedia, memastikan pilihan dropdown MYP Year hanya berisi MYP 1, MYP 3, dan MYP 5 (melarang pilihan MYP 2 / 4), serta menampilkan catatan peringatan jika unit lama menyimpan nilai non-1/3/5.",
+          "en": "Prevented repeated re-fetch loops in UnitPlannerDocumentEditor when strands are empty, restricted the MYP Year dropdown strictly to MYP 1, MYP 3, and MYP 5 (disallowing MYP 2 / 4), and displayed an inline warning if an existing unit holds a legacy non-1/3/5 value.",
+          "zh": "修复 UnitPlannerDocumentEditor 在缺失指标时的重复请求循环，严格限制 MYP 学年下拉选项仅包含 MYP 1、MYP 3、MYP 5（禁止选择 MYP 2 / 4），并在既有单元包含非 1/3/5 旧值时显示提示。"
+        },
         {
           "id": "Memperbaiki validasi submit_booking pada Sewa Lapangan agar langsung tervalidasi terhadap tabel court_rentals dan court_blackout_dates di Supabase, serta menghapus otomatis file bukti transfer di Hostinger apabila jadwal ditolak oleh server.",
           "en": "Fixed submit_booking validation in Court Rental to validate directly against the court_rentals and court_blackout_dates tables in Supabase, automatically cleaning up the uploaded proof file on Hostinger if the schedule is rejected by the server.",
@@ -469,4 +484,4 @@ export const SYSTEM_RELEASES = [
       ]
     }
   }
-]
+];

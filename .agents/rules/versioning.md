@@ -14,9 +14,10 @@ description: Mandatory semantic versioning rules (0.x.y during active developmen
 - **PATCH (`0.y.Z`)**: Dinaikkan saat rilis perbaikan kendala (*bug fixes*), *hotfix*, penyesuaian tata letak UI, atau pembenahan teks kamus bahasa/i18n.
 - **MAJOR (`1.0.0`)**: Milestone rilis resmi pertama (*General Availability* / GA). Hanya dinaikkan ketika seluruh fondasi dan modul sekolah (Akademik, PYP/MYP, Presensi, Rapor, Pengaturan Akun, Keuangan) sudah lengkap, stabil, dan teruji penuh tanpa perubahan arsitektur yang merusak.
 
-## 3. Daily Single Version Rule (Aturan 1 Versi Per Hari)
-- **STRICT DIRECTIVE**: Dilarang cepat-cepat menaikkan nomor versi program. Jika perubahan, penambahan fitur, atau perbaikan bug dilakukan pada **hari/tanggal yang sama**, gunakan **hanya 1 nomor versi tunggal** untuk hari tersebut.
-- Seluruh penambahan fitur (`added`), penyesuaian fungsionalitas (`changed`), dan perbaikan bug (`fixed`) pada hari yang sama digabungkan (*consolidated*) ke dalam satu entri versi rilis hari itu. Jangan membuat versi pecahan beruntun (`0.6.1`, `0.6.2`, `0.6.3`, dll.) dalam hari yang sama.
+## 3. Weekly Single Version Rule (PERATURAN KERAS: Maksimal 1 Versi Per Minggu)
+- **STRICT DIRECTIVE — NO SAME-WEEK VERSION BUMP**: DILARANG KERAS menaikkan nomor versi (`0.x.y`) selama pekerjaan/perubahan masih terjadi pada **minggu kalender yang sama** (Senin–Minggu / *ISO week* yang sama) dengan rilis terbaru (`isLatest: true`) di `src/data/changelog.js`.
+- **Mandatory Consolidation**: Semua penambahan fitur (`added`), perubahan (`changed`), dan perbaikan bug (`fixed`) pada minggu yang sama **WAJIB digabungkan (*consolidated*) ke dalam entri versi terbaru yang sedang aktif** pada minggu tersebut (cukup perbarui `date`, `summary`, dan `sections` pada entri `isLatest: true`), **TANPA** membuat entri versi baru dan **TANPA** mengubah `"version"` di `package.json`.
+- Kenaikan versi baru (`0.MINOR.0` atau `0.y.PATCH`) **HANYA diperbolehkan** apabila sudah memasuki **minggu kalender baru** dibandingkan `date` rilis terakhir (atau jika user secara eksplisit meminta rilis versi baru). Jangan mengulangi pembuatan versi beruntun seperti `0.6.1`, `0.6.2`, `0.6.3` di minggu yang sama.
 
 ## 4. Synchronized Version Files
 Setiap kali ada rilis baru atau perubahan pada `SYSTEM_RELEASES`:

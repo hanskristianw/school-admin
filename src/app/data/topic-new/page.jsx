@@ -30,6 +30,7 @@ import GoogleClassroomConnector from './components/GoogleClassroomConnector'
 import CommunityProjectTab from './components/CommunityProjectTab'
 import UnitGradeRecap from './components/UnitGradeRecap'
 import { isHtmlEmpty } from './lib/instructionDocxHelper'
+import { resolveStrandsForCriteria, deriveMypYearFromGradeAndUnit } from './lib/mypStrandsHelper'
 import 'driver.js/dist/driver.css'
 
 export default function TopicNewPage() {
@@ -1770,7 +1771,7 @@ export default function TopicNewPage() {
   }
 
   // Fetch strands and rubrics for selected criteria (used in TSC step)
-  const fetchStrandsForCriteria = async (criteriaIds, mypYear) => {
+  const fetchStrandsForCriteria = useCallback(async (criteriaIds, mypYear) => {
     if (!criteriaIds || criteriaIds.length === 0 || !mypYear) {
       setWizardStrands([])
       setWizardRubrics([])
@@ -1779,20 +1780,21 @@ export default function TopicNewPage() {
     
     setLoadingStrands(true)
     try {
-      // Fetch strands for selected criteria and year level
-      const { data: strandsData, error: strandsError } = await supabase
+      // Fetch candidate strands across available year levels and resolve the best MYP benchmark per criterion
+      // (supports units stored with MYP Year 2 / 4 or subjects that only define Year 1 strands).
+      const { data: rawStrandsData, error: strandsError } = await supabase
         .from('strands')
         .select('strand_id, criterion_id, year_level, label, content')
         .in('criterion_id', criteriaIds)
-        .eq('year_level', mypYear)
         .order('label')
       
       if (strandsError) throw strandsError
-      
-      setWizardStrands(strandsData || [])
+
+      const strandsData = resolveStrandsForCriteria(rawStrandsData || [], criteriaIds, mypYear)
+      setWizardStrands(strandsData)
       
       // Fetch rubrics for these strands
-      if (strandsData && strandsData.length > 0) {
+      if (strandsData.length > 0) {
         const strandIds = strandsData.map(s => s.strand_id)
         const { data: rubricsData, error: rubricsError } = await supabase
           .from('rubrics')
@@ -1812,7 +1814,7 @@ export default function TopicNewPage() {
     } finally {
       setLoadingStrands(false)
     }
-  }
+  }, [])
 
   // Fetch subjects for current user
   const fetchSubjects = async (userId, role, isCurriculum = false, isAdminFlag = false) => {
@@ -5114,10 +5116,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
     if (initKelas) {
       fetchSubjectsForKelas(initKelas)
       const foundK = sourceKelas.find(k => String(k.kelas_id) === String(initKelas))
-      const kname = foundK?.kelas_nama || ''
-      if (kname.includes('7') || kname.includes('8')) initialMypYear = '1'
-      else if (kname.includes('9')) initialMypYear = '3'
-      else if (kname.includes('10')) initialMypYear = '5'
+      initialMypYear = deriveMypYearFromGradeAndUnit(foundK?.kelas_nama || '', '')
     } else {
       setSubjectsForSelectedKelas([]) // Reset subject list
     }

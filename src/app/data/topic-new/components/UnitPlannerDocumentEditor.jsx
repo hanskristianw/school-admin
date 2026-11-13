@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import AssessmentInstructionEditor from './AssessmentInstructionEditor'
 import { isHtmlEmpty } from '../lib/instructionDocxHelper'
+import { resolveStrandsForCriteria, deriveSemesterFromUnit, deriveMypYearFromGradeAndUnit } from '../lib/mypStrandsHelper'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import {
   faTimes,
@@ -147,6 +148,7 @@ export default function UnitPlannerDocumentEditor({
   const [hasGrades, setHasGrades] = useState(false)
   const [mypYearModalOpen, setMypYearModalOpen] = useState(false)
   const [pendingMypYear, setPendingMypYear] = useState(null)
+  const [pendingUnitNumber, setPendingUnitNumber] = useState(null)
 
   // Check if topic assessment already has student grades
   useEffect(() => {
@@ -184,8 +186,11 @@ export default function UnitPlannerDocumentEditor({
   const handleMypYearSelectChange = (newYear) => {
     if (!newYear || String(newYear) === String(selectedTopic?.topic_year)) return
 
-    // If no year was set previously (first time picking year), apply directly
-    if (!selectedTopic?.topic_year) {
+    const prevValid = ['1', '3', '5'].includes(String(selectedTopic?.topic_year || ''))
+    const hasExistingTsc = Object.keys(wizardAssessment?.assessment_tsc || {}).length > 0
+
+    // Apply directly when selecting for the first time, replacing legacy invalid year (2/4), or no TSC saved yet
+    if (!prevValid || !hasExistingTsc) {
       setSelectedTopic(prev => ({ ...prev, topic_year: newYear }))
       if (fetchStrandsForCriteria && wizardAssessment?.selected_criteria?.length > 0) {
         fetchStrandsForCriteria(wizardAssessment.selected_criteria, newYear)
@@ -193,22 +198,60 @@ export default function UnitPlannerDocumentEditor({
       return
     }
 
-    // Changing existing MYP Year -> open confirmation popup
+    // Changing existing valid MYP Year with existing TSC -> open confirmation popup
     setPendingMypYear(newYear)
     setMypYearModalOpen(true)
   }
 
+  const handleUnitNumberChange = (newUnit) => {
+    const kObj = (allKelasRaw || []).find(k => String(k.kelas_id) === String(selectedTopic?.topic_kelas_id)) ||
+      (allKelas || []).find(k => String(k.kelas_id) === String(selectedTopic?.topic_kelas_id))
+    const derivedSem = deriveSemesterFromUnit(newUnit)
+    const derivedMyp = deriveMypYearFromGradeAndUnit(kObj?.kelas_nama || '', newUnit)
+
+    if (derivedMyp && String(derivedMyp) !== String(selectedTopic?.topic_year || "")) {
+      const prevValid = ['1', '3', '5'].includes(String(selectedTopic?.topic_year || ''))
+      const hasExistingTsc = Object.keys(wizardAssessment?.assessment_tsc || {}).length > 0
+      if (prevValid && hasExistingTsc) {
+        setPendingUnitNumber(newUnit)
+        setPendingMypYear(derivedMyp)
+        setMypYearModalOpen(true)
+        return
+      }
+    }
+
+    setSelectedTopic(prev => ({
+      ...prev,
+      topic_urutan: newUnit,
+      ...(derivedMyp ? { topic_year: derivedMyp } : {})
+    }))
+    if (derivedSem) {
+      setWizardAssessment(prev => ({ ...prev, assessment_semester: derivedSem }))
+    }
+    if (derivedMyp && fetchStrandsForCriteria && wizardAssessment?.selected_criteria?.length > 0) {
+      fetchStrandsForCriteria(wizardAssessment.selected_criteria, derivedMyp)
+    }
+  }
+
   const confirmMypYearChange = async () => {
     const newYr = pendingMypYear
+    const newUnit = pendingUnitNumber
     setMypYearModalOpen(false)
     setPendingMypYear(null)
+    setPendingUnitNumber(null)
 
-    // 1. Update topic_year
-    setSelectedTopic(prev => ({ ...prev, topic_year: newYr }))
+    // 1. Update topic_year (and pending unit_urutan if triggered from Unit switch)
+    setSelectedTopic(prev => ({
+      ...prev,
+      topic_year: newYr,
+      ...(newUnit !== null ? { topic_urutan: newUnit } : {})
+    }))
 
-    // 2. Clear assessment_tsc
+    // 2. Clear assessment_tsc and sync semester if unit changed
+    const newSem = newUnit !== null ? deriveSemesterFromUnit(newUnit) : null
     setWizardAssessment(prev => ({
       ...prev,
+      ...(newSem ? { assessment_semester: newSem } : {}),
       assessment_tsc: {}
     }))
 
@@ -221,6 +264,7 @@ export default function UnitPlannerDocumentEditor({
   const cancelMypYearChange = () => {
     setMypYearModalOpen(false)
     setPendingMypYear(null)
+    setPendingUnitNumber(null)
   }
 
   const page1Ref = useRef(null)
@@ -234,17 +278,31 @@ export default function UnitPlannerDocumentEditor({
     }
   }, [selectedTopic?.topic_subject_id])
 
+  // Guard against repeated fetches if a criterion has no strands in DB
+  const lastStrandsFetchKeyRef = useRef('')
+
+  // Auto-sync assessment_semester from unit number when empty (Unit 1-2 = Sem 1, Unit 3-4 = Sem 2)
+  useEffect(() => {
+    if (!isOpen) return
+    const derivedSem = deriveSemesterFromUnit(selectedTopic?.topic_urutan)
+    if (derivedSem && !wizardAssessment?.assessment_semester) {
+      setWizardAssessment(prev => ({ ...prev, assessment_semester: derivedSem }))
+    }
+  }, [isOpen, selectedTopic?.topic_urutan, wizardAssessment?.assessment_semester, setWizardAssessment])
+
   // Ensure strands are loaded when criteria and year are present
   useEffect(() => {
     const selCriteria = wizardAssessment?.selected_criteria || []
     const topicYear = selectedTopic?.topic_year
-    if (selCriteria.length > 0 && topicYear && fetchStrandsForCriteria) {
+    if (selCriteria.length > 0 && topicYear && fetchStrandsForCriteria && !loadingStrands) {
       const allLoaded = selCriteria.every(cid => (wizardStrands || []).some(s => s.criterion_id === cid))
-      if (!allLoaded) {
+      const fetchKey = `${selectedTopic?.topic_id || 'new'}:${topicYear}:${[...selCriteria].sort().join(',')}`
+      if (!allLoaded && lastStrandsFetchKeyRef.current !== fetchKey) {
+        lastStrandsFetchKeyRef.current = fetchKey
         fetchStrandsForCriteria(selCriteria, topicYear)
       }
     }
-  }, [wizardAssessment?.selected_criteria, selectedTopic?.topic_year, wizardStrands, fetchStrandsForCriteria])
+  }, [selectedTopic?.topic_id, wizardAssessment?.selected_criteria, selectedTopic?.topic_year, wizardStrands, loadingStrands, fetchStrandsForCriteria])
 
   // Relational Teacher Name resolver according to DATABASE_SCHEMA:
   // Priority 1: detail_kelas.teacher_user_id (Real Teacher teaching this specific class & subject)
@@ -350,7 +408,8 @@ export default function UnitPlannerDocumentEditor({
     if (!selectedTopic?.topic_nama?.trim()) errors.push('Unit Title is required')
     if (!selectedTopic?.topic_kelas_id) errors.push('Class is required')
     if (!selectedTopic?.topic_subject_id) errors.push('Subject is required')
-    if (!selectedTopic?.topic_year) errors.push('MYP Year is required')
+    if (![1, 2, 3, 4].includes(Number(selectedTopic?.topic_urutan))) errors.push('Unit Number (1–4) is required')
+    if (!['1', '3', '5'].includes(String(selectedTopic?.topic_year || ''))) errors.push('MYP Year (1, 3, or 5) is required')
     const dur = Number(selectedTopic?.topic_duration)
     if (!selectedTopic?.topic_duration || isNaN(dur) || dur <= 0) {
       errors.push('Unit Duration (weeks) is required and must be at least 1 week')
@@ -372,20 +431,26 @@ export default function UnitPlannerDocumentEditor({
 
   // Current Subject and Class objects
   const currentSubject = subjects.find(s => String(s.subject_id) === String(selectedTopic?.topic_subject_id))
-  const currentKelas = (allKelasRaw || []).find(k => String(k.kelas_id) === String(selectedTopic?.topic_kelas_id))
+  const currentKelas = (allKelasRaw || []).find(k => String(k.kelas_id) === String(selectedTopic?.topic_kelas_id)) ||
+    (allKelas || []).find(k => String(k.kelas_id) === String(selectedTopic?.topic_kelas_id))
   const subjectName = currentSubject?.subject_name || '–'
   const kelasName = currentKelas?.kelas_nama || '–'
-  const unitName = selectedTopic?.topic_urutan ? `Unit ${selectedTopic.topic_urutan}` : (selectedTopic?.topic_nama || 'Unit 1')
+  const effectiveSemester = deriveSemesterFromUnit(selectedTopic?.topic_urutan) || wizardAssessment?.assessment_semester || ""
+  const unitName = selectedTopic?.topic_urutan
+    ? `Unit ${selectedTopic.topic_urutan}${effectiveSemester ? ` (Semester ${effectiveSemester})` : ""}`
+    : (selectedTopic?.topic_nama || '–')
 
   if (!isOpen || !selectedTopic) return null
 
   // Group strands by criterion
-  const topicYearNum = Number(selectedTopic.topic_year) || 1
+  const hasMypYear = Boolean(selectedTopic?.topic_year)
+  const isValidMypYear = ['1', '3', '5'].includes(String(selectedTopic?.topic_year || ''))
+  const topicYearNum = Number(selectedTopic.topic_year) || 0
   const selectedCriteriaList = (wizardCriteria || []).filter(c => 
     (wizardAssessment?.selected_criteria || []).includes(c.criterion_id)
   )
   const selectedCriteriaCodes = selectedCriteriaList.map(c => c.code).join('/') || 'A/B/C/D'
-  const proficiencyLevel = selectedTopic.topic_year ? `Phase ${selectedTopic.topic_year}` : 'Phase 1'
+  const proficiencyLevel = hasMypYear ? `Phase ${selectedTopic.topic_year}` : 'Not selected'
 
   const bandLevels = ['7-8', '5-6', '3-4', '1-2']
 
@@ -575,17 +640,11 @@ export default function UnitPlannerDocumentEditor({
                           } else {
                             setSelectedTopic(prev => ({ ...prev, topic_kelas_id: kid }))
                           }
-                          // Auto-suggest MYP year if not set
-                          if (kid && !selectedTopic.topic_year) {
-                            const foundK = (allKelas || []).find(k => String(k.kelas_id) === String(kid))
-                            const kname = foundK?.kelas_nama || ''
-                            let suggestedYear = ''
-                            if (kname.includes('7') || kname.includes('8')) suggestedYear = '1'
-                            else if (kname.includes('9')) suggestedYear = '3'
-                            else if (kname.includes('10')) suggestedYear = '5'
-                            if (suggestedYear) {
-                              setSelectedTopic(prev => ({ ...prev, topic_year: suggestedYear }))
-                            }
+                          const foundK = (allKelas || []).find(k => String(k.kelas_id) === String(kid))
+                          const derivedYear = deriveMypYearFromGradeAndUnit(foundK?.kelas_nama || '', selectedTopic?.topic_urutan)
+                          setSelectedTopic(prev => ({ ...prev, topic_year: derivedYear }))
+                          if (derivedYear && fetchStrandsForCriteria && wizardAssessment?.selected_criteria?.length > 0) {
+                            fetchStrandsForCriteria(wizardAssessment.selected_criteria, derivedYear)
                           }
                         }}
                         className={`w-full bg-transparent font-semibold outline-none ${
@@ -678,6 +737,45 @@ export default function UnitPlannerDocumentEditor({
                     </td>
                   </tr>
 
+                  {/* Row 1b: Unit Number & Semester (auto-derived: Unit 1-2 = Sem 1, Unit 3-4 = Sem 2) */}
+                  <tr>
+                    <td className="w-[15%] bg-[#E8E8E8] font-bold border border-black px-2.5 py-1.5 align-middle">
+                      Unit number <span className="text-red-500">*</span>
+                    </td>
+                    <td className={`w-[40%] border border-black px-2.5 py-1.5 align-middle ${hasGrades ? 'bg-[#F2F2F2]' : (!selectedTopic.topic_urutan || validationErrors.some(e => e.toLowerCase().includes('unit number')) ? 'bg-amber-50' : '')}`}>
+                      <select
+                        disabled={hasGrades}
+                        value={selectedTopic.topic_urutan || ''}
+                        onChange={(e) => handleUnitNumberChange(e.target.value)}
+                        className={`w-full bg-transparent font-semibold outline-none ${
+                          hasGrades
+                            ? 'cursor-not-allowed text-gray-500'
+                            : !selectedTopic.topic_urutan
+                              ? 'cursor-pointer hover:bg-yellow-50 focus:bg-white text-amber-700'
+                              : 'cursor-pointer hover:bg-yellow-50 focus:bg-white text-black'
+                        }`}
+                        title={hasGrades ? 'Unit cannot be changed because student grades are recorded' : 'Unit 1 & 2 = Semester 1, Unit 3 & 4 = Semester 2'}
+                      >
+                        <option value="">-- Select Unit --</option>
+                        <option value="1">Unit 1 (Semester 1)</option>
+                        <option value="2">Unit 2 (Semester 1)</option>
+                        <option value="3">Unit 3 (Semester 2)</option>
+                        <option value="4">Unit 4 (Semester 2)</option>
+                      </select>
+                    </td>
+                    <td className="w-[15%] bg-[#E8E8E8] font-bold border border-black px-2.5 py-1.5 align-middle">
+                      Semester
+                    </td>
+                    <td className="w-[30%] bg-[#F2F2F2] border border-black px-2.5 py-1.5 align-middle" colSpan={3}>
+                      <div
+                        className={`font-semibold select-none ${effectiveSemester ? "text-gray-800" : "text-amber-700 italic font-normal"}`}
+                        title="Automatically set by Unit: Unit 1–2 = Semester 1, Unit 3–4 = Semester 2"
+                      >
+                        {effectiveSemester ? `Semester ${effectiveSemester}` : 'Auto (select Unit 1–4)'}
+                      </div>
+                    </td>
+                  </tr>
+
                   {/* Row 2: Unit title, MYP year, Unit duration */}
                   <tr>
                     <td className="w-[15%] bg-[#E8E8E8] font-bold border border-black px-2.5 py-1.5 align-middle">
@@ -695,23 +793,30 @@ export default function UnitPlannerDocumentEditor({
                     <td className="w-[15%] bg-[#E8E8E8] font-bold border border-black px-2.5 py-1.5 align-middle">
                       MYP year
                     </td>
-                    <td className={`w-[12%] border border-black px-2.5 py-1.5 align-middle ${hasGrades ? 'bg-[#F2F2F2]' : ''}`}>
+                    <td className={`w-[12%] border border-black px-2.5 py-1.5 align-middle ${hasGrades ? 'bg-[#F2F2F2]' : (!isValidMypYear ? 'bg-amber-50' : '')}`}>
                       <select
                         disabled={hasGrades}
-                        value={selectedTopic.topic_year || ''}
+                        value={isValidMypYear ? String(selectedTopic.topic_year) : ''}
                         onChange={(e) => handleMypYearSelectChange(e.target.value)}
                         className={`w-full bg-transparent font-semibold outline-none ${
                           hasGrades 
                             ? 'cursor-not-allowed text-gray-500' 
-                            : 'cursor-pointer hover:bg-yellow-50 focus:bg-white text-black'
+                            : !isValidMypYear
+                              ? 'cursor-pointer hover:bg-yellow-50 focus:bg-white text-amber-700'
+                              : 'cursor-pointer hover:bg-yellow-50 focus:bg-white text-black'
                         }`}
-                        title={hasGrades ? 'MYP Year cannot be changed because this assessment already has student grades recorded' : 'Change MYP Year (MYP 1, 3, 5)'}
+                        title={hasGrades ? 'MYP Year cannot be changed because this assessment already has student grades recorded' : 'Select MYP Year (MYP 1, 3, 5)'}
                       >
-                        <option value="">Year</option>
+                        <option value="">-- Select --</option>
                         <option value="1">MYP 1</option>
                         <option value="3">MYP 3</option>
                         <option value="5">MYP 5</option>
                       </select>
+                      {hasMypYear && !isValidMypYear && (
+                        <div className="text-[10px] text-amber-700 leading-tight mt-0.5">
+                          Legacy value (MYP {selectedTopic.topic_year}) is invalid — select 1, 3, or 5
+                        </div>
+                      )}
                     </td>
                     <td className="w-[11%] bg-[#E8E8E8] font-bold border border-black px-2.5 py-1.5 align-middle">
                       Unit duration
@@ -991,11 +1096,16 @@ export default function UnitPlannerDocumentEditor({
                       </div>
 
                       {/* Dynamic Rendered Strands (Image 2 style) */}
-                      {selectedCriteriaList.length > 0 ? (
+                      {!hasMypYear ? (
+                        <div className="p-2.5 rounded border border-amber-300 bg-amber-50 text-amber-800 text-xs leading-relaxed flex items-start gap-2">
+                          <FontAwesomeIcon icon={faExclamationTriangle} className="mt-0.5 text-amber-600 shrink-0" />
+                          <span>
+                            <strong>MYP Year is not selected.</strong> Please select <strong>Class</strong> &amp; <strong>Unit number (1–4)</strong> or <strong>MYP year</strong> in the header table above to display objectives &amp; strands.
+                          </span>
+                        </div>
+                      ) : selectedCriteriaList.length > 0 ? (
                         selectedCriteriaList.map(crit => {
-                          const cStrands = (wizardStrands || []).filter(s => s.criterion_id === crit.criterion_id)
-                          let matched = cStrands.filter(s => Number(s.year_level) === topicYearNum)
-                          if (matched.length === 0 && cStrands.length > 0) matched = cStrands
+                          const matched = resolveStrandsForCriteria(wizardStrands || [], [crit.criterion_id], topicYearNum)
 
                           return (
                             <div key={crit.criterion_id} className="space-y-1">
@@ -1420,7 +1530,9 @@ export default function UnitPlannerDocumentEditor({
                       Proficiency Level
                     </td>
                     <td className="border border-black p-2 font-semibold">
-                      {proficiencyLevel}
+                      {hasMypYear ? proficiencyLevel : (
+                        <span className="text-amber-700 italic">Not selected (select MYP Year in Unit Planner)</span>
+                      )}
                     </td>
                   </tr>
 
@@ -1543,14 +1655,14 @@ export default function UnitPlannerDocumentEditor({
                   const hasName = Boolean(wizardAssessment?.assessment_nama?.trim())
                   const hasTaskDesc = Boolean(wizardAssessment?.assessment_task_specific_description?.trim())
                   const hasCriteria = Boolean(wizardAssessment?.selected_criteria?.length > 0)
-                  const canGenerateTSC = hasName && hasTaskDesc && hasInstructions && hasCriteria
+                  const canGenerateTSC = hasMypYear && hasName && hasTaskDesc && hasInstructions && hasCriteria
 
                   return (
                     <button
                       type="button"
                       onClick={requestAiHelpTSC}
                       disabled={!canGenerateTSC}
-                      title={!canGenerateTSC ? 'Lengkapi Assessment Name, Task Description, dan Assessment Instructions terlebih dahulu' : 'Generate AI TSC'}
+                      title={!hasMypYear ? 'Please select MYP Year in Unit Planner first' : (!canGenerateTSC ? 'Please complete Assessment Name, Task Description, and Assessment Instructions first' : 'Generate AI TSC')}
                       className={`text-xs font-semibold flex items-center gap-1 ${
                         canGenerateTSC ? 'text-purple-700 hover:underline cursor-pointer' : 'text-gray-400 cursor-not-allowed opacity-60'
                       }`}
@@ -1571,7 +1683,17 @@ export default function UnitPlannerDocumentEditor({
                 </div>
               )}
 
-              {selectedCriteriaList.length > 0 ? (
+              {!hasMypYear ? (
+                <div className="p-4 rounded-lg border border-amber-300 bg-amber-50 text-amber-900 text-xs flex items-start gap-3">
+                  <FontAwesomeIcon icon={faExclamationTriangle} className="text-amber-600 text-base mt-0.5 shrink-0" />
+                  <div className="space-y-1">
+                    <div className="font-bold text-sm text-amber-900">MYP Year is not selected</div>
+                    <p className="leading-relaxed">
+                      MYP Year follows the <strong>Grade &amp; Unit (1–4)</strong> rule. Please select <strong>Class</strong>, <strong>Unit number</strong>, and <strong>MYP year</strong> in the <strong>Unit Planner</strong> document first so Subject Criteria and Task-Specific Clarification can load.
+                    </p>
+                  </div>
+                </div>
+              ) : selectedCriteriaList.length > 0 ? (
                 selectedCriteriaList.map(criterion => {
                   const criterionStrands = (wizardStrands || []).filter(s => s.criterion_id === criterion.criterion_id)
                   const criterionRubrics = (wizardRubrics || []).filter(r =>

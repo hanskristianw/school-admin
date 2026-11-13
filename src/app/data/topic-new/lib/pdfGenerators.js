@@ -10,6 +10,7 @@ import autoTable from 'jspdf-autotable'
 import { supabase } from '@/lib/supabase'
 import JSZip from 'jszip'
 import { isHtmlContent, isHtmlEmpty, htmlToPlainText } from './instructionDocxHelper'
+import { resolveStrandsForCriteria } from './mypStrandsHelper'
 
 // ─── Pure Helpers ────────────────────────────────────────────────────────────
 
@@ -648,11 +649,7 @@ export const generateUnitPlannerPDF = async (topic, { currentUserId, onSuccess, 
 
       const blocks = [];
       for (const criterion of criteriaList) {
-        const cStrands = strandList.filter(s => s.criterion_id === criterion.criterion_id);
-        let matchedStrands = cStrands.filter(s => Number(s.year_level) === topicYearNum);
-        if (matchedStrands.length === 0 && cStrands.length > 0) {
-          matchedStrands = cStrands;
-        }
+        const matchedStrands = resolveStrandsForCriteria(strandList, [criterion.criterion_id], topicYearNum);
 
         if (matchedStrands.length > 0) {
           let blockStr = `${criterion.code} - ${criterion.name}\n`;
@@ -1659,14 +1656,18 @@ export const resolveTeacherNameForTopic = async (topic, currentUserId = null) =>
  * Fetch strands+rubrics for selected criteria and year level.
  */
 const fetchStrandsAndRubrics = async (selectedCriteriaIds, yearLevel) => {
-  const { data: strandsData } = await supabase
+  if (!selectedCriteriaIds || selectedCriteriaIds.length === 0) {
+    return { strandsData: [], rubricsData: [] };
+  }
+
+  const { data: rawStrandsData } = await supabase
     .from('strands')
     .select('*')
     .in('criterion_id', selectedCriteriaIds)
-    .eq('year_level', yearLevel)
     .order('label');
 
-  const strandIds = (strandsData || []).map(s => s.strand_id);
+  const strandsData = resolveStrandsForCriteria(rawStrandsData || [], selectedCriteriaIds, yearLevel);
+  const strandIds = strandsData.map(s => s.strand_id);
   let rubricsData = [];
   if (strandIds.length > 0) {
     const { data } = await supabase
@@ -1677,7 +1678,7 @@ const fetchStrandsAndRubrics = async (selectedCriteriaIds, yearLevel) => {
     rubricsData = data || [];
   }
 
-  return { strandsData: strandsData || [], rubricsData };
+  return { strandsData, rubricsData };
 };
 
 // ─── Assessment PDF from Wizard ──────────────────────────────────────────────

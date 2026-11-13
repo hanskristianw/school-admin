@@ -21,12 +21,15 @@
 
 ## Semantic Versioning (SemVer) & Release Guidelines Rule
 - **STRICT DIRECTIVE**: Sistem ini masih berada dalam fase pengembangan aktif (*initial development / in-progress*). Seluruh penomoran versi rilis **WAJIB menggunakan skema `0.x.y`** dan dilarang meloncat ke `1.x.x` sebelum sistem dinyatakan resmi selesai, matang, dan stabil (General Availability / GA).
-- **Daily Single Version Rule (Aturan 1 Versi Per Hari)**: Dilarang cepat-cepat menaikkan nomor versi program. Jika perubahan, penambahan fitur, atau perbaikan bug dilakukan pada **hari/tanggal yang sama**, gunakan **hanya 1 nomor versi tunggal** untuk hari tersebut. Seluruh penambahan fitur (`added`), penyesuaian (`changed`), dan perbaikan bug (`fixed`) pada hari yang sama digabungkan (*consolidated*) ke dalam satu entri versi rilis hari itu. Jangan membuat versi pecahan beruntun (`0.6.1`, `0.6.2`, `0.6.3`, dll.) dalam hari yang sama.
+- **Weekly Single Version Rule (PERATURAN KERAS: 1 Versi Per Minggu — DILARANG NAIK VERSI DALAM MINGGU YANG SAMA)**:
+  - DILARANG KERAS menaikkan nomor versi (`0.MINOR.PATCH`) apabila tanggal pembaruan **masih berada pada minggu kalender yang sama** (Senin–Minggu / *ISO week* yang sama) dengan rilis terbaru (`isLatest: true`) di `src/data/changelog.js`.
+  - Seluruh perubahan baru (`added`, `changed`, `fixed`, dll.) yang dikerjakan pada **minggu yang sama** **WAJIB digabungkan (*consolidated*) langsung ke dalam entri versi terbaru yang sedang aktif** (cukup perbarui `date` ke tanggal pembaruan terkini dan perbarui `summary`/`sections`), **TANPA** membuat nomor versi baru di `src/data/changelog.js` dan **TANPA** mengubah `"version"` di `package.json`.
+  - Nomor versi baru hanya boleh dinaikkan **maksimal 1 kali** ketika pekerjaan memasuki **minggu kalender baru** (atau jika user secara eksplisit memerintahkan rilis versi baru). Jangan pernah membuat versi beruntun dalam minggu yang sama (`0.6.1`, `0.6.2`, `0.6.3`, dst.).
 - **Kaidah Penomoran: `0.MINOR.PATCH`**:
-  - **MINOR (`0.Y.0`)**: Dinaikkan saat ada penambahan fitur baru atau modul program yang signifikan untuk hari rilis baru (misal: rilis modul baru, penambahan dialog pelaporan bug terpadu, integrasi layanan eksternal).
-  - **PATCH (`0.y.Z`)**: Dinaikkan saat rilis perbaikan kendala (*bug fixes*), *hotfix*, penyesuaian tata letak UI, atau pembenahan teks bahasa/i18n pada hari rilis baru jika tidak ada fitur mayor.
+  - **MINOR (`0.Y.0`)**: Dinaikkan saat memasuki minggu rilis baru yang memuat penambahan fitur baru atau modul program yang signifikan (misal: rilis modul baru, penambahan dialog pelaporan bug terpadu, integrasi layanan eksternal).
+  - **PATCH (`0.y.Z`)**: Dinaikkan saat memasuki minggu rilis baru yang hanya berisi perbaikan kendala (*bug fixes*), *hotfix*, penyesuaian tata letak UI, atau pembenahan teks bahasa/i18n.
   - **MAJOR (`1.0.0`)**: Hanya dideklarasikan ketika seluruh modul utama sistem sekolah telah selesai secara komprehensif, teruji penuh, dan ditutup masa pengembangannya untuk dipakai operasional resmi.
-- Setiap rilis baru atau perubahan nomor versi pada `SYSTEM_RELEASES` di `src/data/changelog.js`, agen **WAJIB menyelaraskan nomor versi di `package.json`**.
+- Setiap rilis versi baru pada minggu baru di `SYSTEM_RELEASES` (`src/data/changelog.js`), agen **WAJIB menyelaraskan nomor versi di `package.json`**.
 
 ## Single Action / Anti-Duplication Button Rule
 - **STRICT DIRECTIVE**: Dilarang membuat tombol duplikat (*duplicate/redundant buttons*) yang membuka modal, mengarahkan navigasi, atau memicu tindakan fungsionalitas yang sama pada satu halaman atau di dalam sub-modal/kartu anak (*child modal/drawer*).
