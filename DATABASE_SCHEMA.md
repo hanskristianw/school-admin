@@ -2984,3 +2984,155 @@ Master configuration of operational 2-hour rental sessions available for public 
 | `sort_order` | `INT` | Display order (1, 2, 3...) |
 | `created_at` | `TIMESTAMPTZ` | Creation timestamp |
 | `updated_at` | `TIMESTAMPTZ` | Last update timestamp |
+
+---
+
+## 21. Recruitment Assessments Domain (`/data/psikotest`, `/data/agility-check`)
+
+Module for applicant recruitment assessments hosted externally via Hostinger/cPanel PHP portals (`cpanel-psikotest/`, `cpanel-agility-check/`) that communicate securely with Next.js API routes and persist master questions, candidate submissions, and server-calculated scores in Supabase.
+
+### 21.1 Psychological Test (DISC) Tables
+
+#### `psychotest_questions`
+Master bank of 96 DISC statements grouped into 24 forced-choice sets (4 items per `group_no`).
+
+| Column Name | Type | Description / Constraint |
+| --- | --- | --- |
+| `id` | `SERIAL` | Primary Key |
+| `group_no` | `INTEGER` | Question group number (`1`–`24`) |
+| `statement_text` | `TEXT` | Bilingual indicator text (English + Indonesian) |
+| `p_icon` | `VARCHAR` | DISC symbol for Most (`Z`, `*`, `▲`, `<<`, `N`) |
+| `k_icon` | `VARCHAR` | DISC symbol for Least (`Z`, `*`, `▲`, `<<`, `N`) |
+| `p_mean` | `INTEGER` | DISC scoring key code for Most (`1`–`5`) |
+| `k_mean` | `INTEGER` | DISC scoring key code for Least (`1`–`5`) |
+
+#### `psychotest_results`
+Candidate header record submitted from `cpanel-psikotest/submit.php` via `POST /api/public/psikotest`.
+
+| Column Name | Type | Description / Constraint |
+| --- | --- | --- |
+| `id` | `SERIAL` | Primary Key |
+| `nama` | `VARCHAR` | Applicant full name |
+| `posisi` | `VARCHAR` | Position applied for |
+| `tanggal` | `DATE` | Test date |
+| `created_at` | `TIMESTAMPTZ` | Submission timestamp |
+
+#### `psychotest_answers`
+Per-group Most (`P`) and Least (`K`) selections submitted by a candidate.
+
+| Column Name | Type | Description / Constraint |
+| --- | --- | --- |
+| `id` | `SERIAL` | Primary Key |
+| `result_id` | `INTEGER` | Foreign Key to `psychotest_results(id)` ON DELETE CASCADE |
+| `group_no` | `INTEGER` | Group number (`1`–`24`) |
+| `p_question_id` | `INTEGER` | Foreign Key to `psychotest_questions(id)` (Most selection) |
+| `k_question_id` | `INTEGER` | Foreign Key to `psychotest_questions(id)` (Least selection) |
+| `created_at` | `TIMESTAMPTZ` | Submission timestamp |
+
+### 21.2 Agility Check Tables
+
+#### `agility_questions`
+Master bank of situational judgment multiple-choice questions managed from `/data/agility-check` (and seeded by `migrations/add-agility-check-tables.sql`). `correct_answer` is never exposed by the public API (`GET /api/public/agility-check`).
+
+| Column Name | Type | Description / Constraint |
+| --- | --- | --- |
+| `id` | `SERIAL` | Primary Key |
+| `question_no` | `INTEGER` | Display sequence number (`1`, `2`, ...) |
+| `dimension` | `VARCHAR(100)` | Dimension grouping label (default `'Dimensi 1'`–`'Dimensi 4'`, 4 items per dimension) |
+| `question_text` | `TEXT` | Situational prompt text |
+| `option_a` | `TEXT` | Choice A text |
+| `option_b` | `TEXT` | Choice B text |
+| `option_c` | `TEXT` | Choice C text |
+| `option_d` | `TEXT` | Choice D text |
+| `correct_answer` | `VARCHAR(1)` | Answer key (`'A'`, `'B'`, `'C'`, `'D'`) — HR/server-only |
+| `is_active` | `BOOLEAN` | Whether the question is served on the Hostinger public form (default `true`) |
+| `created_at` | `TIMESTAMPTZ` | Creation timestamp |
+| `updated_at` | `TIMESTAMPTZ` | Last update timestamp |
+
+#### `agility_results`
+Candidate Agility Check result header graded server-side upon submission from `cpanel-agility-check/submit.php` via `POST /api/public/agility-check`.
+
+| Column Name | Type | Description / Constraint |
+| --- | --- | --- |
+| `id` | `SERIAL` | Primary Key |
+| `nama` | `VARCHAR(200)` | Applicant full name |
+| `posisi` | `VARCHAR(200)` | Position applied for |
+| `tanggal` | `DATE` | Test date |
+| `total_score` | `INTEGER` | Number of correct answers (`1` point per match) |
+| `max_score` | `INTEGER` | Total active questions graded (default `16`) |
+| `interpretation` | `VARCHAR(120)` | HR rubric label (`'Pilihan respons situasional kuat'`, `'Cukup kuat'`, `'Perlu pendalaman'`, `'Perlu evaluasi lanjutan'`) |
+| `created_at` | `TIMESTAMPTZ` | Submission timestamp |
+
+#### `agility_answers`
+Per-question candidate choices and server-graded correctness flags.
+
+| Column Name | Type | Description / Constraint |
+| --- | --- | --- |
+| `id` | `SERIAL` | Primary Key |
+| `result_id` | `INTEGER` | Foreign Key to `agility_results(id)` ON DELETE CASCADE |
+| `question_id` | `INTEGER` | Foreign Key to `agility_questions(id)` ON DELETE SET NULL |
+| `question_no` | `INTEGER` | Question number snapshot |
+| `selected_option` | `VARCHAR(1)` | Candidate selected choice (`'A'`, `'B'`, `'C'`, `'D'`) |
+| `is_correct` | `BOOLEAN` | Server-evaluated correctness (`true` = `+1`, `false` = `0`) |
+| `created_at` | `TIMESTAMPTZ` | Submission timestamp |
+
+### 21.3 ERD / Relationships (Recruitment Assessments Domain)
+
+```mermaid
+erDiagram
+    psychotest_results ||--o{ psychotest_answers : "has_disc_answers"
+    psychotest_questions ||--o{ psychotest_answers : "referenced_by_p_or_k"
+    agility_results ||--o{ agility_answers : "has_agility_answers"
+    agility_questions ||--o{ agility_answers : "graded_against"
+
+    psychotest_results {
+        int id PK
+        string nama
+        string posisi
+        date tanggal
+    }
+
+    psychotest_questions {
+        int id PK
+        int group_no
+        text statement_text
+        string p_icon
+        string k_icon
+    }
+
+    psychotest_answers {
+        int id PK
+        int result_id FK
+        int group_no
+        int p_question_id FK
+        int k_question_id FK
+    }
+
+    agility_results {
+        int id PK
+        string nama
+        string posisi
+        date tanggal
+        int total_score
+        int max_score
+        string interpretation
+    }
+
+    agility_questions {
+        int id PK
+        int question_no
+        string dimension
+        text question_text
+        string correct_answer
+        boolean is_active
+    }
+
+    agility_answers {
+        int id PK
+        int result_id FK
+        int question_id FK
+        int question_no
+        string selected_option
+        boolean is_correct
+    }
+```
