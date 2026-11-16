@@ -3637,8 +3637,8 @@
       "source_location": "L38",
       "_origin": "ast",
       "id": "package_dependencies_bcryptjs",
-      "community": 445,
-      "community_name": "bcryptjs",
+      "community": 133,
+      "community_name": "Module 133",
       "norm_label": "bcryptjs"
     },
     {
@@ -3648,8 +3648,8 @@
       "source_location": "L38",
       "_origin": "ast",
       "id": "bcryptjs",
-      "community": 445,
-      "community_name": "bcryptjs",
+      "community": 133,
+      "community_name": "Module 133",
       "norm_label": "bcryptjs"
     },
     {
@@ -3681,8 +3681,8 @@
       "source_location": "L40",
       "_origin": "ast",
       "id": "package_dependencies_class_variance_authority",
-      "community": 133,
-      "community_name": "Module 133",
+      "community": 420,
+      "community_name": "class-variance-authority",
       "norm_label": "class-variance-authority"
     },
     {
@@ -3692,8 +3692,8 @@
       "source_location": "L40",
       "_origin": "ast",
       "id": "class_variance_authority",
-      "community": 133,
-      "community_name": "Module 133",
+      "community": 420,
+      "community_name": "class-variance-authority",
       "norm_label": "class-variance-authority"
     },
     {
@@ -4855,7 +4855,7 @@
       "label": "buildDocument()",
       "file_type": "code",
       "source_file": "src/app/api/assessment-docx/route.js",
-      "source_location": "L50",
+      "source_location": "L59",
       "_origin": "ast",
       "id": "src_app_api_assessment_docx_route_builddocument",
       "community": 85,
@@ -33958,7 +33958,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/app/api/assessment-docx/route.js",
-      "source_location": "L50",
+      "source_location": "L59",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_api_assessment_docx_route",
@@ -33981,7 +33981,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/app/api/assessment-docx/route.js",
-      "source_location": "L27",
+      "source_location": "L36",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_api_assessment_docx_route_post",
@@ -60336,5 +60336,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "3d43d9f91b69c9f155202d88a07a7b7cc506f6e5"
+  "built_at_commit": "e957791d69198f9c1ca44143568f3878ac1d6f0a"
 }

@@ -3,7 +3,7 @@
  * Format matches HTML version exactly
  */
 
-import { Document, Packer, Paragraph, Table, TableRow, TableCell, TextRun, AlignmentType, WidthType, BorderStyle, VerticalAlign, ImageRun } from 'docx';
+import { Document, Packer, Paragraph, Table, TableRow, TableCell, TextRun, AlignmentType, WidthType, BorderStyle, VerticalAlign, ImageRun, HeightRule } from 'docx';
 import fs from 'fs/promises';
 import path from 'path';
 import { convertInstructionsToDocxElements } from '@/app/data/topic-new/lib/instructionDocxHelper';
@@ -23,8 +23,17 @@ export async function POST(request) {
     } catch (err) {
       console.warn('Could not load logo:', err);
     }
+
+    // Load result box image
+    let resultBoxBuffer = null;
+    try {
+      const resultBoxPath = path.join(process.cwd(), 'public', 'images', 'assessment-result-box.png');
+      resultBoxBuffer = await fs.readFile(resultBoxPath);
+    } catch (err) {
+      console.warn('Could not load result box image:', err);
+    }
     
-    const doc = buildDocument(payload, { logoBuffer });
+    const doc = buildDocument(payload, { logoBuffer, resultBoxBuffer });
     const buffer = await Packer.toBuffer(doc);
     
     return new Response(buffer, {
@@ -47,7 +56,7 @@ export async function POST(request) {
   }
 }
 
-function buildDocument(payload, { logoBuffer } = {}) {
+function buildDocument(payload, { logoBuffer, resultBoxBuffer } = {}) {
   const meta = payload?.meta ?? {};
   const criteria = Array.isArray(payload?.criteria) ? payload.criteria : [];
   
@@ -79,7 +88,7 @@ function buildDocument(payload, { logoBuffer } = {}) {
             }),
           ],
           alignment: AlignmentType.CENTER,
-          spacing: { after: 150 },
+          spacing: { after: 120 },
         })
       );
     } catch (err) {
@@ -88,12 +97,53 @@ function buildDocument(payload, { logoBuffer } = {}) {
   }
   
   // Add result box
-  rightColumnChildren.push(
-    new Paragraph({
-      text: '[                    ]',
+  if (resultBoxBuffer) {
+    try {
+      rightColumnChildren.push(
+        new Paragraph({
+          children: [
+            new ImageRun({
+              data: resultBoxBuffer,
+              transformation: {
+                width: 90,
+                height: 75,
+              },
+              type: 'png',
+            }),
+          ],
+          alignment: AlignmentType.CENTER,
+          spacing: { after: 60 },
+        })
+      );
+    } catch (err) {
+      console.warn('Could not add result box image to document:', err);
+    }
+  } else {
+    // Fallback: A single-cell table with solid border
+    const fallbackBox = new Table({
       alignment: AlignmentType.CENTER,
-      spacing: { after: 80 },
-    }),
+      width: { size: 1800, type: WidthType.DXA },
+      rows: [
+        new TableRow({
+          height: { value: 1200, rule: HeightRule.ATLEAST },
+          children: [
+            new TableCell({
+              children: [new Paragraph({ text: '' })],
+              borders: {
+                top: { style: BorderStyle.SINGLE, size: 8, color: '000000' },
+                bottom: { style: BorderStyle.SINGLE, size: 8, color: '000000' },
+                left: { style: BorderStyle.SINGLE, size: 8, color: '000000' },
+                right: { style: BorderStyle.SINGLE, size: 8, color: '000000' },
+              },
+            }),
+          ],
+        }),
+      ],
+    });
+    rightColumnChildren.push(fallbackBox);
+  }
+
+  rightColumnChildren.push(
     new Paragraph({
       children: [
         new TextRun({

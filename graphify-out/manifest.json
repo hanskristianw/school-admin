@@ -660,8 +660,8 @@
     "semantic_hash": "655ff4969401f85d067a205512767404"
   },
   "package.json": {
-    "mtime": 1794533348.3833025,
-    "ast_hash": "563e78857edb1a73448f0acdeac2c754",
+    "mtime": 1794809866.7329326,
+    "ast_hash": "26b1b96f17897939c2a89f16bec5c777",
     "semantic_hash": ""
   },
   "postcss.config.mjs": {
@@ -690,8 +690,8 @@
     "semantic_hash": "be6f93ea7a9e04d6fab7b1591fc80e17"
   },
   "src/app/api/assessment-docx/route.js": {
-    "mtime": 1791879297.444052,
-    "ast_hash": "5c817eacde6ddd6a7ba0bf190c8ca33d",
+    "mtime": 1794809729.7414632,
+    "ast_hash": "bec1760eac546f32c6e5f1c11d9740a6",
     "semantic_hash": ""
   },
   "src/app/api/assessment-html/route.js": {
@@ -2495,8 +2495,8 @@
     "semantic_hash": ""
   },
   "src/data/changelog.js": {
-    "mtime": 1794560536.7886932,
-    "ast_hash": "eb9412ecf9392d309ac688ee7c780da2",
+    "mtime": 1794809890.4867845,
+    "ast_hash": "009e00dc56067bab4a8a9c060c029dae",
     "semantic_hash": ""
   },
   "src/app/api/system-feedback/upload/route.js": {
@@ -2682,6 +2682,11 @@
   "cpanel-agility-check/README.md": {
     "mtime": 1794546611.5404272,
     "ast_hash": "f1b452f253a40078177d37862f4c0508",
+    "semantic_hash": ""
+  },
+  "public/images/assessment-result-box.png": {
+    "mtime": 1794809452.1929862,
+    "ast_hash": "de9db3fda4adea7a30b82db09b7e0a15",
     "semantic_hash": ""
   }
 }

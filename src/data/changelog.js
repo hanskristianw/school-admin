@@ -10,9 +10,28 @@
 
 export const SYSTEM_RELEASES = [
   {
+    "version": "0.6.3",
+    "date": "2026-11-16",
+    "isLatest": true,
+    "summary": {
+      "id": "Standardisasi dan penyelarasan tampilan kotak nilai (RESULT box) pada ekspor dokumen Microsoft Word (.docx) modul Planning (/data/topic-new) agar identik dengan versi cetak PDF: menggantikan teks placeholder kurung siku dengan gambar rounded rectangle vector-sharp anti-aliased berbingkai solid hitam dan latar belakang bersih yang proporsional di bawah logo sekolah.",
+      "en": "Standardized and aligned the RESULT score box in Microsoft Word (.docx) export within the Planning module (/data/topic-new) to match the official PDF print layout: replaced legacy bracket text placeholders with an anti-aliased rounded rectangle vector box with clean solid black borders positioned proportionately below the school logo.",
+      "zh": "规范并统一教学规划模块（/data/topic-new）导出 Microsoft Word（.docx）文档中的成绩框（RESULT box）视觉样式，使其与 PDF 打印版完全一致：将原有的方括号文本占位符替换为高清晰度抗锯齿圆角黑框，与校徽及下方 RESULT 标识协调对齐。"
+    },
+    "sections": {
+      "fixed": [
+        {
+          "id": "Memperbaiki tampilan kotak nilai (RESULT box) pada API ekspor Word Assessment (/api/assessment-docx) di modul /data/topic-new (tab Planning): mengganti placeholder teks kurung siku '[                    ]' dengan aset gambar kotak rounded rectangle resmi beresolusi tinggi (public/images/assessment-result-box.png, border 2px solid hitam, radius 12px) yang dilengkapi mekanisme fallback tabel bordered, sehingga tampilan kotak nilai pada dokumen Word identik dengan pratinjau dan cetakan PDF.",
+          "en": "Fixed the RESULT score box rendering in Assessment Word export API (/api/assessment-docx) under the /data/topic-new module (Planning tab): replaced bracket text placeholder '[                    ]' with an official high-resolution rounded rectangle asset (public/images/assessment-result-box.png, 2px solid black border, 12px radius) and bordered table fallback, ensuring Word documents match the PDF layout exactly.",
+          "zh": "修复 /data/topic-new 模块（规划标签页）考核表 Word 导出接口（/api/assessment-docx）中的成绩框（RESULT box）显示：将方括号文本占位符 '[                    ]' 替换为官方高分辨率圆角矩形素材（public/images/assessment-result-box.png，2px 纯黑边框，12px 圆角）并配以表格边框回退机制，确保 Word 导出版与 PDF 版式完全一致。"
+        }
+      ]
+    }
+  },
+  {
     "version": "0.6.2",
     "date": "2026-11-13",
-    "isLatest": true,
+    "isLatest": false,
     "summary": {
       "id": "Penghapusan penuh database SQLite lokal pada portal Sewa Lapangan (cpanel-sewa-lapangan/index.php) sehingga 100% terhubung langsung ke Supabase, perancangan modul konfigurasi master sesi jam bermain (Court Time Slots) dengan toggle aktif/nonaktif di admin dan integrasi dinamis ke formulir publik, pengamanan konsol admin legacy, pratinjau PDF & auto-retry bukti transfer, perbaikan pemuatan Subject Criteria & TSC pada /data/topic-new beserta validasi MYP Year, serta penambahan modul rekrutmen Agility Check terpisah (halaman PHP Hostinger, Bank Soal & Kunci Jawaban HR, PDF HR) dan dokumentasi skema Psikotest & Agility Check di DATABASE_SCHEMA.md.",
       "en": "Complete removal of local SQLite from Court Rental portal with 100% direct Supabase integration, dedicated Court Time Slots operational manager with live active/inactive toggles in admin and dynamic public form loading, legacy admin console removal, robust PDF proof preview with auto-retry, fixed Subject Criteria & TSC loading in /data/topic-new with explicit MYP Year selection warnings, plus a standalone Agility Check recruitment module (Hostinger PHP portal, HR Question & Answer Key bank, HR PDF report) and Recruitment Assessment schema documentation in DATABASE_SCHEMA.md.",

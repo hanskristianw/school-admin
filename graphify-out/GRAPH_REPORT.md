@@ -1,7 +1,7 @@
-# Graph Report - school-admin  (2026-11-13)
+# Graph Report - school-admin  (2026-11-16)
 
 ## Corpus Check
-- 490 files · ~827,960 words
+- 490 files · ~828,479 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
@@ -10,7 +10,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `3d43d9f9`
+- Built from commit: `e957791d`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -322,6 +322,7 @@
 - 🔧 **Technical Implementation**
 - page.jsx
 - page.jsx
+- class-variance-authority
 - �🏗️ **Database Structure**
 - clsx
 - route.js
@@ -329,7 +330,6 @@
 - 6.1 Tables
 - @supabase/supabase-js
 - pngjs
-- bcryptjs
 - route.js
 - route.js
 
@@ -776,7 +776,7 @@ Nodes (8): 18.1 Key Features & Architecture, 18.2 Tables, 18.3 Storage Buckets, 
 
 ### Community 133 - "Module 133"
 Cohesion: 0.10
-Nodes (21): class-variance-authority, clsx, exceljs, google-auth-library, googleapis, dependencies, class-variance-authority, clsx (+13 more)
+Nodes (21): bcryptjs, clsx, exceljs, google-auth-library, googleapis, dependencies, bcryptjs, clsx (+13 more)
 
 ### Community 135 - "Module 135"
 Cohesion: 0.29
@@ -1090,7 +1090,7 @@ Nodes (3): fetchWithRetry(), GET(), supabaseAdmin
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `dependencies` connect `Module 133` to `Admission Management`, `Package Dependencies & Config`, `next-auth`, `📁 **Project Structure**`, `react-dom`, `Module 134`, `4.1 Tables`, `pdf-lib`, `@radix-ui/react-select`, `react-hook-form`, `React UI Components`, `class-variance-authority`, `@tiptap/extension-table-cell`, `Module 145`, `@tiptap/extension-table-header`, `@tiptap/extension-table-row`, `@tiptap/extension-task-list`, `@tiptap/extension-task-item`, `docx`, `@tiptap/extension-text-align`, `�🏗️ **Database Structure**`, `@tiptap/extension-text-style`, `Module 154`, `@tiptap/extension-underline`, `@tiptap/react`, `@tiptap/starter-kit`, `xlsx`, `clsx`, `dotenv`, `@supabase/supabase-js`, `zod`, `pngjs`, `Appendix B - Canonical Sources (read these before reinventing)`, `Analysis & Synthesis Instructions`, `**3. Assessment System**`, `bcryptjs`, `📁 **Project Structure**`, `11. REDESIGN PROTOCOL`, `33. CATEGORY-SPECIFIC BIAS`, `12. THE BLOCK LIBRARY (Contract - Implementations Land Here Iteratively)`, `5. CONTEXT-AWARE PROACTIVITY`, `8. DARK MODE PROTOCOL`, `bcryptjs`, `Module 105`, `Module 239`, `jsonwebtoken`, `jspdf-autotable`, `@sparticuz/chromium-min`, `react-easy-crop`?**
+- **Why does `dependencies` connect `Module 133` to `Admission Management`, `Package Dependencies & Config`, `next-auth`, `📁 **Project Structure**`, `react-dom`, `Module 134`, `4.1 Tables`, `pdf-lib`, `@radix-ui/react-select`, `react-hook-form`, `React UI Components`, `class-variance-authority`, `@tiptap/extension-table-cell`, `Module 145`, `@tiptap/extension-table-header`, `@tiptap/extension-table-row`, `@tiptap/extension-task-list`, `@tiptap/extension-task-item`, `docx`, `@tiptap/extension-text-align`, `�🏗️ **Database Structure**`, `@tiptap/extension-text-style`, `Module 154`, `@tiptap/extension-underline`, `@tiptap/react`, `@tiptap/starter-kit`, `xlsx`, `class-variance-authority`, `clsx`, `dotenv`, `@supabase/supabase-js`, `zod`, `pngjs`, `Appendix B - Canonical Sources (read these before reinventing)`, `Analysis & Synthesis Instructions`, `**3. Assessment System**`, `📁 **Project Structure**`, `11. REDESIGN PROTOCOL`, `33. CATEGORY-SPECIFIC BIAS`, `12. THE BLOCK LIBRARY (Contract - Implementations Land Here Iteratively)`, `5. CONTEXT-AWARE PROACTIVITY`, `8. DARK MODE PROTOCOL`, `bcryptjs`, `Module 105`, `Module 239`, `jsonwebtoken`, `jspdf-autotable`, `@sparticuz/chromium-min`, `react-easy-crop`?**
   _High betweenness centrality (0.016) - this node is a cross-community bridge._
 - **Why does `jspdf` connect `Admission Management` to `@fortawesome/fontawesome-svg-core`, `Module 145`, `Module 133`, `Module 110`?**
   _High betweenness centrality (0.010) - this node is a cross-community bridge._
