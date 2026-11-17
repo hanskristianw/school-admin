@@ -5482,8 +5482,17 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
       if (data && data[0]) {
         const newTopic = data[0]
         
-        // Only create assessment if class, subject & assessment name are provided
-        if (topicData.topic_subject_id && topicData.topic_kelas_id && wizardAssessment.assessment_nama) {
+        // Create assessment if any assessment information or criteria are selected
+        const hasAssessmentData = Boolean(
+          wizardAssessment.assessment_nama?.trim() ||
+          (wizardAssessment.selected_criteria && wizardAssessment.selected_criteria.length > 0) ||
+          wizardAssessment.assessment_task_specific_description?.trim() ||
+          wizardAssessment.assessment_instructions?.trim() ||
+          wizardAssessment.assessment_conceptual_understanding?.trim() ||
+          (wizardAssessment.assessment_tsc && Object.keys(wizardAssessment.assessment_tsc).length > 0)
+        )
+
+        if (topicData.topic_subject_id && topicData.topic_kelas_id && hasAssessmentData) {
           const { data: dkData } = await supabase
             .from('detail_kelas')
             .select('detail_kelas_id')
@@ -5491,38 +5500,44 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
             .eq('detail_kelas_kelas_id', topicData.topic_kelas_id)
             .maybeSingle()
           
-          if (dkData) {
-            const assessmentData = {
-              assessment_nama: wizardAssessment.assessment_nama,
-              assessment_tanggal: wizardAssessment.assessment_tanggal || null,
-              assessment_keterangan: wizardAssessment.assessment_keterangan || null,
-              assessment_conceptual_understanding: wizardAssessment.assessment_conceptual_understanding || null,
-              assessment_task_specific_description: wizardAssessment.assessment_task_specific_description || null,
-              assessment_instructions: wizardAssessment.assessment_instructions || null,
-              assessment_tsc: wizardAssessment.assessment_tsc || {},
-              assessment_detail_kelas_id: dkData.detail_kelas_id,
-              assessment_topic_id: newTopic.topic_id,
-              assessment_semester: cleanInt(wizardAssessment.assessment_semester),
-              assessment_status: 1,
-              assessment_user_id: currentUserId
-            }
+          const rawAssessmentName = wizardAssessment.assessment_nama?.trim() ||
+            (newTopic.topic_urutan ? `Unit ${newTopic.topic_urutan} Summative Assessment` : '') ||
+            newTopic.topic_nama?.trim() ||
+            topicData.topic_nama?.trim() ||
+            'Summative Assessment'
+          const resolvedAssessmentName = rawAssessmentName.substring(0, 100)
+          const finalUserId = currentUserId || 1
+          
+          const assessmentData = {
+            assessment_nama: resolvedAssessmentName,
+            assessment_tanggal: wizardAssessment.assessment_tanggal || null,
+            assessment_keterangan: wizardAssessment.assessment_keterangan || null,
+            assessment_conceptual_understanding: wizardAssessment.assessment_conceptual_understanding || null,
+            assessment_task_specific_description: wizardAssessment.assessment_task_specific_description || null,
+            assessment_instructions: wizardAssessment.assessment_instructions || null,
+            assessment_tsc: wizardAssessment.assessment_tsc || {},
+            assessment_detail_kelas_id: dkData?.detail_kelas_id || null,
+            assessment_topic_id: newTopic.topic_id,
+            assessment_semester: cleanInt(wizardAssessment.assessment_semester) || (cleanInt(newTopic.topic_urutan || topicData.topic_urutan) > 2 ? 2 : 1),
+            assessment_status: 1,
+            assessment_user_id: finalUserId
+          }
+          
+          const { data: assessmentResult, error: assessmentError } = await supabase
+            .from('assessment')
+            .insert([assessmentData])
+            .select()
+          
+          if (!assessmentError && assessmentResult && assessmentResult[0] && wizardAssessment.selected_criteria?.length > 0) {
+            const assessmentId = assessmentResult[0].assessment_id
+            const criteriaRecords = wizardAssessment.selected_criteria.map(criterionId => ({
+              assessment_id: assessmentId,
+              criterion_id: criterionId
+            }))
             
-            const { data: assessmentResult, error: assessmentError } = await supabase
-              .from('assessment')
-              .insert([assessmentData])
-              .select()
-            
-            if (!assessmentError && assessmentResult && assessmentResult[0] && wizardAssessment.selected_criteria?.length > 0) {
-              const assessmentId = assessmentResult[0].assessment_id
-              const criteriaRecords = wizardAssessment.selected_criteria.map(criterionId => ({
-                assessment_id: assessmentId,
-                criterion_id: criterionId
-              }))
-              
-              await supabase
-                .from('assessment_criteria')
-                .insert(criteriaRecords)
-            }
+            await supabase
+              .from('assessment_criteria')
+              .insert(criteriaRecords)
           }
         }
         
@@ -5633,7 +5648,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
       
       const { data: existingAssessment, error: assessmentSearchError } = await supabase
         .from('assessment')
-        .select('assessment_id')
+        .select('assessment_id, assessment_nama')
         .eq('assessment_topic_id', selectedTopic.topic_id)
         .maybeSingle()
       
@@ -5641,10 +5656,17 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
         console.warn('⚠️ [ASSESSMENT SEARCH WARN]:', assessmentSearchError.message)
       }
       
+      const rawAssessmentName = wizardAssessment.assessment_nama?.trim() ||
+        existingAssessment?.assessment_nama ||
+        (selectedTopic.topic_urutan ? `Unit ${selectedTopic.topic_urutan} Summative Assessment` : '') ||
+        selectedTopic.topic_nama?.trim() ||
+        'Summative Assessment'
+      const resolvedAssessmentName = rawAssessmentName.substring(0, 100)
+
       if (existingAssessment) {
         console.log('✅ [ASSESSMENT FOUND] assessment_id:', existingAssessment.assessment_id)
         console.log('🔍 [ASSESSMENT DATA] Will update with:', {
-          assessment_nama: wizardAssessment.assessment_nama,
+          assessment_nama: resolvedAssessmentName,
           assessment_semester: wizardAssessment.assessment_semester,
           assessment_relationship: wizardAssessment.assessment_relationship,
           assessment_conceptual_understanding: wizardAssessment.assessment_conceptual_understanding?.substring(0, 50) + '...',
@@ -5655,9 +5677,9 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
         })
         
         const assessmentUpdatePayload = {
-          assessment_nama: wizardAssessment.assessment_nama || null,
+          assessment_nama: resolvedAssessmentName,
           assessment_tanggal: wizardAssessment.assessment_tanggal || null,
-          assessment_semester: wizardAssessment.assessment_semester ? parseInt(wizardAssessment.assessment_semester) : null,
+          assessment_semester: wizardAssessment.assessment_semester ? parseInt(wizardAssessment.assessment_semester) : (cleanInt(selectedTopic.topic_urutan) > 2 ? 2 : 1),
           assessment_conceptual_understanding: wizardAssessment.assessment_conceptual_understanding || null,
           assessment_task_specific_description: wizardAssessment.assessment_task_specific_description || null,
           assessment_instructions: wizardAssessment.assessment_instructions || null,
@@ -5718,71 +5740,80 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
         } else {
           console.warn('⚠️ [CRITERIA EMPTY] No criteria selected to insert')
         }
-      } else if (selectedTopic.topic_subject_id && selectedTopic.topic_kelas_id && wizardAssessment.assessment_nama) {
-        // No assessment exists yet, create a new one if class, subject & assessment name are provided
-        console.log('🆕 [CREATE ASSESSMENT] No existing assessment, checking detail_kelas')
-        
-        const { data: dkData } = await supabase
-          .from('detail_kelas')
-          .select('detail_kelas_id')
-          .eq('detail_kelas_subject_id', selectedTopic.topic_subject_id)
-          .eq('detail_kelas_kelas_id', selectedTopic.topic_kelas_id)
-          .maybeSingle()
-        
-        if (dkData) {
-          console.log('✅ [DETAIL_KELAS FOUND] detail_kelas_id:', dkData.detail_kelas_id)
-        
-        // Create new assessment
-        const assessmentInsertPayload = {
-          assessment_nama: wizardAssessment.assessment_nama || 'Untitled Assessment',
-          assessment_tanggal: wizardAssessment.assessment_tanggal || null,
-          assessment_keterangan: wizardAssessment.assessment_keterangan || null,
-          assessment_conceptual_understanding: wizardAssessment.assessment_conceptual_understanding || null,
-          assessment_task_specific_description: wizardAssessment.assessment_task_specific_description || null,
-          assessment_instructions: wizardAssessment.assessment_instructions || null,
-          assessment_tsc: wizardAssessment.assessment_tsc || {},
-          assessment_detail_kelas_id: dkData.detail_kelas_id,
-          assessment_topic_id: selectedTopic.topic_id,
-          assessment_semester: wizardAssessment.assessment_semester ? parseInt(wizardAssessment.assessment_semester) : null,
-          assessment_status: 1, // Auto-approved
-          assessment_user_id: currentUserId
-        }
-        
-        console.log('🔍 [CREATE PAYLOAD] Assessment insert payload:', assessmentInsertPayload)
-        
-        const { data: newAssessment, error: createError } = await supabase
-          .from('assessment')
-          .insert([assessmentInsertPayload])
-          .select()
-        
-        if (createError) {
-          console.error('❌ [CREATE ERROR]:', createError)
-          throw createError
-        }
-        
-        console.log('✅ [ASSESSMENT CREATED] New assessment:', newAssessment)
-        
-        // Insert assessment_criteria
-        if (newAssessment && newAssessment[0] && wizardAssessment.selected_criteria && wizardAssessment.selected_criteria.length > 0) {
-          const criteriaRecords = wizardAssessment.selected_criteria.map(criterionId => ({
-            assessment_id: newAssessment[0].assessment_id,
-            criterion_id: criterionId
-          }))
+      } else {
+        // No assessment exists yet. Check if assessment should be created.
+        const shouldCreateAssessment = selectedTopic.topic_subject_id && selectedTopic.topic_kelas_id && Boolean(
+          wizardAssessment.assessment_nama?.trim() ||
+          (wizardAssessment.selected_criteria && wizardAssessment.selected_criteria.length > 0) ||
+          wizardAssessment.assessment_task_specific_description?.trim() ||
+          wizardAssessment.assessment_instructions?.trim() ||
+          wizardAssessment.assessment_conceptual_understanding?.trim() ||
+          (wizardAssessment.assessment_tsc && Object.keys(wizardAssessment.assessment_tsc).length > 0)
+        )
+
+        if (shouldCreateAssessment) {
+          console.log('🆕 [CREATE ASSESSMENT] No existing assessment, checking detail_kelas')
           
-          console.log('🔍 [CRITERIA INSERT NEW] Inserting criteria for new assessment:', criteriaRecords)
+          const { data: dkData } = await supabase
+            .from('detail_kelas')
+            .select('detail_kelas_id')
+            .eq('detail_kelas_subject_id', selectedTopic.topic_subject_id)
+            .eq('detail_kelas_kelas_id', selectedTopic.topic_kelas_id)
+            .maybeSingle()
           
-          const { error: criteriaInsertError } = await supabase
-            .from('assessment_criteria')
-            .insert(criteriaRecords)
+          const finalUserId = currentUserId || selectedTopic.topic_user_id || 1
+
+          // Create new assessment
+          const assessmentInsertPayload = {
+            assessment_nama: resolvedAssessmentName,
+            assessment_tanggal: wizardAssessment.assessment_tanggal || null,
+            assessment_keterangan: wizardAssessment.assessment_keterangan || null,
+            assessment_conceptual_understanding: wizardAssessment.assessment_conceptual_understanding || null,
+            assessment_task_specific_description: wizardAssessment.assessment_task_specific_description || null,
+            assessment_instructions: wizardAssessment.assessment_instructions || null,
+            assessment_tsc: wizardAssessment.assessment_tsc || {},
+            assessment_detail_kelas_id: dkData?.detail_kelas_id || null,
+            assessment_topic_id: selectedTopic.topic_id,
+            assessment_semester: wizardAssessment.assessment_semester ? parseInt(wizardAssessment.assessment_semester) : (cleanInt(selectedTopic.topic_urutan) > 2 ? 2 : 1),
+            assessment_status: 1, // Auto-approved
+            assessment_user_id: finalUserId
+          }
           
-          if (criteriaInsertError) {
-            console.error('❌ [CRITERIA INSERT ERROR]:', criteriaInsertError)
-          } else {
-            console.log('✅ [CRITERIA SUCCESS] Criteria inserted for new assessment')
+          console.log('🔍 [CREATE PAYLOAD] Assessment insert payload:', assessmentInsertPayload)
+          
+          const { data: newAssessment, error: createError } = await supabase
+            .from('assessment')
+            .insert([assessmentInsertPayload])
+            .select()
+          
+          if (createError) {
+            console.error('❌ [CREATE ERROR]:', createError)
+            throw createError
+          }
+          
+          console.log('✅ [ASSESSMENT CREATED] New assessment:', newAssessment)
+          
+          // Insert assessment_criteria
+          if (newAssessment && newAssessment[0] && wizardAssessment.selected_criteria && wizardAssessment.selected_criteria.length > 0) {
+            const criteriaRecords = wizardAssessment.selected_criteria.map(criterionId => ({
+              assessment_id: newAssessment[0].assessment_id,
+              criterion_id: criterionId
+            }))
+            
+            console.log('🔍 [CRITERIA INSERT NEW] Inserting criteria for new assessment:', criteriaRecords)
+            
+            const { error: criteriaInsertError } = await supabase
+              .from('assessment_criteria')
+              .insert(criteriaRecords)
+            
+            if (criteriaInsertError) {
+              console.error('❌ [CRITERIA INSERT ERROR]:', criteriaInsertError)
+            } else {
+              console.log('✅ [CRITERIA SUCCESS] Criteria inserted for new assessment')
+            }
           }
         }
       }
-    }
       
       console.log('🔍 [REFRESH] Refreshing topics list')
       
@@ -6017,7 +6048,6 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
         assessment_status: newStatus,
         assessment_user_id: currentUserId,
         assessment_tsc: topicAssessment.assessment_tsc || {},
-        assessment_relationship: topicAssessment.assessment_relationship || null,
         assessment_conceptual_understanding: topicAssessment.assessment_conceptual_understanding || null,
         assessment_task_specific_description: topicAssessment.assessment_task_specific_description || null,
         assessment_instructions: topicAssessment.assessment_instructions || null

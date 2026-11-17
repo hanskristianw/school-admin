@@ -11,15 +11,20 @@
 export const SYSTEM_RELEASES = [
   {
     "version": "0.6.3",
-    "date": "2026-11-16",
+    "date": "2026-11-17",
     "isLatest": true,
     "summary": {
-      "id": "Standardisasi dan penyelarasan tampilan kotak nilai (RESULT box) pada ekspor dokumen Microsoft Word (.docx) modul Planning (/data/topic-new) agar identik dengan versi cetak PDF: menggantikan teks placeholder kurung siku dengan gambar rounded rectangle vector-sharp anti-aliased berbingkai solid hitam dan latar belakang bersih yang proporsional di bawah logo sekolah.",
-      "en": "Standardized and aligned the RESULT score box in Microsoft Word (.docx) export within the Planning module (/data/topic-new) to match the official PDF print layout: replaced legacy bracket text placeholders with an anti-aliased rounded rectangle vector box with clean solid black borders positioned proportionately below the school logo.",
-      "zh": "规范并统一教学规划模块（/data/topic-new）导出 Microsoft Word（.docx）文档中的成绩框（RESULT box）视觉样式，使其与 PDF 打印版完全一致：将原有的方括号文本占位符替换为高清晰度抗锯齿圆角黑框，与校徽及下方 RESULT 标识协调对齐。"
+      "id": "Standardisasi dan penyelarasan tampilan kotak nilai (RESULT box) pada ekspor dokumen Microsoft Word (.docx) modul Planning (/data/topic-new) agar identik dengan versi cetak PDF, serta perbaikan persistensi penyimpanan kriteria penilaian MYP Objectives (Criterion A/B/C/D) dan Summative Assessment pada editor dokumen Unit Planner.",
+      "en": "Standardized and aligned the RESULT score box in Microsoft Word (.docx) export within the Planning module (/data/topic-new) to match the official PDF print layout, and fixed persistence of MYP Objectives criterion selections (Criterion A/B/C/D) and Summative Assessment tasks in the Unit Planner document editor.",
+      "zh": "规范并统一教学规划模块（/data/topic-new）导出 Microsoft Word（.docx）文档中的成绩框（RESULT box）视觉样式使其与 PDF 打印版完全一致，并修复单元备课编辑器中 MYP Objectives 评价标准（Criterion A/B/C/D）与期末考核任务的保存持久化问题。"
     },
     "sections": {
       "fixed": [
+        {
+          "id": "Memperbaiki kendala pemilihan MYP Objectives (kriteria penilaian A/B/C/D) yang tidak tersimpan pada editor Unit Planner (/data/topic-new): mengoreksi guard condition pada fungsi penyimpanan (saveNewTopic & updateExistingTopic) agar tetap membuat dan memperbarui entri tabel assessment serta assessment_criteria meskipun judul Task (assessment_nama) belum diisi manual oleh guru, memberikan fallback nama otomatis berbasis judul unit (maksimal 100 karakter sesuai batasan schema Postgres), dan memastikan kriteria yang telah dipilih langsung dimuat kembali secara konsisten saat dokumen dibuka.",
+          "en": "Fixed MYP Objectives criterion selection (Criteria A/B/C/D) failing to persist in the Unit Planner document editor (/data/topic-new): adjusted the save guard condition in saveNewTopic and updateExistingTopic so assessment records and junction table assessment_criteria are reliably created and updated even when the Task title input is left blank, added an automatic fallback assessment title constrained to 100 characters to prevent PostgreSQL schema truncation errors, and ensured selected criteria immediately reload upon reopening the unit plan.",
+          "zh": "修复单元备课文档编辑器（/data/topic-new）中 MYP Objectives 评价标准（Criterion A/B/C/D）无法保存的问题：修正 saveNewTopic 与 updateExistingTopic 的保存条件，使教师在未手动输入 Task 标题时仍可正常创建及更新 assessment 记录与 assessment_criteria 关联表，提供限制在 100 字符以内的单元默认标题回退机制以避免 PostgreSQL 长度超限错误，并确保重新打开文档时所选标准能够正确加载展示。"
+        },
         {
           "id": "Memperbaiki tampilan kotak nilai (RESULT box) pada API ekspor Word Assessment (/api/assessment-docx) di modul /data/topic-new (tab Planning): mengganti placeholder teks kurung siku '[                    ]' dengan aset gambar kotak rounded rectangle resmi beresolusi tinggi (public/images/assessment-result-box.png, border 2px solid hitam, radius 12px) yang dilengkapi mekanisme fallback tabel bordered, sehingga tampilan kotak nilai pada dokumen Word identik dengan pratinjau dan cetakan PDF.",
           "en": "Fixed the RESULT score box rendering in Assessment Word export API (/api/assessment-docx) under the /data/topic-new module (Planning tab): replaced bracket text placeholder '[                    ]' with an official high-resolution rounded rectangle asset (public/images/assessment-result-box.png, 2px solid black border, 12px radius) and bordered table fallback, ensuring Word documents match the PDF layout exactly.",
