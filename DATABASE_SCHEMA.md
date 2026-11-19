@@ -805,17 +805,20 @@ Stores the raw machine scan logs. Note: Check-in vs check-out is determined dyna
 | `created_at` | `TIMESTAMPTZ`| Record creation timestamp |
 
 #### `attendance_excuses`
-Stores excuse forms (surat keterangan) for attendance anomalies (late, absent, etc).
+Stores excuse forms (surat keterangan) for attendance anomalies (late, absent, etc) and temporary exit requests.
 
 | Column Name | Type | Description / Constraint |
 | --- | --- | --- |
-| `id` | `SERIAL` | Primary Key |
+| `id` | `UUID` | Primary Key (`gen_random_uuid()`) |
 | `user_id` | `INTEGER` | FK to `users(user_id)` (The submitter) |
-| `excuse_type` | `VARCHAR` | `late`, `leave_early`, `absent`, `no_checkin`, `no_checkout` |
-| `attendance_date`| `DATE` | The date of the anomaly |
+| `unit_id` | `INTEGER` | FK to `unit(unit_id)` (Submitter's unit snapshot) |
+| `excuse_type` | `VARCHAR` | `late`, `leave_early`, `absent`, `no_checkin`, `no_checkout`, `temporary_exit`, `other` |
+| `attendance_date`| `DATE` | The date of the anomaly or temporary exit |
 | `late_minutes` | `INTEGER` | Minutes late (if applicable) |
-| `category` | `VARCHAR` | Reason category (e.g. sick, annual_leave) |
-| `other_reason` | `TEXT` | Additional explanation |
+| `exit_time` | `TIME` | Exit timestamp for `temporary_exit` requests |
+| `return_time` | `TIME` | Return timestamp for `temporary_exit` requests (max 3 hours after `exit_time`) |
+| `category` | `VARCHAR` | Reason category (e.g. sick, annual_leave, school_duty) |
+| `other_reason` | `TEXT` | Additional explanation / description |
 | `attachment_url` | `TEXT` | URL to attached proof |
 | `status` | `VARCHAR` | `pending`, `approved_1`, `approved`, `rejected` |
 | `approver1_id` | `INTEGER` | FK to `users(user_id)` |
@@ -826,6 +829,8 @@ Stores excuse forms (surat keterangan) for attendance anomalies (late, absent, e
 | `approver2_action`| `VARCHAR` | `approved` or `rejected` |
 | `approver2_note` | `TEXT` | Note from approver 2 |
 | `approver2_at` | `TIMESTAMP`| Action timestamp |
+| `created_at` | `TIMESTAMPTZ` | Record creation timestamp |
+| `updated_at` | `TIMESTAMPTZ` | Record update timestamp |
 
 #### `user_position_history`
 Tracks the position title of a user over time for reporting.
@@ -978,10 +983,13 @@ erDiagram
     }
 
     attendance_excuses {
-        int id PK
+        uuid id PK
         int user_id FK
+        int unit_id FK
         string excuse_type
         date attendance_date
+        time exit_time
+        time return_time
         string status
         int approver1_id FK
         int approver2_id FK

@@ -8,13 +8,14 @@ const supabaseAdmin = createClient(
 )
 
 const EXCUSE_SELECT = `
-  id, user_id, excuse_type, attendance_date, late_minutes,
+  id, user_id, excuse_type, attendance_date, late_minutes, exit_time, return_time, unit_id,
   category, other_reason, attachment_url, status,
   approver1_id, approver2_id,
   approver1_action, approver1_note, approver1_at,
   approver2_action, approver2_note, approver2_at,
   created_at, updated_at,
   submitter:user_id (user_id, user_nama_depan, user_nama_belakang, user_unit_id),
+  unit:unit_id (unit_id, unit_name),
   approver1:approver1_id (user_id, user_nama_depan, user_nama_belakang),
   approver2:approver2_id (user_id, user_nama_depan, user_nama_belakang)
 `
@@ -139,12 +140,12 @@ export async function PUT(request, { params }) {
   try {
     const { id } = await params
     const body = await request.json()
-    const { category, other_reason, attachment_url, user_id } = body
+    const { category, other_reason, attachment_url, user_id, attendance_date, exit_time, return_time } = body
 
     // Verify ownership + pending status
     const { data: excuse, error: fetchErr } = await supabaseAdmin
       .from('attendance_excuses')
-      .select('id, status, user_id')
+      .select('id, status, user_id, excuse_type')
       .eq('id', id)
       .single()
     if (fetchErr) throw fetchErr
@@ -162,6 +163,9 @@ export async function PUT(request, { params }) {
     if (!category) {
       return NextResponse.json({ success: false, message: 'category wajib diisi' }, { status: 400 })
     }
+    if (category === 'other' && !other_reason?.trim()) {
+      return NextResponse.json({ success: false, message: 'Keterangan lain wajib diisi jika memilih Other' }, { status: 400 })
+    }
 
     const updates = {
       category,
@@ -170,13 +174,45 @@ export async function PUT(request, { params }) {
       updated_at: new Date().toISOString(),
     }
 
+    if (excuse.excuse_type === 'temporary_exit') {
+      if (!exit_time || !return_time) {
+        return NextResponse.json({ success: false, message: 'Exit time and return time are required for temporary exit requests.' }, { status: 400 })
+      }
+      const [exH, exM] = String(exit_time).split(':').map(Number)
+      const [reH, reM] = String(return_time).split(':').map(Number)
+      const diffMinutes = (reH * 60 + reM) - (exH * 60 + exM)
+      if (Number.isNaN(diffMinutes) || diffMinutes <= 0) {
+        return NextResponse.json({ success: false, message: 'Return time must be after exit time.' }, { status: 400 })
+      }
+      if (diffMinutes > 180) {
+        return NextResponse.json({ success: false, message: 'Temporary exit duration is limited to a maximum of 3 hours (180 minutes).' }, { status: 400 })
+      }
+      if (attendance_date !== undefined) {
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(String(attendance_date))) {
+          return NextResponse.json({ success: false, message: 'Format attendance_date tidak valid' }, { status: 400 })
+        }
+        updates.attendance_date = attendance_date
+      }
+      updates.exit_time = exit_time
+      updates.return_time = return_time
+      updates.other_reason = other_reason?.trim() || null
+    }
+
     const { data, error } = await supabaseAdmin
       .from('attendance_excuses')
       .update(updates)
       .eq('id', id)
       .select(EXCUSE_SELECT)
       .single()
-    if (error) throw error
+    if (error) {
+      if (error.code === '23505') {
+        return NextResponse.json({
+          success: false,
+          message: 'Anda sudah mengajukan surat keterangan untuk tanggal dan tipe yang sama.'
+        }, { status: 409 })
+      }
+      throw error
+    }
 
     return NextResponse.json({ success: true, data })
   } catch (err) {

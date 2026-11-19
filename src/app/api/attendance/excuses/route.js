@@ -182,7 +182,9 @@ export async function POST(request) {
       exit_time: exit_time || null,
       return_time: return_time || null,
       category,
-      other_reason: category === 'other' ? other_reason.trim() : null,
+      other_reason: excuse_type === 'temporary_exit'
+        ? (other_reason?.trim() || null)
+        : (category === 'other' ? other_reason.trim() : null),
       attachment_url: attachment_url || null,
       approver1_id,
       approver2_id,

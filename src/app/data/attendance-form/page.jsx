@@ -45,6 +45,33 @@ const CATEGORIES_NO_SCAN_STATIC = [
   { value: 'other',                label: 'Other' },
 ]
 
+const TEMP_EXIT_CATEGORIES = [
+  { value: 'school_duty',         label: 'Official School Duty / Assignment' },
+  { value: 'personal_family',     label: 'Family / Personal Matter' },
+  { value: 'medical_appointment', label: 'Medical Appointment / Clinic' },
+  { value: 'official_training',   label: 'External Training / Workshop' },
+  { value: 'other',               label: 'Other' },
+]
+
+const TEMP_EXIT_CATEGORY_LABELS = Object.fromEntries(
+  TEMP_EXIT_CATEGORIES.map(c => [c.value, c.label])
+)
+
+function toLocalDateStr(d = new Date()) {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
+function calcTimeDiffMins(start, end) {
+  if (!start || !end) return 0
+  const [sh, sm] = String(start).split(':').map(Number)
+  const [eh, em] = String(end).split(':').map(Number)
+  if (Number.isNaN(sh) || Number.isNaN(sm) || Number.isNaN(eh) || Number.isNaN(em)) return 0
+  return (eh * 60 + em) - (sh * 60 + sm)
+}
+
 function dbToCategory(lt) {
   return {
     value:        lt.code,
@@ -490,9 +517,10 @@ function DeleteConfirmModal({ excuse, onClose, onSuccess }) {
 
 // ─── Temporary Exit Modal (Khusus Form Izin Keluar Jam Kerja) ───────────────
 
-function TemporaryExitModal({ userId, onClose, onSuccess }) {
+function TemporaryExitModal({ userId, excuse = null, onClose, onSuccess }) {
   const { theme, isDark: themeIsDark } = useTheme()
   const isDark = themeIsDark || theme.type === 'dark' || theme.name === 'dark' || theme.cardBg?.includes('#1') || theme.cardBg?.includes('#2')
+  const isEdit = !!excuse
 
   const cardBg        = isDark ? '#18181B' : '#FFFFFF'
   const subtleBg      = isDark ? '#27272A' : '#F7F6F3'
@@ -500,27 +528,19 @@ function TemporaryExitModal({ userId, onClose, onSuccess }) {
   const textPrimary   = isDark ? '#F4F4F5' : '#111111'
   const textSecondary = isDark ? '#A1A1AA' : '#787774'
 
-  const [step, setStep] = useState('confirm') // 'confirm' | 'not_returning' | 'form'
-  const todayStr = new Date().toISOString().slice(0, 10)
-  const [targetDate, setTargetDate]   = useState(todayStr)
-  const [exitTime, setExitTime]       = useState('09:00')
-  const [returnTime, setReturnTime]   = useState('12:00')
-  const [category, setCategory]       = useState('')
-  const [otherReason, setOtherReason] = useState('')
+  const [step, setStep] = useState(isEdit ? 'form' : 'confirm') // 'confirm' | 'not_returning' | 'form'
+  const todayStr = toLocalDateStr(new Date())
+  const [targetDate, setTargetDate]   = useState(excuse?.attendance_date || todayStr)
+  const [exitTime, setExitTime]       = useState(excuse?.exit_time ? String(excuse.exit_time).slice(0, 5) : '09:00')
+  const [returnTime, setReturnTime]   = useState(excuse?.return_time ? String(excuse.return_time).slice(0, 5) : '12:00')
+  const [category, setCategory]       = useState(excuse?.category || '')
+  const [otherReason, setOtherReason] = useState(excuse?.other_reason || '')
   const [submitting, setSubmitting]   = useState(false)
   const [msg, setMsg]                 = useState('')
   const [uploadFile, setUploadFile]   = useState(null)
   const [processedFile, setProcessedFile] = useState(null)
   const [compressing, setCompressing] = useState(false)
   const [uploading, setUploading]     = useState(false)
-
-  const calculateDurationMinutes = (start, end) => {
-    if (!start || !end) return 0
-    const [sh, sm] = start.split(':').map(Number)
-    const [eh, em] = end.split(':').map(Number)
-    if (isNaN(sh) || isNaN(sm) || isNaN(eh) || isNaN(em)) return 0
-    return (eh * 60 + em) - (sh * 60 + sm)
-  }
 
   const getMaxReturnTime = (start) => {
     if (!start) return '23:59'
@@ -532,21 +552,21 @@ function TemporaryExitModal({ userId, onClose, onSuccess }) {
     return `${String(maxH).padStart(2, '0')}:${String(maxM).padStart(2, '0')}`
   }
 
-  const durationMinutes = calculateDurationMinutes(exitTime, returnTime)
+  const durationMinutes = calcTimeDiffMins(exitTime, returnTime)
   const isDurationExceeded = durationMinutes > 180
   const isDurationInvalid = durationMinutes <= 0
 
   const handleExitTimeChange = (newExit) => {
     setExitTime(newExit)
     const maxRet = getMaxReturnTime(newExit)
-    const diff = calculateDurationMinutes(newExit, returnTime)
+    const diff = calcTimeDiffMins(newExit, returnTime)
     if (diff > 180 || diff <= 0) {
       setReturnTime(maxRet)
     }
   }
 
   const handleReturnTimeChange = (newReturn) => {
-    const diff = calculateDurationMinutes(exitTime, newReturn)
+    const diff = calcTimeDiffMins(exitTime, newReturn)
     if (diff > 180) {
       setReturnTime(getMaxReturnTime(exitTime))
       setMsg('Temporary exit duration cannot exceed 3 hours. Return time has been adjusted to the 3-hour limit.')
@@ -556,13 +576,7 @@ function TemporaryExitModal({ userId, onClose, onSuccess }) {
     }
   }
 
-  const categories = [
-    { value: 'school_duty',         label: 'Official School Duty / Assignment' },
-    { value: 'personal_family',     label: 'Family / Personal Matter' },
-    { value: 'medical_appointment', label: 'Medical Appointment / Clinic' },
-    { value: 'official_training',   label: 'External Training / Workshop' },
-    { value: 'other',               label: 'Other' },
-  ]
+  const categories = TEMP_EXIT_CATEGORIES
 
   const handleFileSelect = async (file) => {
     if (!file) return
@@ -588,7 +602,7 @@ function TemporaryExitModal({ userId, onClose, onSuccess }) {
   const fileToUpload = processedFile || uploadFile || null
 
   const uploadAttachment = async () => {
-    if (!fileToUpload) return null
+    if (!fileToUpload) return excuse?.attachment_url || null
     const formData = new FormData()
     formData.append('file', fileToUpload)
     formData.append('user_id', String(userId))
@@ -602,30 +616,34 @@ function TemporaryExitModal({ userId, onClose, onSuccess }) {
   }
 
   const handleSubmit = async () => {
+    if (!targetDate) { setMsg('Please select a permission date'); return }
     if (!category) { setMsg('Please select a reason category'); return }
     if (category === 'other' && !otherReason.trim()) { setMsg('Please specify your reason'); return }
     if (isDurationInvalid) { setMsg('Return time must be after exit time'); return }
     if (isDurationExceeded) { setMsg('Temporary exit duration cannot exceed 3 hours (maximum 180 minutes)'); return }
     setSubmitting(true); setMsg('')
     try {
-      const attachmentUrl = fileToUpload ? await uploadAttachment() : null
-      const res = await fetch('/api/attendance/excuses', {
-        method: 'POST',
+      const attachmentUrl = fileToUpload ? await uploadAttachment() : (excuse?.attachment_url || null)
+      const url = isEdit ? `/api/attendance/excuses/${excuse.id}` : '/api/attendance/excuses'
+      const method = isEdit ? 'PUT' : 'POST'
+      const payload = {
+        user_id: userId,
+        ...(isEdit ? {} : { excuse_type: 'temporary_exit' }),
+        attendance_date: targetDate,
+        exit_time: exitTime,
+        return_time: returnTime,
+        category,
+        other_reason: otherReason.trim() || null,
+        attachment_url: attachmentUrl
+      }
+      const res = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          user_id: userId,
-          excuse_type: 'temporary_exit',
-          attendance_date: targetDate,
-          exit_time: exitTime,
-          return_time: returnTime,
-          category,
-          other_reason: category === 'other' ? otherReason.trim() : (otherReason.trim() || null),
-          attachment_url: attachmentUrl
-        })
+        body: JSON.stringify(payload)
       })
       const json = await res.json()
       if (!json.success) throw new Error(json.message)
-      onSuccess()
+      onSuccess(targetDate)
     } catch (err) { setMsg(err.message); setSubmitting(false) }
   }
 
@@ -847,22 +865,24 @@ function TemporaryExitModal({ userId, onClose, onSuccess }) {
             {/* Header */}
             <div style={{ padding: '18px 24px 14px', borderBottom: `1px solid ${borderColor}`, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexShrink: 0 }}>
               <div className="flex items-start gap-3">
-                <button
-                  type="button"
-                  onClick={() => setStep('confirm')}
-                  className="text-xs flex items-center justify-center w-7 h-7 rounded border cursor-pointer transition-all mt-0.5"
-                  style={{ borderColor, background: subtleBg, color: textSecondary }}
-                  title="Back to verification"
-                >
-                  <FontAwesomeIcon icon={faArrowLeft} className="text-xs" />
-                </button>
+                {!isEdit && (
+                  <button
+                    type="button"
+                    onClick={() => setStep('confirm')}
+                    className="text-xs flex items-center justify-center w-7 h-7 rounded border cursor-pointer transition-all mt-0.5"
+                    style={{ borderColor, background: subtleBg, color: textSecondary }}
+                    title="Back to verification"
+                  >
+                    <FontAwesomeIcon icon={faArrowLeft} className="text-xs" />
+                  </button>
+                )}
                 <div>
                   <h2 style={{ fontSize: '15px', fontWeight: 600, color: textPrimary, letterSpacing: '-0.01em', margin: 0 }} className="flex items-center gap-2">
                     <FontAwesomeIcon icon={faDoorOpen} className="text-stone-500 text-sm" />
-                    <span>Temporary Exit Permission Form</span>
+                    <span>{isEdit ? 'Edit Temporary Exit Request' : 'Temporary Exit Permission Form'}</span>
                   </h2>
                   <p style={{ fontSize: '12px', color: textSecondary, marginTop: '2px', margin: '2px 0 0 0' }}>
-                    This submission will be forwarded to your Unit Principal & Approver for review.
+                    {isEdit ? 'Update your pending temporary exit request details.' : 'This submission will be forwarded to your Unit Principal & Approver for review.'}
                   </p>
                 </div>
               </div>
@@ -1010,6 +1030,15 @@ function TemporaryExitModal({ userId, onClose, onSuccess }) {
                 <label className="text-xs font-medium block mb-1.5" style={{ color: textSecondary }}>
                   Attachment / Official Document (Optional)
                 </label>
+                {isEdit && excuse?.attachment_url && !uploadFile && (
+                  <div className="flex items-center gap-2 mb-2 px-3 py-2 rounded-md text-xs" style={{ background: isDark ? 'rgba(34, 197, 94, 0.1)' : '#EDF3EC', border: `1px solid ${isDark ? 'rgba(34, 197, 94, 0.3)' : '#D1E7DD'}`, color: isDark ? '#86EFAC' : '#2A6335' }}>
+                    <FontAwesomeIcon icon={faPaperclip} className="text-xs" />
+                    <a href={excuse.attachment_url} target="_blank" rel="noreferrer" style={{ color: isDark ? '#86EFAC' : '#2A6335', textDecoration: 'underline', fontWeight: 600 }}>
+                      Attached document
+                    </a>
+                    <span style={{ color: textSecondary }}>(select a new file below to replace)</span>
+                  </div>
+                )}
                 {compressing && (
                   <div className="flex items-center gap-2 mb-2 px-3 py-2 rounded-md text-xs" style={{ background: isDark ? 'rgba(59, 130, 246, 0.1)' : '#E1F3FE', border: `1px solid ${isDark ? 'rgba(59, 130, 246, 0.3)' : '#BFDBFE'}`, color: isDark ? '#93C5FD' : '#185ADB' }}>
                     <FontAwesomeIcon icon={faSpinner} spin className="text-xs" />
@@ -1071,7 +1100,7 @@ function TemporaryExitModal({ userId, onClose, onSuccess }) {
                   opacity: (submitting || compressing || isDurationExceeded || isDurationInvalid) ? 0.5 : 1
                 }}
               >
-                {compressing ? 'Optimizing...' : submitting ? (uploading ? 'Uploading...' : 'Submitting...') : 'Submit Request'}
+                {compressing ? 'Optimizing...' : submitting ? (uploading ? 'Uploading...' : isEdit ? 'Saving...' : 'Submitting...') : isEdit ? 'Save Changes' : 'Submit Request'}
               </button>
             </div>
           </>
@@ -1097,7 +1126,7 @@ export default function AttendanceFormPage() {
   const textSecondary = isDark ? '#A1A1AA' : '#787774'
 
   const [userId, setUserId]           = useState(null)
-  const [month, setMonth]             = useState(() => new Date().toISOString().slice(0, 7))
+  const [month, setMonth]             = useState(() => toLocalDateStr(new Date()).slice(0, 7))
   const [issueRows, setIssueRows]     = useState([])
   const [excuseMap, setExcuseMap]     = useState({})
   const [submittedList, setSubmittedList] = useState([])
@@ -1105,6 +1134,7 @@ export default function AttendanceFormPage() {
   const [modalRecord, setModalRecord] = useState(null)
   const [deleteExcuse, setDeleteExcuse] = useState(null)
   const [isTempExitModalOpen, setIsTempExitModalOpen] = useState(false)
+  const [editingTempExit, setEditingTempExit] = useState(null)
   const [successDate, setSuccessDate] = useState(null)
   const [leaveTypes, setLeaveTypes]   = useState([])
   const [isExemptRole, setIsExemptRole] = useState(false)
@@ -1159,21 +1189,22 @@ export default function AttendanceFormPage() {
 
       setIsExemptRole(false)
       const start = monthStart(ym)
+      const fullMonthEnd = monthEnd(ym)
       const today     = new Date()
       const yesterday = new Date(today)
       yesterday.setDate(today.getDate() - 1)
-      const yesterdayStr = yesterday.toISOString().slice(0, 10)
-      const currentYM    = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`
-      const end = ym === currentYM
-        ? (yesterdayStr < monthEnd(ym) ? yesterdayStr : monthEnd(ym))
-        : monthEnd(ym)
+      const yesterdayStr = toLocalDateStr(yesterday)
+      const currentYM    = toLocalDateStr(today).slice(0, 7)
 
-      const [reportRes, excusesRes] = await Promise.all([
-        fetch(`/api/attendance/report?user_id=${uid}&start=${start}&end=${end}`),
-        fetch(`/api/attendance/excuses?user_id=${uid}&start=${start}&end=${end}`),
+      const shouldFetchReport = ym < currentYM || (ym === currentYM && yesterdayStr >= start)
+      const reportEnd = ym === currentYM ? yesterdayStr : fullMonthEnd
+
+      const [reportJson, excusesJson] = await Promise.all([
+        shouldFetchReport
+          ? fetch(`/api/attendance/report?user_id=${uid}&start=${start}&end=${reportEnd}`).then(r => r.json())
+          : Promise.resolve({ success: true, data: [] }),
+        fetch(`/api/attendance/excuses?user_id=${uid}&start=${start}&end=${fullMonthEnd}`).then(r => r.json()),
       ])
-      const reportJson  = await reportRes.json()
-      const excusesJson = await excusesRes.json()
 
       const em = {}
       const submitted = excusesJson.success ? (excusesJson.data || []) : []
@@ -1181,7 +1212,8 @@ export default function AttendanceFormPage() {
 
       for (const ex of submitted) {
         em[`${ex.attendance_date}_${ex.excuse_type}`] = ex
-        if (!em[ex.attendance_date]) {
+        // Do not let standalone temporary_exit overwrite the date fallback used by anomaly rows
+        if (ex.excuse_type !== 'temporary_exit' && !em[ex.attendance_date]) {
           em[ex.attendance_date] = ex
         }
       }
@@ -1215,17 +1247,27 @@ export default function AttendanceFormPage() {
 
   useEffect(() => { if (userId) loadData(userId, month) }, [userId, month, loadData])
 
-  const handleModalSuccess = () => {
-    const date = modalRecord?.record?.date || new Date().toISOString().slice(0, 10)
+  const handleModalSuccess = (submittedDate) => {
+    const date = (typeof submittedDate === 'string' && submittedDate)
+      || modalRecord?.record?.date
+      || toLocalDateStr(new Date())
     setSuccessDate(date)
     setModalRecord(null)
     setIsTempExitModalOpen(false)
-    loadData(userId, month)
+    setEditingTempExit(null)
+    if (date && date.slice(0, 7) !== month) {
+      setMonth(date.slice(0, 7))
+    } else {
+      loadData(userId, month)
+    }
     setTimeout(() => setSuccessDate(null), 3000)
   }
 
   const handleDeleteSuccess = () => { setDeleteExcuse(null); loadData(userId, month) }
   const noExcuseCount = issueRows.filter(r => !excuseMap[`${r.date}_${r.issueType}`]).length
+  const temporaryExitList = submittedList
+    .filter(ex => ex.excuse_type === 'temporary_exit')
+    .sort((a, b) => (b.attendance_date || '').localeCompare(a.attendance_date || '') || (b.created_at || '').localeCompare(a.created_at || ''))
 
   return (
     <div style={{ background: pageBg, minHeight: '100vh', padding: '24px 32px', color: textPrimary, fontFamily: "'Geist Sans', 'SF Pro Display', system-ui, -apple-system, sans-serif" }}>
@@ -1340,6 +1382,157 @@ export default function AttendanceFormPage() {
         </div>
       ) : (
         <div className="space-y-6">
+          {/* Temporary Exit Request Submissions Section */}
+          {temporaryExitList.length > 0 && (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xs font-semibold uppercase tracking-wider font-mono flex items-center gap-2" style={{ color: textSecondary }}>
+                  <FontAwesomeIcon icon={faDoorOpen} className="text-xs" />
+                  <span>Temporary Exit Request(s) This Month ({temporaryExitList.length})</span>
+                </h2>
+              </div>
+
+              <div className="space-y-2">
+                {temporaryExitList.map(ex => {
+                  const st = STATUS_CONFIG[ex.status] || STATUS_CONFIG.pending
+                  const ic = ISSUE_CONFIG.temporary_exit
+                  const exitShort = ex.exit_time ? String(ex.exit_time).slice(0, 5) : ''
+                  const returnShort = ex.return_time ? String(ex.return_time).slice(0, 5) : ''
+                  const exitMins = calcTimeDiffMins(ex.exit_time, ex.return_time)
+                  const exitDuration = fmtMins(exitMins)
+                  const catLabel = TEMP_EXIT_CATEGORY_LABELS[ex.category] || ex.category
+                  const rejectedBy = ex.approver1_action === 'rejected' ? ex.approver1_note || 'Approver 1' : ex.approver2_note || 'Approver 2'
+                  const canEditDelete = ex.status === 'pending'
+                  const app1Name = ex.approver1 ? `${ex.approver1.user_nama_depan || ''} ${ex.approver1.user_nama_belakang || ''}`.trim() : ''
+                  const app2Name = ex.approver2 ? `${ex.approver2.user_nama_depan || ''} ${ex.approver2.user_nama_belakang || ''}`.trim() : ''
+                  const hasSecondary = Boolean(ex.other_reason || ex.attachment_url || app1Name || app2Name || ex.approver1_note || ex.approver2_note)
+
+                  return (
+                    <div
+                      key={ex.id}
+                      className="p-3.5 rounded-lg border space-y-2 transition-all hover:shadow-2xs"
+                      style={{
+                        background: cardBg,
+                        borderColor
+                      }}
+                    >
+                      <div className="flex items-center justify-between gap-4 flex-wrap">
+                        {/* Left: date + badge + exit-return time + category */}
+                        <div className="flex items-center gap-3 flex-wrap">
+                          <div className="text-xs font-semibold font-mono min-w-[95px]" style={{ color: textPrimary }}>
+                            {ex.attendance_date}
+                          </div>
+                          <span className="text-xs px-2.5 py-0.5 rounded font-medium inline-flex items-center gap-1.5" style={{ background: ic.bg, color: ic.color }}>
+                            <FontAwesomeIcon icon={ic.icon} className="text-[10px]" />
+                            <span>{ic.label}</span>
+                          </span>
+                          {(exitShort || returnShort) && (
+                            <span className="text-xs font-semibold font-mono flex items-center gap-1.5" style={{ color: textPrimary }}>
+                              <FontAwesomeIcon icon={faClock} className="text-[10px]" style={{ color: textSecondary }} />
+                              <span>{exitShort || '—'} – {returnShort || '—'}</span>
+                              {exitDuration && (
+                                <span style={{ color: ic.color }}>({exitDuration})</span>
+                              )}
+                            </span>
+                          )}
+                          {catLabel && (
+                            <span className="text-xs px-2 py-0.5 rounded font-medium" style={{ background: subtleBg, color: textSecondary, border: `1px solid ${borderColor}` }}>
+                              {catLabel}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Right: status + actions */}
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-xs px-2.5 py-0.5 rounded font-medium inline-flex items-center gap-1.5" style={{ background: st.bg, color: st.color }}>
+                            <FontAwesomeIcon icon={st.icon} className="text-[10px]" />
+                            <span>{st.label}</span>
+                          </span>
+                          {ex.status === 'rejected' && (
+                            <span className="text-xs font-medium" style={{ color: isDark ? '#FCA5A5' : '#9B1C1C' }}>
+                              ({rejectedBy})
+                            </span>
+                          )}
+                          {canEditDelete && (
+                            <div className="flex items-center gap-1.5">
+                              <button
+                                onClick={() => setEditingTempExit(ex)}
+                                className="px-2.5 py-1 rounded text-xs font-medium cursor-pointer border flex items-center gap-1.5 transition-all"
+                                style={{
+                                  background: subtleBg,
+                                  borderColor,
+                                  color: textPrimary
+                                }}
+                              >
+                                <FontAwesomeIcon icon={faPen} className="text-[10px]" style={{ color: textSecondary }} />
+                                <span>{stripEmoji(t('attendanceForm.btnEdit'))}</span>
+                              </button>
+                              <button
+                                onClick={() => setDeleteExcuse(ex)}
+                                className="px-2.5 py-1 rounded text-xs font-medium cursor-pointer border flex items-center gap-1 transition-all"
+                                style={{
+                                  background: isDark ? 'rgba(239, 68, 68, 0.15)' : '#FDEBEC',
+                                  borderColor: isDark ? 'rgba(239, 68, 68, 0.3)' : '#FECACA',
+                                  color: isDark ? '#FCA5A5' : '#9B1C1C'
+                                }}
+                              >
+                                <FontAwesomeIcon icon={faTrash} className="text-[10px]" />
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Secondary metadata: description, attachment, approver progression */}
+                      {hasSecondary && (
+                        <div className="pt-2 border-t flex items-center justify-between gap-3 flex-wrap text-xs" style={{ borderColor, color: textSecondary }}>
+                          <div className="flex items-center gap-3 flex-wrap">
+                            {ex.other_reason && (
+                              <span style={{ color: textPrimary }}>
+                                {ex.other_reason}
+                              </span>
+                            )}
+                            {ex.attachment_url && (
+                              <a
+                                href={ex.attachment_url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="inline-flex items-center gap-1 underline font-medium"
+                                style={{ color: isDark ? '#93C5FD' : '#185ADB' }}
+                              >
+                                <FontAwesomeIcon icon={faPaperclip} className="text-[10px]" />
+                                <span>Attachment</span>
+                              </a>
+                            )}
+                          </div>
+                          {(app1Name || app2Name) && (
+                            <div className="flex items-center gap-2 flex-wrap text-[11px] font-mono">
+                              {app1Name && (
+                                <span>
+                                  Approver 1: <strong style={{ color: textPrimary }}>{app1Name}</strong>
+                                  {ex.approver1_action ? ` (${ex.approver1_action})` : ''}
+                                  {ex.approver1_note ? ` — "${ex.approver1_note}"` : ''}
+                                </span>
+                              )}
+                              {app1Name && app2Name && <span>·</span>}
+                              {app2Name && (
+                                <span>
+                                  Approver 2: <strong style={{ color: textPrimary }}>{app2Name}</strong>
+                                  {ex.approver2_action ? ` (${ex.approver2_action})` : ''}
+                                  {ex.approver2_note ? ` — "${ex.approver2_note}"` : ''}
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
           {/* Machine Anomaly Form Submissions Section */}
           {issueRows.length > 0 && (
             <div className="space-y-3">
@@ -1453,7 +1646,7 @@ export default function AttendanceFormPage() {
           )}
 
           {/* Empty Anomaly State */}
-          {issueRows.length === 0 && (
+          {issueRows.length === 0 && temporaryExitList.length === 0 && (
             <div className="py-20 text-center rounded-xl border space-y-2" style={{ background: cardBg, borderColor }}>
               <div className="w-10 h-10 rounded-lg flex items-center justify-center border mx-auto mb-2"
                 style={{
@@ -1475,8 +1668,13 @@ export default function AttendanceFormPage() {
       {modalRecord && (
         <ExcuseModal record={modalRecord.record} excuse={modalRecord.excuse || null} userId={userId} leaveTypes={leaveTypes} onClose={() => setModalRecord(null)} onSuccess={handleModalSuccess} />
       )}
-      {isTempExitModalOpen && (
-        <TemporaryExitModal userId={userId} onClose={() => setIsTempExitModalOpen(false)} onSuccess={handleModalSuccess} />
+      {(isTempExitModalOpen || editingTempExit) && (
+        <TemporaryExitModal
+          userId={userId}
+          excuse={editingTempExit}
+          onClose={() => { setIsTempExitModalOpen(false); setEditingTempExit(null) }}
+          onSuccess={handleModalSuccess}
+        />
       )}
       {deleteExcuse && (
         <DeleteConfirmModal excuse={deleteExcuse} onClose={() => setDeleteExcuse(null)} onSuccess={handleDeleteSuccess} />
