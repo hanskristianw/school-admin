@@ -1,15 +1,15 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
 import { sendEmail } from '@/lib/mailer'
 import { emailTemplates } from '@/lib/emailTemplates'
-import { sendGoogleChatMessage } from '@/lib/googleChat'
+import {
+  supabaseAdmin,
+  APPROVAL_STATES_KEY,
+  getCourtRentalSettings,
+  saveCourtRentalSetting,
+  notifyApproversAndMarkom
+} from '@/lib/courtRentalApproval'
 
 export const dynamic = 'force-dynamic'
-
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-)
 
 const EXPECTED_SECRET = process.env.COURT_RENTAL_SECRET_KEY || 'ccs_court_auth_2026_x7k9p2m4'
 
@@ -242,92 +242,31 @@ export async function POST(request) {
       console.warn(`[CourtRental API] Invalid or empty renter_email: "${renter_email}", skipping email dispatch`)
     }
 
-    // Kirim notifikasi ke Staf / Markom yang terkonfigurasi (Email & Google Chat)
+    // Inisialisasi status approval tahap 1 & kirim notifikasi ke Approver 1 (Finance) + tim Markom
     try {
-      const { data: markomSetting } = await supabaseAdmin
-        .from('settings')
-        .select('value')
-        .eq('key', 'court_rental_markom_recipients')
-        .maybeSingle()
-
-      let markomRecipients = []
-      if (markomSetting?.value) {
-        markomRecipients = typeof markomSetting.value === 'string'
-          ? JSON.parse(markomSetting.value)
-          : markomSetting.value
-      }
-
-      if (Array.isArray(markomRecipients) && markomRecipients.length > 0) {
-        const appBaseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || 'https://manageccs.online'
-        const dashboardUrl = `${appBaseUrl.replace(/\/$/, '')}/data/court-rental`
-
-        for (const recipient of markomRecipients) {
-          if (!recipient || recipient.is_active === false || !recipient.user_email) continue
-
-          const recipientEmail = String(recipient.user_email).trim()
-          const recipientName = recipient.user_nama_depan || 'Tim Markom'
-
-          // 1. Notifikasi Email ke Markom
-          if (recipient.notify_email !== false && emailRegex.test(recipientEmail)) {
-            try {
-              if (emailTemplates && emailTemplates.courtRentalMarkomAlert) {
-                const { subject: markomSubject, html: markomHtml } = emailTemplates.courtRentalMarkomAlert({
-                  recipientName,
-                  bookingCode: inserted.booking_code,
-                  renterName: inserted.renter_name,
-                  renterPhone: inserted.renter_phone,
-                  renterEmail: inserted.renter_email,
-                  renterOrg: inserted.renter_org,
-                  renterPurpose: inserted.renter_purpose,
-                  packageName: inserted.package_name,
-                  price: Number(inserted.price || 0),
-                  bookingDate: inserted.booking_date,
-                  timeSlot: inserted.time_slot,
-                  dashboardUrl
-                })
-
-                await sendEmail({
-                  to: recipientEmail,
-                  subject: markomSubject,
-                  html: markomHtml
-                })
-                console.log(`[CourtRental API] Markom alert email sent to ${recipientEmail} for ${inserted.booking_code}`)
-              }
-            } catch (markomMailErr) {
-              console.warn(`[CourtRental API] Failed sending Markom email to ${recipientEmail}:`, markomMailErr.message)
-            }
-          }
-
-          // 2. Notifikasi Google Chat Bot ke Markom
-          if (recipient.notify_google_chat !== false && emailRegex.test(recipientEmail)) {
-            try {
-              const formattedPrice = `Rp ${Number(inserted.price || 0).toLocaleString('id-ID')},-`
-              const chatText = `🏸 *Pesanan Baru Sewa Lapangan — Sport Hall CCS*\n\n` +
-                `Halo *${recipientName}*, ada permohonan reservasi sewa lapangan baru yang masuk melalui website:\n\n` +
-                `📌 *Kode Booking:* *${inserted.booking_code}*\n` +
-                `👤 *Nama Pemesan:* ${inserted.renter_name}\n` +
-                `📱 *No. WhatsApp:* ${inserted.renter_phone || '-'}\n` +
-                `✉️ *Email:* ${inserted.renter_email || '-'}\n` +
-                `🏢 *Klub / Komunitas:* ${inserted.renter_org || 'Pribadi / Umum'}\n` +
-                `🎯 *Tujuan:* ${inserted.renter_purpose || '-'}\n` +
-                `📅 *Tanggal Bermain:* *${inserted.booking_date}*\n` +
-                `⏰ *Sesi Jam:* *${inserted.time_slot}*\n` +
-                `📦 *Paket:* ${inserted.package_name}\n` +
-                `💰 *Total Biaya:* ${formattedPrice}\n` +
-                `📋 *Status:* Menunggu Verifikasi Bukti Pembayaran\n\n` +
-                `⏱️ *Catatan Waktu:* Pemesan telah diinformasikan bahwa pesanan diproses < 1x24 jam.\n\n` +
-                `🌐 *Buka Dashboard untuk Review & Verifikasi:*\n${dashboardUrl}`
-
-              await sendGoogleChatMessage(recipientEmail, chatText)
-              console.log(`[CourtRental API] Google Chat notification sent to ${recipientEmail} for ${inserted.booking_code}`)
-            } catch (chatErr) {
-              console.warn(`[CourtRental API] Failed sending Google Chat alert to ${recipientEmail}:`, chatErr.message)
-            }
-          }
+      const { approvalFlow, approvalStates, markomRecipients } = await getCourtRentalSettings()
+      const nextStates = {
+        ...approvalStates,
+        [String(inserted.id)]: {
+          stage: 'awaiting_approver_1',
+          step1: null,
+          step2: null
         }
       }
+      await saveCourtRentalSetting(
+        APPROVAL_STATES_KEY,
+        nextStates,
+        'Riwayat status approval berjenjang Sewa Lapangan (Tahap 1 Finance -> Tahap 2 Markom)'
+      )
+
+      await notifyApproversAndMarkom({
+        stage: 'step1_new_booking',
+        booking: inserted,
+        primaryApprover: approvalFlow?.approver1 || null,
+        extraRecipients: markomRecipients
+      })
     } catch (markomErr) {
-      console.warn('[CourtRental API] Could not process Markom notifications:', markomErr.message)
+      console.warn('[CourtRental API] Could not process approval & Markom notifications:', markomErr.message)
     }
 
     return NextResponse.json({

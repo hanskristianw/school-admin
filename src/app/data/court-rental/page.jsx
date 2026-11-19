@@ -26,7 +26,10 @@ import {
   faToggleOn,
   faToggleOff,
   faBullhorn,
-  faComments
+  faComments,
+  faArrowRight,
+  faLock,
+  faUserCheck
 } from '@fortawesome/free-solid-svg-icons'
 
 const SQL_MIGRATION = `-- ============================================================
@@ -115,8 +118,13 @@ export default function CourtRentalPage() {
   const [activeTab, setActiveTab] = useState('bookings') // 'bookings' | 'blackout'
   const [loading, setLoading] = useState(true)
   const [bookings, setBookings] = useState([])
-  const [stats, setStats] = useState({ total: 0, uploaded: 0, approved: 0, rejected: 0, pending: 0, totalIncome: 0 })
+  const [stats, setStats] = useState({ total: 0, uploaded: 0, awaitingStep1: 0, awaitingStep2: 0, approved: 0, rejected: 0, pending: 0, totalIncome: 0 })
   const [tableExists, setTableExists] = useState(true)
+
+  // Current Caller Identity
+  const [currentUserId, setCurrentUserId] = useState(null)
+  const [isAdmin, setIsAdmin] = useState(false)
+  const [actionBanner, setActionBanner] = useState(null)
 
   // Filters
   const [statusFilter, setStatusFilter] = useState('all')
@@ -129,6 +137,7 @@ export default function CourtRentalPage() {
   const [approveModalOpen, setApproveModalOpen] = useState(false)
   const [rejectModalOpen, setRejectModalOpen] = useState(false)
   const [actionLoading, setActionLoading] = useState(false)
+  const [approvalNotes, setApprovalNotes] = useState('')
   const [rejectReason, setRejectReason] = useState('')
   const [copiedSql, setCopiedSql] = useState(false)
   const [proofError, setProofError] = useState(false)
@@ -154,7 +163,10 @@ export default function CourtRentalPage() {
     is_active: true
   })
 
-  // Markom & Notification Recipients State
+  // Approval Flow (Step 1 Finance -> Step 2 Markom) & Markom Notifications State
+  const [approvalFlow, setApprovalFlow] = useState({ approver1: null, approver2: null })
+  const [approver1UserId, setApprover1UserId] = useState('')
+  const [approver2UserId, setApprover2UserId] = useState('')
   const [markomModalOpen, setMarkomModalOpen] = useState(false)
   const [markomLoading, setMarkomLoading] = useState(false)
   const [markomSaving, setMarkomSaving] = useState(false)
@@ -164,6 +176,19 @@ export default function CourtRentalPage() {
   const [staffSearchQuery, setStaffSearchQuery] = useState('')
   const [markomSuccessMsg, setMarkomSuccessMsg] = useState('')
 
+  useEffect(() => {
+    try {
+      const krId = localStorage.getItem('kr_id')
+      if (krId) setCurrentUserId(Number(krId))
+      const userRaw = localStorage.getItem('user_data')
+      if (userRaw) {
+        const user = JSON.parse(userRaw)
+        const roleName = user?.roleName || localStorage.getItem('user_role') || ''
+        setIsAdmin(Boolean(user?.isAdmin) || roleName === 'admin' || roleName === 'Admin')
+      }
+    } catch {}
+  }, [])
+
   const fetchMarkomSettings = useCallback(async () => {
     try {
       setMarkomLoading(true)
@@ -172,9 +197,14 @@ export default function CourtRentalPage() {
       if (data.success) {
         setMarkomRecipients(data.recipients || [])
         setAvailableStaff(data.users || [])
+        if (data.approvalFlow) {
+          setApprovalFlow(data.approvalFlow)
+          setApprover1UserId(data.approvalFlow.approver1?.user_id ? String(data.approvalFlow.approver1.user_id) : '')
+          setApprover2UserId(data.approvalFlow.approver2?.user_id ? String(data.approvalFlow.approver2.user_id) : '')
+        }
       }
     } catch (err) {
-      console.error('Failed to load markom settings:', err)
+      console.error('Failed to load approval/markom settings:', err)
     } finally {
       setMarkomLoading(false)
     }
@@ -237,16 +267,29 @@ export default function CourtRentalPage() {
   }
 
   const handleSaveMarkom = async () => {
+    if (isAdmin && (!approver1UserId || !approver2UserId)) {
+      alert('Pilih User Approver 1 (Finance) dan Approver 2 (Markom) terlebih dahulu.')
+      return
+    }
     try {
       setMarkomSaving(true)
+      const payload = {
+        caller_user_id: currentUserId,
+        recipients: markomRecipients
+      }
+      if (isAdmin) {
+        payload.approver1_user_id = Number(approver1UserId)
+        payload.approver2_user_id = Number(approver2UserId)
+      }
       const res = await fetch('/api/court-rental/markom', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ recipients: markomRecipients })
+        body: JSON.stringify(payload)
       })
       const data = await res.json()
       if (data.success) {
-        setMarkomSuccessMsg('Pengaturan penerima notifikasi Markom berhasil disimpan!')
+        if (data.approvalFlow) setApprovalFlow(data.approvalFlow)
+        setMarkomSuccessMsg('Pengaturan Approval 2-Tahap & Notifikasi berhasil disimpan!')
         setTimeout(() => {
           setMarkomModalOpen(false)
           setMarkomSuccessMsg('')
@@ -298,6 +341,11 @@ export default function CourtRentalPage() {
 
       setBookings(data.bookings || [])
       if (data.stats) setStats(data.stats)
+      if (data.approvalFlow) {
+        setApprovalFlow(data.approvalFlow)
+        setApprover1UserId(data.approvalFlow.approver1?.user_id ? String(data.approvalFlow.approver1.user_id) : '')
+        setApprover2UserId(data.approvalFlow.approver2?.user_id ? String(data.approvalFlow.approver2.user_id) : '')
+      }
     } catch (err) {
       console.error('Failed to load bookings:', err)
     } finally {
@@ -334,23 +382,29 @@ export default function CourtRentalPage() {
     }
   }, [activeTab, fetchBlackoutDates, fetchSlots])
 
-  // Handle Approve
+  // Handle Sequential Approve (Step 1 Finance -> Step 2 Markom)
   const handleApprove = async () => {
     if (!selectedBooking) return
     try {
       setActionLoading(true)
+      setActionBanner(null)
       const res = await fetch(`/api/court-rental/${selectedBooking.id}/approve`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ adminName: 'Admin CCS' })
+        body: JSON.stringify({
+          caller_user_id: currentUserId,
+          notes: approvalNotes
+        })
       })
       const data = await res.json()
       if (data.success) {
         setApproveModalOpen(false)
         setSelectedBooking(null)
+        setApprovalNotes('')
+        setActionBanner({ type: 'success', text: data.message })
         fetchBookings()
       } else {
-        alert(data.message || 'Gagal menyetujui reservasi')
+        alert(data.message || 'Gagal memproses approval reservasi')
       }
     } catch (err) {
       alert('Terjadi kesalahan saat menyetujui reservasi: ' + err.message)
@@ -364,16 +418,21 @@ export default function CourtRentalPage() {
     if (!selectedBooking) return
     try {
       setActionLoading(true)
+      setActionBanner(null)
       const res = await fetch(`/api/court-rental/${selectedBooking.id}/reject`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reason: rejectReason })
+        body: JSON.stringify({
+          caller_user_id: currentUserId,
+          reason: rejectReason
+        })
       })
       const data = await res.json()
       if (data.success) {
         setRejectModalOpen(false)
         setSelectedBooking(null)
         setRejectReason('')
+        setActionBanner({ type: 'success', text: data.message })
         fetchBookings()
       } else {
         alert(data.message || 'Gagal menolak reservasi')
@@ -583,8 +642,8 @@ export default function CourtRentalPage() {
               gap: '6px'
             }}
           >
-            <FontAwesomeIcon icon={faBullhorn} className="text-xs" />
-            Set Markom & Notifikasi
+            <FontAwesomeIcon icon={faUserCheck} className="text-xs" />
+            Approval &amp; Notifikasi
           </button>
 
           <button
@@ -606,6 +665,64 @@ export default function CourtRentalPage() {
             <FontAwesomeIcon icon={faRotateRight} className={`text-xs ${loading ? 'animate-spin' : ''}`} />
             Refresh Data
           </button>
+        </div>
+      </div>
+
+      {/* ── INLINE FEEDBACK BANNER ───────────────────────────────────────── */}
+      {actionBanner && (
+        <div
+          className="mb-5 px-4 py-3 rounded-lg border text-xs font-medium flex items-center justify-between gap-3"
+          style={{
+            background: actionBanner.type === 'error' ? (isDark ? 'rgba(220,38,38,0.12)' : '#FDEBEC') : (isDark ? 'rgba(16,185,129,0.12)' : '#EDF3EC'),
+            borderColor: actionBanner.type === 'error' ? '#F8C9CB' : '#C6E1C4',
+            color: actionBanner.type === 'error' ? (isDark ? '#FCA5A5' : '#9F2F2D') : (isDark ? '#6EE7B7' : '#346538')
+          }}
+        >
+          <span>{actionBanner.text}</span>
+          <button type="button" onClick={() => setActionBanner(null)} className="text-[11px] font-mono underline cursor-pointer">
+            Dismiss
+          </button>
+        </div>
+      )}
+
+      {/* ── ALUR APPROVAL BERJENJANG (2 TAHAP: FINANCE -> MARKOM) ─────────── */}
+      <div
+        className="mb-6 px-4 py-3 rounded-lg border flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs"
+        style={{
+          background: (!approvalFlow?.approver1?.user_id || !approvalFlow?.approver2?.user_id)
+            ? (isDark ? 'rgba(245,158,11,0.1)' : '#FBF3DB')
+            : cardBg,
+          borderColor: (!approvalFlow?.approver1?.user_id || !approvalFlow?.approver2?.user_id)
+            ? (isDark ? '#78350F' : '#F3E2B6')
+            : borderColor
+        }}
+      >
+        <div className="flex flex-wrap items-center gap-2.5">
+          <span className="font-mono text-[10px] uppercase tracking-wider font-semibold" style={{ color: textSecondary }}>
+            APPROVAL FLOW:
+          </span>
+          <span
+            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded border text-[11px] font-medium"
+            style={{ background: isDark ? '#141417' : '#F9F9F8', borderColor, color: textPrimary }}
+          >
+            <span className="font-mono font-bold text-[#1F6C9F] dark:text-blue-400">1. FINANCE</span>
+            <span>→</span>
+            <span>{approvalFlow?.approver1?.full_name || 'Belum diset'}</span>
+          </span>
+          <FontAwesomeIcon icon={faArrowRight} className="text-[10px]" style={{ color: textSecondary }} />
+          <span
+            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded border text-[11px] font-medium"
+            style={{ background: isDark ? '#141417' : '#F9F9F8', borderColor, color: textPrimary }}
+          >
+            <span className="font-mono font-bold text-[#346538] dark:text-emerald-400">2. MARKOM</span>
+            <span>→</span>
+            <span>{approvalFlow?.approver2?.full_name || 'Belum diset'}</span>
+          </span>
+        </div>
+        <div className="text-[11px]" style={{ color: (!approvalFlow?.approver1?.user_id || !approvalFlow?.approver2?.user_id) ? (isDark ? '#FCD34D' : '#956400') : textSecondary }}>
+          {(!approvalFlow?.approver1?.user_id || !approvalFlow?.approver2?.user_id)
+            ? 'Alur belum lengkap — Admin wajib menentukan Approver 1 & Approver 2 pada tombol Approval & Notifikasi.'
+            : 'Email konfirmasi resmi dikirim ke pendaftar setelah Tahap 1 & Tahap 2 disetujui.'}
         </div>
       </div>
 
@@ -647,7 +764,7 @@ export default function CourtRentalPage() {
       )}
 
       {/* ── BENTO METRIC CARDS (STRIP MINIMALIS) ───────────────────────────── */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
         <div style={{ background: cardBg, border: `1px solid ${borderColor}`, borderRadius: '8px', padding: '16px 20px' }}>
           <div className="text-[10px] font-mono tracking-wider uppercase font-semibold" style={{ color: textSecondary }}>
             TOTAL RESERVATIONS
@@ -659,17 +776,27 @@ export default function CourtRentalPage() {
 
         <div style={{ background: cardBg, border: `1px solid ${borderColor}`, borderRadius: '8px', padding: '16px 20px' }}>
           <div className="text-[10px] font-mono tracking-wider uppercase font-semibold flex items-center justify-between">
-            <span style={{ color: '#1F6C9F' }}>UNDER REVIEW</span>
-            <span className="w-2 h-2 rounded-full bg-[#1F6C9F]" />
+            <span style={{ color: '#956400' }}>STEP 1: FINANCE</span>
+            <span className="w-2 h-2 rounded-full bg-[#956400]" />
           </div>
-          <div className="text-2xl font-bold font-mono tracking-tight mt-1.5" style={{ color: isDark ? '#60A5FA' : '#1F6C9F' }}>
-            {stats.uploaded}
+          <div className="text-2xl font-bold font-mono tracking-tight mt-1.5" style={{ color: isDark ? '#FCD34D' : '#956400' }}>
+            {stats.awaitingStep1}
           </div>
         </div>
 
         <div style={{ background: cardBg, border: `1px solid ${borderColor}`, borderRadius: '8px', padding: '16px 20px' }}>
           <div className="text-[10px] font-mono tracking-wider uppercase font-semibold flex items-center justify-between">
-            <span style={{ color: '#346538' }}>APPROVED</span>
+            <span style={{ color: '#1F6C9F' }}>STEP 2: MARKOM</span>
+            <span className="w-2 h-2 rounded-full bg-[#1F6C9F]" />
+          </div>
+          <div className="text-2xl font-bold font-mono tracking-tight mt-1.5" style={{ color: isDark ? '#60A5FA' : '#1F6C9F' }}>
+            {stats.awaitingStep2}
+          </div>
+        </div>
+
+        <div style={{ background: cardBg, border: `1px solid ${borderColor}`, borderRadius: '8px', padding: '16px 20px' }}>
+          <div className="text-[10px] font-mono tracking-wider uppercase font-semibold flex items-center justify-between">
+            <span style={{ color: '#346538' }}>APPROVED (FINAL)</span>
             <span className="w-2 h-2 rounded-full bg-[#346538]" />
           </div>
           <div className="text-2xl font-bold font-mono tracking-tight mt-1.5" style={{ color: isDark ? '#4ADE80' : '#346538' }}>
@@ -771,8 +898,10 @@ export default function CourtRentalPage() {
                     style={{ background: isDark ? '#18181B' : '#FFFFFF', borderColor, color: textPrimary, borderRadius: '4px' }}
                   >
                     <option value="all">ALL STATUSES</option>
-                    <option value="payment_uploaded">UNDER REVIEW</option>
-                    <option value="approved">APPROVED</option>
+                    <option value="awaiting_approver_1">STEP 1: WAITING FINANCE</option>
+                    <option value="awaiting_approver_2">STEP 2: WAITING MARKOM</option>
+                    <option value="payment_uploaded">ALL UNDER REVIEW</option>
+                    <option value="approved">APPROVED (FINAL)</option>
                     <option value="rejected">REJECTED</option>
                     <option value="pending_payment">PENDING PAYMENT</option>
                   </select>
@@ -950,56 +1079,164 @@ export default function CourtRentalPage() {
 
                         {/* Status */}
                         <td className="px-4 py-3.5">
-                          {renderStatusBadge(b.status)}
-                          {b.admin_notes && (
-                            <div className="text-[10px] mt-1 line-clamp-1 text-rose-600 font-mono" title={b.admin_notes}>
-                              Note: {b.admin_notes}
+                          <div className="space-y-1.5">
+                            {renderStatusBadge(b.status)}
+                            {/* 2-Step Approval Trail */}
+                            <div className="flex flex-col gap-0.5 text-[10px] font-mono">
+                              <div className="flex items-center gap-1" style={{ color: b.approval_steps?.step1?.status === 'approved' ? (isDark ? '#4ADE80' : '#346538') : textSecondary }}>
+                                <span>{b.approval_steps?.step1?.status === 'approved' ? '✓' : '○'}</span>
+                                <span>
+                                  1. Finance:{' '}
+                                  {b.approval_steps?.step1?.status === 'approved'
+                                    ? b.approval_steps.step1.by_name
+                                    : approvalFlow?.approver1?.full_name || 'Pending'}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-1" style={{ color: b.approval_steps?.step2?.status === 'approved' ? (isDark ? '#4ADE80' : '#346538') : (b.approval_stage === 'awaiting_approver_2' ? (isDark ? '#60A5FA' : '#1F6C9F') : textSecondary) }}>
+                                <span>{b.approval_steps?.step2?.status === 'approved' ? '✓' : b.approval_stage === 'awaiting_approver_2' ? '●' : '○'}</span>
+                                <span>
+                                  2. Markom:{' '}
+                                  {b.approval_steps?.step2?.status === 'approved'
+                                    ? b.approval_steps.step2.by_name
+                                    : approvalFlow?.approver2?.full_name || 'Pending'}
+                                </span>
+                              </div>
                             </div>
-                          )}
+                            {b.admin_notes && (
+                              <div className="text-[10px] line-clamp-1 text-rose-600 font-mono" title={b.admin_notes}>
+                                Note: {b.admin_notes}
+                              </div>
+                            )}
+                          </div>
                         </td>
 
                         {/* Actions */}
-                        <td className="px-4 py-3.5 text-right space-x-1.5 whitespace-nowrap">
-                          {b.status !== 'approved' && (
-                            <button
-                              onClick={() => {
-                                setSelectedBooking(b)
-                                setApproveModalOpen(true)
-                              }}
-                              style={{
-                                background: textPrimary,
-                                color: isDark ? '#111111' : '#FFFFFF',
-                                border: 'none',
-                                borderRadius: '4px',
-                                fontSize: '11px',
-                                fontWeight: 600,
-                                padding: '5px 10px',
-                                cursor: 'pointer'
-                              }}
-                            >
-                              Approve
-                            </button>
-                          )}
-                          {b.status !== 'rejected' && (
-                            <button
-                              onClick={() => {
-                                setSelectedBooking(b)
-                                setRejectModalOpen(true)
-                              }}
-                              style={{
-                                background: 'transparent',
-                                border: `1px solid ${borderColor}`,
-                                borderRadius: '4px',
-                                fontSize: '11px',
-                                fontWeight: 500,
-                                padding: '4px 9px',
-                                cursor: 'pointer',
-                                color: textSecondary
-                              }}
-                            >
-                              Reject
-                            </button>
-                          )}
+                        <td className="px-4 py-3.5 text-right whitespace-nowrap">
+                          {(() => {
+                            const hasFlow = Boolean(approvalFlow?.approver1?.user_id && approvalFlow?.approver2?.user_id)
+                            const isStage1 = b.approval_stage === 'awaiting_approver_1'
+                            const isStage2 = b.approval_stage === 'awaiting_approver_2'
+                            const isApp1User = hasFlow && Number(currentUserId) === Number(approvalFlow.approver1.user_id)
+                            const isApp2User = hasFlow && Number(currentUserId) === Number(approvalFlow.approver2.user_id)
+                            const canApprove1 = isStage1 && isApp1User
+                            const canApprove2 = isStage2 && isApp2User
+                            const canRejectCurrent =
+                              b.status !== 'rejected' &&
+                              b.status !== 'approved' &&
+                              hasFlow &&
+                              ((isStage1 && isApp1User) || (isStage2 && isApp2User))
+
+                            if (b.status === 'approved') {
+                              return (
+                                <span className="text-[10px] font-mono text-[#346538] dark:text-[#4ADE80]">
+                                  Final Approved
+                                </span>
+                              )
+                            }
+                            if (b.status === 'rejected') {
+                              return (
+                                <span className="text-[10px] font-mono text-rose-500">
+                                  Closed (Rejected)
+                                </span>
+                              )
+                            }
+
+                            return (
+                              <div className="inline-flex items-center justify-end gap-1.5">
+                                {!hasFlow ? (
+                                  <span
+                                    className="px-2 py-1 rounded text-[10px] font-mono"
+                                    style={{ background: isDark ? '#27272A' : '#F3F2EE', color: textSecondary }}
+                                  >
+                                    Set Approvers First
+                                  </span>
+                                ) : isStage1 ? (
+                                  canApprove1 ? (
+                                    <button
+                                      onClick={() => {
+                                        setSelectedBooking(b)
+                                        setApprovalNotes('')
+                                        setApproveModalOpen(true)
+                                      }}
+                                      style={{
+                                        background: '#956400',
+                                        color: '#FFFFFF',
+                                        border: 'none',
+                                        borderRadius: '4px',
+                                        fontSize: '11px',
+                                        fontWeight: 600,
+                                        padding: '5px 10px',
+                                        cursor: 'pointer'
+                                      }}
+                                    >
+                                      Approve 1 (Finance)
+                                    </button>
+                                  ) : (
+                                    <span
+                                      className="inline-flex items-center gap-1 px-2 py-1 rounded text-[10px] font-mono"
+                                      style={{ background: isDark ? '#27272A' : '#FBF3DB', color: isDark ? '#FCD34D' : '#956400' }}
+                                      title={`Menunggu konfirmasi dana dari ${approvalFlow.approver1.full_name}`}
+                                    >
+                                      <FontAwesomeIcon icon={faLock} className="text-[9px]" />
+                                      Wait Finance
+                                    </span>
+                                  )
+                                ) : isStage2 ? (
+                                  canApprove2 ? (
+                                    <button
+                                      onClick={() => {
+                                        setSelectedBooking(b)
+                                        setApprovalNotes('')
+                                        setApproveModalOpen(true)
+                                      }}
+                                      style={{
+                                        background: textPrimary,
+                                        color: isDark ? '#111111' : '#FFFFFF',
+                                        border: 'none',
+                                        borderRadius: '4px',
+                                        fontSize: '11px',
+                                        fontWeight: 600,
+                                        padding: '5px 10px',
+                                        cursor: 'pointer'
+                                      }}
+                                    >
+                                      Approve 2 (Final)
+                                    </button>
+                                  ) : (
+                                    <span
+                                      className="inline-flex items-center gap-1 px-2 py-1 rounded text-[10px] font-mono"
+                                      style={{ background: isDark ? '#27272A' : '#E1F3FE', color: isDark ? '#60A5FA' : '#1F6C9F' }}
+                                      title={`Menunggu approval final dari ${approvalFlow.approver2.full_name}`}
+                                    >
+                                      <FontAwesomeIcon icon={faLock} className="text-[9px]" />
+                                      Wait Markom
+                                    </span>
+                                  )
+                                ) : null}
+
+                                {canRejectCurrent && (
+                                  <button
+                                    onClick={() => {
+                                      setSelectedBooking(b)
+                                      setRejectModalOpen(true)
+                                    }}
+                                    style={{
+                                      background: 'transparent',
+                                      border: `1px solid ${borderColor}`,
+                                      borderRadius: '4px',
+                                      fontSize: '11px',
+                                      fontWeight: 500,
+                                      padding: '4px 9px',
+                                      cursor: 'pointer',
+                                      color: textSecondary
+                                    }}
+                                  >
+                                    Reject
+                                  </button>
+                                )}
+                              </div>
+                            )
+                          })()}
                         </td>
                       </tr>
                     ))
@@ -1478,61 +1715,127 @@ export default function CourtRentalPage() {
         )}
       </Modal>
 
-      {/* ── MODAL: APPROVE CONFIRMATION ────────────────────────────────────── */}
+      {/* ── MODAL: APPROVE CONFIRMATION (2-STAGE) ──────────────────────────── */}
       <Modal
         isOpen={approveModalOpen}
         onClose={() => setApproveModalOpen(false)}
-        title="Approve Reservation"
-        size="sm"
+        title={
+          selectedBooking?.approval_stage === 'awaiting_approver_2'
+            ? 'Approve Tahap 2 — Persetujuan Final (Markom)'
+            : 'Approve Tahap 1 — Verifikasi Dana Masuk (Finance)'
+        }
+        size="md"
         containerStyle={{ background: cardBg, borderColor, borderRadius: '8px' }}
       >
-        {selectedBooking && (
-          <div className="space-y-4 text-xs">
-            <p style={{ color: textPrimary, lineHeight: 1.6 }}>
-              Approve court reservation <strong>{selectedBooking.booking_code}</strong> for <strong>{selectedBooking.renter_name}</strong>?
-            </p>
-            <div className="p-3 rounded border" style={{ background: '#EDF3EC', borderColor: '#C6E1C4', color: '#346538' }}>
-              <div className="font-bold mb-1">Automated Confirmation Email</div>
-              <div className="text-[11px] leading-relaxed">
-                An official booking confirmation email with entrance terms will be automatically sent to: <strong>{selectedBooking.renter_email}</strong>.
+        {selectedBooking && (() => {
+          const isStep2 = selectedBooking.approval_stage === 'awaiting_approver_2'
+          return (
+            <div className="space-y-4 text-xs">
+              <div className="p-3 rounded border grid grid-cols-2 gap-2 text-[11px]" style={{ background: isDark ? '#141417' : '#F9F9F8', borderColor }}>
+                <div>
+                  <span style={{ color: textSecondary }}>Kode Booking:</span>{' '}
+                  <strong className="font-mono">{selectedBooking.booking_code}</strong>
+                </div>
+                <div>
+                  <span style={{ color: textSecondary }}>Nominal:</span>{' '}
+                  <strong className="font-mono">{formatRupiah(selectedBooking.price)}</strong>
+                </div>
+                <div>
+                  <span style={{ color: textSecondary }}>Pemesan:</span>{' '}
+                  <strong>{selectedBooking.renter_name}</strong>
+                </div>
+                <div>
+                  <span style={{ color: textSecondary }}>Jadwal:</span>{' '}
+                  <strong className="font-mono">{selectedBooking.booking_date} • {selectedBooking.time_slot}</strong>
+                </div>
+              </div>
+
+              {isStep2 ? (
+                <>
+                  {selectedBooking.approval_steps?.step1 && (
+                    <div className="p-3 rounded border" style={{ background: '#FBF3DB', borderColor: '#F3E2B6', color: '#956400' }}>
+                      <div className="font-bold mb-0.5">✓ Tahap 1 (Finance) Sudah Terverifikasi</div>
+                      <div className="text-[11px]">
+                        Dana masuk dikonfirmasi oleh <strong>{selectedBooking.approval_steps.step1.by_name}</strong>
+                        {selectedBooking.approval_steps.step1.at
+                          ? ` pada ${new Date(selectedBooking.approval_steps.step1.at).toLocaleString('id-ID')}`
+                          : ''}.
+                        {selectedBooking.approval_steps.step1.notes && (
+                          <div className="mt-1 italic">Catatan Finance: &ldquo;{selectedBooking.approval_steps.step1.notes}&rdquo;</div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                  <div className="p-3 rounded border" style={{ background: '#EDF3EC', borderColor: '#C6E1C4', color: '#346538' }}>
+                    <div className="font-bold mb-1">Persetujuan Final &amp; Email ke Pendaftar</div>
+                    <div className="text-[11px] leading-relaxed">
+                      Dengan menyetujui Tahap 2 ini, status booking menjadi <strong>APPROVED (FINAL)</strong> dan email konfirmasi resmi langsung dikirimkan ke pendaftar: <strong>{selectedBooking.renter_email}</strong>.
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="p-3 rounded border" style={{ background: '#E1F3FE', borderColor: '#BAE6FD', color: '#1F6C9F' }}>
+                  <div className="font-bold mb-1">Verifikasi Dana Masuk — Belum Mengirim Email Final</div>
+                  <div className="text-[11px] leading-relaxed">
+                    Pastikan dana sebesar <strong>{formatRupiah(selectedBooking.price)}</strong> sudah masuk di rekening sekolah. Setelah Tahap 1 disetujui, sistem otomatis meneruskan giliran ke <strong>Approver 2 (Markom: {approvalFlow?.approver2?.full_name || '-'})</strong> melalui Email &amp; Google Chat.
+                  </div>
+                </div>
+              )}
+
+              <div>
+                <label className="block text-[10px] font-mono uppercase font-semibold mb-1" style={{ color: textSecondary }}>
+                  Catatan Approval (Opsional)
+                </label>
+                <input
+                  type="text"
+                  value={approvalNotes}
+                  onChange={(e) => setApprovalNotes(e.target.value)}
+                  placeholder={isStep2 ? 'Contoh: Jadwal & area lapangan siap digunakan.' : 'Contoh: Mutasi masuk tgl 19/11 Bank Mayapada.'}
+                  className="w-full px-3 py-2 rounded border outline-none text-xs"
+                  style={{ background: isDark ? '#18181B' : '#FFFFFF', borderColor, color: textPrimary }}
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t" style={{ borderColor }}>
+                <button
+                  onClick={() => setApproveModalOpen(false)}
+                  style={{
+                    background: 'transparent',
+                    border: `1px solid ${borderColor}`,
+                    borderRadius: '4px',
+                    fontSize: '11px',
+                    padding: '6px 12px',
+                    cursor: 'pointer',
+                    color: textSecondary
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleApprove}
+                  disabled={actionLoading}
+                  style={{
+                    background: isStep2 ? textPrimary : '#956400',
+                    color: isStep2 ? (isDark ? '#111111' : '#FFFFFF') : '#FFFFFF',
+                    border: 'none',
+                    borderRadius: '4px',
+                    fontSize: '11px',
+                    fontWeight: 600,
+                    padding: '6px 14px',
+                    cursor: 'pointer',
+                    opacity: actionLoading ? 0.5 : 1
+                  }}
+                >
+                  {actionLoading
+                    ? 'Processing...'
+                    : isStep2
+                      ? 'Confirm Approve 2 & Send Email Renter'
+                      : 'Confirm Approve 1 & Notify Markom'}
+                </button>
               </div>
             </div>
-
-            <div className="flex items-center justify-end gap-2 pt-3 border-t" style={{ borderColor }}>
-              <button
-                onClick={() => setApproveModalOpen(false)}
-                style={{
-                  background: 'transparent',
-                  border: `1px solid ${borderColor}`,
-                  borderRadius: '4px',
-                  fontSize: '11px',
-                  padding: '6px 12px',
-                  cursor: 'pointer',
-                  color: textSecondary
-                }}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleApprove}
-                disabled={actionLoading}
-                style={{
-                  background: textPrimary,
-                  color: isDark ? '#111111' : '#FFFFFF',
-                  border: 'none',
-                  borderRadius: '4px',
-                  fontSize: '11px',
-                  fontWeight: 600,
-                  padding: '6px 14px',
-                  cursor: 'pointer',
-                  opacity: actionLoading ? 0.5 : 1
-                }}
-              >
-                {actionLoading ? 'Processing...' : 'Confirm Approval & Send Email'}
-              </button>
-            </div>
-          </div>
-        )}
+          )
+        })()}
       </Modal>
 
       {/* ── MODAL: REJECT CONFIRMATION ─────────────────────────────────────── */}
@@ -1730,7 +2033,7 @@ export default function CourtRentalPage() {
         </form>
       </Modal>
 
-      {/* ── MODAL SET MARKOM & NOTIFIKASI ─────────────────────────────────── */}
+      {/* ── MODAL APPROVAL 2-TAHAP & NOTIFIKASI MARKOM ───────────────────── */}
       <Modal
         isOpen={markomModalOpen}
         onClose={() => setMarkomModalOpen(false)}
@@ -1745,24 +2048,20 @@ export default function CourtRentalPage() {
                 border: `1px solid ${isDark ? '#1D4ED8' : '#DBEAFE'}`
               }}
             >
-              <FontAwesomeIcon icon={faBullhorn} />
+              <FontAwesomeIcon icon={faUserCheck} />
             </div>
             <div>
               <div className="font-bold text-sm tracking-tight" style={{ color: textPrimary }}>
-                Pengaturan Notifikasi Markom
+                Pengaturan Approval Berjenjang &amp; Notifikasi
               </div>
               <div className="text-[11px] font-normal" style={{ color: textSecondary }}>
-                Sport Hall CCS — Notifikasi Instan Reservasi Masuk
+                Sport Hall CCS — Finance (Tahap 1) → Markom (Tahap 2)
               </div>
             </div>
           </div>
         }
       >
         <div className="space-y-4 max-w-full overflow-hidden">
-          <p className="text-xs leading-relaxed" style={{ color: textSecondary, margin: 0 }}>
-            Tentukan staf atau tim Markom/Sarpras yang akan menerima pemberitahuan otomatis melalui <strong>Email (Resend)</strong> dan <strong>Bot Google Chat (DM Workspace)</strong> secara real-time setiap kali ada reservasi baru yang diajukan oleh penyewa di website.
-          </p>
-
           {markomSuccessMsg && (
             <div
               className="p-3 rounded-xl text-xs font-medium flex items-center gap-2 border"
@@ -1776,6 +2075,86 @@ export default function CourtRentalPage() {
               <span>{markomSuccessMsg}</span>
             </div>
           )}
+
+          {/* SECTION 1: SET APPROVER 1 (FINANCE) & APPROVER 2 (MARKOM) */}
+          <div
+            className="p-4 rounded-xl border space-y-3"
+            style={{
+              background: isDark ? '#141417' : '#F9F9F8',
+              borderColor
+            }}
+          >
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <span className="text-xs font-semibold" style={{ color: textPrimary }}>
+                1. Alur Approval Berjenjang (Wajib Diisi)
+              </span>
+              {!isAdmin && (
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
+                  Hanya Admin (Read-Only)
+                </span>
+              )}
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[10px] font-mono uppercase font-semibold mb-1" style={{ color: '#956400' }}>
+                  Approver 1 — Finance (Konfirmasi Dana Masuk)
+                </label>
+                <select
+                  value={approver1UserId}
+                  onChange={(e) => setApprover1UserId(e.target.value)}
+                  disabled={markomLoading || !isAdmin}
+                  className="w-full px-3 py-2 text-xs rounded-lg border outline-none font-medium"
+                  style={{
+                    background: isDark ? '#111111' : '#FFFFFF',
+                    borderColor,
+                    color: textPrimary,
+                    opacity: isAdmin ? 1 : 0.7
+                  }}
+                >
+                  <option value="">-- Pilih User Approver 1 (Finance) --</option>
+                  {availableStaff.map((u) => (
+                    <option key={u.user_id} value={u.user_id}>
+                      {u.user_nama_depan} {u.user_nama_belakang} ({u.role?.role_name || 'Staff'})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-mono uppercase font-semibold mb-1" style={{ color: '#1F6C9F' }}>
+                  Approver 2 — Markom (Approval Final &amp; Email Renter)
+                </label>
+                <select
+                  value={approver2UserId}
+                  onChange={(e) => setApprover2UserId(e.target.value)}
+                  disabled={markomLoading || !isAdmin}
+                  className="w-full px-3 py-2 text-xs rounded-lg border outline-none font-medium"
+                  style={{
+                    background: isDark ? '#111111' : '#FFFFFF',
+                    borderColor,
+                    color: textPrimary,
+                    opacity: isAdmin ? 1 : 0.7
+                  }}
+                >
+                  <option value="">-- Pilih User Approver 2 (Markom) --</option>
+                  {availableStaff.map((u) => (
+                    <option key={u.user_id} value={u.user_id}>
+                      {u.user_nama_depan} {u.user_nama_belakang} ({u.role?.role_name || 'Staff'})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <p className="text-[11px] leading-relaxed" style={{ color: textSecondary, margin: 0 }}>
+              Saat ada pesanan baru, notifikasi dikirim ke <strong>Approver 1 (Finance)</strong> untuk cek mutasi dana. Setelah Finance klik Approve 1, sistem langsung mengirim notifikasi ke <strong>Approver 2 (Markom)</strong>. Email konfirmasi resmi baru dikirim ke pendaftar setelah <strong>keduanya approve</strong>.
+            </p>
+          </div>
+
+          <p className="text-xs leading-relaxed" style={{ color: textSecondary, margin: 0 }}>
+            <strong>2. Penerima Notifikasi Tambahan (CC Email &amp; Google Chat):</strong> Opsional, tambahkan staf lain yang ikut menerima tembusan notifikasi saat pesanan baru masuk maupun saat diteruskan ke Markom.
+          </p>
 
           {/* Form Tambah Staf */}
           <div

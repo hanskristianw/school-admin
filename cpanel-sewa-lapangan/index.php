@@ -1167,9 +1167,15 @@ if (!empty($searchQuery)) {
               <div class="border-t border-gray-100 pt-4">
                 <span class="text-sm font-semibold text-gray-800 block mb-2">Benefit :</span>
                 <ul class="space-y-2 text-sm text-gray-600">
-                  <?php foreach ($L['pkg2_benefits'] as $bnf): ?>
+                  <?php foreach ($L['pkg2_benefits'] as $bnf): 
+                    $isNoAc = (stripos($bnf, 'Tanpa') !== false || stripos($bnf, 'Without') !== false || mb_strpos($bnf, '无') !== false || mb_strpos($bnf, '不') !== false);
+                  ?>
                     <li class="flex items-center gap-2.5">
-                      <i class="fas fa-check text-ccsTeal text-xs"></i>
+                      <?php if ($isNoAc): ?>
+                        <i class="fas fa-times text-red-500 text-xs"></i>
+                      <?php else: ?>
+                        <i class="fas fa-check text-ccsTeal text-xs"></i>
+                      <?php endif; ?>
                       <span><?= htmlspecialchars($bnf) ?></span>
                     </li>
                   <?php endforeach; ?>

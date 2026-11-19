@@ -1,10 +1,12 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import {
+  supabaseAdmin,
+  fetchAllCourtRentals,
+  getCourtRentalSettings,
+  enrichBookingWithApproval
+} from '@/lib/courtRentalApproval'
 
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-)
+export const dynamic = 'force-dynamic'
 
 export async function GET(request) {
   try {
@@ -13,27 +15,16 @@ export async function GET(request) {
     const search = searchParams.get('search')
     const date = searchParams.get('date')
 
-    let query = supabaseAdmin
-      .from('court_rentals')
-      .select('*')
-      .order('created_at', { ascending: false })
-
-    if (status && status !== 'all') {
-      query = query.eq('status', status)
-    }
-
-    if (date) {
-      query = query.eq('booking_date', date)
-    }
-
-    if (search && search.trim()) {
-      const q = `%${search.trim()}%`
-      query = query.or(`booking_code.ilike.${q},renter_name.ilike.${q},renter_email.ilike.${q},renter_phone.ilike.${q}`)
-    }
-
-    const { data: bookings, error } = await query
-
-    if (error) {
+    let allRows = []
+    try {
+      allRows = await fetchAllCourtRentals((from, to) =>
+        supabaseAdmin
+          .from('court_rentals')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .range(from, to)
+      )
+    } catch (error) {
       if (error.code === '42P01') {
         return NextResponse.json({
           success: false,
@@ -42,31 +33,59 @@ export async function GET(request) {
           bookings: []
         })
       }
-      return NextResponse.json(
-        { success: false, message: error.message },
-        { status: 500 }
-      )
+      return NextResponse.json({ success: false, message: error.message }, { status: 500 })
     }
 
-    // Hitung summary counter
-    const { data: allRows } = await supabaseAdmin
-      .from('court_rentals')
-      .select('status, price')
+    const { approvalFlow, approvalStates } = await getCourtRentalSettings()
+    const enrichedAll = allRows.map(row => enrichBookingWithApproval(row, approvalStates))
 
     const stats = {
-      total: allRows?.length || 0,
-      uploaded: allRows?.filter(r => r.status === 'payment_uploaded').length || 0,
-      approved: allRows?.filter(r => r.status === 'approved').length || 0,
-      rejected: allRows?.filter(r => r.status === 'rejected').length || 0,
-      pending: allRows?.filter(r => r.status === 'pending_payment').length || 0,
-      totalIncome: allRows?.filter(r => r.status === 'approved').reduce((acc, cur) => acc + Number(cur.price || 0), 0) || 0
+      total: enrichedAll.length,
+      uploaded: enrichedAll.filter(r => r.status === 'payment_uploaded').length,
+      awaitingStep1: enrichedAll.filter(
+        r => (r.status === 'payment_uploaded' || r.status === 'pending_payment') && r.approval_stage === 'awaiting_approver_1'
+      ).length,
+      awaitingStep2: enrichedAll.filter(
+        r => r.status === 'payment_uploaded' && r.approval_stage === 'awaiting_approver_2'
+      ).length,
+      approved: enrichedAll.filter(r => r.status === 'approved').length,
+      rejected: enrichedAll.filter(r => r.status === 'rejected').length,
+      pending: enrichedAll.filter(r => r.status === 'pending_payment').length,
+      totalIncome: enrichedAll
+        .filter(r => r.status === 'approved')
+        .reduce((acc, cur) => acc + Number(cur.price || 0), 0)
+    }
+
+    let filtered = enrichedAll
+    if (status && status !== 'all') {
+      if (status === 'awaiting_approver_1' || status === 'awaiting_approver_2') {
+        filtered = filtered.filter(
+          r => r.approval_stage === status && r.status !== 'approved' && r.status !== 'rejected'
+        )
+      } else {
+        filtered = filtered.filter(r => r.status === status)
+      }
+    }
+
+    if (date) {
+      filtered = filtered.filter(r => r.booking_date === date)
+    }
+
+    if (search && search.trim()) {
+      const q = search.trim().toLowerCase()
+      filtered = filtered.filter(r =>
+        [r.booking_code, r.renter_name, r.renter_email, r.renter_phone, r.renter_org]
+          .filter(Boolean)
+          .some(v => String(v).toLowerCase().includes(q))
+      )
     }
 
     return NextResponse.json({
       success: true,
       tableExists: true,
-      bookings: bookings || [],
-      stats
+      bookings: filtered,
+      stats,
+      approvalFlow
     })
   } catch (err) {
     return NextResponse.json(

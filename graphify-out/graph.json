@@ -3637,8 +3637,8 @@
       "source_location": "L38",
       "_origin": "ast",
       "id": "package_dependencies_bcryptjs",
-      "community": 404,
-      "community_name": "@tiptap/extension-task-list",
+      "community": 133,
+      "community_name": "Module 133",
       "norm_label": "bcryptjs"
     },
     {
@@ -3648,8 +3648,8 @@
       "source_location": "L38",
       "_origin": "ast",
       "id": "bcryptjs",
-      "community": 404,
-      "community_name": "@tiptap/extension-task-list",
+      "community": 133,
+      "community_name": "Module 133",
       "norm_label": "bcryptjs"
     },
     {
@@ -3835,8 +3835,8 @@
       "source_location": "L47",
       "_origin": "ast",
       "id": "package_dependencies_googleapis",
-      "community": 133,
-      "community_name": "Module 133",
+      "community": 346,
+      "community_name": "bcryptjs",
       "norm_label": "googleapis"
     },
     {
@@ -3846,8 +3846,8 @@
       "source_location": "L47",
       "_origin": "ast",
       "id": "googleapis",
-      "community": 133,
-      "community_name": "Module 133",
+      "community": 346,
+      "community_name": "bcryptjs",
       "norm_label": "googleapis"
     },
     {
@@ -6183,21 +6183,10 @@
       "norm_label": "route.js"
     },
     {
-      "label": "supabaseAdmin",
-      "file_type": "code",
-      "source_file": "src/app/api/court-rental/[id]/approve/route.js",
-      "source_location": "L6",
-      "_origin": "ast",
-      "id": "src_app_api_court_rental_id_approve_route_supabaseadmin",
-      "community": 361,
-      "community_name": "route.js",
-      "norm_label": "supabaseadmin"
-    },
-    {
       "label": "POST()",
       "file_type": "code",
       "source_file": "src/app/api/court-rental/[id]/approve/route.js",
-      "source_location": "L11",
+      "source_location": "L14",
       "_origin": "ast",
       "id": "src_app_api_court_rental_id_approve_route_post",
       "community": 361,
@@ -6260,21 +6249,10 @@
       "norm_label": "route.js"
     },
     {
-      "label": "supabaseAdmin",
-      "file_type": "code",
-      "source_file": "src/app/api/court-rental/[id]/reject/route.js",
-      "source_location": "L6",
-      "_origin": "ast",
-      "id": "src_app_api_court_rental_id_reject_route_supabaseadmin",
-      "community": 363,
-      "community_name": "route.js",
-      "norm_label": "supabaseadmin"
-    },
-    {
       "label": "POST()",
       "file_type": "code",
       "source_file": "src/app/api/court-rental/[id]/reject/route.js",
-      "source_location": "L11",
+      "source_location": "L13",
       "_origin": "ast",
       "id": "src_app_api_court_rental_id_reject_route_post",
       "community": 363,
@@ -6348,21 +6326,10 @@
       "norm_label": "route.js"
     },
     {
-      "label": "supabaseAdmin",
-      "file_type": "code",
-      "source_file": "src/app/api/court-rental/markom/route.js",
-      "source_location": "L6",
-      "_origin": "ast",
-      "id": "src_app_api_court_rental_markom_route_supabaseadmin",
-      "community": 429,
-      "community_name": "route.js",
-      "norm_label": "supabaseadmin"
-    },
-    {
       "label": "GET()",
       "file_type": "code",
       "source_file": "src/app/api/court-rental/markom/route.js",
-      "source_location": "L14",
+      "source_location": "L16",
       "_origin": "ast",
       "id": "src_app_api_court_rental_markom_route_get",
       "community": 429,
@@ -6373,7 +6340,7 @@
       "label": "POST()",
       "file_type": "code",
       "source_file": "src/app/api/court-rental/markom/route.js",
-      "source_location": "L71",
+      "source_location": "L62",
       "_origin": "ast",
       "id": "src_app_api_court_rental_markom_route_post",
       "community": 429,
@@ -6392,21 +6359,10 @@
       "norm_label": "route.js"
     },
     {
-      "label": "supabaseAdmin",
-      "file_type": "code",
-      "source_file": "src/app/api/court-rental/route.js",
-      "source_location": "L4",
-      "_origin": "ast",
-      "id": "src_app_api_court_rental_route_supabaseadmin",
-      "community": 364,
-      "community_name": "route.js",
-      "norm_label": "supabaseadmin"
-    },
-    {
       "label": "GET()",
       "file_type": "code",
       "source_file": "src/app/api/court-rental/route.js",
-      "source_location": "L9",
+      "source_location": "L11",
       "_origin": "ast",
       "id": "src_app_api_court_rental_route_get",
       "community": 364,
@@ -7503,17 +7459,6 @@
       "norm_label": "route.js"
     },
     {
-      "label": "supabaseAdmin",
-      "file_type": "code",
-      "source_file": "src/app/api/public/court-rental/route.js",
-      "source_location": "L9",
-      "_origin": "ast",
-      "id": "src_app_api_public_court_rental_route_supabaseadmin",
-      "community": 301,
-      "community_name": "driver.js",
-      "norm_label": "supabaseadmin"
-    },
-    {
       "label": "verifyAuth()",
       "file_type": "code",
       "source_file": "src/app/api/public/court-rental/route.js",
@@ -7572,7 +7517,7 @@
       "label": "GET()",
       "file_type": "code",
       "source_file": "src/app/api/public/court-rental/route.js",
-      "source_location": "L350",
+      "source_location": "L289",
       "_origin": "ast",
       "id": "src_app_api_public_court_rental_route_get",
       "community": 301,
@@ -10025,7 +9970,7 @@
       "label": "CourtRentalPage()",
       "file_type": "code",
       "source_file": "src/app/data/court-rental/page.jsx",
-      "source_location": "L105",
+      "source_location": "L108",
       "_origin": "ast",
       "id": "src_app_data_court_rental_page_courtrentalpage",
       "community": 366,
@@ -12294,8 +12239,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_app_data_topic_new_components_googleclassroomconnector",
-      "community": 259,
-      "community_name": "DDL",
+      "community": 145,
+      "community_name": "Module 145",
       "norm_label": "googleclassroomconnector.jsx"
     },
     {
@@ -12305,8 +12250,8 @@
       "source_location": "L22",
       "_origin": "ast",
       "id": "src_app_data_topic_new_components_googleclassroomconnector_googleclassroomicon",
-      "community": 259,
-      "community_name": "DDL",
+      "community": 145,
+      "community_name": "Module 145",
       "norm_label": "googleclassroomicon()"
     },
     {
@@ -12316,8 +12261,8 @@
       "source_location": "L39",
       "_origin": "ast",
       "id": "src_app_data_topic_new_components_googleclassroomconnector_google_classroom_scopes",
-      "community": 259,
-      "community_name": "DDL",
+      "community": 145,
+      "community_name": "Module 145",
       "norm_label": "google_classroom_scopes"
     },
     {
@@ -12327,8 +12272,8 @@
       "source_location": "L48",
       "_origin": "ast",
       "id": "src_app_data_topic_new_components_googleclassroomconnector_getstoredclassroomtoken",
-      "community": 259,
-      "community_name": "DDL",
+      "community": 145,
+      "community_name": "Module 145",
       "norm_label": "getstoredclassroomtoken()"
     },
     {
@@ -12338,8 +12283,8 @@
       "source_location": "L59",
       "_origin": "ast",
       "id": "src_app_data_topic_new_components_googleclassroomconnector_setstoredclassroomtoken",
-      "community": 259,
-      "community_name": "DDL",
+      "community": 145,
+      "community_name": "Module 145",
       "norm_label": "setstoredclassroomtoken()"
     },
     {
@@ -12349,8 +12294,8 @@
       "source_location": "L66",
       "_origin": "ast",
       "id": "src_app_data_topic_new_components_googleclassroomconnector_clearstoredclassroomtoken",
-      "community": 259,
-      "community_name": "DDL",
+      "community": 145,
+      "community_name": "Module 145",
       "norm_label": "clearstoredclassroomtoken()"
     },
     {
@@ -12360,8 +12305,8 @@
       "source_location": "L76",
       "_origin": "ast",
       "id": "src_app_data_topic_new_components_googleclassroomconnector_refreshclassroomtoken",
-      "community": 259,
-      "community_name": "DDL",
+      "community": 145,
+      "community_name": "Module 145",
       "norm_label": "refreshclassroomtoken()"
     },
     {
@@ -12371,8 +12316,8 @@
       "source_location": "L103",
       "_origin": "ast",
       "id": "src_app_data_topic_new_components_googleclassroomconnector_getvalidclassroomtoken",
-      "community": 259,
-      "community_name": "DDL",
+      "community": 145,
+      "community_name": "Module 145",
       "norm_label": "getvalidclassroomtoken()"
     },
     {
@@ -12382,8 +12327,8 @@
       "source_location": "L120",
       "_origin": "ast",
       "id": "src_app_data_topic_new_components_googleclassroomconnector_authorizegoogleclassroom",
-      "community": 259,
-      "community_name": "DDL",
+      "community": 145,
+      "community_name": "Module 145",
       "norm_label": "authorizegoogleclassroom()"
     },
     {
@@ -12393,8 +12338,8 @@
       "source_location": "L203",
       "_origin": "ast",
       "id": "src_app_data_topic_new_components_googleclassroomconnector_extractclassroomlinks",
-      "community": 259,
-      "community_name": "DDL",
+      "community": 145,
+      "community_name": "Module 145",
       "norm_label": "extractclassroomlinks()"
     },
     {
@@ -12404,8 +12349,8 @@
       "source_location": "L214",
       "_origin": "ast",
       "id": "src_app_data_topic_new_components_googleclassroomconnector_googleclassroomconnector",
-      "community": 259,
-      "community_name": "DDL",
+      "community": 145,
+      "community_name": "Module 145",
       "norm_label": "googleclassroomconnector()"
     },
     {
@@ -15135,6 +15080,138 @@
       "community": 52,
       "community_name": "Module 52",
       "norm_label": "getprovincelist()"
+    },
+    {
+      "label": "courtRentalApproval.js",
+      "file_type": "code",
+      "source_file": "src/lib/courtRentalApproval.js",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "src_lib_courtrentalapproval",
+      "community": 259,
+      "community_name": "DDL",
+      "norm_label": "courtrentalapproval.js"
+    },
+    {
+      "label": "supabaseAdmin",
+      "file_type": "code",
+      "source_file": "src/lib/courtRentalApproval.js",
+      "source_location": "L6",
+      "_origin": "ast",
+      "id": "src_lib_courtrentalapproval_supabaseadmin",
+      "community": 259,
+      "community_name": "DDL",
+      "norm_label": "supabaseadmin"
+    },
+    {
+      "label": "fetchAllCourtRentals()",
+      "file_type": "code",
+      "source_file": "src/lib/courtRentalApproval.js",
+      "source_location": "L20",
+      "_origin": "ast",
+      "id": "src_lib_courtrentalapproval_fetchallcourtrentals",
+      "community": 259,
+      "community_name": "DDL",
+      "norm_label": "fetchallcourtrentals()"
+    },
+    {
+      "label": "parseSettingJson()",
+      "file_type": "code",
+      "source_file": "src/lib/courtRentalApproval.js",
+      "source_location": "L34",
+      "_origin": "ast",
+      "id": "src_lib_courtrentalapproval_parsesettingjson",
+      "community": 259,
+      "community_name": "DDL",
+      "norm_label": "parsesettingjson()"
+    },
+    {
+      "label": "formatStaffName()",
+      "file_type": "code",
+      "source_file": "src/lib/courtRentalApproval.js",
+      "source_location": "L43",
+      "_origin": "ast",
+      "id": "src_lib_courtrentalapproval_formatstaffname",
+      "community": 259,
+      "community_name": "DDL",
+      "norm_label": "formatstaffname()"
+    },
+    {
+      "label": "getCourtRentalSettings()",
+      "file_type": "code",
+      "source_file": "src/lib/courtRentalApproval.js",
+      "source_location": "L48",
+      "_origin": "ast",
+      "id": "src_lib_courtrentalapproval_getcourtrentalsettings",
+      "community": 259,
+      "community_name": "DDL",
+      "norm_label": "getcourtrentalsettings()"
+    },
+    {
+      "label": "saveCourtRentalSetting()",
+      "file_type": "code",
+      "source_file": "src/lib/courtRentalApproval.js",
+      "source_location": "L73",
+      "_origin": "ast",
+      "id": "src_lib_courtrentalapproval_savecourtrentalsetting",
+      "community": 259,
+      "community_name": "DDL",
+      "norm_label": "savecourtrentalsetting()"
+    },
+    {
+      "label": "resolveStaffUser()",
+      "file_type": "code",
+      "source_file": "src/lib/courtRentalApproval.js",
+      "source_location": "L88",
+      "_origin": "ast",
+      "id": "src_lib_courtrentalapproval_resolvestaffuser",
+      "community": 259,
+      "community_name": "DDL",
+      "norm_label": "resolvestaffuser()"
+    },
+    {
+      "label": "ensureCourtRentalMenuPermissions()",
+      "file_type": "code",
+      "source_file": "src/lib/courtRentalApproval.js",
+      "source_location": "L124",
+      "_origin": "ast",
+      "id": "src_lib_courtrentalapproval_ensurecourtrentalmenupermissions",
+      "community": 259,
+      "community_name": "DDL",
+      "norm_label": "ensurecourtrentalmenupermissions()"
+    },
+    {
+      "label": "enrichBookingWithApproval()",
+      "file_type": "code",
+      "source_file": "src/lib/courtRentalApproval.js",
+      "source_location": "L162",
+      "_origin": "ast",
+      "id": "src_lib_courtrentalapproval_enrichbookingwithapproval",
+      "community": 259,
+      "community_name": "DDL",
+      "norm_label": "enrichbookingwithapproval()"
+    },
+    {
+      "label": "getDashboardUrl()",
+      "file_type": "code",
+      "source_file": "src/lib/courtRentalApproval.js",
+      "source_location": "L221",
+      "_origin": "ast",
+      "id": "src_lib_courtrentalapproval_getdashboardurl",
+      "community": 259,
+      "community_name": "DDL",
+      "norm_label": "getdashboardurl()"
+    },
+    {
+      "label": "notifyApproversAndMarkom()",
+      "file_type": "code",
+      "source_file": "src/lib/courtRentalApproval.js",
+      "source_location": "L229",
+      "_origin": "ast",
+      "id": "src_lib_courtrentalapproval_notifyapproversandmarkom",
+      "community": 259,
+      "community_name": "DDL",
+      "norm_label": "notifyapproversandmarkom()"
     },
     {
       "label": "discCalculator.js",
@@ -24955,8 +25032,8 @@
       "source_location": "L5",
       "_origin": "ast",
       "id": "main_documentation_2026_07_16_timetable_refactor_weekly_plan_dates_weekly_overview",
-      "community": 102,
-      "community_name": "Module 102",
+      "community": 331,
+      "community_name": "class-variance-authority",
       "norm_label": "2026-07-16 \u2014 timetable refactor + weekly plan dates + weekly overview"
     },
     {
@@ -24966,8 +25043,8 @@
       "source_location": "L7",
       "_origin": "ast",
       "id": "main_documentation_timetable_refactor_data_timetable",
-      "community": 102,
-      "community_name": "Module 102",
+      "community": 331,
+      "community_name": "class-variance-authority",
       "norm_label": "timetable refactor (`/data/timetable`)"
     },
     {
@@ -24977,8 +25054,8 @@
       "source_location": "L17",
       "_origin": "ast",
       "id": "main_documentation_timetable_exceptions_timetable_exception_new_table",
-      "community": 102,
-      "community_name": "Module 102",
+      "community": 331,
+      "community_name": "class-variance-authority",
       "norm_label": "timetable exceptions (`timetable_exception`) \u2014 new table"
     },
     {
@@ -24988,8 +25065,8 @@
       "source_location": "L46",
       "_origin": "ast",
       "id": "main_documentation_weekly_plan_dates_topic_weekly_plan_week_date",
-      "community": 102,
-      "community_name": "Module 102",
+      "community": 331,
+      "community_name": "class-variance-authority",
       "norm_label": "weekly plan dates \u2014 `topic_weekly_plan.week_date`"
     },
     {
@@ -24999,8 +25076,8 @@
       "source_location": "L54",
       "_origin": "ast",
       "id": "main_documentation_weekly_overview_data_weekly_overview_new_page",
-      "community": 102,
-      "community_name": "Module 102",
+      "community": 331,
+      "community_name": "class-variance-authority",
       "norm_label": "weekly overview (`/data/weekly-overview`) \u2014 new page"
     },
     {
@@ -25010,8 +25087,8 @@
       "source_location": "L73",
       "_origin": "ast",
       "id": "main_documentation_weekly_overview_draft_table_new",
-      "community": 102,
-      "community_name": "Module 102",
+      "community": 331,
+      "community_name": "class-variance-authority",
       "norm_label": "`weekly_overview_draft` table \u2014 new"
     },
     {
@@ -25021,8 +25098,8 @@
       "source_location": "L87",
       "_origin": "ast",
       "id": "main_documentation_topic_weekly_plan_complete_schema_reference",
-      "community": 102,
-      "community_name": "Module 102",
+      "community": 331,
+      "community_name": "class-variance-authority",
       "norm_label": "`topic_weekly_plan` \u2014 complete schema reference"
     },
     {
@@ -25032,8 +25109,8 @@
       "source_location": "L103",
       "_origin": "ast",
       "id": "main_documentation_full_data_flow_timetable_weekly_overview",
-      "community": 102,
-      "community_name": "Module 102",
+      "community": 331,
+      "community_name": "class-variance-authority",
       "norm_label": "full data flow: timetable \u2192 weekly overview"
     },
     {
@@ -25186,8 +25263,8 @@
       "source_location": "L287",
       "_origin": "ast",
       "id": "main_documentation_database_structure",
-      "community": 344,
-      "community_name": "8. DARK MODE PROTOCOL",
+      "community": 101,
+      "community_name": "Module 101",
       "norm_label": "\ufffd\ud83c\udfd7\ufe0f **database structure**"
     },
     {
@@ -25197,8 +25274,8 @@
       "source_location": "L289",
       "_origin": "ast",
       "id": "main_documentation_core_tables",
-      "community": 344,
-      "community_name": "8. DARK MODE PROTOCOL",
+      "community": 101,
+      "community_name": "Module 101",
       "norm_label": "**core tables:**"
     },
     {
@@ -25208,8 +25285,8 @@
       "source_location": "L524",
       "_origin": "ast",
       "id": "main_documentation_grades_nilai_table",
-      "community": 344,
-      "community_name": "8. DARK MODE PROTOCOL",
+      "community": 101,
+      "community_name": "Module 101",
       "norm_label": "grades (nilai) table"
     },
     {
@@ -25219,8 +25296,8 @@
       "source_location": "L539",
       "_origin": "ast",
       "id": "main_documentation_attendance_qr_tables",
-      "community": 344,
-      "community_name": "8. DARK MODE PROTOCOL",
+      "community": 101,
+      "community_name": "Module 101",
       "norm_label": "attendance (qr) tables"
     },
     {
@@ -25263,8 +25340,8 @@
       "source_location": "L618",
       "_origin": "ast",
       "id": "main_documentation_3_assessment_system",
-      "community": 387,
-      "community_name": "\ud83d\udcc1 **Project Structure**",
+      "community": 80,
+      "community_name": "Module 80",
       "norm_label": "**3. assessment system**"
     },
     {
@@ -25274,8 +25351,8 @@
       "source_location": "L619",
       "_origin": "ast",
       "id": "main_documentation_teacher_workflow",
-      "community": 387,
-      "community_name": "\ud83d\udcc1 **Project Structure**",
+      "community": 80,
+      "community_name": "Module 80",
       "norm_label": "**teacher workflow**:"
     },
     {
@@ -25285,8 +25362,8 @@
       "source_location": "L628",
       "_origin": "ast",
       "id": "main_documentation_admin_workflow",
-      "community": 387,
-      "community_name": "\ud83d\udcc1 **Project Structure**",
+      "community": 80,
+      "community_name": "Module 80",
       "norm_label": "**admin workflow**:"
     },
     {
@@ -25417,8 +25494,8 @@
       "source_location": "L812",
       "_origin": "ast",
       "id": "main_documentation_technical_implementation",
-      "community": 346,
-      "community_name": "bcryptjs",
+      "community": 101,
+      "community_name": "Module 101",
       "norm_label": "\ud83d\udd27 **technical implementation**"
     },
     {
@@ -25428,8 +25505,8 @@
       "source_location": "L814",
       "_origin": "ast",
       "id": "main_documentation_frontend_stack",
-      "community": 346,
-      "community_name": "bcryptjs",
+      "community": 101,
+      "community_name": "Module 101",
       "norm_label": "**frontend stack:**"
     },
     {
@@ -25439,8 +25516,8 @@
       "source_location": "L821",
       "_origin": "ast",
       "id": "main_documentation_backend_database",
-      "community": 346,
-      "community_name": "bcryptjs",
+      "community": 101,
+      "community_name": "Module 101",
       "norm_label": "**backend & database:**"
     },
     {
@@ -25450,8 +25527,8 @@
       "source_location": "L827",
       "_origin": "ast",
       "id": "main_documentation_key_technical_notes",
-      "community": 346,
-      "community_name": "bcryptjs",
+      "community": 101,
+      "community_name": "Module 101",
       "norm_label": "**key technical notes:**"
     },
     {
@@ -25461,8 +25538,8 @@
       "source_location": "L881",
       "_origin": "ast",
       "id": "main_documentation_setup_deployment",
-      "community": 101,
-      "community_name": "Module 101",
+      "community": 344,
+      "community_name": "8. DARK MODE PROTOCOL",
       "norm_label": "\ud83d\ude80 **setup & deployment**"
     },
     {
@@ -25472,8 +25549,8 @@
       "source_location": "L883",
       "_origin": "ast",
       "id": "main_documentation_database_migration_files_execute_in_order",
-      "community": 101,
-      "community_name": "Module 101",
+      "community": 344,
+      "community_name": "8. DARK MODE PROTOCOL",
       "norm_label": "**database migration files (execute in order):**"
     },
     {
@@ -25483,8 +25560,8 @@
       "source_location": "L911",
       "_origin": "ast",
       "id": "main_documentation_development",
-      "community": 101,
-      "community_name": "Module 101",
+      "community": 344,
+      "community_name": "8. DARK MODE PROTOCOL",
       "norm_label": "**development:**"
     },
     {
@@ -25494,8 +25571,8 @@
       "source_location": "L918",
       "_origin": "ast",
       "id": "main_documentation_key_environment",
-      "community": 101,
-      "community_name": "Module 101",
+      "community": 344,
+      "community_name": "8. DARK MODE PROTOCOL",
       "norm_label": "**key environment:**"
     },
     {
@@ -25505,8 +25582,8 @@
       "source_location": "L928",
       "_origin": "ast",
       "id": "main_documentation_additional_files",
-      "community": 101,
-      "community_name": "Module 101",
+      "community": 344,
+      "community_name": "8. DARK MODE PROTOCOL",
       "norm_label": "**additional files:**"
     },
     {
@@ -25769,8 +25846,8 @@
       "source_location": "L1119",
       "_origin": "ast",
       "id": "main_documentation_key_components",
-      "community": 331,
-      "community_name": "class-variance-authority",
+      "community": 106,
+      "community_name": "Module 106",
       "norm_label": "**key components**"
     },
     {
@@ -25780,8 +25857,8 @@
       "source_location": "L1121",
       "_origin": "ast",
       "id": "main_documentation_1_myp_year_level_selection",
-      "community": 331,
-      "community_name": "class-variance-authority",
+      "community": 106,
+      "community_name": "Module 106",
       "norm_label": "**1. myp year level selection**"
     },
     {
@@ -25791,8 +25868,8 @@
       "source_location": "L1128",
       "_origin": "ast",
       "id": "main_documentation_2_criterion_grades_a_b_c_d",
-      "community": 331,
-      "community_name": "class-variance-authority",
+      "community": 106,
+      "community_name": "Module 106",
       "norm_label": "**2. criterion grades (a, b, c, d)**"
     },
     {
@@ -25802,8 +25879,8 @@
       "source_location": "L1138",
       "_origin": "ast",
       "id": "main_documentation_3_strand_grades",
-      "community": 331,
-      "community_name": "class-variance-authority",
+      "community": 106,
+      "community_name": "Module 106",
       "norm_label": "**3. strand grades**"
     },
     {
@@ -25813,8 +25890,8 @@
       "source_location": "L1147",
       "_origin": "ast",
       "id": "main_documentation_4_final_grade_1_7",
-      "community": 331,
-      "community_name": "class-variance-authority",
+      "community": 106,
+      "community_name": "Module 106",
       "norm_label": "**4. final grade (1-7)**"
     },
     {
@@ -25890,8 +25967,8 @@
       "source_location": "L1221",
       "_origin": "ast",
       "id": "main_documentation_project_structure",
-      "community": 394,
-      "community_name": "react-hook-form",
+      "community": 101,
+      "community_name": "Module 101",
       "norm_label": "\ud83d\udcc1 **project structure**"
     },
     {
@@ -25901,8 +25978,8 @@
       "source_location": "L1223",
       "_origin": "ast",
       "id": "main_documentation_key_directories",
-      "community": 394,
-      "community_name": "react-hook-form",
+      "community": 101,
+      "community_name": "Module 101",
       "norm_label": "**key directories:**"
     },
     {
@@ -25912,8 +25989,8 @@
       "source_location": "L1229",
       "_origin": "ast",
       "id": "main_documentation_important_files",
-      "community": 394,
-      "community_name": "react-hook-form",
+      "community": 101,
+      "community_name": "Module 101",
       "norm_label": "**important files:**"
     },
     {
@@ -36284,22 +36361,11 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/app/api/court-rental/[id]/approve/route.js",
-      "source_location": "L11",
+      "source_location": "L14",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_api_court_rental_id_approve_route",
       "target": "src_app_api_court_rental_id_approve_route_post",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "src/app/api/court-rental/[id]/approve/route.js",
-      "source_location": "L6",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "src_app_api_court_rental_id_approve_route",
-      "target": "src_app_api_court_rental_id_approve_route_supabaseadmin",
       "confidence_score": 1.0
     },
     {
@@ -36351,22 +36417,11 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/app/api/court-rental/[id]/reject/route.js",
-      "source_location": "L11",
+      "source_location": "L13",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_api_court_rental_id_reject_route",
       "target": "src_app_api_court_rental_id_reject_route_post",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "src/app/api/court-rental/[id]/reject/route.js",
-      "source_location": "L6",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "src_app_api_court_rental_id_reject_route",
-      "target": "src_app_api_court_rental_id_reject_route_supabaseadmin",
       "confidence_score": 1.0
     },
     {
@@ -36417,7 +36472,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/app/api/court-rental/markom/route.js",
-      "source_location": "L14",
+      "source_location": "L16",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_api_court_rental_markom_route",
@@ -36428,7 +36483,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/app/api/court-rental/markom/route.js",
-      "source_location": "L71",
+      "source_location": "L62",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_api_court_rental_markom_route",
@@ -36438,34 +36493,12 @@
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
-      "source_file": "src/app/api/court-rental/markom/route.js",
-      "source_location": "L6",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "src_app_api_court_rental_markom_route",
-      "target": "src_app_api_court_rental_markom_route_supabaseadmin",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
       "source_file": "src/app/api/court-rental/route.js",
-      "source_location": "L9",
+      "source_location": "L11",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_api_court_rental_route",
       "target": "src_app_api_court_rental_route_get",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "src/app/api/court-rental/route.js",
-      "source_location": "L4",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "src_app_api_court_rental_route",
-      "target": "src_app_api_court_rental_route_supabaseadmin",
       "confidence_score": 1.0
     },
     {
@@ -37622,7 +37655,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/app/api/public/court-rental/route.js",
-      "source_location": "L350",
+      "source_location": "L289",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_api_public_court_rental_route",
@@ -37660,17 +37693,6 @@
       "_origin": "ast",
       "source": "src_app_api_public_court_rental_route",
       "target": "src_app_api_public_court_rental_route_post",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "src/app/api/public/court-rental/route.js",
-      "source_location": "L9",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "src_app_api_public_court_rental_route",
-      "target": "src_app_api_public_court_rental_route_supabaseadmin",
       "confidence_score": 1.0
     },
     {
@@ -37725,7 +37747,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/app/api/public/court-rental/route.js",
-      "source_location": "L446",
+      "source_location": "L385",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_api_public_court_rental_route_get",
@@ -40733,7 +40755,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/app/data/court-rental/page.jsx",
-      "source_location": "L105",
+      "source_location": "L108",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_court_rental_page",
@@ -48784,6 +48806,175 @@
       "_origin": "ast",
       "source": "src_lib_cityprovincedata",
       "target": "src_lib_cityprovincedata_getprovincelist",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/lib/courtRentalApproval.js",
+      "source_location": "L162",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_lib_courtrentalapproval",
+      "target": "src_lib_courtrentalapproval_enrichbookingwithapproval",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/lib/courtRentalApproval.js",
+      "source_location": "L124",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_lib_courtrentalapproval",
+      "target": "src_lib_courtrentalapproval_ensurecourtrentalmenupermissions",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/lib/courtRentalApproval.js",
+      "source_location": "L20",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_lib_courtrentalapproval",
+      "target": "src_lib_courtrentalapproval_fetchallcourtrentals",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/lib/courtRentalApproval.js",
+      "source_location": "L43",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_lib_courtrentalapproval",
+      "target": "src_lib_courtrentalapproval_formatstaffname",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/lib/courtRentalApproval.js",
+      "source_location": "L48",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_lib_courtrentalapproval",
+      "target": "src_lib_courtrentalapproval_getcourtrentalsettings",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/lib/courtRentalApproval.js",
+      "source_location": "L221",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_lib_courtrentalapproval",
+      "target": "src_lib_courtrentalapproval_getdashboardurl",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/lib/courtRentalApproval.js",
+      "source_location": "L229",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_lib_courtrentalapproval",
+      "target": "src_lib_courtrentalapproval_notifyapproversandmarkom",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/lib/courtRentalApproval.js",
+      "source_location": "L34",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_lib_courtrentalapproval",
+      "target": "src_lib_courtrentalapproval_parsesettingjson",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/lib/courtRentalApproval.js",
+      "source_location": "L88",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_lib_courtrentalapproval",
+      "target": "src_lib_courtrentalapproval_resolvestaffuser",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/lib/courtRentalApproval.js",
+      "source_location": "L73",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_lib_courtrentalapproval",
+      "target": "src_lib_courtrentalapproval_savecourtrentalsetting",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/lib/courtRentalApproval.js",
+      "source_location": "L6",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_lib_courtrentalapproval",
+      "target": "src_lib_courtrentalapproval_supabaseadmin",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/lib/courtRentalApproval.js",
+      "source_location": "L57",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_lib_courtrentalapproval_getcourtrentalsettings",
+      "target": "src_lib_courtrentalapproval_parsesettingjson",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/lib/courtRentalApproval.js",
+      "source_location": "L257",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_lib_courtrentalapproval_notifyapproversandmarkom",
+      "target": "src_lib_courtrentalapproval_formatstaffname",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/lib/courtRentalApproval.js",
+      "source_location": "L110",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_lib_courtrentalapproval_resolvestaffuser",
+      "target": "src_lib_courtrentalapproval_formatstaffname",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/lib/courtRentalApproval.js",
+      "source_location": "L236",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_lib_courtrentalapproval_notifyapproversandmarkom",
+      "target": "src_lib_courtrentalapproval_getdashboardurl",
       "confidence_score": 1.0
     },
     {
@@ -62865,5 +63056,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "430b71cc0f508bae6b39d52205de7d623ad16d93"
+  "built_at_commit": "22bcea47bdce0a5c7e33307292755b43b0da25b6"
 }

@@ -1,39 +1,67 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
 import { sendEmail } from '@/lib/mailer'
 import { emailTemplates } from '@/lib/emailTemplates'
-
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-)
+import {
+  supabaseAdmin,
+  APPROVAL_STATES_KEY,
+  getCourtRentalSettings,
+  saveCourtRentalSetting,
+  resolveStaffUser,
+  enrichBookingWithApproval
+} from '@/lib/courtRentalApproval'
 
 export async function POST(request, { params }) {
   try {
     const { id } = await params
     const body = await request.json().catch(() => ({}))
-    const { reason = '', notifyEmail = true } = body
+    const { caller_user_id, reason = '', notifyEmail = true } = body
 
-    const { data: booking, error: fetchErr } = await supabaseAdmin
-      .from('court_rentals')
-      .select('*')
-      .eq('id', id)
-      .single()
-
-    if (fetchErr || !booking) {
+    const caller = await resolveStaffUser(caller_user_id)
+    if (!caller || !caller.is_active || caller.is_student || caller.is_vendor) {
       return NextResponse.json(
-        { success: false, message: 'Data reservasi tidak ditemukan' },
-        { status: 404 }
+        { success: false, message: 'Sesi pengguna tidak valid atau tidak memiliki izin penolakan.' },
+        { status: 401 }
       )
     }
 
-    // 1. Update status ke rejected di Supabase (Single Source of Truth -> slot langsung terbuka kembali)
+    const [{ data: booking, error: fetchErr }, settings] = await Promise.all([
+      supabaseAdmin.from('court_rentals').select('*').eq('id', id).single(),
+      getCourtRentalSettings()
+    ])
+
+    if (fetchErr || !booking) {
+      return NextResponse.json({ success: false, message: 'Data reservasi tidak ditemukan' }, { status: 404 })
+    }
+
+    const { approvalFlow, approvalStates } = settings
+    const enriched = enrichBookingWithApproval(booking, approvalStates)
+    const stageStep = enriched.approval_stage === 'awaiting_approver_2' ? 2 : 1
+
+    const isStageApprover =
+      (stageStep === 1 && Number(caller.user_id) === Number(approvalFlow?.approver1?.user_id)) ||
+      (stageStep === 2 && Number(caller.user_id) === Number(approvalFlow?.approver2?.user_id))
+
+    if (!isStageApprover) {
+      const expectedName = stageStep === 1 ? approvalFlow?.approver1?.full_name : approvalFlow?.approver2?.full_name
+      return NextResponse.json(
+        { success: false, message: `Hanya Approver aktif pada Tahap ${stageStep} (${expectedName || '-'}) yang dapat menolak reservasi ini.` },
+        { status: 403 }
+      )
+    }
+
+    const cleanReason = reason ? String(reason).trim() : ''
+    const noteWithAudit = cleanReason
+      ? `[Ditolak Tahap ${stageStep} oleh ${caller.full_name}] ${cleanReason}`
+      : `[Ditolak Tahap ${stageStep} oleh ${caller.full_name}]`
+    const now = new Date().toISOString()
+
+    // Update status to rejected so slot immediately reopens
     const { data: updated, error: updateErr } = await supabaseAdmin
       .from('court_rentals')
       .update({
         status: 'rejected',
-        admin_notes: reason,
-        updated_at: new Date().toISOString()
+        admin_notes: noteWithAudit,
+        updated_at: now
       })
       .eq('id', id)
       .select()
@@ -46,7 +74,30 @@ export async function POST(request, { params }) {
       )
     }
 
-    // 2. Kirim Email Pemberitahuan Penolakan ke Penyewa via Resend
+    const stateKey = String(booking.id)
+    const currentState = approvalStates[stateKey] || {}
+    const nextStates = {
+      ...approvalStates,
+      [stateKey]: {
+        ...currentState,
+        stage: 'rejected',
+        rejected: {
+          step: stageStep,
+          by_user_id: caller.user_id,
+          by_name: caller.full_name,
+          by_role: caller.role_name,
+          at: now,
+          reason: cleanReason
+        }
+      }
+    }
+
+    await saveCourtRentalSetting(
+      APPROVAL_STATES_KEY,
+      nextStates,
+      'Riwayat status approval berjenjang Sewa Lapangan (Tahap 1 Finance -> Tahap 2 Markom)'
+    )
+
     let emailSent = false
     if (notifyEmail && booking.renter_email) {
       try {
@@ -56,14 +107,9 @@ export async function POST(request, { params }) {
           packageName: booking.package_name,
           bookingDate: booking.booking_date,
           timeSlot: booking.time_slot,
-          reason
+          reason: cleanReason
         })
-
-        await sendEmail({
-          to: booking.renter_email,
-          subject,
-          html
-        })
+        await sendEmail({ to: booking.renter_email, subject, html })
         emailSent = true
       } catch (e) {
         console.error('[CourtRental Reject] Email dispatch failed:', e.message)
@@ -73,13 +119,10 @@ export async function POST(request, { params }) {
     return NextResponse.json({
       success: true,
       message: 'Reservasi berhasil ditolak.',
-      booking: updated,
+      booking: enrichBookingWithApproval(updated, nextStates),
       emailSent
     })
   } catch (err) {
-    return NextResponse.json(
-      { success: false, message: err.message },
-      { status: 500 }
-    )
+    return NextResponse.json({ success: false, message: err.message }, { status: 500 })
   }
 }

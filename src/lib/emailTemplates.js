@@ -1003,5 +1003,84 @@ export const emailTemplates = {
       </div>
     `)
     return { subject, html }
+  },
+
+  /**
+   * Email to Approver 2 (Markom): Step 1 (Finance) verified funds, now awaiting Step 2 final approval
+   */
+  courtRentalStep2Notify: ({
+    recipientName,
+    bookingCode,
+    renterName,
+    renterPhone,
+    renterEmail,
+    renterOrg,
+    renterPurpose,
+    packageName,
+    price,
+    bookingDate,
+    timeSlot,
+    step1ApproverName,
+    step1ApprovedAt,
+    dashboardUrl = 'https://manageccs.online/data/court-rental'
+  }) => {
+    const formattedPrice = typeof price === 'number' ? `Rp ${price.toLocaleString('id-ID')},-` : (price || '—')
+    const formattedTime = step1ApprovedAt
+      ? new Date(step1ApprovedAt).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta', dateStyle: 'medium', timeStyle: 'short' })
+      : 'Baru saja'
+    const subject = `✅ [Giliran Markom — Tahap 2] Dana Terverifikasi untuk ${bookingCode} (${renterName})`
+    const html = wrapHtml(`
+      <div class="container">
+        <div class="header" style="background: linear-gradient(135deg, #0f766e, #1e3a8a); color: #fff; padding: 28px 24px; text-align: center;">
+          <h1 style="margin:0; font-size: 20px; font-weight: 700; color: #ffffff;">✅ Approval Tahap 1 (Finance) Selesai</h1>
+          <p style="margin:6px 0 0; opacity: 0.9; font-size: 13px; color: #ccfbf1;">Menunggu Persetujuan Final (Tahap 2 — Markom)</p>
+        </div>
+        <div class="body" style="padding: 24px; color: #334155; line-height: 1.6;">
+          <p>Halo <strong>${recipientName || 'Tim Markom'}</strong>,</p>
+          <p>Pembayaran untuk reservasi lapangan berikut telah dikonfirmasi masuk oleh <strong>${step1ApproverName || 'Tim Finance'}</strong> (${formattedTime} WIB). Kini giliran Anda untuk melakukan <strong>Approval Tahap 2 (Final)</strong> sebelum email konfirmasi resmi dikirim ke penyewa:</p>
+
+          <div class="detail-box review" style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 12px; padding: 16px; margin: 16px 0;">
+            <div class="detail-row" style="display:flex; justify-content:space-between; padding:6px 0; border-bottom: 1px dashed #e2e8f0; font-size: 14px;">
+              <span class="detail-label" style="color:#64748b;">Kode Booking:</span>
+              <span class="detail-value" style="font-weight:700; font-family:monospace; color:#0f766e; font-size: 15px;">${bookingCode}</span>
+            </div>
+            <div class="detail-row" style="display:flex; justify-content:space-between; padding:6px 0; border-bottom: 1px dashed #e2e8f0; font-size: 14px;">
+              <span class="detail-label" style="color:#64748b;">Nama Pemesan:</span>
+              <span class="detail-value" style="font-weight:600; color:#0f172a;">${renterName}</span>
+            </div>
+            <div class="detail-row" style="display:flex; justify-content:space-between; padding:6px 0; border-bottom: 1px dashed #e2e8f0; font-size: 14px;">
+              <span class="detail-label" style="color:#64748b;">Kontak / Klub:</span>
+              <span class="detail-value" style="font-weight:600; color:#0f172a;">${renterPhone || '-'} (${renterOrg || 'Umum'})</span>
+            </div>
+            <div class="detail-row" style="display:flex; justify-content:space-between; padding:6px 0; border-bottom: 1px dashed #e2e8f0; font-size: 14px;">
+              <span class="detail-label" style="color:#64748b;">Tujuan Sewa:</span>
+              <span class="detail-value" style="font-weight:600; color:#0f172a;">${renterPurpose || '-'}</span>
+            </div>
+            <div class="detail-row" style="display:flex; justify-content:space-between; padding:6px 0; border-bottom: 1px dashed #e2e8f0; font-size: 14px;">
+              <span class="detail-label" style="color:#64748b;">Tanggal &amp; Sesi:</span>
+              <span class="detail-value" style="font-weight:600; color:#0f172a;">${bookingDate} • ${timeSlot}</span>
+            </div>
+            <div class="detail-row" style="display:flex; justify-content:space-between; padding:6px 0; border-bottom: 1px dashed #e2e8f0; font-size: 14px;">
+              <span class="detail-label" style="color:#64748b;">Paket &amp; Tarif:</span>
+              <span class="detail-value" style="font-weight:700; color:#ea580c; font-family:monospace;">${packageName} (${formattedPrice})</span>
+            </div>
+            <div class="detail-row" style="display:flex; justify-content:space-between; padding:6px 0; font-size: 14px;">
+              <span class="detail-label" style="color:#64748b;">Tahap 1 (Finance):</span>
+              <span class="detail-value" style="font-weight:600; color:#15803d;">✓ Disetujui oleh ${step1ApproverName || 'Finance'}</span>
+            </div>
+          </div>
+
+          <div style="margin-top:22px;text-align:center;">
+            <a href="${dashboardUrl}" style="display:inline-block;padding:12px 28px;background:#0f766e;color:#ffffff;text-decoration:none;border-radius:10px;font-weight:600;font-size:14px;">
+              ✓ Buka Dashboard &amp; Approve Tahap 2
+            </a>
+          </div>
+        </div>
+        <div class="footer">
+          Sistem Otomatis Approval Berjenjang — Chung Chung Christian School
+        </div>
+      </div>
+    `)
+    return { subject, html }
   }
 }
