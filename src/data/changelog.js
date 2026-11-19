@@ -11,14 +11,21 @@
 export const SYSTEM_RELEASES = [
   {
     "version": "0.6.3",
-    "date": "2026-11-17",
+    "date": "2026-11-19",
     "isLatest": true,
     "summary": {
-      "id": "Standardisasi dan penyelarasan tampilan kotak nilai (RESULT box) pada ekspor dokumen Microsoft Word (.docx) modul Planning (/data/topic-new) agar identik dengan versi cetak PDF, serta perbaikan persistensi penyimpanan kriteria penilaian MYP Objectives (Criterion A/B/C/D) dan Summative Assessment pada editor dokumen Unit Planner.",
-      "en": "Standardized and aligned the RESULT score box in Microsoft Word (.docx) export within the Planning module (/data/topic-new) to match the official PDF print layout, and fixed persistence of MYP Objectives criterion selections (Criterion A/B/C/D) and Summative Assessment tasks in the Unit Planner document editor.",
-      "zh": "规范并统一教学规划模块（/data/topic-new）导出 Microsoft Word（.docx）文档中的成绩框（RESULT box）视觉样式使其与 PDF 打印版完全一致，并修复单元备课编辑器中 MYP Objectives 评价标准（Criterion A/B/C/D）与期末考核任务的保存持久化问题。"
+      "id": "Penambahan modul voting Teachers & Staff Recognition / Staff Awards (/data/staff-awards) berdesain Minimalist Editorial UI dengan alur Card Wizard 1–10 berbahasa Inggris penuh, autocomplete pegawai aktif non-vendor, penguncian 1 user 1 vote permanen, panel Admin monitor partisipasi & hasil pemenang lengkap dengan ekspor laporan ExcelJS 3-sheet; serta penyelarasan RESULT box ekspor Word dan perbaikan persistensi kriteria MYP Objectives di /data/topic-new.",
+      "en": "Added the Teachers & Staff Recognition / Staff Awards voting module (/data/staff-awards) in a Minimalist Editorial UI with a 1–10 Card Wizard flow in full English, non-vendor active staff autocomplete, strict 1-user-1-vote locking, and an Admin-only participation tracker, results dashboard, and 3-sheet styled ExcelJS executive report; alongside aligned RESULT score box Word export and fixed MYP Objectives criteria persistence in /data/topic-new.",
+      "zh": "在 School Events 菜单下新增采用 Minimalist Editorial UI 与全英文 1–10 Card Wizard 向导式交互的教职工表彰投票模块（/data/staff-awards），支持在职非外包教职工自动补全、一人一票永久锁定、仅限管理员的参与追踪面板及三表式 ExcelJS 统计报告导出；同时优化 /data/topic-new 的 Word 成绩框导出并修复 MYP Objectives 评价标准保存问题。"
     },
     "sections": {
+      "added": [
+        {
+          "id": "Modul voting Teachers & Staff Recognition / Staff Awards (/data/staff-awards & API /api/staff-awards) di bawah grup menu School Events dengan desain Minimalist Editorial UI (monokrom hangat, pastel lembut, ikon SVG teknis kustom) dan alur Card Wizard 1–10 (indikator merah silang × untuk kategori belum dipilih, hijau centang ✓ untuk yang sudah dipilih, serta tombol Submit Nominations + modal konfirmasi langsung di kartu ke-10) berbahasa Inggris penuh: mendukung autocomplete seluruh guru dan staf operasional aktif non-vendor, pelarangan memilih diri sendiri, pembatasan 1 rekan maksimal 1 kategori, penguncian permanen 1 user 1 vote, serta panel khusus Admin (role.is_admin = true) lengkap dengan ekspor laporan ExcelJS terformat (Executive Summary, Category Breakdown, dan Unit & Staff Turnout).",
+          "en": "Teachers & Staff Recognition / Staff Awards voting module (/data/staff-awards & /api/staff-awards API) under the School Events menu group styled with Minimalist Editorial UI (warm monochrome palette, muted pastel accents, bespoke technical SVG icons) and an interactive 1–10 Card Wizard (red × unvoted / green ✓ voted step badges and Submit Nominations + confirmation modal directly on card 10) entirely in English: features active non-vendor teacher/staff autocomplete, self-nomination block, single-category uniqueness per colleague, strict 1-user-1-vote lock, and an Admin-only (role.is_admin = true) participation tracker, category standings, event/category manager, and styled 3-sheet ExcelJS report export (Executive Summary, Category Breakdown, Unit & Staff Turnout).",
+          "zh": "在 School Events 父菜单下新增基于 Minimalist Editorial UI（暖调单色与低饱和粉彩色块、定制线框 SVG 图标）的教职工表彰投票模块（/data/staff-awards 与 /api/staff-awards），采用全英文 1–10 分步 Card Wizard（未选类别显示红色叉号 ×、已选显示绿色对勾 ✓，并在第 10 张卡片直接提供 Submit Nominations 按钮与确认弹窗）：集成在职非外包教职工自动补全、禁止自荐、单人不可跨类重复提名与严格一人一票锁定，并面向管理员（role.is_admin = true）提供未投票名单追踪、分类得票排行、活动类别管理以及 3 工作表排版精美的 ExcelJS 报告导出。"
+        }
+      ],
       "fixed": [
         {
           "id": "Memperbaiki kendala pemilihan MYP Objectives (kriteria penilaian A/B/C/D) yang tidak tersimpan pada editor Unit Planner (/data/topic-new): mengoreksi guard condition pada fungsi penyimpanan (saveNewTopic & updateExistingTopic) agar tetap membuat dan memperbarui entri tabel assessment serta assessment_criteria meskipun judul Task (assessment_nama) belum diisi manual oleh guru, memberikan fallback nama otomatis berbasis judul unit (maksimal 100 karakter sesuai batasan schema Postgres), dan memastikan kriteria yang telah dipilih langsung dimuat kembali secara konsisten saat dokumen dibuka.",

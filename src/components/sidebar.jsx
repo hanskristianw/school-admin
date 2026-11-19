@@ -115,11 +115,23 @@ import {
   faBoxOpen,
   faFutbol,
   faBolt,
-  faCheckToSlot
+  faCheckToSlot,
+  faAward,
+  faMedal,
+  faPersonRunning
 } from "@fortawesome/free-solid-svg-icons"
 
 // Complete icon mapping dictionary with all naming variations
 const iconMap = {
+  'fas fa-award': faAward,
+  'faAward': faAward,
+  'award': faAward,
+  'fas fa-medal': faMedal,
+  'faMedal': faMedal,
+  'medal': faMedal,
+  'fas fa-person-running': faPersonRunning,
+  'faPersonRunning': faPersonRunning,
+  'person-running': faPersonRunning,
   'fas fa-check-to-slot': faCheckToSlot,
   'faCheckToSlot': faCheckToSlot,
   'check-to-slot': faCheckToSlot,

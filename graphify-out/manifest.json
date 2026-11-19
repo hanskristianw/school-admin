@@ -1270,8 +1270,8 @@
     "semantic_hash": "104123e0baacb9dd57b2a1a1962da5d0"
   },
   "src/components/sidebar.jsx": {
-    "mtime": 1794560494.8204036,
-    "ast_hash": "f0bcf596a8d7521f536d0b0ab4920549",
+    "mtime": 1795061897.3557243,
+    "ast_hash": "91a51546e904c24ed073775169ecc6e3",
     "semantic_hash": ""
   },
   "src/components/ui/button.jsx": {
@@ -1640,8 +1640,8 @@
     "semantic_hash": ""
   },
   "DATABASE_SCHEMA.md": {
-    "mtime": 1794546639.000109,
-    "ast_hash": "8887f7f2488e0c69cec350e7dcc01465",
+    "mtime": 1795058527.4521663,
+    "ast_hash": "8d5b562faf7dc52c1ff299bd9f2a61a1",
     "semantic_hash": ""
   },
   "banner-220.png": {
@@ -2495,8 +2495,8 @@
     "semantic_hash": ""
   },
   "src/data/changelog.js": {
-    "mtime": 1794885694.972895,
-    "ast_hash": "ba089d5137bc31e666a1979bb1c0dabe",
+    "mtime": 1795061587.570915,
+    "ast_hash": "36231717981f24b58925e6ce21a76612",
     "semantic_hash": ""
   },
   "src/app/api/system-feedback/upload/route.js": {
@@ -2687,6 +2687,56 @@
   "public/images/assessment-result-box.png": {
     "mtime": 1794809452.1929862,
     "ast_hash": "de9db3fda4adea7a30b82db09b7e0a15",
+    "semantic_hash": ""
+  },
+  "migrations/create-staff-awards-tables.sql": {
+    "mtime": 1795058225.8281145,
+    "ast_hash": "a003be27ab012877e693d0c7b40b0197",
+    "semantic_hash": ""
+  },
+  "src/app/api/staff-awards/route.js": {
+    "mtime": 1795059870.8885915,
+    "ast_hash": "9d3339948e694b63f7845025410a47f4",
+    "semantic_hash": ""
+  },
+  "src/app/data/staff-awards/components/AwardIconBadge.jsx": {
+    "mtime": 1795059913.6725302,
+    "ast_hash": "8f9eecbba77f00a89d4815fb5ec6584e",
+    "semantic_hash": ""
+  },
+  "src/app/data/staff-awards/components/StaffAwardsAdminManage.jsx": {
+    "mtime": 1795060034.9440632,
+    "ast_hash": "fa57f6fe0319d603d8ac70ea41a7a3df",
+    "semantic_hash": ""
+  },
+  "src/app/data/staff-awards/components/StaffAwardsAdminResults.jsx": {
+    "mtime": 1795059997.5050306,
+    "ast_hash": "411bd1aae270135e8ddf9640aef3236f",
+    "semantic_hash": ""
+  },
+  "src/app/data/staff-awards/page.jsx": {
+    "mtime": 1795060511.8637948,
+    "ast_hash": "42577ed249e971e0d07d0f7ac23aae04",
+    "semantic_hash": ""
+  },
+  "src/components/StaffNomineeAutocomplete.jsx": {
+    "mtime": 1795059936.3223505,
+    "ast_hash": "156aa2376f79628314e84e71c12a5ac4",
+    "semantic_hash": ""
+  },
+  "src/lib/staffAwards.js": {
+    "mtime": 1795059797.04618,
+    "ast_hash": "0866e5503afdbaaf61e34d695110e8c9",
+    "semantic_hash": ""
+  },
+  "src/app/data/staff-awards/components/MinimalIcons.jsx": {
+    "mtime": 1795059896.048907,
+    "ast_hash": "6f939c989ef7ddecb8b472180ec9c846",
+    "semantic_hash": ""
+  },
+  "src/app/data/staff-awards/lib/exportStaffAwardsExcel.js": {
+    "mtime": 1795059963.8809383,
+    "ast_hash": "531dcb4929496d47021a0ede4bef898a",
     "semantic_hash": ""
   }
 }

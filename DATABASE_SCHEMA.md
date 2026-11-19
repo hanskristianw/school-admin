@@ -3136,3 +3136,81 @@ erDiagram
         boolean is_correct
     }
 ```
+
+---
+
+## 22. Teachers & Staff Recognition / Staff Awards Domain (`/data/staff-awards`)
+
+This domain manages annual peer-recognition award voting among active teachers and non-vendor operational staff per academic year (`year_id`), enforcing strict `1 user = 1 vote`, no self-nomination, and single-use nominee selection across categories within one ballot.
+
+### 22.1 Key Architecture & Security Rules
+1. **Eligible Staff Autocomplete Filter**: Sourced dynamically from `users` joined with `role` and `unit`, restricted to `is_active = true`, `resign_date IS NULL OR resign_date >= CURRENT_DATE` (Asia/Jakarta), `role.is_student = false`, `role.is_vendor = false` (automatically excludes Security, Cleaning, Driver), and excluding `Guest` (`role_id = 22`).
+2. **Anonymous Ballot + Unique Submission Ledger**:
+   - `staff_award_submissions` enforces `UNIQUE(event_id, voter_user_id)` so each account can submit exactly once, enabling Admin turnout tracking (`Sudah Vote` vs `Belum Vote`).
+   - `staff_award_votes` stores `(event_id, category_id, nominee_user_id)` **without** `voter_user_id` so individual selections remain anonymous.
+3. **Dual Storage Mode**: Supports dedicated PostgreSQL tables (`migrations/create-staff-awards-tables.sql`) or automatic atomic JSON fallback in `settings` (`key = 'staff_awards_data'`) with auto-seeding of the 10 standard CCS award categories.
+4. **Admin-Only Management & Results**: Server validates `role.is_admin = true` on every Admin GET analytics payload and POST mutation (`create_or_update_event`, `delete_event`, `create_or_update_category`, `delete_category`, `seed_default_categories`, `reset_event_votes`).
+
+### 22.2 Tables
+
+#### `staff_award_events`
+Stores Staff Recognition events linked to an academic year.
+
+| Column Name | Type | Description / Constraint |
+| --- | --- | --- |
+| `id` | `SERIAL` | Primary Key |
+| `year_id` | `INTEGER` | Foreign Key to `year(year_id)` ON DELETE CASCADE |
+| `title` | `VARCHAR(200)` | Event title (e.g. "Teachers & Staff Recognition 2026/2027") |
+| `description` | `TEXT` | Introductory description displayed in the voting hero |
+| `status` | `VARCHAR(30)` | `'draft'` (closed/setup), `'active'` (voting open), `'closed'` (final locked) |
+| `created_at` | `TIMESTAMPTZ` | Record creation timestamp |
+| `updated_at` | `TIMESTAMPTZ` | Record update timestamp |
+
+#### `staff_award_categories`
+Stores award categories configured for an event (10 standard CCS awards by default).
+
+| Column Name | Type | Description / Constraint |
+| --- | --- | --- |
+| `id` | `SERIAL` | Primary Key |
+| `event_id` | `INTEGER` | Foreign Key to `staff_award_events(id)` ON DELETE CASCADE |
+| `sort_order` | `INTEGER` | Display order (`1`–`10`) |
+| `title` | `VARCHAR(150)` | Category title (e.g. "The Resilience Award") |
+| `description` | `TEXT` | Award criterion description |
+| `icon` | `VARCHAR(50)` | Lucide icon key (`award`, `sparkles`, `sun`, `lightbulb`, `rocket`, `heart`, `star`, `users`, `eye`, `trophy`) |
+| `color_gradient` | `VARCHAR(100)` | Tailwind gradient utility classes (e.g. `from-amber-400 to-orange-500`) |
+| `created_at` | `TIMESTAMPTZ` | Record creation timestamp |
+
+#### `staff_award_submissions`
+Participation tracker guaranteeing 1 submission per user per event.
+
+| Column Name | Type | Description / Constraint |
+| --- | --- | --- |
+| `id` | `SERIAL` | Primary Key |
+| `event_id` | `INTEGER` | Foreign Key to `staff_award_events(id)` ON DELETE CASCADE |
+| `voter_user_id` | `INTEGER` | Foreign Key to `users(user_id)` ON DELETE CASCADE |
+| `submitted_at` | `TIMESTAMPTZ` | Timestamp when user submitted ballot |
+| `(event_id, voter_user_id)` | `UNIQUE` | Enforces 1 user = 1 vote |
+
+#### `staff_award_votes`
+Anonymous category-nominee selections.
+
+| Column Name | Type | Description / Constraint |
+| --- | --- | --- |
+| `id` | `SERIAL` | Primary Key |
+| `event_id` | `INTEGER` | Foreign Key to `staff_award_events(id)` ON DELETE CASCADE |
+| `category_id` | `INTEGER` | Foreign Key to `staff_award_categories(id)` ON DELETE CASCADE |
+| `nominee_user_id` | `INTEGER` | Foreign Key to `users(user_id)` ON DELETE CASCADE |
+| `created_at` | `TIMESTAMPTZ` | Vote timestamp |
+
+### 22.3 ERD / Relationships (Staff Awards Domain)
+
+```mermaid
+erDiagram
+    year ||--o{ staff_award_events : "scopes"
+    staff_award_events ||--o{ staff_award_categories : "defines"
+    staff_award_events ||--o{ staff_award_submissions : "tracks_turnout"
+    staff_award_events ||--o{ staff_award_votes : "collects"
+    staff_award_categories ||--o{ staff_award_votes : "receives_vote_for"
+    users ||--o{ staff_award_submissions : "votes_once"
+    users ||--o{ staff_award_votes : "nominated_in"
+```

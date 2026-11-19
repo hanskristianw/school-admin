@@ -3109,8 +3109,8 @@
       "source_location": "L14",
       "_origin": "ast",
       "id": "package_dependencies_fortawesome_react_fontawesome",
-      "community": 344,
-      "community_name": "8. DARK MODE PROTOCOL",
+      "community": 133,
+      "community_name": "Module 133",
       "norm_label": "@fortawesome/react-fontawesome"
     },
     {
@@ -3120,8 +3120,8 @@
       "source_location": "L14",
       "_origin": "ast",
       "id": "fortawesome_react_fontawesome",
-      "community": 344,
-      "community_name": "8. DARK MODE PROTOCOL",
+      "community": 133,
+      "community_name": "Module 133",
       "norm_label": "@fortawesome/react-fontawesome"
     },
     {
@@ -3175,8 +3175,8 @@
       "source_location": "L17",
       "_origin": "ast",
       "id": "package_dependencies_hookform_resolvers",
-      "community": 346,
-      "community_name": "bcryptjs",
+      "community": 133,
+      "community_name": "Module 133",
       "norm_label": "@hookform/resolvers"
     },
     {
@@ -3186,8 +3186,8 @@
       "source_location": "L17",
       "_origin": "ast",
       "id": "hookform_resolvers",
-      "community": 346,
-      "community_name": "bcryptjs",
+      "community": 133,
+      "community_name": "Module 133",
       "norm_label": "@hookform/resolvers"
     },
     {
@@ -3241,8 +3241,8 @@
       "source_location": "L20",
       "_origin": "ast",
       "id": "package_dependencies_radix_ui_react_slot",
-      "community": 394,
-      "community_name": "react-hook-form",
+      "community": 133,
+      "community_name": "Module 133",
       "norm_label": "@radix-ui/react-slot"
     },
     {
@@ -3252,8 +3252,8 @@
       "source_location": "L20",
       "_origin": "ast",
       "id": "radix_ui_react_slot",
-      "community": 394,
-      "community_name": "react-hook-form",
+      "community": 133,
+      "community_name": "Module 133",
       "norm_label": "@radix-ui/react-slot"
     },
     {
@@ -3307,8 +3307,8 @@
       "source_location": "L23",
       "_origin": "ast",
       "id": "package_dependencies_tiptap_extension_color",
-      "community": 133,
-      "community_name": "Module 133",
+      "community": 441,
+      "community_name": "@tiptap/extension-color",
       "norm_label": "@tiptap/extension-color"
     },
     {
@@ -3318,8 +3318,8 @@
       "source_location": "L23",
       "_origin": "ast",
       "id": "tiptap_extension_color",
-      "community": 133,
-      "community_name": "Module 133",
+      "community": 441,
+      "community_name": "@tiptap/extension-color",
       "norm_label": "@tiptap/extension-color"
     },
     {
@@ -3329,8 +3329,8 @@
       "source_location": "L24",
       "_origin": "ast",
       "id": "package_dependencies_tiptap_extension_font_family",
-      "community": 404,
-      "community_name": "@tiptap/extension-task-list",
+      "community": 133,
+      "community_name": "Module 133",
       "norm_label": "@tiptap/extension-font-family"
     },
     {
@@ -3340,8 +3340,8 @@
       "source_location": "L24",
       "_origin": "ast",
       "id": "tiptap_extension_font_family",
-      "community": 404,
-      "community_name": "@tiptap/extension-task-list",
+      "community": 133,
+      "community_name": "Module 133",
       "norm_label": "@tiptap/extension-font-family"
     },
     {
@@ -3351,8 +3351,8 @@
       "source_location": "L25",
       "_origin": "ast",
       "id": "package_dependencies_tiptap_extension_highlight",
-      "community": 133,
-      "community_name": "Module 133",
+      "community": 442,
+      "community_name": "@tiptap/extension-highlight",
       "norm_label": "@tiptap/extension-highlight"
     },
     {
@@ -3362,8 +3362,8 @@
       "source_location": "L25",
       "_origin": "ast",
       "id": "tiptap_extension_highlight",
-      "community": 133,
-      "community_name": "Module 133",
+      "community": 442,
+      "community_name": "@tiptap/extension-highlight",
       "norm_label": "@tiptap/extension-highlight"
     },
     {
@@ -3417,7 +3417,7 @@
       "source_location": "L28",
       "_origin": "ast",
       "id": "package_dependencies_tiptap_extension_table_header",
-      "community": 401,
+      "community": 455,
       "community_name": "@tiptap/extension-table-header",
       "norm_label": "@tiptap/extension-table-header"
     },
@@ -3428,7 +3428,7 @@
       "source_location": "L28",
       "_origin": "ast",
       "id": "tiptap_extension_table_header",
-      "community": 401,
+      "community": 455,
       "community_name": "@tiptap/extension-table-header",
       "norm_label": "@tiptap/extension-table-header"
     },
@@ -3483,8 +3483,8 @@
       "source_location": "L31",
       "_origin": "ast",
       "id": "package_dependencies_tiptap_extension_task_list",
-      "community": 133,
-      "community_name": "Module 133",
+      "community": 445,
+      "community_name": "@tiptap/extension-task-list",
       "norm_label": "@tiptap/extension-task-list"
     },
     {
@@ -3494,8 +3494,8 @@
       "source_location": "L31",
       "_origin": "ast",
       "id": "tiptap_extension_task_list",
-      "community": 133,
-      "community_name": "Module 133",
+      "community": 445,
+      "community_name": "@tiptap/extension-task-list",
       "norm_label": "@tiptap/extension-task-list"
     },
     {
@@ -3571,8 +3571,8 @@
       "source_location": "L35",
       "_origin": "ast",
       "id": "package_dependencies_tiptap_pm",
-      "community": 133,
-      "community_name": "Module 133",
+      "community": 450,
+      "community_name": "@tiptap/pm",
       "norm_label": "@tiptap/pm"
     },
     {
@@ -3582,8 +3582,8 @@
       "source_location": "L35",
       "_origin": "ast",
       "id": "tiptap_pm",
-      "community": 133,
-      "community_name": "Module 133",
+      "community": 450,
+      "community_name": "@tiptap/pm",
       "norm_label": "@tiptap/pm"
     },
     {
@@ -3637,8 +3637,8 @@
       "source_location": "L38",
       "_origin": "ast",
       "id": "package_dependencies_bcryptjs",
-      "community": 133,
-      "community_name": "Module 133",
+      "community": 404,
+      "community_name": "@tiptap/extension-task-list",
       "norm_label": "bcryptjs"
     },
     {
@@ -3648,8 +3648,8 @@
       "source_location": "L38",
       "_origin": "ast",
       "id": "bcryptjs",
-      "community": 133,
-      "community_name": "Module 133",
+      "community": 404,
+      "community_name": "@tiptap/extension-task-list",
       "norm_label": "bcryptjs"
     },
     {
@@ -3703,8 +3703,8 @@
       "source_location": "L41",
       "_origin": "ast",
       "id": "package_dependencies_clsx",
-      "community": 133,
-      "community_name": "Module 133",
+      "community": 401,
+      "community_name": "@tiptap/extension-table-header",
       "norm_label": "clsx"
     },
     {
@@ -3714,8 +3714,8 @@
       "source_location": "L41",
       "_origin": "ast",
       "id": "clsx",
-      "community": 133,
-      "community_name": "Module 133",
+      "community": 401,
+      "community_name": "@tiptap/extension-table-header",
       "norm_label": "clsx"
     },
     {
@@ -3791,8 +3791,8 @@
       "source_location": "L45",
       "_origin": "ast",
       "id": "package_dependencies_exceljs",
-      "community": 133,
-      "community_name": "Module 133",
+      "community": 422,
+      "community_name": "exceljs",
       "norm_label": "exceljs"
     },
     {
@@ -3802,8 +3802,8 @@
       "source_location": "L45",
       "_origin": "ast",
       "id": "exceljs",
-      "community": 133,
-      "community_name": "Module 133",
+      "community": 422,
+      "community_name": "exceljs",
       "norm_label": "exceljs"
     },
     {
@@ -3813,8 +3813,8 @@
       "source_location": "L46",
       "_origin": "ast",
       "id": "package_dependencies_google_auth_library",
-      "community": 133,
-      "community_name": "Module 133",
+      "community": 432,
+      "community_name": "googleapis",
       "norm_label": "google-auth-library"
     },
     {
@@ -3824,8 +3824,8 @@
       "source_location": "L46",
       "_origin": "ast",
       "id": "google_auth_library",
-      "community": 133,
-      "community_name": "Module 133",
+      "community": 432,
+      "community_name": "googleapis",
       "norm_label": "google-auth-library"
     },
     {
@@ -3879,8 +3879,8 @@
       "source_location": "L49",
       "_origin": "ast",
       "id": "package_dependencies_html5_qrcode",
-      "community": 330,
-      "community_name": "\ud83d\udcc1 **Project Structure**",
+      "community": 451,
+      "community_name": "html5-qrcode",
       "norm_label": "html5-qrcode"
     },
     {
@@ -3890,8 +3890,8 @@
       "source_location": "L49",
       "_origin": "ast",
       "id": "html5_qrcode",
-      "community": 330,
-      "community_name": "\ud83d\udcc1 **Project Structure**",
+      "community": 451,
+      "community_name": "html5-qrcode",
       "norm_label": "html5-qrcode"
     },
     {
@@ -3967,8 +3967,8 @@
       "source_location": "L53",
       "_origin": "ast",
       "id": "package_dependencies_jszip",
-      "community": 145,
-      "community_name": "Module 145",
+      "community": 0,
+      "community_name": "Admission Management",
       "norm_label": "jszip"
     },
     {
@@ -3978,8 +3978,8 @@
       "source_location": "L53",
       "_origin": "ast",
       "id": "jszip",
-      "community": 145,
-      "community_name": "Module 145",
+      "community": 0,
+      "community_name": "Admission Management",
       "norm_label": "jszip"
     },
     {
@@ -3989,8 +3989,8 @@
       "source_location": "L54",
       "_origin": "ast",
       "id": "package_dependencies_lucide_react",
-      "community": 387,
-      "community_name": "\ud83d\udcc1 **Project Structure**",
+      "community": 133,
+      "community_name": "Module 133",
       "norm_label": "lucide-react"
     },
     {
@@ -4000,8 +4000,8 @@
       "source_location": "L54",
       "_origin": "ast",
       "id": "lucide_react",
-      "community": 387,
-      "community_name": "\ud83d\udcc1 **Project Structure**",
+      "community": 133,
+      "community_name": "Module 133",
       "norm_label": "lucide-react"
     },
     {
@@ -4011,8 +4011,8 @@
       "source_location": "L55",
       "_origin": "ast",
       "id": "package_dependencies_next",
-      "community": 332,
-      "community_name": "11. REDESIGN PROTOCOL",
+      "community": 452,
+      "community_name": "next",
       "norm_label": "next"
     },
     {
@@ -4022,8 +4022,8 @@
       "source_location": "L55",
       "_origin": "ast",
       "id": "next",
-      "community": 332,
-      "community_name": "11. REDESIGN PROTOCOL",
+      "community": 452,
+      "community_name": "next",
       "norm_label": "next"
     },
     {
@@ -4209,7 +4209,7 @@
       "source_location": "L64",
       "_origin": "ast",
       "id": "package_dependencies_react_easy_crop",
-      "community": 381,
+      "community": 454,
       "community_name": "react-easy-crop",
       "norm_label": "react-easy-crop"
     },
@@ -4220,7 +4220,7 @@
       "source_location": "L64",
       "_origin": "ast",
       "id": "react_easy_crop",
-      "community": 381,
+      "community": 454,
       "community_name": "react-easy-crop",
       "norm_label": "react-easy-crop"
     },
@@ -4231,8 +4231,8 @@
       "source_location": "L65",
       "_origin": "ast",
       "id": "package_dependencies_react_hook_form",
-      "community": 133,
-      "community_name": "Module 133",
+      "community": 435,
+      "community_name": "react-hook-form",
       "norm_label": "react-hook-form"
     },
     {
@@ -4242,8 +4242,8 @@
       "source_location": "L65",
       "_origin": "ast",
       "id": "react_hook_form",
-      "community": 133,
-      "community_name": "Module 133",
+      "community": 435,
+      "community_name": "react-hook-form",
       "norm_label": "react-hook-form"
     },
     {
@@ -4297,7 +4297,7 @@
       "source_location": "L68",
       "_origin": "ast",
       "id": "package_dependencies_xlsx",
-      "community": 411,
+      "community": 456,
       "community_name": "xlsx",
       "norm_label": "xlsx"
     },
@@ -4308,7 +4308,7 @@
       "source_location": "L68",
       "_origin": "ast",
       "id": "xlsx",
-      "community": 411,
+      "community": 456,
       "community_name": "xlsx",
       "norm_label": "xlsx"
     },
@@ -7714,6 +7714,171 @@
     {
       "label": "route.js",
       "file_type": "code",
+      "source_file": "src/app/api/staff-awards/route.js",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "src_app_api_staff_awards_route",
+      "community": 329,
+      "community_name": "@fortawesome/fontawesome-svg-core",
+      "norm_label": "route.js"
+    },
+    {
+      "label": "supabaseAdmin",
+      "file_type": "code",
+      "source_file": "src/app/api/staff-awards/route.js",
+      "source_location": "L5",
+      "_origin": "ast",
+      "id": "src_app_api_staff_awards_route_supabaseadmin",
+      "community": 329,
+      "community_name": "@fortawesome/fontawesome-svg-core",
+      "norm_label": "supabaseadmin"
+    },
+    {
+      "label": "fetchAllRows()",
+      "file_type": "code",
+      "source_file": "src/app/api/staff-awards/route.js",
+      "source_location": "L18",
+      "_origin": "ast",
+      "id": "src_app_api_staff_awards_route_fetchallrows",
+      "community": 329,
+      "community_name": "@fortawesome/fontawesome-svg-core",
+      "norm_label": "fetchallrows()"
+    },
+    {
+      "label": "getJakartaDateStr()",
+      "file_type": "code",
+      "source_file": "src/app/api/staff-awards/route.js",
+      "source_location": "L32",
+      "_origin": "ast",
+      "id": "src_app_api_staff_awards_route_getjakartadatestr",
+      "community": 329,
+      "community_name": "@fortawesome/fontawesome-svg-core",
+      "norm_label": "getjakartadatestr()"
+    },
+    {
+      "label": "checkTablesExist()",
+      "file_type": "code",
+      "source_file": "src/app/api/staff-awards/route.js",
+      "source_location": "L36",
+      "_origin": "ast",
+      "id": "src_app_api_staff_awards_route_checktablesexist",
+      "community": 329,
+      "community_name": "@fortawesome/fontawesome-svg-core",
+      "norm_label": "checktablesexist()"
+    },
+    {
+      "label": "readStore()",
+      "file_type": "code",
+      "source_file": "src/app/api/staff-awards/route.js",
+      "source_location": "L48",
+      "_origin": "ast",
+      "id": "src_app_api_staff_awards_route_readstore",
+      "community": 329,
+      "community_name": "@fortawesome/fontawesome-svg-core",
+      "norm_label": "readstore()"
+    },
+    {
+      "label": "writeStore()",
+      "file_type": "code",
+      "source_file": "src/app/api/staff-awards/route.js",
+      "source_location": "L71",
+      "_origin": "ast",
+      "id": "src_app_api_staff_awards_route_writestore",
+      "community": 329,
+      "community_name": "@fortawesome/fontawesome-svg-core",
+      "norm_label": "writestore()"
+    },
+    {
+      "label": "nextId()",
+      "file_type": "code",
+      "source_file": "src/app/api/staff-awards/route.js",
+      "source_location": "L85",
+      "_origin": "ast",
+      "id": "src_app_api_staff_awards_route_nextid",
+      "community": 329,
+      "community_name": "@fortawesome/fontawesome-svg-core",
+      "norm_label": "nextid()"
+    },
+    {
+      "label": "getEligibleStaffAndCaller()",
+      "file_type": "code",
+      "source_file": "src/app/api/staff-awards/route.js",
+      "source_location": "L93",
+      "_origin": "ast",
+      "id": "src_app_api_staff_awards_route_geteligiblestaffandcaller",
+      "community": 329,
+      "community_name": "@fortawesome/fontawesome-svg-core",
+      "norm_label": "geteligiblestaffandcaller()"
+    },
+    {
+      "label": "resolveDefaultYear()",
+      "file_type": "code",
+      "source_file": "src/app/api/staff-awards/route.js",
+      "source_location": "L171",
+      "_origin": "ast",
+      "id": "src_app_api_staff_awards_route_resolvedefaultyear",
+      "community": 329,
+      "community_name": "@fortawesome/fontawesome-svg-core",
+      "norm_label": "resolvedefaultyear()"
+    },
+    {
+      "label": "seedDefaultEvent()",
+      "file_type": "code",
+      "source_file": "src/app/api/staff-awards/route.js",
+      "source_location": "L181",
+      "_origin": "ast",
+      "id": "src_app_api_staff_awards_route_seeddefaultevent",
+      "community": 329,
+      "community_name": "@fortawesome/fontawesome-svg-core",
+      "norm_label": "seeddefaultevent()"
+    },
+    {
+      "label": "buildAdminAnalytics()",
+      "file_type": "code",
+      "source_file": "src/app/api/staff-awards/route.js",
+      "source_location": "L236",
+      "_origin": "ast",
+      "id": "src_app_api_staff_awards_route_buildadminanalytics",
+      "community": 329,
+      "community_name": "@fortawesome/fontawesome-svg-core",
+      "norm_label": "buildadminanalytics()"
+    },
+    {
+      "label": "pickSelectedEvent()",
+      "file_type": "code",
+      "source_file": "src/app/api/staff-awards/route.js",
+      "source_location": "L340",
+      "_origin": "ast",
+      "id": "src_app_api_staff_awards_route_pickselectedevent",
+      "community": 329,
+      "community_name": "@fortawesome/fontawesome-svg-core",
+      "norm_label": "pickselectedevent()"
+    },
+    {
+      "label": "GET()",
+      "file_type": "code",
+      "source_file": "src/app/api/staff-awards/route.js",
+      "source_location": "L360",
+      "_origin": "ast",
+      "id": "src_app_api_staff_awards_route_get",
+      "community": 329,
+      "community_name": "@fortawesome/fontawesome-svg-core",
+      "norm_label": "get()"
+    },
+    {
+      "label": "POST()",
+      "file_type": "code",
+      "source_file": "src/app/api/staff-awards/route.js",
+      "source_location": "L542",
+      "_origin": "ast",
+      "id": "src_app_api_staff_awards_route_post",
+      "community": 329,
+      "community_name": "@fortawesome/fontawesome-svg-core",
+      "norm_label": "post()"
+    },
+    {
+      "label": "route.js",
+      "file_type": "code",
       "source_file": "src/app/api/system-feedback/[id]/route.js",
       "source_location": "L1",
       "_origin": "ast",
@@ -8532,8 +8697,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_app_data_admission_unifiedadmissionmodal",
-      "community": 329,
-      "community_name": "@fortawesome/fontawesome-svg-core",
+      "community": 0,
+      "community_name": "Admission Management",
       "norm_label": "unifiedadmissionmodal.jsx"
     },
     {
@@ -8543,8 +8708,8 @@
       "source_location": "L41",
       "_origin": "ast",
       "id": "src_app_data_admission_unifiedadmissionmodal_unifiedadmissionmodal",
-      "community": 329,
-      "community_name": "@fortawesome/fontawesome-svg-core",
+      "community": 0,
+      "community_name": "Admission Management",
       "norm_label": "unifiedadmissionmodal()"
     },
     {
@@ -8598,8 +8763,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_app_data_admission_page",
-      "community": 329,
-      "community_name": "@fortawesome/fontawesome-svg-core",
+      "community": 0,
+      "community_name": "Admission Management",
       "norm_label": "page.jsx"
     },
     {
@@ -8609,8 +8774,8 @@
       "source_location": "L65",
       "_origin": "ast",
       "id": "src_app_data_admission_page_statusconfig",
-      "community": 329,
-      "community_name": "@fortawesome/fontawesome-svg-core",
+      "community": 0,
+      "community_name": "Admission Management",
       "norm_label": "statusconfig"
     },
     {
@@ -8620,8 +8785,8 @@
       "source_location": "L96",
       "_origin": "ast",
       "id": "src_app_data_admission_page_getemailtypelabel",
-      "community": 329,
-      "community_name": "@fortawesome/fontawesome-svg-core",
+      "community": 0,
+      "community_name": "Admission Management",
       "norm_label": "getemailtypelabel()"
     },
     {
@@ -8631,8 +8796,8 @@
       "source_location": "L109",
       "_origin": "ast",
       "id": "src_app_data_admission_page_getemailstatuslabel",
-      "community": 329,
-      "community_name": "@fortawesome/fontawesome-svg-core",
+      "community": 0,
+      "community_name": "Admission Management",
       "norm_label": "getemailstatuslabel()"
     },
     {
@@ -8642,8 +8807,8 @@
       "source_location": "L120",
       "_origin": "ast",
       "id": "src_app_data_admission_page_admissionmanagement",
-      "community": 329,
-      "community_name": "@fortawesome/fontawesome-svg-core",
+      "community": 0,
+      "community_name": "Admission Management",
       "norm_label": "admissionmanagement()"
     },
     {
@@ -11150,8 +11315,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_app_data_room_lib_roompdfgenerator",
-      "community": 0,
-      "community_name": "Admission Management",
+      "community": 105,
+      "community_name": "Module 105",
       "norm_label": "roompdfgenerator.js"
     },
     {
@@ -11161,8 +11326,8 @@
       "source_location": "L9",
       "_origin": "ast",
       "id": "src_app_data_room_lib_roompdfgenerator_getgeneralreportqrdataurl",
-      "community": 0,
-      "community_name": "Admission Management",
+      "community": 105,
+      "community_name": "Module 105",
       "norm_label": "getgeneralreportqrdataurl()"
     },
     {
@@ -11172,8 +11337,8 @@
       "source_location": "L23",
       "_origin": "ast",
       "id": "src_app_data_room_lib_roompdfgenerator_getroomqrdataurl",
-      "community": 0,
-      "community_name": "Admission Management",
+      "community": 105,
+      "community_name": "Module 105",
       "norm_label": "getroomqrdataurl()"
     },
     {
@@ -11183,8 +11348,8 @@
       "source_location": "L32",
       "_origin": "ast",
       "id": "src_app_data_room_lib_roompdfgenerator_rendergeneralreporterstickerpage",
-      "community": 0,
-      "community_name": "Admission Management",
+      "community": 105,
+      "community_name": "Module 105",
       "norm_label": "rendergeneralreporterstickerpage()"
     },
     {
@@ -11194,8 +11359,8 @@
       "source_location": "L133",
       "_origin": "ast",
       "id": "src_app_data_room_lib_roompdfgenerator_generategeneralreporterpdf",
-      "community": 0,
-      "community_name": "Admission Management",
+      "community": 105,
+      "community_name": "Module 105",
       "norm_label": "generategeneralreporterpdf()"
     },
     {
@@ -11205,8 +11370,8 @@
       "source_location": "L170",
       "_origin": "ast",
       "id": "src_app_data_room_lib_roompdfgenerator_renderroomstickerpage",
-      "community": 0,
-      "community_name": "Admission Management",
+      "community": 105,
+      "community_name": "Module 105",
       "norm_label": "renderroomstickerpage()"
     },
     {
@@ -11216,8 +11381,8 @@
       "source_location": "L174",
       "_origin": "ast",
       "id": "src_app_data_room_lib_roompdfgenerator_generatesingleroompdf",
-      "community": 0,
-      "community_name": "Admission Management",
+      "community": 105,
+      "community_name": "Module 105",
       "norm_label": "generatesingleroompdf()"
     },
     {
@@ -11227,8 +11392,8 @@
       "source_location": "L178",
       "_origin": "ast",
       "id": "src_app_data_room_lib_roompdfgenerator_generatebatchroompdf",
-      "community": 0,
-      "community_name": "Admission Management",
+      "community": 105,
+      "community_name": "Module 105",
       "norm_label": "generatebatchroompdf()"
     },
     {
@@ -11238,8 +11403,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_app_data_room_page",
-      "community": 0,
-      "community_name": "Admission Management",
+      "community": 105,
+      "community_name": "Module 105",
       "norm_label": "page.jsx"
     },
     {
@@ -11249,8 +11414,8 @@
       "source_location": "L33",
       "_origin": "ast",
       "id": "src_app_data_room_page_generalreporterstickercard",
-      "community": 0,
-      "community_name": "Admission Management",
+      "community": 105,
+      "community_name": "Module 105",
       "norm_label": "generalreporterstickercard()"
     },
     {
@@ -11260,8 +11425,8 @@
       "source_location": "L94",
       "_origin": "ast",
       "id": "src_app_data_room_page_roommasterpage",
-      "community": 0,
-      "community_name": "Admission Management",
+      "community": 105,
+      "community_name": "Module 105",
       "norm_label": "roommasterpage()"
     },
     {
@@ -11340,6 +11505,501 @@
       "community": 26,
       "community_name": "Module 26",
       "norm_label": "schoolfeepage()"
+    },
+    {
+      "label": "AwardIconBadge.jsx",
+      "file_type": "code",
+      "source_file": "src/app/data/staff-awards/components/AwardIconBadge.jsx",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "src_app_data_staff_awards_components_awardiconbadge",
+      "community": 411,
+      "community_name": "xlsx",
+      "norm_label": "awardiconbadge.jsx"
+    },
+    {
+      "label": "AwardCategorySvg()",
+      "file_type": "code",
+      "source_file": "src/app/data/staff-awards/components/AwardIconBadge.jsx",
+      "source_location": "L6",
+      "_origin": "ast",
+      "id": "src_app_data_staff_awards_components_awardiconbadge_awardcategorysvg",
+      "community": 411,
+      "community_name": "xlsx",
+      "norm_label": "awardcategorysvg()"
+    },
+    {
+      "label": "AwardIconBadge()",
+      "file_type": "code",
+      "source_file": "src/app/data/staff-awards/components/AwardIconBadge.jsx",
+      "source_location": "L99",
+      "_origin": "ast",
+      "id": "src_app_data_staff_awards_components_awardiconbadge_awardiconbadge",
+      "community": 411,
+      "community_name": "xlsx",
+      "norm_label": "awardiconbadge()"
+    },
+    {
+      "label": "MinimalIcons.jsx",
+      "file_type": "code",
+      "source_file": "src/app/data/staff-awards/components/MinimalIcons.jsx",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "src_app_data_staff_awards_components_minimalicons",
+      "community": 411,
+      "community_name": "xlsx",
+      "norm_label": "minimalicons.jsx"
+    },
+    {
+      "label": "SearchIcon()",
+      "file_type": "code",
+      "source_file": "src/app/data/staff-awards/components/MinimalIcons.jsx",
+      "source_location": "L9",
+      "_origin": "ast",
+      "id": "src_app_data_staff_awards_components_minimalicons_searchicon",
+      "community": 411,
+      "community_name": "xlsx",
+      "norm_label": "searchicon()"
+    },
+    {
+      "label": "CloseIcon()",
+      "file_type": "code",
+      "source_file": "src/app/data/staff-awards/components/MinimalIcons.jsx",
+      "source_location": "L18",
+      "_origin": "ast",
+      "id": "src_app_data_staff_awards_components_minimalicons_closeicon",
+      "community": 411,
+      "community_name": "xlsx",
+      "norm_label": "closeicon()"
+    },
+    {
+      "label": "CheckIcon()",
+      "file_type": "code",
+      "source_file": "src/app/data/staff-awards/components/MinimalIcons.jsx",
+      "source_location": "L27",
+      "_origin": "ast",
+      "id": "src_app_data_staff_awards_components_minimalicons_checkicon",
+      "community": 411,
+      "community_name": "xlsx",
+      "norm_label": "checkicon()"
+    },
+    {
+      "label": "CheckCircleIcon()",
+      "file_type": "code",
+      "source_file": "src/app/data/staff-awards/components/MinimalIcons.jsx",
+      "source_location": "L35",
+      "_origin": "ast",
+      "id": "src_app_data_staff_awards_components_minimalicons_checkcircleicon",
+      "community": 411,
+      "community_name": "xlsx",
+      "norm_label": "checkcircleicon()"
+    },
+    {
+      "label": "LockIcon()",
+      "file_type": "code",
+      "source_file": "src/app/data/staff-awards/components/MinimalIcons.jsx",
+      "source_location": "L44",
+      "_origin": "ast",
+      "id": "src_app_data_staff_awards_components_minimalicons_lockicon",
+      "community": 411,
+      "community_name": "xlsx",
+      "norm_label": "lockicon()"
+    },
+    {
+      "label": "UserBlockedIcon()",
+      "file_type": "code",
+      "source_file": "src/app/data/staff-awards/components/MinimalIcons.jsx",
+      "source_location": "L53",
+      "_origin": "ast",
+      "id": "src_app_data_staff_awards_components_minimalicons_userblockedicon",
+      "community": 411,
+      "community_name": "xlsx",
+      "norm_label": "userblockedicon()"
+    },
+    {
+      "label": "ArrowLeftIcon()",
+      "file_type": "code",
+      "source_file": "src/app/data/staff-awards/components/MinimalIcons.jsx",
+      "source_location": "L64",
+      "_origin": "ast",
+      "id": "src_app_data_staff_awards_components_minimalicons_arrowlefticon",
+      "community": 411,
+      "community_name": "xlsx",
+      "norm_label": "arrowlefticon()"
+    },
+    {
+      "label": "ArrowRightIcon()",
+      "file_type": "code",
+      "source_file": "src/app/data/staff-awards/components/MinimalIcons.jsx",
+      "source_location": "L73",
+      "_origin": "ast",
+      "id": "src_app_data_staff_awards_components_minimalicons_arrowrighticon",
+      "community": 411,
+      "community_name": "xlsx",
+      "norm_label": "arrowrighticon()"
+    },
+    {
+      "label": "SendIcon()",
+      "file_type": "code",
+      "source_file": "src/app/data/staff-awards/components/MinimalIcons.jsx",
+      "source_location": "L82",
+      "_origin": "ast",
+      "id": "src_app_data_staff_awards_components_minimalicons_sendicon",
+      "community": 411,
+      "community_name": "xlsx",
+      "norm_label": "sendicon()"
+    },
+    {
+      "label": "DownloadIcon()",
+      "file_type": "code",
+      "source_file": "src/app/data/staff-awards/components/MinimalIcons.jsx",
+      "source_location": "L91",
+      "_origin": "ast",
+      "id": "src_app_data_staff_awards_components_minimalicons_downloadicon",
+      "community": 411,
+      "community_name": "xlsx",
+      "norm_label": "downloadicon()"
+    },
+    {
+      "label": "RefreshIcon()",
+      "file_type": "code",
+      "source_file": "src/app/data/staff-awards/components/MinimalIcons.jsx",
+      "source_location": "L101",
+      "_origin": "ast",
+      "id": "src_app_data_staff_awards_components_minimalicons_refreshicon",
+      "community": 411,
+      "community_name": "xlsx",
+      "norm_label": "refreshicon()"
+    },
+    {
+      "label": "PlusIcon()",
+      "file_type": "code",
+      "source_file": "src/app/data/staff-awards/components/MinimalIcons.jsx",
+      "source_location": "L112",
+      "_origin": "ast",
+      "id": "src_app_data_staff_awards_components_minimalicons_plusicon",
+      "community": 411,
+      "community_name": "xlsx",
+      "norm_label": "plusicon()"
+    },
+    {
+      "label": "EditIcon()",
+      "file_type": "code",
+      "source_file": "src/app/data/staff-awards/components/MinimalIcons.jsx",
+      "source_location": "L121",
+      "_origin": "ast",
+      "id": "src_app_data_staff_awards_components_minimalicons_editicon",
+      "community": 411,
+      "community_name": "xlsx",
+      "norm_label": "editicon()"
+    },
+    {
+      "label": "TrashIcon()",
+      "file_type": "code",
+      "source_file": "src/app/data/staff-awards/components/MinimalIcons.jsx",
+      "source_location": "L130",
+      "_origin": "ast",
+      "id": "src_app_data_staff_awards_components_minimalicons_trashicon",
+      "community": 411,
+      "community_name": "xlsx",
+      "norm_label": "trashicon()"
+    },
+    {
+      "label": "ResetIcon()",
+      "file_type": "code",
+      "source_file": "src/app/data/staff-awards/components/MinimalIcons.jsx",
+      "source_location": "L142",
+      "_origin": "ast",
+      "id": "src_app_data_staff_awards_components_minimalicons_reseticon",
+      "community": 411,
+      "community_name": "xlsx",
+      "norm_label": "reseticon()"
+    },
+    {
+      "label": "ShieldIcon()",
+      "file_type": "code",
+      "source_file": "src/app/data/staff-awards/components/MinimalIcons.jsx",
+      "source_location": "L151",
+      "_origin": "ast",
+      "id": "src_app_data_staff_awards_components_minimalicons_shieldicon",
+      "community": 411,
+      "community_name": "xlsx",
+      "norm_label": "shieldicon()"
+    },
+    {
+      "label": "ChartIcon()",
+      "file_type": "code",
+      "source_file": "src/app/data/staff-awards/components/MinimalIcons.jsx",
+      "source_location": "L160",
+      "_origin": "ast",
+      "id": "src_app_data_staff_awards_components_minimalicons_charticon",
+      "community": 411,
+      "community_name": "xlsx",
+      "norm_label": "charticon()"
+    },
+    {
+      "label": "SlidersIcon()",
+      "file_type": "code",
+      "source_file": "src/app/data/staff-awards/components/MinimalIcons.jsx",
+      "source_location": "L171",
+      "_origin": "ast",
+      "id": "src_app_data_staff_awards_components_minimalicons_slidersicon",
+      "community": 411,
+      "community_name": "xlsx",
+      "norm_label": "slidersicon()"
+    },
+    {
+      "label": "BallotIcon()",
+      "file_type": "code",
+      "source_file": "src/app/data/staff-awards/components/MinimalIcons.jsx",
+      "source_location": "L182",
+      "_origin": "ast",
+      "id": "src_app_data_staff_awards_components_minimalicons_balloticon",
+      "community": 411,
+      "community_name": "xlsx",
+      "norm_label": "balloticon()"
+    },
+    {
+      "label": "AlertIcon()",
+      "file_type": "code",
+      "source_file": "src/app/data/staff-awards/components/MinimalIcons.jsx",
+      "source_location": "L191",
+      "_origin": "ast",
+      "id": "src_app_data_staff_awards_components_minimalicons_alerticon",
+      "community": 411,
+      "community_name": "xlsx",
+      "norm_label": "alerticon()"
+    },
+    {
+      "label": "DatabaseIcon()",
+      "file_type": "code",
+      "source_file": "src/app/data/staff-awards/components/MinimalIcons.jsx",
+      "source_location": "L201",
+      "_origin": "ast",
+      "id": "src_app_data_staff_awards_components_minimalicons_databaseicon",
+      "community": 411,
+      "community_name": "xlsx",
+      "norm_label": "databaseicon()"
+    },
+    {
+      "label": "SpinnerIcon()",
+      "file_type": "code",
+      "source_file": "src/app/data/staff-awards/components/MinimalIcons.jsx",
+      "source_location": "L211",
+      "_origin": "ast",
+      "id": "src_app_data_staff_awards_components_minimalicons_spinnericon",
+      "community": 411,
+      "community_name": "xlsx",
+      "norm_label": "spinnericon()"
+    },
+    {
+      "label": "UsersIcon()",
+      "file_type": "code",
+      "source_file": "src/app/data/staff-awards/components/MinimalIcons.jsx",
+      "source_location": "L219",
+      "_origin": "ast",
+      "id": "src_app_data_staff_awards_components_minimalicons_usersicon",
+      "community": 411,
+      "community_name": "xlsx",
+      "norm_label": "usersicon()"
+    },
+    {
+      "label": "ClockIcon()",
+      "file_type": "code",
+      "source_file": "src/app/data/staff-awards/components/MinimalIcons.jsx",
+      "source_location": "L230",
+      "_origin": "ast",
+      "id": "src_app_data_staff_awards_components_minimalicons_clockicon",
+      "community": 411,
+      "community_name": "xlsx",
+      "norm_label": "clockicon()"
+    },
+    {
+      "label": "CalendarIcon()",
+      "file_type": "code",
+      "source_file": "src/app/data/staff-awards/components/MinimalIcons.jsx",
+      "source_location": "L239",
+      "_origin": "ast",
+      "id": "src_app_data_staff_awards_components_minimalicons_calendaricon",
+      "community": 411,
+      "community_name": "xlsx",
+      "norm_label": "calendaricon()"
+    },
+    {
+      "label": "SaveIcon()",
+      "file_type": "code",
+      "source_file": "src/app/data/staff-awards/components/MinimalIcons.jsx",
+      "source_location": "L250",
+      "_origin": "ast",
+      "id": "src_app_data_staff_awards_components_minimalicons_saveicon",
+      "community": 411,
+      "community_name": "xlsx",
+      "norm_label": "saveicon()"
+    },
+    {
+      "label": "StaffAwardsAdminManage.jsx",
+      "file_type": "code",
+      "source_file": "src/app/data/staff-awards/components/StaffAwardsAdminManage.jsx",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "src_app_data_staff_awards_components_staffawardsadminmanage",
+      "community": 411,
+      "community_name": "xlsx",
+      "norm_label": "staffawardsadminmanage.jsx"
+    },
+    {
+      "label": "STATUS_BADGE",
+      "file_type": "code",
+      "source_file": "src/app/data/staff-awards/components/StaffAwardsAdminManage.jsx",
+      "source_location": "L18",
+      "_origin": "ast",
+      "id": "src_app_data_staff_awards_components_staffawardsadminmanage_status_badge",
+      "community": 411,
+      "community_name": "xlsx",
+      "norm_label": "status_badge"
+    },
+    {
+      "label": "StaffAwardsAdminManage()",
+      "file_type": "code",
+      "source_file": "src/app/data/staff-awards/components/StaffAwardsAdminManage.jsx",
+      "source_location": "L24",
+      "_origin": "ast",
+      "id": "src_app_data_staff_awards_components_staffawardsadminmanage_staffawardsadminmanage",
+      "community": 411,
+      "community_name": "xlsx",
+      "norm_label": "staffawardsadminmanage()"
+    },
+    {
+      "label": "StaffAwardsAdminResults.jsx",
+      "file_type": "code",
+      "source_file": "src/app/data/staff-awards/components/StaffAwardsAdminResults.jsx",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "src_app_data_staff_awards_components_staffawardsadminresults",
+      "community": 411,
+      "community_name": "xlsx",
+      "norm_label": "staffawardsadminresults.jsx"
+    },
+    {
+      "label": "formatWibDateTime()",
+      "file_type": "code",
+      "source_file": "src/app/data/staff-awards/components/StaffAwardsAdminResults.jsx",
+      "source_location": "L17",
+      "_origin": "ast",
+      "id": "src_app_data_staff_awards_components_staffawardsadminresults_formatwibdatetime",
+      "community": 411,
+      "community_name": "xlsx",
+      "norm_label": "formatwibdatetime()"
+    },
+    {
+      "label": "StaffAwardsAdminResults()",
+      "file_type": "code",
+      "source_file": "src/app/data/staff-awards/components/StaffAwardsAdminResults.jsx",
+      "source_location": "L36",
+      "_origin": "ast",
+      "id": "src_app_data_staff_awards_components_staffawardsadminresults_staffawardsadminresults",
+      "community": 411,
+      "community_name": "xlsx",
+      "norm_label": "staffawardsadminresults()"
+    },
+    {
+      "label": "exportStaffAwardsExcel.js",
+      "file_type": "code",
+      "source_file": "src/app/data/staff-awards/lib/exportStaffAwardsExcel.js",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "src_app_data_staff_awards_lib_exportstaffawardsexcel",
+      "community": 411,
+      "community_name": "xlsx",
+      "norm_label": "exportstaffawardsexcel.js"
+    },
+    {
+      "label": "formatWibTimestamp()",
+      "file_type": "code",
+      "source_file": "src/app/data/staff-awards/lib/exportStaffAwardsExcel.js",
+      "source_location": "L6",
+      "_origin": "ast",
+      "id": "src_app_data_staff_awards_lib_exportstaffawardsexcel_formatwibtimestamp",
+      "community": 411,
+      "community_name": "xlsx",
+      "norm_label": "formatwibtimestamp()"
+    },
+    {
+      "label": "styleHairlineBorder()",
+      "file_type": "code",
+      "source_file": "src/app/data/staff-awards/lib/exportStaffAwardsExcel.js",
+      "source_location": "L25",
+      "_origin": "ast",
+      "id": "src_app_data_staff_awards_lib_exportstaffawardsexcel_stylehairlineborder",
+      "community": 411,
+      "community_name": "xlsx",
+      "norm_label": "stylehairlineborder()"
+    },
+    {
+      "label": "styleHeaderRow()",
+      "file_type": "code",
+      "source_file": "src/app/data/staff-awards/lib/exportStaffAwardsExcel.js",
+      "source_location": "L34",
+      "_origin": "ast",
+      "id": "src_app_data_staff_awards_lib_exportstaffawardsexcel_styleheaderrow",
+      "community": 411,
+      "community_name": "xlsx",
+      "norm_label": "styleheaderrow()"
+    },
+    {
+      "label": "buildStaffAwardsWorkbook()",
+      "file_type": "code",
+      "source_file": "src/app/data/staff-awards/lib/exportStaffAwardsExcel.js",
+      "source_location": "L50",
+      "_origin": "ast",
+      "id": "src_app_data_staff_awards_lib_exportstaffawardsexcel_buildstaffawardsworkbook",
+      "community": 411,
+      "community_name": "xlsx",
+      "norm_label": "buildstaffawardsworkbook()"
+    },
+    {
+      "label": "exportStaffAwardsExcel()",
+      "file_type": "code",
+      "source_file": "src/app/data/staff-awards/lib/exportStaffAwardsExcel.js",
+      "source_location": "L393",
+      "_origin": "ast",
+      "id": "src_app_data_staff_awards_lib_exportstaffawardsexcel_exportstaffawardsexcel",
+      "community": 411,
+      "community_name": "xlsx",
+      "norm_label": "exportstaffawardsexcel()"
+    },
+    {
+      "label": "page.jsx",
+      "file_type": "code",
+      "source_file": "src/app/data/staff-awards/page.jsx",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "src_app_data_staff_awards_page",
+      "community": 411,
+      "community_name": "xlsx",
+      "norm_label": "page.jsx"
+    },
+    {
+      "label": "formatWibDateTime()",
+      "file_type": "code",
+      "source_file": "src/app/data/staff-awards/page.jsx",
+      "source_location": "L27",
+      "_origin": "ast",
+      "id": "src_app_data_staff_awards_page_formatwibdatetime",
+      "community": 411,
+      "community_name": "xlsx",
+      "norm_label": "formatwibdatetime()"
+    },
+    {
+      "label": "StaffAwardsPage()",
+      "file_type": "code",
+      "source_file": "src/app/data/staff-awards/page.jsx",
+      "source_location": "L46",
+      "_origin": "ast",
+      "id": "src_app_data_staff_awards_page_staffawardspage",
+      "community": 411,
+      "community_name": "xlsx",
+      "norm_label": "staffawardspage()"
     },
     {
       "label": "page.jsx",
@@ -11634,8 +12294,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_app_data_topic_new_components_googleclassroomconnector",
-      "community": 145,
-      "community_name": "Module 145",
+      "community": 259,
+      "community_name": "DDL",
       "norm_label": "googleclassroomconnector.jsx"
     },
     {
@@ -11645,8 +12305,8 @@
       "source_location": "L22",
       "_origin": "ast",
       "id": "src_app_data_topic_new_components_googleclassroomconnector_googleclassroomicon",
-      "community": 145,
-      "community_name": "Module 145",
+      "community": 259,
+      "community_name": "DDL",
       "norm_label": "googleclassroomicon()"
     },
     {
@@ -11656,8 +12316,8 @@
       "source_location": "L39",
       "_origin": "ast",
       "id": "src_app_data_topic_new_components_googleclassroomconnector_google_classroom_scopes",
-      "community": 145,
-      "community_name": "Module 145",
+      "community": 259,
+      "community_name": "DDL",
       "norm_label": "google_classroom_scopes"
     },
     {
@@ -11667,8 +12327,8 @@
       "source_location": "L48",
       "_origin": "ast",
       "id": "src_app_data_topic_new_components_googleclassroomconnector_getstoredclassroomtoken",
-      "community": 145,
-      "community_name": "Module 145",
+      "community": 259,
+      "community_name": "DDL",
       "norm_label": "getstoredclassroomtoken()"
     },
     {
@@ -11678,8 +12338,8 @@
       "source_location": "L59",
       "_origin": "ast",
       "id": "src_app_data_topic_new_components_googleclassroomconnector_setstoredclassroomtoken",
-      "community": 145,
-      "community_name": "Module 145",
+      "community": 259,
+      "community_name": "DDL",
       "norm_label": "setstoredclassroomtoken()"
     },
     {
@@ -11689,8 +12349,8 @@
       "source_location": "L66",
       "_origin": "ast",
       "id": "src_app_data_topic_new_components_googleclassroomconnector_clearstoredclassroomtoken",
-      "community": 145,
-      "community_name": "Module 145",
+      "community": 259,
+      "community_name": "DDL",
       "norm_label": "clearstoredclassroomtoken()"
     },
     {
@@ -11700,8 +12360,8 @@
       "source_location": "L76",
       "_origin": "ast",
       "id": "src_app_data_topic_new_components_googleclassroomconnector_refreshclassroomtoken",
-      "community": 145,
-      "community_name": "Module 145",
+      "community": 259,
+      "community_name": "DDL",
       "norm_label": "refreshclassroomtoken()"
     },
     {
@@ -11711,8 +12371,8 @@
       "source_location": "L103",
       "_origin": "ast",
       "id": "src_app_data_topic_new_components_googleclassroomconnector_getvalidclassroomtoken",
-      "community": 145,
-      "community_name": "Module 145",
+      "community": 259,
+      "community_name": "DDL",
       "norm_label": "getvalidclassroomtoken()"
     },
     {
@@ -11722,8 +12382,8 @@
       "source_location": "L120",
       "_origin": "ast",
       "id": "src_app_data_topic_new_components_googleclassroomconnector_authorizegoogleclassroom",
-      "community": 145,
-      "community_name": "Module 145",
+      "community": 259,
+      "community_name": "DDL",
       "norm_label": "authorizegoogleclassroom()"
     },
     {
@@ -11733,8 +12393,8 @@
       "source_location": "L203",
       "_origin": "ast",
       "id": "src_app_data_topic_new_components_googleclassroomconnector_extractclassroomlinks",
-      "community": 145,
-      "community_name": "Module 145",
+      "community": 259,
+      "community_name": "DDL",
       "norm_label": "extractclassroomlinks()"
     },
     {
@@ -11744,8 +12404,8 @@
       "source_location": "L214",
       "_origin": "ast",
       "id": "src_app_data_topic_new_components_googleclassroomconnector_googleclassroomconnector",
-      "community": 145,
-      "community_name": "Module 145",
+      "community": 259,
+      "community_name": "DDL",
       "norm_label": "googleclassroomconnector()"
     },
     {
@@ -13696,6 +14356,39 @@
       "norm_label": "pomodal()"
     },
     {
+      "label": "StaffNomineeAutocomplete.jsx",
+      "file_type": "code",
+      "source_file": "src/components/StaffNomineeAutocomplete.jsx",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "src_components_staffnomineeautocomplete",
+      "community": 381,
+      "community_name": "react-easy-crop",
+      "norm_label": "staffnomineeautocomplete.jsx"
+    },
+    {
+      "label": "getInitials()",
+      "file_type": "code",
+      "source_file": "src/components/StaffNomineeAutocomplete.jsx",
+      "source_location": "L12",
+      "_origin": "ast",
+      "id": "src_components_staffnomineeautocomplete_getinitials",
+      "community": 381,
+      "community_name": "react-easy-crop",
+      "norm_label": "getinitials()"
+    },
+    {
+      "label": "StaffNomineeAutocomplete()",
+      "file_type": "code",
+      "source_file": "src/components/StaffNomineeAutocomplete.jsx",
+      "source_location": "L23",
+      "_origin": "ast",
+      "id": "src_components_staffnomineeautocomplete_staffnomineeautocomplete",
+      "community": 381,
+      "community_name": "react-easy-crop",
+      "norm_label": "staffnomineeautocomplete()"
+    },
+    {
       "label": "ThemedNavbar.jsx",
       "file_type": "code",
       "source_file": "src/components/ThemedNavbar.jsx",
@@ -13787,7 +14480,7 @@
       "label": "iconMap",
       "file_type": "code",
       "source_file": "src/components/sidebar.jsx",
-      "source_location": "L122",
+      "source_location": "L125",
       "_origin": "ast",
       "id": "src_components_sidebar_iconmap",
       "community": 89,
@@ -13798,7 +14491,7 @@
       "label": "Sidebar",
       "file_type": "code",
       "source_file": "src/components/sidebar.jsx",
-      "source_location": "L379",
+      "source_location": "L391",
       "_origin": "ast",
       "id": "src_components_sidebar_sidebar",
       "community": 89,
@@ -14794,6 +15487,83 @@
       "community": 13,
       "community_name": "Teacher Dashboard & Permissions",
       "norm_label": "getuserdata()"
+    },
+    {
+      "label": "staffAwards.js",
+      "file_type": "code",
+      "source_file": "src/lib/staffAwards.js",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "src_lib_staffawards",
+      "community": 332,
+      "community_name": "11. REDESIGN PROTOCOL",
+      "norm_label": "staffawards.js"
+    },
+    {
+      "label": "AWARD_TONE_PRESETS",
+      "file_type": "code",
+      "source_file": "src/lib/staffAwards.js",
+      "source_location": "L6",
+      "_origin": "ast",
+      "id": "src_lib_staffawards_award_tone_presets",
+      "community": 332,
+      "community_name": "11. REDESIGN PROTOCOL",
+      "norm_label": "award_tone_presets"
+    },
+    {
+      "label": "TONE_MAP",
+      "file_type": "code",
+      "source_file": "src/lib/staffAwards.js",
+      "source_location": "L59",
+      "_origin": "ast",
+      "id": "src_lib_staffawards_tone_map",
+      "community": 332,
+      "community_name": "11. REDESIGN PROTOCOL",
+      "norm_label": "tone_map"
+    },
+    {
+      "label": "resolveAwardTone()",
+      "file_type": "code",
+      "source_file": "src/lib/staffAwards.js",
+      "source_location": "L67",
+      "_origin": "ast",
+      "id": "src_lib_staffawards_resolveawardtone",
+      "community": 332,
+      "community_name": "11. REDESIGN PROTOCOL",
+      "norm_label": "resolveawardtone()"
+    },
+    {
+      "label": "DEFAULT_AWARD_CATEGORIES",
+      "file_type": "code",
+      "source_file": "src/lib/staffAwards.js",
+      "source_location": "L86",
+      "_origin": "ast",
+      "id": "src_lib_staffawards_default_award_categories",
+      "community": 332,
+      "community_name": "11. REDESIGN PROTOCOL",
+      "norm_label": "default_award_categories"
+    },
+    {
+      "label": "AWARD_ICON_OPTIONS",
+      "file_type": "code",
+      "source_file": "src/lib/staffAwards.js",
+      "source_location": "L169",
+      "_origin": "ast",
+      "id": "src_lib_staffawards_award_icon_options",
+      "community": 332,
+      "community_name": "11. REDESIGN PROTOCOL",
+      "norm_label": "award_icon_options"
+    },
+    {
+      "label": "formatStaffFullName()",
+      "file_type": "code",
+      "source_file": "src/lib/staffAwards.js",
+      "source_location": "L188",
+      "_origin": "ast",
+      "id": "src_lib_staffawards_formatstafffullname",
+      "community": 332,
+      "community_name": "11. REDESIGN PROTOCOL",
+      "norm_label": "formatstafffullname()"
     },
     {
       "label": "supabase-updated.js",
@@ -23420,6 +24190,94 @@
       "norm_label": "21.3 erd / relationships (recruitment assessments domain)"
     },
     {
+      "label": "22. Teachers & Staff Recognition / Staff Awards Domain (`/data/staff-awards`)",
+      "file_type": "document",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L3142",
+      "_origin": "ast",
+      "id": "database_schema_22_teachers_staff_recognition_staff_awards_domain_data_staff_awards",
+      "community": 330,
+      "community_name": "\ud83d\udcc1 **Project Structure**",
+      "norm_label": "22. teachers & staff recognition / staff awards domain (`/data/staff-awards`)"
+    },
+    {
+      "label": "22.1 Key Architecture & Security Rules",
+      "file_type": "document",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L3146",
+      "_origin": "ast",
+      "id": "database_schema_22_1_key_architecture_security_rules",
+      "community": 330,
+      "community_name": "\ud83d\udcc1 **Project Structure**",
+      "norm_label": "22.1 key architecture & security rules"
+    },
+    {
+      "label": "22.2 Tables",
+      "file_type": "document",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L3154",
+      "_origin": "ast",
+      "id": "database_schema_22_2_tables",
+      "community": 330,
+      "community_name": "\ud83d\udcc1 **Project Structure**",
+      "norm_label": "22.2 tables"
+    },
+    {
+      "label": "`staff_award_events`",
+      "file_type": "document",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L3156",
+      "_origin": "ast",
+      "id": "database_schema_staff_award_events",
+      "community": 330,
+      "community_name": "\ud83d\udcc1 **Project Structure**",
+      "norm_label": "`staff_award_events`"
+    },
+    {
+      "label": "`staff_award_categories`",
+      "file_type": "document",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L3169",
+      "_origin": "ast",
+      "id": "database_schema_staff_award_categories",
+      "community": 330,
+      "community_name": "\ud83d\udcc1 **Project Structure**",
+      "norm_label": "`staff_award_categories`"
+    },
+    {
+      "label": "`staff_award_submissions`",
+      "file_type": "document",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L3183",
+      "_origin": "ast",
+      "id": "database_schema_staff_award_submissions",
+      "community": 330,
+      "community_name": "\ud83d\udcc1 **Project Structure**",
+      "norm_label": "`staff_award_submissions`"
+    },
+    {
+      "label": "`staff_award_votes`",
+      "file_type": "document",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L3194",
+      "_origin": "ast",
+      "id": "database_schema_staff_award_votes",
+      "community": 330,
+      "community_name": "\ud83d\udcc1 **Project Structure**",
+      "norm_label": "`staff_award_votes`"
+    },
+    {
+      "label": "22.3 ERD / Relationships (Staff Awards Domain)",
+      "file_type": "document",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L3205",
+      "_origin": "ast",
+      "id": "database_schema_22_3_erd_relationships_staff_awards_domain",
+      "community": 330,
+      "community_name": "\ud83d\udcc1 **Project Structure**",
+      "norm_label": "22.3 erd / relationships (staff awards domain)"
+    },
+    {
       "label": "DELETE_VOID_IMPLEMENTATION.md",
       "file_type": "document",
       "source_file": "DELETE_VOID_IMPLEMENTATION.md",
@@ -24097,8 +24955,8 @@
       "source_location": "L5",
       "_origin": "ast",
       "id": "main_documentation_2026_07_16_timetable_refactor_weekly_plan_dates_weekly_overview",
-      "community": 259,
-      "community_name": "DDL",
+      "community": 102,
+      "community_name": "Module 102",
       "norm_label": "2026-07-16 \u2014 timetable refactor + weekly plan dates + weekly overview"
     },
     {
@@ -24108,8 +24966,8 @@
       "source_location": "L7",
       "_origin": "ast",
       "id": "main_documentation_timetable_refactor_data_timetable",
-      "community": 259,
-      "community_name": "DDL",
+      "community": 102,
+      "community_name": "Module 102",
       "norm_label": "timetable refactor (`/data/timetable`)"
     },
     {
@@ -24119,8 +24977,8 @@
       "source_location": "L17",
       "_origin": "ast",
       "id": "main_documentation_timetable_exceptions_timetable_exception_new_table",
-      "community": 259,
-      "community_name": "DDL",
+      "community": 102,
+      "community_name": "Module 102",
       "norm_label": "timetable exceptions (`timetable_exception`) \u2014 new table"
     },
     {
@@ -24130,8 +24988,8 @@
       "source_location": "L46",
       "_origin": "ast",
       "id": "main_documentation_weekly_plan_dates_topic_weekly_plan_week_date",
-      "community": 259,
-      "community_name": "DDL",
+      "community": 102,
+      "community_name": "Module 102",
       "norm_label": "weekly plan dates \u2014 `topic_weekly_plan.week_date`"
     },
     {
@@ -24141,8 +24999,8 @@
       "source_location": "L54",
       "_origin": "ast",
       "id": "main_documentation_weekly_overview_data_weekly_overview_new_page",
-      "community": 259,
-      "community_name": "DDL",
+      "community": 102,
+      "community_name": "Module 102",
       "norm_label": "weekly overview (`/data/weekly-overview`) \u2014 new page"
     },
     {
@@ -24152,8 +25010,8 @@
       "source_location": "L73",
       "_origin": "ast",
       "id": "main_documentation_weekly_overview_draft_table_new",
-      "community": 259,
-      "community_name": "DDL",
+      "community": 102,
+      "community_name": "Module 102",
       "norm_label": "`weekly_overview_draft` table \u2014 new"
     },
     {
@@ -24163,8 +25021,8 @@
       "source_location": "L87",
       "_origin": "ast",
       "id": "main_documentation_topic_weekly_plan_complete_schema_reference",
-      "community": 259,
-      "community_name": "DDL",
+      "community": 102,
+      "community_name": "Module 102",
       "norm_label": "`topic_weekly_plan` \u2014 complete schema reference"
     },
     {
@@ -24174,8 +25032,8 @@
       "source_location": "L103",
       "_origin": "ast",
       "id": "main_documentation_full_data_flow_timetable_weekly_overview",
-      "community": 259,
-      "community_name": "DDL",
+      "community": 102,
+      "community_name": "Module 102",
       "norm_label": "full data flow: timetable \u2192 weekly overview"
     },
     {
@@ -24328,8 +25186,8 @@
       "source_location": "L287",
       "_origin": "ast",
       "id": "main_documentation_database_structure",
-      "community": 101,
-      "community_name": "Module 101",
+      "community": 344,
+      "community_name": "8. DARK MODE PROTOCOL",
       "norm_label": "\ufffd\ud83c\udfd7\ufe0f **database structure**"
     },
     {
@@ -24339,8 +25197,8 @@
       "source_location": "L289",
       "_origin": "ast",
       "id": "main_documentation_core_tables",
-      "community": 101,
-      "community_name": "Module 101",
+      "community": 344,
+      "community_name": "8. DARK MODE PROTOCOL",
       "norm_label": "**core tables:**"
     },
     {
@@ -24350,8 +25208,8 @@
       "source_location": "L524",
       "_origin": "ast",
       "id": "main_documentation_grades_nilai_table",
-      "community": 101,
-      "community_name": "Module 101",
+      "community": 344,
+      "community_name": "8. DARK MODE PROTOCOL",
       "norm_label": "grades (nilai) table"
     },
     {
@@ -24361,8 +25219,8 @@
       "source_location": "L539",
       "_origin": "ast",
       "id": "main_documentation_attendance_qr_tables",
-      "community": 101,
-      "community_name": "Module 101",
+      "community": 344,
+      "community_name": "8. DARK MODE PROTOCOL",
       "norm_label": "attendance (qr) tables"
     },
     {
@@ -24405,8 +25263,8 @@
       "source_location": "L618",
       "_origin": "ast",
       "id": "main_documentation_3_assessment_system",
-      "community": 80,
-      "community_name": "Module 80",
+      "community": 387,
+      "community_name": "\ud83d\udcc1 **Project Structure**",
       "norm_label": "**3. assessment system**"
     },
     {
@@ -24416,8 +25274,8 @@
       "source_location": "L619",
       "_origin": "ast",
       "id": "main_documentation_teacher_workflow",
-      "community": 80,
-      "community_name": "Module 80",
+      "community": 387,
+      "community_name": "\ud83d\udcc1 **Project Structure**",
       "norm_label": "**teacher workflow**:"
     },
     {
@@ -24427,8 +25285,8 @@
       "source_location": "L628",
       "_origin": "ast",
       "id": "main_documentation_admin_workflow",
-      "community": 80,
-      "community_name": "Module 80",
+      "community": 387,
+      "community_name": "\ud83d\udcc1 **Project Structure**",
       "norm_label": "**admin workflow**:"
     },
     {
@@ -24559,8 +25417,8 @@
       "source_location": "L812",
       "_origin": "ast",
       "id": "main_documentation_technical_implementation",
-      "community": 101,
-      "community_name": "Module 101",
+      "community": 346,
+      "community_name": "bcryptjs",
       "norm_label": "\ud83d\udd27 **technical implementation**"
     },
     {
@@ -24570,8 +25428,8 @@
       "source_location": "L814",
       "_origin": "ast",
       "id": "main_documentation_frontend_stack",
-      "community": 101,
-      "community_name": "Module 101",
+      "community": 346,
+      "community_name": "bcryptjs",
       "norm_label": "**frontend stack:**"
     },
     {
@@ -24581,8 +25439,8 @@
       "source_location": "L821",
       "_origin": "ast",
       "id": "main_documentation_backend_database",
-      "community": 101,
-      "community_name": "Module 101",
+      "community": 346,
+      "community_name": "bcryptjs",
       "norm_label": "**backend & database:**"
     },
     {
@@ -24592,8 +25450,8 @@
       "source_location": "L827",
       "_origin": "ast",
       "id": "main_documentation_key_technical_notes",
-      "community": 101,
-      "community_name": "Module 101",
+      "community": 346,
+      "community_name": "bcryptjs",
       "norm_label": "**key technical notes:**"
     },
     {
@@ -24603,8 +25461,8 @@
       "source_location": "L881",
       "_origin": "ast",
       "id": "main_documentation_setup_deployment",
-      "community": 331,
-      "community_name": "class-variance-authority",
+      "community": 101,
+      "community_name": "Module 101",
       "norm_label": "\ud83d\ude80 **setup & deployment**"
     },
     {
@@ -24614,8 +25472,8 @@
       "source_location": "L883",
       "_origin": "ast",
       "id": "main_documentation_database_migration_files_execute_in_order",
-      "community": 331,
-      "community_name": "class-variance-authority",
+      "community": 101,
+      "community_name": "Module 101",
       "norm_label": "**database migration files (execute in order):**"
     },
     {
@@ -24625,8 +25483,8 @@
       "source_location": "L911",
       "_origin": "ast",
       "id": "main_documentation_development",
-      "community": 331,
-      "community_name": "class-variance-authority",
+      "community": 101,
+      "community_name": "Module 101",
       "norm_label": "**development:**"
     },
     {
@@ -24636,8 +25494,8 @@
       "source_location": "L918",
       "_origin": "ast",
       "id": "main_documentation_key_environment",
-      "community": 331,
-      "community_name": "class-variance-authority",
+      "community": 101,
+      "community_name": "Module 101",
       "norm_label": "**key environment:**"
     },
     {
@@ -24647,8 +25505,8 @@
       "source_location": "L928",
       "_origin": "ast",
       "id": "main_documentation_additional_files",
-      "community": 331,
-      "community_name": "class-variance-authority",
+      "community": 101,
+      "community_name": "Module 101",
       "norm_label": "**additional files:**"
     },
     {
@@ -24911,8 +25769,8 @@
       "source_location": "L1119",
       "_origin": "ast",
       "id": "main_documentation_key_components",
-      "community": 106,
-      "community_name": "Module 106",
+      "community": 331,
+      "community_name": "class-variance-authority",
       "norm_label": "**key components**"
     },
     {
@@ -24922,8 +25780,8 @@
       "source_location": "L1121",
       "_origin": "ast",
       "id": "main_documentation_1_myp_year_level_selection",
-      "community": 106,
-      "community_name": "Module 106",
+      "community": 331,
+      "community_name": "class-variance-authority",
       "norm_label": "**1. myp year level selection**"
     },
     {
@@ -24933,8 +25791,8 @@
       "source_location": "L1128",
       "_origin": "ast",
       "id": "main_documentation_2_criterion_grades_a_b_c_d",
-      "community": 106,
-      "community_name": "Module 106",
+      "community": 331,
+      "community_name": "class-variance-authority",
       "norm_label": "**2. criterion grades (a, b, c, d)**"
     },
     {
@@ -24944,8 +25802,8 @@
       "source_location": "L1138",
       "_origin": "ast",
       "id": "main_documentation_3_strand_grades",
-      "community": 106,
-      "community_name": "Module 106",
+      "community": 331,
+      "community_name": "class-variance-authority",
       "norm_label": "**3. strand grades**"
     },
     {
@@ -24955,8 +25813,8 @@
       "source_location": "L1147",
       "_origin": "ast",
       "id": "main_documentation_4_final_grade_1_7",
-      "community": 106,
-      "community_name": "Module 106",
+      "community": 331,
+      "community_name": "class-variance-authority",
       "norm_label": "**4. final grade (1-7)**"
     },
     {
@@ -25032,8 +25890,8 @@
       "source_location": "L1221",
       "_origin": "ast",
       "id": "main_documentation_project_structure",
-      "community": 101,
-      "community_name": "Module 101",
+      "community": 394,
+      "community_name": "react-hook-form",
       "norm_label": "\ud83d\udcc1 **project structure**"
     },
     {
@@ -25043,8 +25901,8 @@
       "source_location": "L1223",
       "_origin": "ast",
       "id": "main_documentation_key_directories",
-      "community": 101,
-      "community_name": "Module 101",
+      "community": 394,
+      "community_name": "react-hook-form",
       "norm_label": "**key directories:**"
     },
     {
@@ -25054,8 +25912,8 @@
       "source_location": "L1229",
       "_origin": "ast",
       "id": "main_documentation_important_files",
-      "community": 101,
-      "community_name": "Module 101",
+      "community": 394,
+      "community_name": "react-hook-form",
       "norm_label": "**important files:**"
     },
     {
@@ -37071,6 +37929,376 @@
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
+      "source_file": "src/app/api/staff-awards/route.js",
+      "source_location": "L236",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_api_staff_awards_route",
+      "target": "src_app_api_staff_awards_route_buildadminanalytics",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/staff-awards/route.js",
+      "source_location": "L36",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_api_staff_awards_route",
+      "target": "src_app_api_staff_awards_route_checktablesexist",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/staff-awards/route.js",
+      "source_location": "L18",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_api_staff_awards_route",
+      "target": "src_app_api_staff_awards_route_fetchallrows",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/staff-awards/route.js",
+      "source_location": "L360",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_api_staff_awards_route",
+      "target": "src_app_api_staff_awards_route_get",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/staff-awards/route.js",
+      "source_location": "L93",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_api_staff_awards_route",
+      "target": "src_app_api_staff_awards_route_geteligiblestaffandcaller",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/staff-awards/route.js",
+      "source_location": "L32",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_api_staff_awards_route",
+      "target": "src_app_api_staff_awards_route_getjakartadatestr",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/staff-awards/route.js",
+      "source_location": "L85",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_api_staff_awards_route",
+      "target": "src_app_api_staff_awards_route_nextid",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/staff-awards/route.js",
+      "source_location": "L340",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_api_staff_awards_route",
+      "target": "src_app_api_staff_awards_route_pickselectedevent",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/staff-awards/route.js",
+      "source_location": "L542",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_api_staff_awards_route",
+      "target": "src_app_api_staff_awards_route_post",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/staff-awards/route.js",
+      "source_location": "L48",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_api_staff_awards_route",
+      "target": "src_app_api_staff_awards_route_readstore",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/staff-awards/route.js",
+      "source_location": "L171",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_api_staff_awards_route",
+      "target": "src_app_api_staff_awards_route_resolvedefaultyear",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/staff-awards/route.js",
+      "source_location": "L181",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_api_staff_awards_route",
+      "target": "src_app_api_staff_awards_route_seeddefaultevent",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/staff-awards/route.js",
+      "source_location": "L5",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_api_staff_awards_route",
+      "target": "src_app_api_staff_awards_route_supabaseadmin",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/staff-awards/route.js",
+      "source_location": "L71",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_api_staff_awards_route",
+      "target": "src_app_api_staff_awards_route_writestore",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/staff-awards/route.js",
+      "source_location": "L427",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_api_staff_awards_route_get",
+      "target": "src_app_api_staff_awards_route_fetchallrows",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/staff-awards/route.js",
+      "source_location": "L107",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_api_staff_awards_route_geteligiblestaffandcaller",
+      "target": "src_app_api_staff_awards_route_fetchallrows",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/staff-awards/route.js",
+      "source_location": "L123",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_api_staff_awards_route_geteligiblestaffandcaller",
+      "target": "src_app_api_staff_awards_route_getjakartadatestr",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/staff-awards/route.js",
+      "source_location": "L173",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_api_staff_awards_route_resolvedefaultyear",
+      "target": "src_app_api_staff_awards_route_getjakartadatestr",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/staff-awards/route.js",
+      "source_location": "L374",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_api_staff_awards_route_get",
+      "target": "src_app_api_staff_awards_route_checktablesexist",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/staff-awards/route.js",
+      "source_location": "L557",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_api_staff_awards_route_post",
+      "target": "src_app_api_staff_awards_route_checktablesexist",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/staff-awards/route.js",
+      "source_location": "L395",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_api_staff_awards_route_get",
+      "target": "src_app_api_staff_awards_route_readstore",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/staff-awards/route.js",
+      "source_location": "L599",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_api_staff_awards_route_post",
+      "target": "src_app_api_staff_awards_route_readstore",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/staff-awards/route.js",
+      "source_location": "L211",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_api_staff_awards_route_seeddefaultevent",
+      "target": "src_app_api_staff_awards_route_readstore",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/staff-awards/route.js",
+      "source_location": "L717",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_api_staff_awards_route_post",
+      "target": "src_app_api_staff_awards_route_writestore",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/staff-awards/route.js",
+      "source_location": "L227",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_api_staff_awards_route_seeddefaultevent",
+      "target": "src_app_api_staff_awards_route_writestore",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/staff-awards/route.js",
+      "source_location": "L701",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_api_staff_awards_route_post",
+      "target": "src_app_api_staff_awards_route_nextid",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/staff-awards/route.js",
+      "source_location": "L373",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_api_staff_awards_route_get",
+      "target": "src_app_api_staff_awards_route_geteligiblestaffandcaller",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/staff-awards/route.js",
+      "source_location": "L556",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_api_staff_awards_route_post",
+      "target": "src_app_api_staff_awards_route_geteligiblestaffandcaller",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/staff-awards/route.js",
+      "source_location": "L182",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_api_staff_awards_route_seeddefaultevent",
+      "target": "src_app_api_staff_awards_route_resolvedefaultyear",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/staff-awards/route.js",
+      "source_location": "L391",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_api_staff_awards_route_get",
+      "target": "src_app_api_staff_awards_route_seeddefaultevent",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/staff-awards/route.js",
+      "source_location": "L521",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_api_staff_awards_route_get",
+      "target": "src_app_api_staff_awards_route_buildadminanalytics",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/staff-awards/route.js",
+      "source_location": "L406",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_api_staff_awards_route_get",
+      "target": "src_app_api_staff_awards_route_pickselectedevent",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
       "source_file": "src/app/api/system-feedback/[id]/route.js",
       "source_location": "L109",
       "weight": 1.0,
@@ -41901,6 +43129,1107 @@
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
+      "source_file": "src/app/data/staff-awards/components/AwardIconBadge.jsx",
+      "source_location": "L6",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_staff_awards_components_awardiconbadge",
+      "target": "src_app_data_staff_awards_components_awardiconbadge_awardcategorysvg",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/staff-awards/components/AwardIconBadge.jsx",
+      "source_location": "L99",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_staff_awards_components_awardiconbadge",
+      "target": "src_app_data_staff_awards_components_awardiconbadge_awardiconbadge",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/staff-awards/components/StaffAwardsAdminManage.jsx",
+      "source_location": "L16",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_staff_awards_components_staffawardsadminmanage",
+      "target": "src_app_data_staff_awards_components_awardiconbadge",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/staff-awards/components/StaffAwardsAdminResults.jsx",
+      "source_location": "L14",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_staff_awards_components_staffawardsadminresults",
+      "target": "src_app_data_staff_awards_components_awardiconbadge",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/staff-awards/page.jsx",
+      "source_location": "L7",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_staff_awards_page",
+      "target": "src_app_data_staff_awards_components_awardiconbadge",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/staff-awards/components/StaffAwardsAdminManage.jsx",
+      "source_location": "L16",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_staff_awards_components_staffawardsadminmanage",
+      "target": "src_app_data_staff_awards_components_awardiconbadge_awardiconbadge",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/staff-awards/components/StaffAwardsAdminResults.jsx",
+      "source_location": "L14",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_staff_awards_components_staffawardsadminresults",
+      "target": "src_app_data_staff_awards_components_awardiconbadge_awardiconbadge",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/staff-awards/page.jsx",
+      "source_location": "L7",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_staff_awards_page",
+      "target": "src_app_data_staff_awards_components_awardiconbadge_awardiconbadge",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/staff-awards/components/MinimalIcons.jsx",
+      "source_location": "L191",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_staff_awards_components_minimalicons",
+      "target": "src_app_data_staff_awards_components_minimalicons_alerticon",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/staff-awards/components/MinimalIcons.jsx",
+      "source_location": "L64",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_staff_awards_components_minimalicons",
+      "target": "src_app_data_staff_awards_components_minimalicons_arrowlefticon",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/staff-awards/components/MinimalIcons.jsx",
+      "source_location": "L73",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_staff_awards_components_minimalicons",
+      "target": "src_app_data_staff_awards_components_minimalicons_arrowrighticon",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/staff-awards/components/MinimalIcons.jsx",
+      "source_location": "L182",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_staff_awards_components_minimalicons",
+      "target": "src_app_data_staff_awards_components_minimalicons_balloticon",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/staff-awards/components/MinimalIcons.jsx",
+      "source_location": "L239",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_staff_awards_components_minimalicons",
+      "target": "src_app_data_staff_awards_components_minimalicons_calendaricon",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/staff-awards/components/MinimalIcons.jsx",
+      "source_location": "L160",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_staff_awards_components_minimalicons",
+      "target": "src_app_data_staff_awards_components_minimalicons_charticon",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/staff-awards/components/MinimalIcons.jsx",
+      "source_location": "L35",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_staff_awards_components_minimalicons",
+      "target": "src_app_data_staff_awards_components_minimalicons_checkcircleicon",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/staff-awards/components/MinimalIcons.jsx",
+      "source_location": "L27",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_staff_awards_components_minimalicons",
+      "target": "src_app_data_staff_awards_components_minimalicons_checkicon",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/staff-awards/components/MinimalIcons.jsx",
+      "source_location": "L230",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_staff_awards_components_minimalicons",
+      "target": "src_app_data_staff_awards_components_minimalicons_clockicon",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/staff-awards/components/MinimalIcons.jsx",
+      "source_location": "L18",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_staff_awards_components_minimalicons",
+      "target": "src_app_data_staff_awards_components_minimalicons_closeicon",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/staff-awards/components/MinimalIcons.jsx",
+      "source_location": "L201",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_staff_awards_components_minimalicons",
+      "target": "src_app_data_staff_awards_components_minimalicons_databaseicon",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/staff-awards/components/MinimalIcons.jsx",
+      "source_location": "L91",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_staff_awards_components_minimalicons",
+      "target": "src_app_data_staff_awards_components_minimalicons_downloadicon",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/staff-awards/components/MinimalIcons.jsx",
+      "source_location": "L121",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_staff_awards_components_minimalicons",
+      "target": "src_app_data_staff_awards_components_minimalicons_editicon",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/staff-awards/components/MinimalIcons.jsx",
+      "source_location": "L44",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_staff_awards_components_minimalicons",
+      "target": "src_app_data_staff_awards_components_minimalicons_lockicon",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/staff-awards/components/MinimalIcons.jsx",
+      "source_location": "L112",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_staff_awards_components_minimalicons",
+      "target": "src_app_data_staff_awards_components_minimalicons_plusicon",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/staff-awards/components/MinimalIcons.jsx",
+      "source_location": "L101",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_staff_awards_components_minimalicons",
+      "target": "src_app_data_staff_awards_components_minimalicons_refreshicon",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/staff-awards/components/MinimalIcons.jsx",
+      "source_location": "L142",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_staff_awards_components_minimalicons",
+      "target": "src_app_data_staff_awards_components_minimalicons_reseticon",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/staff-awards/components/MinimalIcons.jsx",
+      "source_location": "L250",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_staff_awards_components_minimalicons",
+      "target": "src_app_data_staff_awards_components_minimalicons_saveicon",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/staff-awards/components/MinimalIcons.jsx",
+      "source_location": "L9",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_staff_awards_components_minimalicons",
+      "target": "src_app_data_staff_awards_components_minimalicons_searchicon",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/staff-awards/components/MinimalIcons.jsx",
+      "source_location": "L82",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_staff_awards_components_minimalicons",
+      "target": "src_app_data_staff_awards_components_minimalicons_sendicon",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/staff-awards/components/MinimalIcons.jsx",
+      "source_location": "L151",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_staff_awards_components_minimalicons",
+      "target": "src_app_data_staff_awards_components_minimalicons_shieldicon",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/staff-awards/components/MinimalIcons.jsx",
+      "source_location": "L171",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_staff_awards_components_minimalicons",
+      "target": "src_app_data_staff_awards_components_minimalicons_slidersicon",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/staff-awards/components/MinimalIcons.jsx",
+      "source_location": "L211",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_staff_awards_components_minimalicons",
+      "target": "src_app_data_staff_awards_components_minimalicons_spinnericon",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/staff-awards/components/MinimalIcons.jsx",
+      "source_location": "L130",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_staff_awards_components_minimalicons",
+      "target": "src_app_data_staff_awards_components_minimalicons_trashicon",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/staff-awards/components/MinimalIcons.jsx",
+      "source_location": "L53",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_staff_awards_components_minimalicons",
+      "target": "src_app_data_staff_awards_components_minimalicons_userblockedicon",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/staff-awards/components/MinimalIcons.jsx",
+      "source_location": "L219",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_staff_awards_components_minimalicons",
+      "target": "src_app_data_staff_awards_components_minimalicons_usersicon",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/staff-awards/components/StaffAwardsAdminManage.jsx",
+      "source_location": "L6",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_staff_awards_components_staffawardsadminmanage",
+      "target": "src_app_data_staff_awards_components_minimalicons",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/staff-awards/components/StaffAwardsAdminResults.jsx",
+      "source_location": "L4",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_staff_awards_components_staffawardsadminresults",
+      "target": "src_app_data_staff_awards_components_minimalicons",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/staff-awards/page.jsx",
+      "source_location": "L10",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_staff_awards_page",
+      "target": "src_app_data_staff_awards_components_minimalicons",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/staff-awards/components/StaffAwardsAdminResults.jsx",
+      "source_location": "L4",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_staff_awards_components_staffawardsadminresults",
+      "target": "src_app_data_staff_awards_components_minimalicons_searchicon",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/staff-awards/page.jsx",
+      "source_location": "L10",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_staff_awards_page",
+      "target": "src_app_data_staff_awards_components_minimalicons_closeicon",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/staff-awards/page.jsx",
+      "source_location": "L10",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_staff_awards_page",
+      "target": "src_app_data_staff_awards_components_minimalicons_checkicon",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/staff-awards/components/StaffAwardsAdminResults.jsx",
+      "source_location": "L4",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_staff_awards_components_staffawardsadminresults",
+      "target": "src_app_data_staff_awards_components_minimalicons_checkcircleicon",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/staff-awards/page.jsx",
+      "source_location": "L10",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_staff_awards_page",
+      "target": "src_app_data_staff_awards_components_minimalicons_checkcircleicon",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/staff-awards/page.jsx",
+      "source_location": "L10",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_staff_awards_page",
+      "target": "src_app_data_staff_awards_components_minimalicons_lockicon",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/staff-awards/page.jsx",
+      "source_location": "L10",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_staff_awards_page",
+      "target": "src_app_data_staff_awards_components_minimalicons_userblockedicon",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/staff-awards/page.jsx",
+      "source_location": "L10",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_staff_awards_page",
+      "target": "src_app_data_staff_awards_components_minimalicons_arrowlefticon",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/staff-awards/page.jsx",
+      "source_location": "L10",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_staff_awards_page",
+      "target": "src_app_data_staff_awards_components_minimalicons_arrowrighticon",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/staff-awards/page.jsx",
+      "source_location": "L10",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_staff_awards_page",
+      "target": "src_app_data_staff_awards_components_minimalicons_sendicon",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/staff-awards/components/StaffAwardsAdminResults.jsx",
+      "source_location": "L4",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_staff_awards_components_staffawardsadminresults",
+      "target": "src_app_data_staff_awards_components_minimalicons_downloadicon",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/staff-awards/components/StaffAwardsAdminResults.jsx",
+      "source_location": "L4",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_staff_awards_components_staffawardsadminresults",
+      "target": "src_app_data_staff_awards_components_minimalicons_refreshicon",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/staff-awards/components/StaffAwardsAdminManage.jsx",
+      "source_location": "L6",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_staff_awards_components_staffawardsadminmanage",
+      "target": "src_app_data_staff_awards_components_minimalicons_plusicon",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/staff-awards/components/StaffAwardsAdminManage.jsx",
+      "source_location": "L6",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_staff_awards_components_staffawardsadminmanage",
+      "target": "src_app_data_staff_awards_components_minimalicons_editicon",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/staff-awards/components/StaffAwardsAdminManage.jsx",
+      "source_location": "L6",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_staff_awards_components_staffawardsadminmanage",
+      "target": "src_app_data_staff_awards_components_minimalicons_trashicon",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/staff-awards/components/StaffAwardsAdminManage.jsx",
+      "source_location": "L6",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_staff_awards_components_staffawardsadminmanage",
+      "target": "src_app_data_staff_awards_components_minimalicons_reseticon",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/staff-awards/page.jsx",
+      "source_location": "L10",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_staff_awards_page",
+      "target": "src_app_data_staff_awards_components_minimalicons_shieldicon",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/staff-awards/components/StaffAwardsAdminResults.jsx",
+      "source_location": "L4",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_staff_awards_components_staffawardsadminresults",
+      "target": "src_app_data_staff_awards_components_minimalicons_charticon",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/staff-awards/page.jsx",
+      "source_location": "L10",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_staff_awards_page",
+      "target": "src_app_data_staff_awards_components_minimalicons_charticon",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "indirect_call",
+      "context": "collection",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "src/app/data/staff-awards/page.jsx",
+      "source_location": "L367",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_staff_awards_page_staffawardspage",
+      "target": "src_app_data_staff_awards_components_minimalicons_charticon"
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/staff-awards/page.jsx",
+      "source_location": "L10",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_staff_awards_page",
+      "target": "src_app_data_staff_awards_components_minimalicons_slidersicon",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "indirect_call",
+      "context": "collection",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "src/app/data/staff-awards/page.jsx",
+      "source_location": "L368",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_staff_awards_page_staffawardspage",
+      "target": "src_app_data_staff_awards_components_minimalicons_slidersicon"
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/staff-awards/page.jsx",
+      "source_location": "L10",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_staff_awards_page",
+      "target": "src_app_data_staff_awards_components_minimalicons_balloticon",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "indirect_call",
+      "context": "collection",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "src/app/data/staff-awards/page.jsx",
+      "source_location": "L366",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_staff_awards_page_staffawardspage",
+      "target": "src_app_data_staff_awards_components_minimalicons_balloticon"
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/staff-awards/components/StaffAwardsAdminManage.jsx",
+      "source_location": "L6",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_staff_awards_components_staffawardsadminmanage",
+      "target": "src_app_data_staff_awards_components_minimalicons_alerticon",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/staff-awards/page.jsx",
+      "source_location": "L10",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_staff_awards_page",
+      "target": "src_app_data_staff_awards_components_minimalicons_alerticon",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/staff-awards/components/StaffAwardsAdminManage.jsx",
+      "source_location": "L6",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_staff_awards_components_staffawardsadminmanage",
+      "target": "src_app_data_staff_awards_components_minimalicons_databaseicon",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/staff-awards/components/StaffAwardsAdminResults.jsx",
+      "source_location": "L4",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_staff_awards_components_staffawardsadminresults",
+      "target": "src_app_data_staff_awards_components_minimalicons_spinnericon",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/staff-awards/page.jsx",
+      "source_location": "L10",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_staff_awards_page",
+      "target": "src_app_data_staff_awards_components_minimalicons_spinnericon",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/staff-awards/components/StaffAwardsAdminResults.jsx",
+      "source_location": "L4",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_staff_awards_components_staffawardsadminresults",
+      "target": "src_app_data_staff_awards_components_minimalicons_usersicon",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/staff-awards/components/StaffAwardsAdminResults.jsx",
+      "source_location": "L4",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_staff_awards_components_staffawardsadminresults",
+      "target": "src_app_data_staff_awards_components_minimalicons_clockicon",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/staff-awards/components/StaffAwardsAdminManage.jsx",
+      "source_location": "L6",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_staff_awards_components_staffawardsadminmanage",
+      "target": "src_app_data_staff_awards_components_minimalicons_calendaricon",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/staff-awards/components/StaffAwardsAdminManage.jsx",
+      "source_location": "L6",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_staff_awards_components_staffawardsadminmanage",
+      "target": "src_app_data_staff_awards_components_minimalicons_saveicon",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/staff-awards/components/StaffAwardsAdminManage.jsx",
+      "source_location": "L24",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_staff_awards_components_staffawardsadminmanage",
+      "target": "src_app_data_staff_awards_components_staffawardsadminmanage_staffawardsadminmanage",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/staff-awards/components/StaffAwardsAdminManage.jsx",
+      "source_location": "L18",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_staff_awards_components_staffawardsadminmanage",
+      "target": "src_app_data_staff_awards_components_staffawardsadminmanage_status_badge",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/staff-awards/page.jsx",
+      "source_location": "L9",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_staff_awards_page",
+      "target": "src_app_data_staff_awards_components_staffawardsadminmanage",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/staff-awards/page.jsx",
+      "source_location": "L9",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_staff_awards_page",
+      "target": "src_app_data_staff_awards_components_staffawardsadminmanage_staffawardsadminmanage",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/staff-awards/components/StaffAwardsAdminResults.jsx",
+      "source_location": "L17",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_staff_awards_components_staffawardsadminresults",
+      "target": "src_app_data_staff_awards_components_staffawardsadminresults_formatwibdatetime",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/staff-awards/components/StaffAwardsAdminResults.jsx",
+      "source_location": "L36",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_staff_awards_components_staffawardsadminresults",
+      "target": "src_app_data_staff_awards_components_staffawardsadminresults_staffawardsadminresults",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/staff-awards/components/StaffAwardsAdminResults.jsx",
+      "source_location": "L15",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_staff_awards_components_staffawardsadminresults",
+      "target": "src_app_data_staff_awards_lib_exportstaffawardsexcel",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/staff-awards/components/StaffAwardsAdminResults.jsx",
+      "source_location": "L15",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_staff_awards_components_staffawardsadminresults",
+      "target": "src_app_data_staff_awards_lib_exportstaffawardsexcel_exportstaffawardsexcel",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/staff-awards/page.jsx",
+      "source_location": "L8",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_staff_awards_page",
+      "target": "src_app_data_staff_awards_components_staffawardsadminresults",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/staff-awards/components/StaffAwardsAdminResults.jsx",
+      "source_location": "L442",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_staff_awards_components_staffawardsadminresults_staffawardsadminresults",
+      "target": "src_app_data_staff_awards_components_staffawardsadminresults_formatwibdatetime",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/app/data/staff-awards/components/StaffAwardsAdminResults.jsx",
+      "source_location": "L93",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_staff_awards_components_staffawardsadminresults_staffawardsadminresults",
+      "target": "src_app_data_staff_awards_lib_exportstaffawardsexcel_exportstaffawardsexcel"
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/staff-awards/page.jsx",
+      "source_location": "L8",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_staff_awards_page",
+      "target": "src_app_data_staff_awards_components_staffawardsadminresults_staffawardsadminresults",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/staff-awards/lib/exportStaffAwardsExcel.js",
+      "source_location": "L50",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_staff_awards_lib_exportstaffawardsexcel",
+      "target": "src_app_data_staff_awards_lib_exportstaffawardsexcel_buildstaffawardsworkbook",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/staff-awards/lib/exportStaffAwardsExcel.js",
+      "source_location": "L393",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_staff_awards_lib_exportstaffawardsexcel",
+      "target": "src_app_data_staff_awards_lib_exportstaffawardsexcel_exportstaffawardsexcel",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/staff-awards/lib/exportStaffAwardsExcel.js",
+      "source_location": "L6",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_staff_awards_lib_exportstaffawardsexcel",
+      "target": "src_app_data_staff_awards_lib_exportstaffawardsexcel_formatwibtimestamp",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/staff-awards/lib/exportStaffAwardsExcel.js",
+      "source_location": "L25",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_staff_awards_lib_exportstaffawardsexcel",
+      "target": "src_app_data_staff_awards_lib_exportstaffawardsexcel_stylehairlineborder",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/staff-awards/lib/exportStaffAwardsExcel.js",
+      "source_location": "L34",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_staff_awards_lib_exportstaffawardsexcel",
+      "target": "src_app_data_staff_awards_lib_exportstaffawardsexcel_styleheaderrow",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/staff-awards/lib/exportStaffAwardsExcel.js",
+      "source_location": "L60",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_staff_awards_lib_exportstaffawardsexcel_buildstaffawardsworkbook",
+      "target": "src_app_data_staff_awards_lib_exportstaffawardsexcel_formatwibtimestamp",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/staff-awards/lib/exportStaffAwardsExcel.js",
+      "source_location": "L129",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_staff_awards_lib_exportstaffawardsexcel_buildstaffawardsworkbook",
+      "target": "src_app_data_staff_awards_lib_exportstaffawardsexcel_stylehairlineborder",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/staff-awards/lib/exportStaffAwardsExcel.js",
+      "source_location": "L40",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_staff_awards_lib_exportstaffawardsexcel_styleheaderrow",
+      "target": "src_app_data_staff_awards_lib_exportstaffawardsexcel_stylehairlineborder",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/staff-awards/lib/exportStaffAwardsExcel.js",
+      "source_location": "L146",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_staff_awards_lib_exportstaffawardsexcel_buildstaffawardsworkbook",
+      "target": "src_app_data_staff_awards_lib_exportstaffawardsexcel_styleheaderrow",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/staff-awards/lib/exportStaffAwardsExcel.js",
+      "source_location": "L394",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_staff_awards_lib_exportstaffawardsexcel_exportstaffawardsexcel",
+      "target": "src_app_data_staff_awards_lib_exportstaffawardsexcel_buildstaffawardsworkbook",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/staff-awards/page.jsx",
+      "source_location": "L27",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_staff_awards_page",
+      "target": "src_app_data_staff_awards_page_formatwibdatetime",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/staff-awards/page.jsx",
+      "source_location": "L46",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_staff_awards_page",
+      "target": "src_app_data_staff_awards_page_staffawardspage",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/staff-awards/page.jsx",
+      "source_location": "L595",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_staff_awards_page_staffawardspage",
+      "target": "src_app_data_staff_awards_page_formatwibdatetime",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
       "source_file": "src/app/data/subject-group/page.jsx",
       "source_location": "L25",
       "weight": 1.0,
@@ -45682,6 +48011,40 @@
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
+      "source_file": "src/components/StaffNomineeAutocomplete.jsx",
+      "source_location": "L12",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_components_staffnomineeautocomplete",
+      "target": "src_components_staffnomineeautocomplete_getinitials",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/components/StaffNomineeAutocomplete.jsx",
+      "source_location": "L23",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_components_staffnomineeautocomplete",
+      "target": "src_components_staffnomineeautocomplete_staffnomineeautocomplete",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/components/StaffNomineeAutocomplete.jsx",
+      "source_location": "L169",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_components_staffnomineeautocomplete_staffnomineeautocomplete",
+      "target": "src_components_staffnomineeautocomplete_getinitials",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
       "source_file": "src/components/ThemedNavbar.jsx",
       "source_location": "L24",
       "weight": 1.0,
@@ -45751,7 +48114,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/components/sidebar.jsx",
-      "source_location": "L122",
+      "source_location": "L125",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_sidebar",
@@ -45762,7 +48125,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/components/sidebar.jsx",
-      "source_location": "L379",
+      "source_location": "L391",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_sidebar",
@@ -46805,6 +49168,84 @@
       "source": "src_lib_permissions",
       "target": "src_lib_permissions_isteacher",
       "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/lib/staffAwards.js",
+      "source_location": "L169",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_lib_staffawards",
+      "target": "src_lib_staffawards_award_icon_options",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/lib/staffAwards.js",
+      "source_location": "L6",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_lib_staffawards",
+      "target": "src_lib_staffawards_award_tone_presets",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/lib/staffAwards.js",
+      "source_location": "L86",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_lib_staffawards",
+      "target": "src_lib_staffawards_default_award_categories",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/lib/staffAwards.js",
+      "source_location": "L188",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_lib_staffawards",
+      "target": "src_lib_staffawards_formatstafffullname",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/lib/staffAwards.js",
+      "source_location": "L67",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_lib_staffawards",
+      "target": "src_lib_staffawards_resolveawardtone",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/lib/staffAwards.js",
+      "source_location": "L59",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_lib_staffawards",
+      "target": "src_lib_staffawards_tone_map",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/lib/staffAwards.js",
+      "source_location": "L69",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_lib_staffawards_resolveawardtone",
+      "target": "src_lib_staffawards_tone_map"
     },
     {
       "relation": "contains",
@@ -53324,6 +55765,17 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L3142",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "database_schema_database_schema_relationships",
+      "target": "database_schema_22_teachers_staff_recognition_staff_awards_domain_data_staff_awards",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "DATABASE_SCHEMA.md",
       "source_location": "L198",
       "weight": 1.0,
       "_origin": "ast",
@@ -55100,6 +57552,83 @@
       "_origin": "ast",
       "source": "database_schema_21_2_agility_check_tables",
       "target": "database_schema_agility_results",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L3146",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "database_schema_22_teachers_staff_recognition_staff_awards_domain_data_staff_awards",
+      "target": "database_schema_22_1_key_architecture_security_rules",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L3154",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "database_schema_22_teachers_staff_recognition_staff_awards_domain_data_staff_awards",
+      "target": "database_schema_22_2_tables",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L3205",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "database_schema_22_teachers_staff_recognition_staff_awards_domain_data_staff_awards",
+      "target": "database_schema_22_3_erd_relationships_staff_awards_domain",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L3169",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "database_schema_22_2_tables",
+      "target": "database_schema_staff_award_categories",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L3156",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "database_schema_22_2_tables",
+      "target": "database_schema_staff_award_events",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L3183",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "database_schema_22_2_tables",
+      "target": "database_schema_staff_award_submissions",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L3194",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "database_schema_22_2_tables",
+      "target": "database_schema_staff_award_votes",
       "confidence_score": 1.0
     },
     {
@@ -60336,5 +62865,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "f5558cb47a44f2d54d17a88201a3f7b6cd3d0736"
+  "built_at_commit": "430b71cc0f508bae6b39d52205de7d623ad16d93"
 }
