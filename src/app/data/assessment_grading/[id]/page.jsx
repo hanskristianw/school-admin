@@ -53,6 +53,7 @@ export default function AssessmentGradingPage() {
   const importRef = useRef(null)
 
   const [isDraftLocked, setIsDraftLocked] = useState(false)
+  const [showInactive, setShowInactive] = useState(false)
 
   // Google Classroom integration state
   const [mounted, setMounted] = useState(false)
@@ -143,11 +144,11 @@ export default function AssessmentGradingPage() {
 
       if (dsError) throw dsError
 
-      // Fetch user names and emails
+      // Fetch user names, emails, and active/resign status
       const userIds = detailSiswa.map(ds => ds.detail_siswa_user_id)
       const { data: usersData, error: usersError } = await supabase
         .from('users')
-        .select('user_id, user_nama_depan, user_nama_belakang, user_email')
+        .select('user_id, user_nama_depan, user_nama_belakang, user_email, is_active, resign_date')
         .in('user_id', userIds)
 
       if (usersError) throw usersError
@@ -156,7 +157,9 @@ export default function AssessmentGradingPage() {
       usersData.forEach(u => {
         userMap.set(u.user_id, {
           name: `${u.user_nama_depan} ${u.user_nama_belakang}`.trim(),
-          email: (u.user_email || '').toLowerCase().trim()
+          email: (u.user_email || '').toLowerCase().trim(),
+          is_active: u.is_active !== false,
+          resign_date: u.resign_date || null
         })
       })
 
@@ -167,7 +170,9 @@ export default function AssessmentGradingPage() {
             detail_siswa_id: ds.detail_siswa_id,
             user_id: ds.detail_siswa_user_id,
             nama: u?.name || 'Unknown',
-            email: u?.email || ''
+            email: u?.email || '',
+            is_active: u?.is_active ?? true,
+            resign_date: u?.resign_date || null
           }
         })
         .sort((a, b) => a.nama.localeCompare(b.nama))
@@ -292,6 +297,28 @@ export default function AssessmentGradingPage() {
     })
   }
 
+  const hasStudentGrades = (detailSiswaId) => {
+    const g = grades[detailSiswaId]
+    return Boolean(g && [g.A, g.B, g.C, g.D].some(v => v !== null && v !== undefined))
+  }
+
+  const visibleStudents = students.filter(
+    s => s.is_active !== false || showInactive || hasStudentGrades(s.detail_siswa_id)
+  )
+  const hiddenInactiveCount = students.filter(
+    s => s.is_active === false && !hasStudentGrades(s.detail_siswa_id)
+  ).length
+  const hasToggleableInactive = hiddenInactiveCount > 0
+
+  const formatWithdrawnDate = (dateStr) => {
+    if (!dateStr) return ''
+    try {
+      return new Date(dateStr).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
+    } catch {
+      return dateStr
+    }
+  }
+
   // Save all grades
   const handleSave = async () => {
     if (isDraftLocked) {
@@ -302,7 +329,7 @@ export default function AssessmentGradingPage() {
       setSaving(true)
       setSaveSuccess(false)
 
-      for (const student of students) {
+      for (const student of visibleStudents) {
         const studentGrades = grades[student.detail_siswa_id]
         if (!studentGrades) continue
 
@@ -409,7 +436,7 @@ export default function AssessmentGradingPage() {
       headerRow.height = 20
 
       // Add student rows
-      students.forEach((s, i) => {
+      visibleStudents.forEach((s, i) => {
         const g = grades[s.detail_siswa_id] || {}
         const row = sheet.addRow({
           no: i + 1,
@@ -472,7 +499,7 @@ export default function AssessmentGradingPage() {
         if (rowNumber === 1) return // skip header
         const detailSiswaId = row.getCell(idCol).value
         if (!detailSiswaId) return
-        const student = students.find(s => String(s.detail_siswa_id) === String(detailSiswaId))
+        const student = visibleStudents.find(s => String(s.detail_siswa_id) === String(detailSiswaId))
         if (!student) return
 
         const criterionUpdates = {}
@@ -504,7 +531,7 @@ export default function AssessmentGradingPage() {
   // Export to CSV
   const handleExport = () => {
     const headers = ['Student Name', ...criteria.map(c => `Criterion ${c.code}`), 'Final Grade', 'Comments']
-    const rows = students.map(student => {
+    const rows = visibleStudents.map(student => {
       const g = grades[student.detail_siswa_id] || {}
       return [
         student.nama,
@@ -756,11 +783,8 @@ export default function AssessmentGradingPage() {
   }
 
   // Calculate totals for summary
-  const totalStudents = students.length
-  const gradedStudents = students.filter(s => {
-    const g = grades[s.detail_siswa_id]
-    return g && (g.A !== null || g.B !== null || g.C !== null || g.D !== null)
-  }).length
+  const totalStudents = visibleStudents.length
+  const gradedStudents = visibleStudents.filter(s => hasStudentGrades(s.detail_siswa_id)).length
 
   return (
     <div className="min-h-screen" style={{ background: theme.pageBg }}>
@@ -888,7 +912,7 @@ export default function AssessmentGradingPage() {
                   <div className="text-[11px] font-mono mt-0.5 truncate flex items-center gap-2 flex-wrap" style={{ color: theme.textSecondary }}>
                     {classroomLinks.map((link, idx) => {
                       const subs = submissionsByCoursework[link.courseworkId] || []
-                      const turnedIn = students.filter(s => {
+                      const turnedIn = visibleStudents.filter(s => {
                         const sub = findStudentSubmission(subs, s)
                         return sub && (sub.state === 'TURNED_IN' || sub.state === 'RETURNED')
                       }).length
@@ -907,7 +931,7 @@ export default function AssessmentGradingPage() {
                           }}
                         >
                           <span>{link.courseworkTitle}:</span>
-                          <span className="font-bold" style={{ color: theme.greenText }}>{turnedIn}/{students.length}</span>
+                          <span className="font-bold" style={{ color: theme.greenText }}>{turnedIn}/{visibleStudents.length}</span>
                           {idx < classroomLinks.length - 1 && <span className="ml-1 no-underline" style={{ color: theme.border }}>·</span>}
                         </button>
                       )
@@ -1054,7 +1078,7 @@ export default function AssessmentGradingPage() {
                             {classroomLinks.map((link) => {
                               const isActive = link.courseworkId === currentLink?.courseworkId
                               const subs = submissionsByCoursework[link.courseworkId] || []
-                              const turnedIn = students.filter(s => {
+                              const turnedIn = visibleStudents.filter(s => {
                                 const sub = findStudentSubmission(subs, s)
                                 return sub && (sub.state === 'TURNED_IN' || sub.state === 'RETURNED')
                               }).length
@@ -1071,7 +1095,7 @@ export default function AssessmentGradingPage() {
                                     border: isActive ? `1px solid ${theme.border}` : '1px solid transparent',
                                     fontWeight: isActive ? 700 : 500
                                   }}
-                                  title={`${link.courseworkTitle} (${turnedIn}/${students.length} turned in)`}
+                                  title={`${link.courseworkTitle} (${turnedIn}/${visibleStudents.length} turned in)`}
                                 >
                                   <span className="truncate">{formatTabLabel(link.courseworkTitle)}</span>
                                   <span 
@@ -1104,12 +1128,14 @@ export default function AssessmentGradingPage() {
                 </tr>
               </thead>
               <tbody>
-                {students.map((student, index) => {
+                {visibleStudents.map((student, index) => {
                   const studentGrades = grades[student.detail_siswa_id] || {}
-                  const hasGrades = studentGrades.A !== null || studentGrades.B !== null || studentGrades.C !== null || studentGrades.D !== null
+                  const hasGrades = hasStudentGrades(student.detail_siswa_id)
+                  const isWithdrawn = student.is_active === false
                   return (
                     <tr
                       key={student.detail_siswa_id}
+                      className={isWithdrawn ? 'opacity-80' : ''}
                       style={{ borderBottom: `1px solid ${theme.border}`, background: hasGrades ? theme.cardBg : theme.subtleBg }}
                       onMouseEnter={e => e.currentTarget.style.background = theme.blueBg}
                       onMouseLeave={e => e.currentTarget.style.background = hasGrades ? theme.cardBg : theme.subtleBg}
@@ -1118,8 +1144,23 @@ export default function AssessmentGradingPage() {
                         className="px-3 py-1.5 sticky left-0 z-10"
                         style={{ background: 'inherit', borderRight: `1px solid ${theme.border}` }}
                       >
-                        <span className="text-xs mr-2" style={{ color: theme.textSecondary }}>{index + 1}.</span>
-                        <span className="font-medium text-sm" style={{ color: theme.textPrimary }}>{student.nama}</span>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="text-xs mr-0.5" style={{ color: theme.textSecondary }}>{index + 1}.</span>
+                          <span className="font-medium text-sm" style={{ color: theme.textPrimary }}>{student.nama}</span>
+                          {isWithdrawn && (
+                            <span
+                              className="px-1.5 py-0.5 rounded text-[10px] font-medium whitespace-nowrap"
+                              style={{
+                                background: isDark ? 'rgba(239, 68, 68, 0.15)' : '#FDEBEC',
+                                color: isDark ? '#FCA5A5' : '#9B1C1C',
+                                border: `1px solid ${isDark ? 'rgba(239, 68, 68, 0.3)' : '#FECACA'}`
+                              }}
+                              title={student.resign_date ? `Siswa sudah tidak aktif sejak ${formatWithdrawnDate(student.resign_date)}` : 'Siswa sudah tidak aktif / keluar sekolah'}
+                            >
+                              Withdrawn{student.resign_date ? ` · ${formatWithdrawnDate(student.resign_date)}` : ''}
+                            </span>
+                          )}
+                        </div>
                       </td>
                       {classroomLinks.length > 0 && (() => {
                         if (!submissionsLoaded && loadingSubmissions) {
@@ -1271,22 +1312,41 @@ export default function AssessmentGradingPage() {
         </div>
 
         {/* Compact Legend */}
-        <div className="mt-3 flex flex-wrap items-center gap-3 text-xs" style={{ color: theme.textSecondary }}>
-          <span className="font-medium" style={{ color: theme.textBody }}>Scale:</span>
-          <div className="flex items-center gap-1">
-            <span className="w-5 h-5 rounded text-[10px] flex items-center justify-center bg-red-100 text-red-600 font-bold">0-2</span>
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-3 text-xs" style={{ color: theme.textSecondary }}>
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="font-medium" style={{ color: theme.textBody }}>Scale:</span>
+            <div className="flex items-center gap-1">
+              <span className="w-5 h-5 rounded text-[10px] flex items-center justify-center bg-red-100 text-red-600 font-bold">0-2</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <span className="w-5 h-5 rounded text-[10px] flex items-center justify-center bg-amber-100 text-amber-600 font-bold">3-4</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <span className="w-5 h-5 rounded text-[10px] flex items-center justify-center bg-blue-100 text-blue-600 font-bold">5-6</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <span className="w-5 h-5 rounded text-[10px] flex items-center justify-center bg-emerald-100 text-emerald-600 font-bold">7-8</span>
+            </div>
+            <span style={{ color: theme.border }}>|</span>
+            <span>Final: Sum → IB 1-7</span>
           </div>
-          <div className="flex items-center gap-1">
-            <span className="w-5 h-5 rounded text-[10px] flex items-center justify-center bg-amber-100 text-amber-600 font-bold">3-4</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <span className="w-5 h-5 rounded text-[10px] flex items-center justify-center bg-blue-100 text-blue-600 font-bold">5-6</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <span className="w-5 h-5 rounded text-[10px] flex items-center justify-center bg-emerald-100 text-emerald-600 font-bold">7-8</span>
-          </div>
-          <span style={{ color: theme.border }}>|</span>
-          <span>Final: Sum → IB 1-7</span>
+
+          {hasToggleableInactive && (
+            <button
+              type="button"
+              onClick={() => setShowInactive(prev => !prev)}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium cursor-pointer transition-colors"
+              style={{
+                background: showInactive ? (isDark ? 'rgba(239, 68, 68, 0.15)' : '#FDEBEC') : theme.cardBg,
+                color: showInactive ? (isDark ? '#FCA5A5' : '#9B1C1C') : theme.textSecondary,
+                border: `1px solid ${showInactive ? (isDark ? 'rgba(239, 68, 68, 0.3)' : '#FECACA') : theme.border}`
+              }}
+              title="Tampilkan atau sembunyikan siswa nonaktif yang belum memiliki nilai"
+            >
+              <FontAwesomeIcon icon={faEye} className="text-[11px]" />
+              <span>{showInactive ? `Hide withdrawn (${hiddenInactiveCount})` : `Show withdrawn (${hiddenInactiveCount})`}</span>
+            </button>
+          )}
         </div>
       </div>
       {/* Student Work Preview Modal (React Portal to document.body) */}

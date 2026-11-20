@@ -900,8 +900,8 @@
     "semantic_hash": "50c79a7dfdab9c2d15e545ecd68bc24f"
   },
   "src/app/data/assessment_grading/[id]/page.jsx": {
-    "mtime": 1793339633.3900933,
-    "ast_hash": "951f05f0bf5bdd9c0777e1296fbd349b",
+    "mtime": 1795160731.2076242,
+    "ast_hash": "b4f80f504ae6b116696624e154d573e4",
     "semantic_hash": ""
   },
   "src/app/data/atl/page.jsx": {
@@ -1050,8 +1050,8 @@
     "semantic_hash": ""
   },
   "src/app/data/topic-new/lib/pdfGenerators.js": {
-    "mtime": 1794532782.4459212,
-    "ast_hash": "85fccb7a4fa9faf18bc6c56db7148dfc",
+    "mtime": 1795160850.7044077,
+    "ast_hash": "232c37af0539edb9342839d7b8c5453e",
     "semantic_hash": ""
   },
   "src/app/data/topic-new/lib/useAiHelp.js": {
@@ -1060,8 +1060,8 @@
     "semantic_hash": ""
   },
   "src/app/data/topic-new/page.jsx": {
-    "mtime": 1794885656.6205661,
-    "ast_hash": "4286d73e109a879dfedb41e611c5d22a",
+    "mtime": 1795160806.3816655,
+    "ast_hash": "cfdd02fa9742d215c3b40a3f65bf3f37",
     "semantic_hash": ""
   },
   "src/app/data/topic/page.jsx": {
@@ -2460,8 +2460,8 @@
     "semantic_hash": ""
   },
   "src/app/data/topic-new/components/UnitGradeRecap.jsx": {
-    "mtime": 1793771668.56839,
-    "ast_hash": "7c6fafcb500888c8dc1bbfeb3c726f6d",
+    "mtime": 1795160767.6681373,
+    "ast_hash": "104d2dd0ca07995f0bb806ffb1dadc99",
     "semantic_hash": ""
   },
   "src/lib/leaveQuotaSync.js": {
@@ -2495,8 +2495,8 @@
     "semantic_hash": ""
   },
   "src/data/changelog.js": {
-    "mtime": 1795076443.4783654,
-    "ast_hash": "d43fcb79b5bfd01bf8e57eb97429621c",
+    "mtime": 1795160854.6552923,
+    "ast_hash": "225685455f17515e95ad953f50ec05c3",
     "semantic_hash": ""
   },
   "src/app/api/system-feedback/upload/route.js": {

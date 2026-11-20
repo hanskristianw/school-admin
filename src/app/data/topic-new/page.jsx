@@ -3369,6 +3369,30 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
     }
   }
   
+  const fetchKelasYearEndDate = async (kelasId) => {
+    if (!kelasId) return null
+    const { data: kRow } = await supabase
+      .from('kelas')
+      .select('kelas_year_id')
+      .eq('kelas_id', kelasId)
+      .maybeSingle()
+    if (!kRow?.kelas_year_id) return null
+    const { data: yRow } = await supabase
+      .from('year')
+      .select('end_date')
+      .eq('year_id', kRow.kelas_year_id)
+      .maybeSingle()
+    return yRow?.end_date || null
+  }
+
+  const isStudentActiveForYear = (userRow, yearEndDate) => {
+    if (!userRow || userRow.is_active !== false) return true
+    if (yearEndDate && userRow.resign_date && String(userRow.resign_date) > String(yearEndDate)) {
+      return true
+    }
+    return false
+  }
+
   // Fetch students when kelas changes
   const fetchReportStudents = async (kelasId) => {
     if (!kelasId) {
@@ -3379,11 +3403,14 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
     try {
       setLoadingReportStudents(true)
       
-      // Fetch detail_siswa for the kelas
-      const { data: detailSiswaData, error: dsError } = await supabase
-        .from('detail_siswa')
-        .select('detail_siswa_id, detail_siswa_user_id')
-        .eq('detail_siswa_kelas_id', kelasId)
+      // Fetch detail_siswa & class year end_date in parallel
+      const [{ data: detailSiswaData, error: dsError }, yearEndDate] = await Promise.all([
+        supabase
+          .from('detail_siswa')
+          .select('detail_siswa_id, detail_siswa_user_id')
+          .eq('detail_siswa_kelas_id', kelasId),
+        fetchKelasYearEndDate(kelasId)
+      ])
       
       if (dsError) throw dsError
       
@@ -3392,20 +3419,32 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
       if (userIds.length > 0) {
         const { data: usersData, error: usersError } = await supabase
           .from('users')
-          .select('user_id, user_nama_depan, user_nama_belakang')
+          .select('user_id, user_nama_depan, user_nama_belakang, is_active, resign_date')
           .in('user_id', userIds)
         
         if (!usersError && usersData) {
           const userMap = new Map()
           usersData.forEach(u => {
-            userMap.set(u.user_id, `${u.user_nama_depan} ${u.user_nama_belakang}`.trim())
+            userMap.set(u.user_id, {
+              nama: `${u.user_nama_depan} ${u.user_nama_belakang}`.trim(),
+              activeForYear: isStudentActiveForYear(u, yearEndDate),
+              is_withdrawn: !isStudentActiveForYear(u, yearEndDate)
+            })
           })
           
-          const students = detailSiswaData.map(ds => ({
-            detail_siswa_id: ds.detail_siswa_id,
-            user_id: ds.detail_siswa_user_id,
-            nama: userMap.get(ds.detail_siswa_user_id) || 'Unknown'
-          })).sort((a, b) => a.nama.localeCompare(b.nama))
+          const students = detailSiswaData
+            .map(ds => {
+              const info = userMap.get(ds.detail_siswa_user_id)
+              return {
+                detail_siswa_id: ds.detail_siswa_id,
+                user_id: ds.detail_siswa_user_id,
+                nama: info?.nama || 'Unknown',
+                activeForYear: info ? info.activeForYear : true,
+                is_withdrawn: info ? info.is_withdrawn : false
+              }
+            })
+            .filter(s => s.activeForYear)
+            .sort((a, b) => a.nama.localeCompare(b.nama))
           
           setReportStudents(students)
         }
@@ -3596,11 +3635,14 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
     try {
       setLoadingComments(true)
       
-      // 1. Get students in this kelas
-      const { data: detailSiswaData, error: dsError } = await supabase
-        .from('detail_siswa')
-        .select('detail_siswa_id, detail_siswa_user_id')
-        .eq('detail_siswa_kelas_id', kelasId)
+      // 1. Get students in this kelas + academic year end_date
+      const [{ data: detailSiswaData, error: dsError }, yearEndDate] = await Promise.all([
+        supabase
+          .from('detail_siswa')
+          .select('detail_siswa_id, detail_siswa_user_id')
+          .eq('detail_siswa_kelas_id', kelasId),
+        fetchKelasYearEndDate(kelasId)
+      ])
       
       if (dsError) throw dsError
       if (!detailSiswaData || detailSiswaData.length === 0) {
@@ -3610,17 +3652,20 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
       
       const userIds = [...new Set(detailSiswaData.map(ds => ds.detail_siswa_user_id))]
       
-      // 2. Get user names
+      // 2. Get user names + active status
       const { data: usersData, error: usersError } = await supabase
         .from('users')
-        .select('user_id, user_nama_depan, user_nama_belakang')
+        .select('user_id, user_nama_depan, user_nama_belakang, is_active, resign_date')
         .in('user_id', userIds)
       
       if (usersError) throw usersError
       
       const userMap = new Map()
       ;(usersData || []).forEach(u => {
-        userMap.set(u.user_id, `${u.user_nama_depan || ''} ${u.user_nama_belakang || ''}`.trim())
+        userMap.set(u.user_id, {
+          nama: `${u.user_nama_depan || ''} ${u.user_nama_belakang || ''}`.trim(),
+          activeForYear: isStudentActiveForYear(u, yearEndDate)
+        })
       })
       
       // 3. Get existing comments for this subject+kelas+semester
@@ -3638,18 +3683,24 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
         commentMap.set(c.student_user_id, { id: c.id, text: c.comment_text || '' })
       })
       
-      // 4. Build student list with comments
-      const students = detailSiswaData.map(ds => {
-        const existing = commentMap.get(ds.detail_siswa_user_id)
-        return {
-          detail_siswa_id: ds.detail_siswa_id,
-          user_id: ds.detail_siswa_user_id,
-          nama: userMap.get(ds.detail_siswa_user_id) || 'Unknown',
-          comment_text: existing?.text || '',
-          comment_id: existing?.id || null,
-          saved: true
-        }
-      }).sort((a, b) => a.nama.localeCompare(b.nama))
+      // 4. Build student list with comments (Option 1: keep active-for-year OR already has saved comment)
+      const students = detailSiswaData
+        .map(ds => {
+          const existing = commentMap.get(ds.detail_siswa_user_id)
+          const uInfo = userMap.get(ds.detail_siswa_user_id)
+          return {
+            detail_siswa_id: ds.detail_siswa_id,
+            user_id: ds.detail_siswa_user_id,
+            nama: uInfo?.nama || 'Unknown',
+            comment_text: existing?.text || '',
+            comment_id: existing?.id || null,
+            saved: true,
+            _keep: (uInfo ? uInfo.activeForYear : true) || Boolean(existing?.text?.trim())
+          }
+        })
+        .filter(s => s._keep)
+        .map(({ _keep, ...s }) => s)
+        .sort((a, b) => a.nama.localeCompare(b.nama))
       
       setCommentStudents(students)
 
@@ -3976,11 +4027,14 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
     try {
       setLoadingMentorComments(true)
 
-      // 1. Get students in this kelas
-      const { data: detailSiswaData, error: dsError } = await supabase
-        .from('detail_siswa')
-        .select('detail_siswa_id, detail_siswa_user_id')
-        .eq('detail_siswa_kelas_id', kelasId)
+      // 1. Get students in this kelas + academic year end_date
+      const [{ data: detailSiswaData, error: dsError }, yearEndDate] = await Promise.all([
+        supabase
+          .from('detail_siswa')
+          .select('detail_siswa_id, detail_siswa_user_id')
+          .eq('detail_siswa_kelas_id', kelasId),
+        fetchKelasYearEndDate(kelasId)
+      ])
 
       if (dsError) throw dsError
       if (!detailSiswaData || detailSiswaData.length === 0) {
@@ -3990,17 +4044,20 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
 
       const userIds = [...new Set(detailSiswaData.map(ds => ds.detail_siswa_user_id))]
 
-      // 2. Get user names
+      // 2. Get user names + active status
       const { data: usersData, error: usersError } = await supabase
         .from('users')
-        .select('user_id, user_nama_depan, user_nama_belakang')
+        .select('user_id, user_nama_depan, user_nama_belakang, is_active, resign_date')
         .in('user_id', userIds)
 
       if (usersError) throw usersError
 
       const userMap = new Map()
       ;(usersData || []).forEach(u => {
-        userMap.set(u.user_id, `${u.user_nama_depan || ''} ${u.user_nama_belakang || ''}`.trim())
+        userMap.set(u.user_id, {
+          nama: `${u.user_nama_depan || ''} ${u.user_nama_belakang || ''}`.trim(),
+          activeForYear: isStudentActiveForYear(u, yearEndDate)
+        })
       })
 
       // 3. Get existing mentor comments for this kelas+semester
@@ -4025,23 +4082,29 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
         })
       })
 
-      // 4. Build student list with comments
-      const students = detailSiswaData.map(ds => {
-        const existing = commentMap.get(ds.detail_siswa_user_id)
-        return {
-          detail_siswa_id: ds.detail_siswa_id,
-          user_id: ds.detail_siswa_user_id,
-          nama: userMap.get(ds.detail_siswa_user_id) || 'Unknown',
-          comment_text: existing?.text || '',
-          absent: existing?.absent ?? 0,
-          present: existing?.present ?? 0,
-          late: existing?.late ?? 0,
-          sick: existing?.sick ?? 0,
-          excused: existing?.excused ?? 0,
-          comment_id: existing?.id || null,
-          saved: true
-        }
-      }).sort((a, b) => a.nama.localeCompare(b.nama))
+      // 4. Build student list with comments (Option 1: keep active-for-year OR already has saved comment)
+      const students = detailSiswaData
+        .map(ds => {
+          const existing = commentMap.get(ds.detail_siswa_user_id)
+          const uInfo = userMap.get(ds.detail_siswa_user_id)
+          return {
+            detail_siswa_id: ds.detail_siswa_id,
+            user_id: ds.detail_siswa_user_id,
+            nama: uInfo?.nama || 'Unknown',
+            comment_text: existing?.text || '',
+            absent: existing?.absent ?? 0,
+            present: existing?.present ?? 0,
+            late: existing?.late ?? 0,
+            sick: existing?.sick ?? 0,
+            excused: existing?.excused ?? 0,
+            comment_id: existing?.id || null,
+            saved: true,
+            _keep: (uInfo ? uInfo.activeForYear : true) || Boolean(existing?.text?.trim())
+          }
+        })
+        .filter(s => s._keep)
+        .map(({ _keep, ...s }) => s)
+        .sort((a, b) => a.nama.localeCompare(b.nama))
 
       setMentorStudents(students)
     } catch (err) {
@@ -4839,11 +4902,11 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
       
       if (studentsError) throw studentsError
       
-      // Fetch user details separately
+      // Fetch user details + active status separately
       const userIds = [...new Set(detailSiswaRecords.map(ds => ds.detail_siswa_user_id))]
       const { data: usersData, error: usersError } = await supabase
         .from('users')
-        .select('user_id, user_nama_depan, user_nama_belakang')
+        .select('user_id, user_nama_depan, user_nama_belakang, is_active, resign_date')
         .in('user_id', userIds)
       
       if (usersError) throw usersError
@@ -4851,19 +4914,12 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
       // Create user map
       const userMap = new Map()
       usersData.forEach(u => {
-        userMap.set(u.user_id, `${u.user_nama_depan} ${u.user_nama_belakang}`.trim())
+        userMap.set(u.user_id, {
+          nama: `${u.user_nama_depan} ${u.user_nama_belakang}`.trim(),
+          is_active: u.is_active !== false,
+          resign_date: u.resign_date || null
+        })
       })
-      
-      // Flatten student data
-      const flatStudents = detailSiswaRecords
-        .map(ds => ({
-          detail_siswa_id: ds.detail_siswa_id,
-          user_id: ds.detail_siswa_user_id,
-          nama: userMap.get(ds.detail_siswa_user_id) || 'Unknown Student'
-        }))
-        .sort((a, b) => a.nama.localeCompare(b.nama))
-      
-      setGradingStudents(flatStudents)
       
       // 2. Get criteria info
       if (!assessment.criteria || assessment.criteria.length === 0) {
@@ -4878,7 +4934,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
         criteria: assessment.criteria
       }))
       
-      // 3. Fetch existing grades (simplified - just criterion grades)
+      // 3. Fetch existing grades before filtering students (Option 1: keep active OR already has grade)
       const { data: existingGrades, error: gradesError } = await supabase
         .from('assessment_grades')
         .select(`
@@ -4894,6 +4950,28 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
         .eq('assessment_id', assessment.assessment_id)
       
       if (gradesError) throw gradesError
+
+      const gradedSiswaIds = new Set(
+        (existingGrades || [])
+          .filter(g => [g.criterion_a_grade, g.criterion_b_grade, g.criterion_c_grade, g.criterion_d_grade, g.final_grade].some(v => v !== null && v !== undefined))
+          .map(g => g.detail_siswa_id)
+      )
+
+      const flatStudents = detailSiswaRecords
+        .map(ds => {
+          const u = userMap.get(ds.detail_siswa_user_id)
+          return {
+            detail_siswa_id: ds.detail_siswa_id,
+            user_id: ds.detail_siswa_user_id,
+            nama: u?.nama || 'Unknown Student',
+            is_active: u?.is_active ?? true,
+            resign_date: u?.resign_date || null
+          }
+        })
+        .filter(s => s.is_active !== false || gradedSiswaIds.has(s.detail_siswa_id))
+        .sort((a, b) => a.nama.localeCompare(b.nama))
+      
+      setGradingStudents(flatStudents)
       
       // Build simplified grading data structure
       const gradingMap = {}
@@ -10536,7 +10614,17 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                           {index + 1}
                         </div>
                         <div>
-                          <h3 className="font-semibold text-gray-800">{student.nama}</h3>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h3 className="font-semibold text-gray-800">{student.nama}</h3>
+                            {student.is_active === false && (
+                              <span
+                                className="text-[10px] px-1.5 py-0.5 rounded font-medium bg-red-50 text-red-700 border border-red-200"
+                                title={student.resign_date ? `Siswa sudah tidak aktif sejak ${student.resign_date}` : 'Siswa sudah tidak aktif / keluar sekolah'}
+                              >
+                                Withdrawn
+                              </span>
+                            )}
+                          </div>
                           <div className="flex gap-2 mt-1">
                             {['A', 'B', 'C', 'D'].map(code => (
                               <span key={code} className={`text-xs px-2 py-0.5 rounded font-bold ${getGradeColor(criterionGrades[code])}`}>

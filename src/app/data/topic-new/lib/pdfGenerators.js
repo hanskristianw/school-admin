@@ -4550,8 +4550,9 @@ export const generateClassReportZIP = async ({
     const semesterInt = parseInt(semester);
     const kelasName = reportKelasOptions.find(k => k.kelas_id === kelasId)?.kelas_nama || '';
     const yearName = reportYears.find(y => y.year_id === parseInt(reportFilters.year))?.year_name || '';
+    const targetStudents = (reportStudents || []).filter(s => !s.is_withdrawn);
 
-    onProgress?.(0, reportStudents.length, 'Fetching shared data...');
+    onProgress?.(0, targetStudents.length, 'Fetching shared data...');
 
     // ── PHASE 1: Fetch SHARED data (same for all students) ──────────────
 
@@ -4796,13 +4797,13 @@ export const generateClassReportZIP = async ({
     const zip = new JSZip();
     let generated = 0;
 
-    for (const student of reportStudents) {
+    for (const student of targetStudents) {
       const studentName = student.nama || 'Unknown';
       const studentFirstName = studentName.split(' ')[0] || studentName;
       const studentUserId = student.user_id;
       const studentId = student.detail_siswa_id;
 
-      onProgress?.(generated + 1, reportStudents.length, studentName);
+      onProgress?.(generated + 1, targetStudents.length, studentName);
 
       const reportRows = [];
       for (const dk of printableSubjects) {
@@ -5007,7 +5008,7 @@ export const generateClassReportZIP = async ({
       return;
     }
 
-    onProgress?.(reportStudents.length, reportStudents.length, 'Creating ZIP...');
+    onProgress?.(targetStudents.length, targetStudents.length, 'Creating ZIP...');
 
     const zipBlob = await zip.generateAsync({ type: 'blob' });
     const url = URL.createObjectURL(zipBlob);
@@ -5072,21 +5073,30 @@ export const generateClassRecapPDFReport = async ({ kelasId, semester, subjectId
     if (userIds.length > 0) {
       const { data: usersData, error: usersError } = await supabase
         .from('users')
-        .select('user_id, user_nama_depan, user_nama_belakang')
+        .select('user_id, user_nama_depan, user_nama_belakang, is_active, resign_date')
         .in('user_id', userIds);
       
       if (!usersError && usersData) {
         usersData.forEach(u => {
-          userMap.set(u.user_id, `${u.user_nama_depan} ${u.user_nama_belakang}`.trim());
+          userMap.set(u.user_id, {
+            nama: `${u.user_nama_depan} ${u.user_nama_belakang}`.trim(),
+            is_active: u.is_active !== false,
+            resign_date: u.resign_date || null
+          });
         });
       }
     }
     
-    const students = detailSiswaData.map(ds => ({
-      detail_siswa_id: ds.detail_siswa_id,
-      user_id: ds.detail_siswa_user_id,
-      nama: userMap.get(ds.detail_siswa_user_id) || 'Unknown'
-    })).sort((a, b) => a.nama.localeCompare(b.nama));
+    const allStudents = detailSiswaData.map(ds => {
+      const u = userMap.get(ds.detail_siswa_user_id);
+      return {
+        detail_siswa_id: ds.detail_siswa_id,
+        user_id: ds.detail_siswa_user_id,
+        nama: u?.nama || 'Unknown',
+        is_active: u?.is_active ?? true,
+        resign_date: u?.resign_date || null
+      };
+    }).sort((a, b) => a.nama.localeCompare(b.nama));
     
     // Get detail_kelas
     const { data: detailKelasData, error: dkError } = await supabase
@@ -5137,6 +5147,7 @@ export const generateClassRecapPDFReport = async ({ kelasId, semester, subjectId
     
     const gradesMap = {};
     assessmentIds.forEach(aid => { gradesMap[aid] = {}; });
+    const gradedStudentIds = new Set();
     
     if (gradesData) {
       gradesData.forEach(g => {
@@ -5146,8 +5157,14 @@ export const generateClassRecapPDFReport = async ({ kelasId, semester, subjectId
           C: g.criterion_c_grade,
           D: g.criterion_d_grade
         };
+        if ([g.criterion_a_grade, g.criterion_b_grade, g.criterion_c_grade, g.criterion_d_grade].some(v => v !== null && v !== undefined)) {
+          gradedStudentIds.add(g.detail_siswa_id);
+        }
       });
     }
+
+    // Option 1: keep active students OR withdrawn students who have recorded grades in these assessments
+    const students = allStudents.filter(s => s.is_active !== false || gradedStudentIds.has(s.detail_siswa_id));
     
     // Generate PDF
     const doc = new jsPDF('landscape', 'mm', 'a4');

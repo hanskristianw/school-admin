@@ -1,7 +1,7 @@
-# Graph Report - school-admin  (2026-11-19)
+# Graph Report - school-admin  (2026-11-20)
 
 ## Corpus Check
-- 501 files · ~851,783 words
+- 501 files · ~852,832 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
@@ -10,7 +10,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `4e08149e`
+- Built from commit: `a6766c60`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -300,6 +300,7 @@
 - bcryptjs
 - pdf-lib
 - @radix-ui/react-select
+- googleapis
 - class-variance-authority
 - @tiptap/extension-table-cell
 - @tiptap/extension-table-header
@@ -325,7 +326,6 @@
 - googleapis
 - 6.1 Tables
 - react-hook-form
-- @supabase/supabase-js
 - pngjs
 - @tiptap/extension-color
 - @tiptap/extension-highlight
@@ -786,7 +786,7 @@ Nodes (8): 18.1 Key Features & Architecture, 18.2 Tables, 18.3 Storage Buckets, 
 
 ### Community 133 - "Module 133"
 Cohesion: 0.15
-Nodes (13): @fortawesome/react-fontawesome, googleapis, @hookform/resolvers, lucide-react, dependencies, @fortawesome/react-fontawesome, googleapis, @hookform/resolvers (+5 more)
+Nodes (13): @fortawesome/react-fontawesome, @hookform/resolvers, lucide-react, dependencies, @fortawesome/react-fontawesome, @hookform/resolvers, lucide-react, @radix-ui/react-slot (+5 more)
 
 ### Community 135 - "Module 135"
 Cohesion: 0.29
@@ -1120,7 +1120,7 @@ Nodes (3): fetchWithRetry(), GET(), supabaseAdmin
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `dependencies` connect `Module 133` to `Admission Management`, `Package Dependencies & Config`, `next-auth`, `bcryptjs`, `react-dom`, `Module 134`, `4.1 Tables`, `pdf-lib`, `@radix-ui/react-select`, `React UI Components`, `class-variance-authority`, `@tiptap/extension-table-cell`, `@tiptap/extension-table-header`, `@tiptap/extension-table-row`, `@tiptap/extension-task-item`, `@tiptap/extension-text-align`, `docx`, `@tiptap/extension-text-style`, `�🏗️ **Database Structure**`, `@tiptap/extension-underline`, `Module 154`, `@tiptap/react`, `@tiptap/starter-kit`, `class-variance-authority`, `exceljs`, `clsx`, `dotenv`, `googleapis`, `react-hook-form`, `@supabase/supabase-js`, `zod`, `pngjs`, `Appendix B - Canonical Sources (read these before reinventing)`, `Analysis & Synthesis Instructions`, `@tiptap/extension-color`, `**3. Assessment System**`, `@tiptap/extension-highlight`, `@tiptap/extension-task-list`, `@tiptap/pm`, `html5-qrcode`, `next`, `react-easy-crop`, `@tiptap/extension-table-header`, `xlsx`, `33. CATEGORY-SPECIFIC BIAS`, `12. THE BLOCK LIBRARY (Contract - Implementations Land Here Iteratively)`, `5. CONTEXT-AWARE PROACTIVITY`, `Module 105`, `Module 239`, `jsonwebtoken`, `jspdf-autotable`, `@sparticuz/chromium-min`?**
+- **Why does `dependencies` connect `Module 133` to `Admission Management`, `Package Dependencies & Config`, `next-auth`, `bcryptjs`, `react-dom`, `Module 134`, `4.1 Tables`, `pdf-lib`, `googleapis`, `@radix-ui/react-select`, `React UI Components`, `class-variance-authority`, `@tiptap/extension-table-cell`, `@tiptap/extension-table-header`, `@tiptap/extension-table-row`, `@tiptap/extension-task-item`, `@tiptap/extension-text-align`, `docx`, `@tiptap/extension-text-style`, `�🏗️ **Database Structure**`, `@tiptap/extension-underline`, `Module 154`, `@tiptap/react`, `@tiptap/starter-kit`, `class-variance-authority`, `exceljs`, `clsx`, `dotenv`, `googleapis`, `react-hook-form`, `zod`, `pngjs`, `Appendix B - Canonical Sources (read these before reinventing)`, `Analysis & Synthesis Instructions`, `@tiptap/extension-color`, `**3. Assessment System**`, `@tiptap/extension-highlight`, `@tiptap/extension-task-list`, `@tiptap/pm`, `html5-qrcode`, `next`, `react-easy-crop`, `@tiptap/extension-table-header`, `xlsx`, `33. CATEGORY-SPECIFIC BIAS`, `12. THE BLOCK LIBRARY (Contract - Implementations Land Here Iteratively)`, `5. CONTEXT-AWARE PROACTIVITY`, `Module 105`, `Module 239`, `jsonwebtoken`, `jspdf-autotable`, `@sparticuz/chromium-min`?**
   _High betweenness centrality (0.017) - this node is a cross-community bridge._
 - **Why does `jspdf` connect `Admission Management` to `Module 105`, `Module 145`, `Module 133`, `Module 110`?**
   _High betweenness centrality (0.010) - this node is a cross-community bridge._

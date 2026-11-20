@@ -7,7 +7,8 @@ import {
   faSearch,
   faSpinner,
   faLayerGroup,
-  faInfoCircle
+  faInfoCircle,
+  faEye
 } from '@fortawesome/free-solid-svg-icons'
 import ExcelJS from 'exceljs'
 
@@ -25,6 +26,7 @@ export default function UnitGradeRecap({
   const [searchQuery, setSearchQuery] = useState('')
   const [loading, setLoading] = useState(false)
   const [exporting, setExporting] = useState(false)
+  const [showInactive, setShowInactive] = useState(false)
 
   // Internal class list fallback in case parent options are loading or filtered out
   const [internalClasses, setInternalClasses] = useState([])
@@ -139,10 +141,10 @@ export default function UnitGradeRecap({
       try {
         const parsedKelasId = parseInt(currentKelasId, 10)
 
-        // 1. Fetch Students in this class
+        // 1. Fetch Students in this class (include active & resign_date for smart withdrawn-student filter)
         const { data: detailSiswaData, error: dsErr } = await supabase
           .from('detail_siswa')
-          .select('detail_siswa_id, detail_siswa_user_id, users(user_id, user_nama_depan, user_nama_belakang, user_email)')
+          .select('detail_siswa_id, detail_siswa_user_id, users(user_id, user_nama_depan, user_nama_belakang, user_email, is_active, resign_date)')
           .eq('detail_siswa_kelas_id', parsedKelasId)
 
         if (dsErr) throw dsErr
@@ -152,7 +154,9 @@ export default function UnitGradeRecap({
             id: ds.detail_siswa_id,
             userId: ds.detail_siswa_user_id,
             fullName: `${ds.users?.user_nama_depan || ''} ${ds.users?.user_nama_belakang || ''}`.trim() || 'Unknown Student',
-            email: ds.users?.user_email || ''
+            email: ds.users?.user_email || '',
+            isActive: ds.users?.is_active !== false,
+            resignDate: ds.users?.resign_date || null
           }))
           .sort((a, b) => a.fullName.localeCompare(b.fullName))
 
@@ -240,7 +244,7 @@ export default function UnitGradeRecap({
   }, [currentKelasId, selectedUnit, supabase])
 
   // Map grades per student and subject (criteria A-D)
-  const { matrix, subjectStats } = useMemo(() => {
+  const { matrix, subjectStats, hiddenInactiveCount, hasToggleableInactive } = useMemo(() => {
     const studentGradesMap = {}
     students.forEach(st => {
       studentGradesMap[st.id] = {
@@ -303,7 +307,11 @@ export default function UnitGradeRecap({
       })
     })
 
-    // Calculate Subject Statistics (A, B, C, D averages and assessed students count)
+    const hasAnyUnitGrade = (stId) => Object.keys(studentGradesMap[stId]?.subjects || {}).length > 0
+    const effectiveStudents = students.filter(st => st.isActive || showInactive || hasAnyUnitGrade(st.id))
+    const hiddenInactive = students.filter(st => !st.isActive && !hasAnyUnitGrade(st.id)).length
+
+    // Calculate Subject Statistics (A, B, C, D averages and assessed students count) over visible students
     const statsPerSubject = {}
     topics.forEach(t => {
       const aScores = []
@@ -312,7 +320,7 @@ export default function UnitGradeRecap({
       const dScores = []
       let assessedCount = 0
 
-      students.forEach(st => {
+      effectiveStudents.forEach(st => {
         const cell = studentGradesMap[st.id]?.subjects[t.subjectId]
         if (cell) {
           let hasAny = false
@@ -330,7 +338,7 @@ export default function UnitGradeRecap({
         subjectId: t.subjectId,
         subjectName: t.subjectName,
         gradedCount: assessedCount,
-        totalStudents: students.length,
+        totalStudents: effectiveStudents.length,
         critA_avg: calcAvg(aScores),
         critB_avg: calcAvg(bScores),
         critC_avg: calcAvg(cScores),
@@ -339,10 +347,12 @@ export default function UnitGradeRecap({
     })
 
     return {
-      matrix: Object.values(studentGradesMap),
-      subjectStats: statsPerSubject
+      matrix: effectiveStudents.map(st => studentGradesMap[st.id]),
+      subjectStats: statsPerSubject,
+      hiddenInactiveCount: hiddenInactive,
+      hasToggleableInactive: hiddenInactive > 0
     }
-  }, [students, topics, assessments, grades])
+  }, [students, topics, assessments, grades, showInactive])
 
   // Filter matrix by student search query
   const filteredMatrix = useMemo(() => {
@@ -728,8 +738,24 @@ export default function UnitGradeRecap({
               />
             </div>
 
-            {/* Export Button */}
-            <div className="flex items-center gap-2">
+            {/* Export & Toggle Withdrawn Buttons */}
+            <div className="flex items-center gap-2 flex-wrap">
+              {hasToggleableInactive && (
+                <button
+                  type="button"
+                  onClick={() => setShowInactive(prev => !prev)}
+                  className="px-3 py-1.5 text-xs font-medium rounded-md border transition-colors flex items-center gap-1.5 cursor-pointer"
+                  style={{
+                    background: showInactive ? (isDark ? 'rgba(239, 68, 68, 0.15)' : '#FDEBEC') : theme.cardBg,
+                    borderColor: showInactive ? (isDark ? 'rgba(239, 68, 68, 0.35)' : '#FECACA') : theme.border,
+                    color: showInactive ? (isDark ? '#FCA5A5' : '#9B1C1C') : theme.textSecondary
+                  }}
+                  title="Tampilkan atau sembunyikan siswa nonaktif yang belum memiliki nilai"
+                >
+                  <FontAwesomeIcon icon={faEye} className="text-[11px]" />
+                  <span>{showInactive ? `Hide withdrawn (${hiddenInactiveCount})` : `Show withdrawn (${hiddenInactiveCount})`}</span>
+                </button>
+              )}
               <button
                 type="button"
                 onClick={handleExportExcel}
@@ -853,7 +879,22 @@ export default function UnitGradeRecap({
                         className="px-4 py-2.5 font-medium whitespace-nowrap sticky left-12 z-10"
                         style={{ background: theme.cardBg, borderRight: `1px solid ${theme.border}`, color: theme.textPrimary }}
                       >
-                        <div className="font-semibold text-xs">{rowItem.student.fullName}</div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold text-xs">{rowItem.student.fullName}</span>
+                          {!rowItem.student.isActive && (
+                            <span
+                              className="px-1.5 py-0.5 rounded text-[10px] font-medium"
+                              style={{
+                                background: isDark ? 'rgba(239, 68, 68, 0.15)' : '#FDEBEC',
+                                color: isDark ? '#FCA5A5' : '#9B1C1C',
+                                border: `1px solid ${isDark ? 'rgba(239, 68, 68, 0.3)' : '#FECACA'}`
+                              }}
+                              title={rowItem.student.resignDate ? `Siswa sudah tidak aktif sejak ${rowItem.student.resignDate}` : 'Siswa sudah tidak aktif / keluar sekolah'}
+                            >
+                              Withdrawn
+                            </span>
+                          )}
+                        </div>
                       </td>
 
                       {/* Subject Criteria Cells: A, B, C, D */}

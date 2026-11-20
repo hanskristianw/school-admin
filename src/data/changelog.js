@@ -11,7 +11,7 @@
 export const SYSTEM_RELEASES = [
   {
     "version": "0.6.3",
-    "date": "2026-11-19",
+    "date": "2026-11-20",
     "isLatest": true,
     "summary": {
       "id": "Penambahan modul voting Teachers & Staff Recognition / Staff Awards (/data/staff-awards) berdesain Minimalist Editorial UI dengan alur Card Wizard 1–10 berbahasa Inggris penuh, autocomplete pegawai aktif non-vendor, penguncian 1 user 1 vote permanen, panel Admin monitor partisipasi & hasil pemenang lengkap dengan ekspor laporan ExcelJS 3-sheet; serta penyelarasan RESULT box ekspor Word dan perbaikan persistensi kriteria MYP Objectives di /data/topic-new.",
@@ -39,6 +39,11 @@ export const SYSTEM_RELEASES = [
         }
       ],
       "fixed": [
+        {
+          "id": "Menerapkan filter pintar siswa nonaktif/keluar (is_active = false / resign_date) tanpa menghapus riwayat detail_siswa pada modul penilaian MYP (/data/assessment_grading/[id], rekap unit UnitGradeRecap, /data/topic-new tab Report Card, Subject/Mentor Comments, inline grading modal, serta generator PDF rapor & rekap nilai): siswa keluar yang belum memiliki nilai otomatis disembunyikan dari daftar input nilai, template Excel, dan statistik kelas, namun tetap tampil lengkap berlabel 'Withdrawn' apabila sudah memiliki nilai/komentar historis (serta dilengkapi 1 toggle 'Show withdrawn' untuk mengecek atau membersihkan nilai yang sempat terlanjur terinput).",
+          "en": "Implemented smart filtering for withdrawn/inactive students (is_active = false / resign_date) without removing historical detail_siswa records across MYP grading and reporting (/data/assessment_grading/[id], UnitGradeRecap, /data/topic-new Report Card, Subject/Mentor Comments, inline grading modal, and PDF report/gradebook generators): ungraded withdrawn students are automatically excluded from active grading tables, Excel templates, report cards, and denominators while graded/past-year archives remain intact with a 'Withdrawn' badge and a single 'Show withdrawn' toggle on grading and unit recap views.",
+          "zh": "在 MYP 评分与成绩报告模块（/data/assessment_grading/[id]、UnitGradeRecap 单元汇总、/data/topic-new 成绩单/评语/快捷评分弹窗及 PDF 导出生成器）中上线离校/停用学生（is_active = false / resign_date）智能过滤机制（保留全部 detail_siswa 历史关联记录）：自动在当前未录入成绩的评分表、Excel 模板、班级成绩单及分母统计中隐藏已退学学生，同时完整保留既往学年归档与已存成绩/评语记录并标注「Withdrawn」徽章，在评分与汇总页提供单一「Show withdrawn」切换开关以便核查清理误录数据。"
+        },
         {
           "id": "Memperbaiki visibilitas dan pengelolaan Temporary Exit Request di /data/attendance-form agar pengaju dapat melihat daftar pengajuan miliknya sendiri: merender seksi khusus 'Temporary Exit Request(s) This Month' dari state submittedList lengkap dengan jam keluar–kembali, durasi, kategori, keterangan, lampiran, progres approver, serta aksi Edit/Hapus selama berstatus pending; memperbaiki batas akhir query excuses menggunakan monthEnd(ym) penuh (tidak terpotong tanggal kemarin sehingga pengajuan hari ini dan tanggal mendatang tampil), mencegah overwrite fallback excuseMap oleh temporary_exit, menyimpan keterangan detail temporary_exit pada API POST, dan mendukung pembaruan tanggal/jam/keterangan/lampiran melalui PUT /api/attendance/excuses/[id].",
           "en": "Fixed visibility and self-service management of Temporary Exit Requests on /data/attendance-form so submitters can view their own submissions: added a dedicated 'Temporary Exit Request(s) This Month' section displaying exit/return times, duration, category, notes, attachment, approver progress, and Edit/Delete actions while pending; extended the excuses query range to the full monthEnd(ym) so today's and future-dated requests are not hidden behind yesterday's report cutoff; isolated temporary_exit from overwriting anomaly date-fallback keys in excuseMap; and preserved optional description details plus full edit support on POST/PUT /api/attendance/excuses.",
