@@ -10,9 +10,28 @@
 
 export const SYSTEM_RELEASES = [
   {
+    "version": "0.6.4",
+    "date": "2026-11-23",
+    "isLatest": true,
+    "summary": {
+      "id": "Menghapus pengiriman pesan salinan monitoring admin ([Cron Monitoring Copy for Hans]) pada notifikasi cron jadwal tugas guru (/api/duty/notify) agar notifikasi Google Chat hanya dikirim langsung kepada guru yang bertugas.",
+      "en": "Removed automatic admin monitoring CC messages ([Cron Monitoring Copy for Hans]) from scheduled duty notifications (/api/duty/notify) so Google Chat reminders are sent strictly to the assigned duty staff.",
+      "zh": "移除值日提醒定时任务（/api/duty/notify）中自动抄送管理员的监控消息（[Cron Monitoring Copy for Hans]），使 Google Chat 提醒仅直接发送给当值教师本人。"
+    },
+    "sections": {
+      "changed": [
+        {
+          "id": "Menghapus blok CC monitoring otomatis ke hans@ccs.sch.id ([Cron Monitoring Copy for Hans]) di endpoint cron /api/duty/notify sehingga pesan Google Chat pengingat Devotion, Door Greeter, Break Duty, dan Lunch Duty hanya dikirim langsung ke petugas yang dijadwalkan (kecuali mode tes ?test=true / ?test_email=).",
+          "en": "Removed the hardcoded CC monitoring copy to hans@ccs.sch.id ([Cron Monitoring Copy for Hans]) in the /api/duty/notify cron endpoint so Google Chat reminders for Devotion, Door Greeter, Break Duty, and Lunch Duty are delivered solely to the assigned staff members (while preserving ?test=true / ?test_email= testing mode).",
+          "zh": "移除定时接口 /api/duty/notify 中向 hans@ccs.sch.id 发送「[Cron Monitoring Copy for Hans]」抄送监控消息的逻辑，确保晨祷、迎宾、课间及午餐值日提醒仅发送给对应值班人员（保留 ?test=true / ?test_email= 测试模式）。"
+        }
+      ]
+    }
+  },
+  {
     "version": "0.6.3",
     "date": "2026-11-20",
-    "isLatest": true,
+    "isLatest": false,
     "summary": {
       "id": "Penambahan modul voting Teachers & Staff Recognition / Staff Awards (/data/staff-awards) berdesain Minimalist Editorial UI dengan alur Card Wizard 1–10 berbahasa Inggris penuh, autocomplete pegawai aktif non-vendor, penguncian 1 user 1 vote permanen, panel Admin monitor partisipasi & hasil pemenang lengkap dengan ekspor laporan ExcelJS 3-sheet; serta penyelarasan RESULT box ekspor Word dan perbaikan persistensi kriteria MYP Objectives di /data/topic-new.",
       "en": "Added the Teachers & Staff Recognition / Staff Awards voting module (/data/staff-awards) in a Minimalist Editorial UI with a 1–10 Card Wizard flow in full English, non-vendor active staff autocomplete, strict 1-user-1-vote locking, and an Admin-only participation tracker, results dashboard, and 3-sheet styled ExcelJS executive report; alongside aligned RESULT score box Word export and fixed MYP Objectives criteria persistence in /data/topic-new.",

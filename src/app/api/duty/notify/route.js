@@ -332,17 +332,6 @@ async function handleDutyNotification(req) {
             console.warn(`[DutyNotify] Failed to log notification:`, logErr.message)
           }
 
-          // Always send a CC copy to hans@ccs.sch.id for monitoring if recipient is someone else
-          if (!testEmail && recipientEmail !== 'hans@ccs.sch.id') {
-            try {
-              const ccMessage = `[Cron Monitoring Copy for Hans]\n` + messageText
-              await sendGoogleChatMessage('hans@ccs.sch.id', ccMessage)
-              console.log(`[DutyNotify] CC copy delivered to hans@ccs.sch.id`)
-            } catch (ccErr) {
-              console.warn(`[DutyNotify] Failed to send CC to hans@ccs.sch.id:`, ccErr.message)
-            }
-          }
-
           notifiedResults.push({
             user_id: user.user_id,
             user_email: user.user_email,
