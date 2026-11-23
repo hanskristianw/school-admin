@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { fetchAllRows } from '@/lib/utils'
 
 export const dynamic = 'force-dynamic'
 
@@ -108,23 +109,30 @@ export async function GET(request) {
     // Try new schema (date_start/date_end) first, fall back to old `date` column
     let holidays = []
     try {
-      const { data, error } = await supabaseAdmin
-        .from('school_holidays')
-        .select('date_start, date_end, role_id, name')
-        .lte('date_start', end)
-        .gte('date_end', start)
-      if (!error) holidays = data || []
-      else {
-        // Fallback: old schema with single `date` column
-        const { data: old } = await supabaseAdmin
+      holidays = await fetchAllRows((from, to) =>
+        supabaseAdmin
           .from('school_holidays')
-          .select('date, role_id, name')
-          .gte('date', start)
-          .lte('date', end)
-        holidays = (old || []).map(h => ({ date_start: h.date, date_end: h.date, role_id: h.role_id, name: h.name }))
-      }
+          .select('date_start, date_end, role_id, name')
+          .lte('date_start', end)
+          .gte('date_end', start)
+          .order('id', { ascending: true })
+          .range(from, to)
+      )
     } catch (_) {
-      holidays = []
+      try {
+        const old = await fetchAllRows((from, to) =>
+          supabaseAdmin
+            .from('school_holidays')
+            .select('date, role_id, name')
+            .gte('date', start)
+            .lte('date', end)
+            .order('id', { ascending: true })
+            .range(from, to)
+        )
+        holidays = old.map(h => ({ date_start: h.date, date_end: h.date, role_id: h.role_id, name: h.name }))
+      } catch (_) {
+        holidays = []
+      }
     }
 
     const isHoliday = (dateStr, userRoleId) => {
@@ -151,12 +159,15 @@ export async function GET(request) {
     // Prioritas: user-specific > role > global
     let specialRules = []
     try {
-      const { data: srData } = await supabaseAdmin
-        .from('special_day_rules')
-        .select('id, tanggal, scope_type, role_id, user_id, is_work_day, is_flexible_hours, custom_check_in, custom_check_out, keterangan')
-        .gte('tanggal', start)
-        .lte('tanggal', end)
-      specialRules = srData || []
+      specialRules = await fetchAllRows((from, to) =>
+        supabaseAdmin
+          .from('special_day_rules')
+          .select('id, tanggal, scope_type, role_id, user_id, is_work_day, is_flexible_hours, custom_check_in, custom_check_out, keterangan')
+          .gte('tanggal', start)
+          .lte('tanggal', end)
+          .order('id', { ascending: true })
+          .range(from, to)
+      )
     } catch (_) {
       specialRules = []
     }

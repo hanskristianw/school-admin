@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react'
 import { supabase } from '@/lib/supabase'
+import { fetchAllRows } from '@/lib/utils'
 import { useTheme } from '@/lib/theme'
 import Modal from '@/components/ui/modal'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
@@ -71,6 +72,203 @@ function diffDays(start, end) {
   return Math.round((b - a) / 86400000) + 1
 }
 
+const TABLE_PAGE_SIZE = 20
+
+function SpecialRulePolicyFields({
+  isWorkDay,
+  onChangeWorkDay,
+  isFlexibleHours,
+  onChangeFlexibleHours,
+  isDark,
+  subtleBg,
+  borderColor,
+  textSecondary,
+}) {
+  return (
+    <div className="space-y-3 pt-2">
+      <div>
+        <label className="text-[11px] font-medium block mb-1.5" style={{ color: textSecondary }}>
+          Sifat Hari * <span className="font-normal opacity-75">(Pilih salah satu)</span>
+        </label>
+        <div
+          className="inline-flex flex-wrap gap-1.5 p-1 rounded-lg border"
+          style={{ background: subtleBg, borderColor }}
+          role="radiogroup"
+          aria-label="Sifat Hari"
+        >
+          <button
+            type="button"
+            role="radio"
+            aria-checked={isWorkDay}
+            onClick={() => onChangeWorkDay(true)}
+            className="px-3.5 py-1.5 rounded-md text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-all"
+            style={
+              isWorkDay
+                ? {
+                    background: isDark ? '#15803D' : '#166534',
+                    color: '#FFFFFF',
+                    boxShadow: '0 1px 2px rgba(0,0,0,0.12)',
+                  }
+                : {
+                    background: 'transparent',
+                    color: textSecondary,
+                  }
+            }
+          >
+            <span className="text-[11px]">{isWorkDay ? '●' : '○'}</span>
+            Hari Kerja (Wajib Absen)
+          </button>
+          <button
+            type="button"
+            role="radio"
+            aria-checked={!isWorkDay}
+            onClick={() => onChangeWorkDay(false)}
+            className="px-3.5 py-1.5 rounded-md text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-all"
+            style={
+              !isWorkDay
+                ? {
+                    background: isDark ? '#B91C1C' : '#991B1B',
+                    color: '#FFFFFF',
+                    boxShadow: '0 1px 2px rgba(0,0,0,0.12)',
+                  }
+                : {
+                    background: 'transparent',
+                    color: textSecondary,
+                  }
+            }
+          >
+            <span className="text-[11px]">{!isWorkDay ? '●' : '○'}</span>
+            Bukan Hari Kerja (Libur)
+          </button>
+        </div>
+        <p className="text-[11px] mt-1" style={{ color: textSecondary }}>
+          {isWorkDay
+            ? 'Karyawan tetap wajib absen pada tanggal ini (override hari libur/weekend).'
+            : 'Karyawan diliburkan pada tanggal ini dan tidak dihitung alpa/terlambat.'}
+        </p>
+      </div>
+
+      {isWorkDay && (
+        <div>
+          <label className="text-[11px] font-medium block mb-1.5" style={{ color: textSecondary }}>
+            Ketentuan Jam Kerja
+          </label>
+          <div
+            className="inline-flex flex-wrap gap-1.5 p-1 rounded-lg border"
+            style={{ background: subtleBg, borderColor }}
+            role="radiogroup"
+            aria-label="Ketentuan Jam Kerja"
+          >
+            <button
+              type="button"
+              role="radio"
+              aria-checked={!isFlexibleHours}
+              onClick={() => onChangeFlexibleHours(false)}
+              className="px-3.5 py-1.5 rounded-md text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-all"
+              style={
+                !isFlexibleHours
+                  ? {
+                      background: isDark ? '#F4F4F5' : '#111111',
+                      color: isDark ? '#111111' : '#FFFFFF',
+                      boxShadow: '0 1px 2px rgba(0,0,0,0.12)',
+                    }
+                  : {
+                      background: 'transparent',
+                      color: textSecondary,
+                    }
+              }
+            >
+              <span className="text-[11px]">{!isFlexibleHours ? '●' : '○'}</span>
+              Jam Kerja Standar
+            </button>
+            <button
+              type="button"
+              role="radio"
+              aria-checked={isFlexibleHours}
+              onClick={() => onChangeFlexibleHours(true)}
+              className="px-3.5 py-1.5 rounded-md text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-all"
+              style={
+                isFlexibleHours
+                  ? {
+                      background: '#B45309',
+                      color: '#FFFFFF',
+                      boxShadow: '0 1px 2px rgba(0,0,0,0.12)',
+                    }
+                  : {
+                      background: 'transparent',
+                      color: textSecondary,
+                    }
+              }
+            >
+              <span className="text-[11px]">{isFlexibleHours ? '●' : '○'}</span>
+              Bebas Jam (Tanpa Sanksi)
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function PaginationBar({
+  page,
+  totalPages,
+  total,
+  pageSize,
+  onPageChange,
+  loading = false,
+  cardBg,
+  subtleBg,
+  borderColor,
+  textPrimary,
+  textSecondary,
+}) {
+  if (!total || total <= 0) return null
+  const startIdx = (page - 1) * pageSize + 1
+  const endIdx = Math.min(page * pageSize, total)
+
+  return (
+    <div
+      className="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 border-t text-xs"
+      style={{ background: subtleBg, borderColor, color: textSecondary }}
+    >
+      <div className="font-mono text-[11px] flex items-center gap-2">
+        <span>
+          Menampilkan <strong style={{ color: textPrimary }}>{startIdx}–{endIdx}</strong> dari{' '}
+          <strong style={{ color: textPrimary }}>{total}</strong> data
+        </span>
+        {loading && <FontAwesomeIcon icon={faSpinner} spin className="text-[10px]" />}
+      </div>
+
+      {totalPages > 1 && (
+        <div className="flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => onPageChange(page - 1)}
+            disabled={page <= 1 || loading}
+            className="px-2.5 py-1 rounded text-xs font-medium border transition-all disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed"
+            style={{ background: cardBg, color: textPrimary, borderColor }}
+          >
+            ‹ Sebelumnya
+          </button>
+          <span className="px-2 font-mono text-[11px]" style={{ color: textPrimary }}>
+            Hal {page} / {totalPages}
+          </span>
+          <button
+            type="button"
+            onClick={() => onPageChange(page + 1)}
+            disabled={page >= totalPages || loading}
+            className="px-2.5 py-1 rounded text-xs font-medium border transition-all disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed"
+            style={{ background: cardBg, color: textPrimary, borderColor }}
+          >
+            Berikutnya ›
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function AttendanceSettingsPage() {
   const { theme } = useTheme()
   const isDark = theme?.mode === 'dark'
@@ -92,6 +290,7 @@ export default function AttendanceSettingsPage() {
 
   // ── Tab 2: School Holidays ─────────────────────────────────────────────────
   const [holidays, setHolidays] = useState([])
+  const [holidayPage, setHolidayPage] = useState(1)
   const [filterRoleId, setFilterRoleId] = useState('all') // 'all' | 'global' | role_id string
   const [newName, setNewName]           = useState('')
   const [newDateStart, setNewDateStart] = useState('')
@@ -117,6 +316,11 @@ export default function AttendanceSettingsPage() {
 
   // ── Tab 4: Hari Khusus (Special Day Rules) ─────────────────────────────────
   const [specialRules, setSpecialRules]     = useState([])
+  const [srPage, setSrPage]                 = useState(1)
+  const [srTotal, setSrTotal]               = useState(0)
+  const [srTotalPages, setSrTotalPages]     = useState(1)
+  const [srLoading, setSrLoading]           = useState(false)
+  const [srFilterScope, setSrFilterScope]   = useState('all_scopes')
   const [allUsers, setAllUsers]             = useState([])
   const [srMsg, setSrMsg]                   = useState('')
   const [editingSrId, setEditingSrId]       = useState(null)
@@ -197,12 +401,18 @@ export default function AttendanceSettingsPage() {
   }
 
   const fetchAllUsers = async () => {
-    const { data } = await supabase
-      .from('users')
-      .select('user_id, user_nama_depan, user_nama_belakang, user_pin')
-      .eq('is_active', true)
-      .order('user_nama_depan')
-    setAllUsers(data || [])
+    try {
+      const data = await fetchAllRows((from, to) =>
+        supabase
+          .from('users')
+          .select('user_id, user_nama_depan, user_nama_belakang, user_pin')
+          .eq('is_active', true)
+          .order('user_nama_depan')
+          .order('user_id')
+          .range(from, to)
+      )
+      setAllUsers(data)
+    } catch (_) {}
   }
 
   const fetchRoleApprovers = async () => {
@@ -252,12 +462,28 @@ export default function AttendanceSettingsPage() {
     }
   }
 
-  const fetchSpecialRules = async () => {
+  const fetchSpecialRules = async (targetPage = srPage, targetScope = srFilterScope) => {
+    setSrLoading(true)
     try {
-      const res = await fetch('/api/attendance/special-day-rules')
+      const params = new URLSearchParams({
+        page: String(targetPage),
+        limit: String(TABLE_PAGE_SIZE),
+      })
+      if (targetScope && targetScope !== 'all_scopes') {
+        params.set('scope', targetScope)
+      }
+      const res = await fetch(`/api/attendance/special-day-rules?${params.toString()}`)
       const json = await res.json()
-      if (json.success) setSpecialRules(json.data || [])
+      if (json.success) {
+        setSpecialRules(json.data || [])
+        setSrTotal(json.total ?? (json.data || []).length)
+        setSrPage(json.page ?? targetPage)
+        setSrTotalPages(json.totalPages ?? 1)
+      }
     } catch (_) {}
+    finally {
+      setSrLoading(false)
+    }
   }
 
   const saveSr = async () => {
@@ -305,7 +531,7 @@ export default function AttendanceSettingsPage() {
 
       setSrMsg('✅ Aturan berhasil ditambahkan')
       resetSrForm()
-      fetchSpecialRules()
+      fetchSpecialRules(1, srFilterScope)
       setTimeout(() => setSrMsg(''), 3000)
     } catch (err) {
       setSrMsg('❌ ' + err.message)
@@ -375,7 +601,8 @@ export default function AttendanceSettingsPage() {
     const json = await res.json()
     if (!json.success) { setSrMsg('❌ ' + json.message); return }
     setSrMsg('✅ Aturan dihapus')
-    fetchSpecialRules()
+    const nextPage = specialRules.length === 1 && srPage > 1 ? srPage - 1 : srPage
+    fetchSpecialRules(nextPage, srFilterScope)
     setTimeout(() => setSrMsg(''), 2000)
   }
 
@@ -407,12 +634,17 @@ export default function AttendanceSettingsPage() {
   }
 
   const fetchHolidays = async () => {
-    const { data } = await supabase
-      .from('school_holidays')
-      .select('id, date_start, date_end, name, role_id')
-      .order('date_start', { ascending: false })
-      .order('id', { ascending: false })
-    setHolidays(data || [])
+    try {
+      const data = await fetchAllRows((from, to) =>
+        supabase
+          .from('school_holidays')
+          .select('id, date_start, date_end, name, role_id')
+          .order('date_start', { ascending: false })
+          .order('id', { ascending: false })
+          .range(from, to)
+      )
+      setHolidays(data)
+    } catch (_) {}
   }
 
   const checkHolidayOverlap = (start, end, roleId, excludeId = null) => {
@@ -572,6 +804,13 @@ export default function AttendanceSettingsPage() {
         return (b.id || 0) - (a.id || 0)
       })
   }, [holidays, filterRoleId])
+
+  const holidayTotalPages = Math.max(1, Math.ceil(displayedHolidays.length / TABLE_PAGE_SIZE))
+  const safeHolidayPage = Math.min(holidayPage, holidayTotalPages)
+  const paginatedHolidays = useMemo(() => {
+    const start = (safeHolidayPage - 1) * TABLE_PAGE_SIZE
+    return displayedHolidays.slice(start, start + TABLE_PAGE_SIZE)
+  }, [displayedHolidays, safeHolidayPage])
 
   const fetchSettings = async () => {
     const { data } = await supabase
@@ -853,7 +1092,7 @@ export default function AttendanceSettingsPage() {
                 </label>
                 <select
                   value={filterRoleId}
-                  onChange={e => setFilterRoleId(e.target.value)}
+                  onChange={e => { setFilterRoleId(e.target.value); setHolidayPage(1) }}
                   className="mt-0.5 text-xs font-medium outline-none cursor-pointer"
                   style={{ background: 'transparent', color: textPrimary, border: 'none' }}
                 >
@@ -1077,7 +1316,7 @@ export default function AttendanceSettingsPage() {
                     </td>
                   </tr>
                 )}
-                {displayedHolidays.map((h, i) => {
+                {paginatedHolidays.map((h, i) => {
                   const days = diffDays(h.date_start, h.date_end)
                   const roleName = getRoleName(h.role_id)
                   const isEditing = editingId === h.id
@@ -1190,6 +1429,18 @@ export default function AttendanceSettingsPage() {
                 })}
               </tbody>
             </table>
+            <PaginationBar
+              page={safeHolidayPage}
+              totalPages={holidayTotalPages}
+              total={displayedHolidays.length}
+              pageSize={TABLE_PAGE_SIZE}
+              onPageChange={setHolidayPage}
+              cardBg={cardBg}
+              subtleBg={subtleBg}
+              borderColor={borderColor}
+              textPrimary={textPrimary}
+              textSecondary={textSecondary}
+            />
           </div>
         </div>
       )}
@@ -1597,36 +1848,17 @@ export default function AttendanceSettingsPage() {
               </div>
             </div>
 
-            {/* Policy Toggles */}
-            <div className="flex items-center gap-3 pt-2 flex-wrap">
-              <button
-                type="button"
-                onClick={() => setSrIsWorkDay(!srIsWorkDay)}
-                className="px-3 py-1.5 rounded text-xs font-semibold flex items-center gap-1.5 transition-all"
-                style={{
-                  background: srIsWorkDay ? '#EDF3EC' : '#FDEBEC',
-                  color: srIsWorkDay ? '#346538' : '#9F2F2D',
-                  border: `1px solid ${srIsWorkDay ? '#B2D8B4' : '#F8B4B4'}`
-                }}
-              >
-                {srIsWorkDay ? 'Hari Kerja' : 'Bukan Hari Kerja (Libur)'}
-              </button>
-
-              {srIsWorkDay && (
-                <button
-                  type="button"
-                  onClick={() => setSrIsFlexibleHours(!srIsFlexibleHours)}
-                  className="px-3 py-1.5 rounded text-xs font-semibold flex items-center gap-1.5 transition-all"
-                  style={{
-                    background: srIsFlexibleHours ? '#FBF3DB' : subtleBg,
-                    color: srIsFlexibleHours ? '#956400' : textSecondary,
-                    border: `1px solid ${srIsFlexibleHours ? '#FDE68A' : borderColor}`
-                  }}
-                >
-                  {srIsFlexibleHours ? 'Bebas Jam (Tanpa Sanksi)' : 'Jam Kerja Standar'}
-                </button>
-              )}
-            </div>
+            {/* Policy Segmented Controls */}
+            <SpecialRulePolicyFields
+              isWorkDay={srIsWorkDay}
+              onChangeWorkDay={setSrIsWorkDay}
+              isFlexibleHours={srIsFlexibleHours}
+              onChangeFlexibleHours={setSrIsFlexibleHours}
+              isDark={isDark}
+              subtleBg={subtleBg}
+              borderColor={borderColor}
+              textSecondary={textSecondary}
+            />
 
             <div className="flex justify-end pt-2">
               <button
@@ -1638,6 +1870,30 @@ export default function AttendanceSettingsPage() {
               >
                 {savingSr ? <><FontAwesomeIcon icon={faSpinner} spin /> Menyimpan...</> : <><FontAwesomeIcon icon={faPlus} /> Tambah Aturan Hari Khusus</>}
               </button>
+            </div>
+          </div>
+
+          {/* Table Filter Bar */}
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="text-xs font-medium" style={{ color: textSecondary }}>
+              Daftar Aturan Hari Khusus <span className="font-mono opacity-80">(Terbaru di atas)</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <label className="text-[11px] font-medium" style={{ color: textSecondary }}>Lingkup:</label>
+              <select
+                value={srFilterScope}
+                onChange={e => {
+                  const nextScope = e.target.value
+                  setSrFilterScope(nextScope)
+                  fetchSpecialRules(1, nextScope)
+                }}
+                style={{ ...selectStyle, width: 'auto', minWidth: '175px' }}
+              >
+                <option value="all_scopes">Semua Lingkup</option>
+                <option value="all">👥 Semua Karyawan</option>
+                <option value="role">🏷️ Jabatan Tertentu</option>
+                <option value="user">👤 Karyawan Tertentu</option>
+              </select>
             </div>
           </div>
 
@@ -1725,6 +1981,19 @@ export default function AttendanceSettingsPage() {
                 )}
               </tbody>
             </table>
+            <PaginationBar
+              page={srPage}
+              totalPages={srTotalPages}
+              total={srTotal}
+              pageSize={TABLE_PAGE_SIZE}
+              onPageChange={(nextPage) => fetchSpecialRules(nextPage, srFilterScope)}
+              loading={srLoading}
+              cardBg={cardBg}
+              subtleBg={subtleBg}
+              borderColor={borderColor}
+              textPrimary={textPrimary}
+              textSecondary={textSecondary}
+            />
           </div>
 
           {/* Modal Edit Aturan Hari Khusus (Minimalist UI Standard) */}
@@ -1840,36 +2109,17 @@ export default function AttendanceSettingsPage() {
                   </div>
                 </div>
 
-                {/* Toggles */}
-                <div className="flex items-center gap-3 pt-2 flex-wrap">
-                  <button
-                    type="button"
-                    onClick={() => setEditSrIsWorkDay(!editSrIsWorkDay)}
-                    className="px-3 py-1.5 rounded text-xs font-semibold flex items-center gap-1.5 transition-all"
-                    style={{
-                      background: editSrIsWorkDay ? '#EDF3EC' : '#FDEBEC',
-                      color: editSrIsWorkDay ? '#346538' : '#9F2F2D',
-                      border: `1px solid ${editSrIsWorkDay ? '#B2D8B4' : '#F8B4B4'}`
-                    }}
-                  >
-                    {editSrIsWorkDay ? 'Hari Kerja' : 'Bukan Hari Kerja (Libur)'}
-                  </button>
-
-                  {editSrIsWorkDay && (
-                    <button
-                      type="button"
-                      onClick={() => setEditSrIsFlexibleHours(!editSrIsFlexibleHours)}
-                      className="px-3 py-1.5 rounded text-xs font-semibold flex items-center gap-1.5 transition-all"
-                      style={{
-                        background: editSrIsFlexibleHours ? '#FBF3DB' : subtleBg,
-                        color: editSrIsFlexibleHours ? '#956400' : textSecondary,
-                        border: `1px solid ${editSrIsFlexibleHours ? '#FDE68A' : borderColor}`
-                      }}
-                    >
-                      {editSrIsFlexibleHours ? 'Bebas Jam (Tanpa Sanksi)' : 'Jam Kerja Standar'}
-                    </button>
-                  )}
-                </div>
+                {/* Policy Segmented Controls */}
+                <SpecialRulePolicyFields
+                  isWorkDay={editSrIsWorkDay}
+                  onChangeWorkDay={setEditSrIsWorkDay}
+                  isFlexibleHours={editSrIsFlexibleHours}
+                  onChangeFlexibleHours={setEditSrIsFlexibleHours}
+                  isDark={isDark}
+                  subtleBg={subtleBg}
+                  borderColor={borderColor}
+                  textSecondary={textSecondary}
+                />
 
                 <div className="flex justify-end gap-2 pt-4 border-t" style={{ borderColor }}>
                   <button

@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js'
 import { sendEmail } from '@/lib/mailer'
 import { emailTemplates } from '@/lib/emailTemplates'
 import { sendGoogleChatMessage } from '@/lib/googleChat'
+import { fetchAllRows } from '@/lib/utils'
 
 // Prevent Next.js from statically caching this route
 export const dynamic = 'force-dynamic'
@@ -317,11 +318,14 @@ async function handleNotify(request) {
     // Matches report API — user > role > global priority
     let specialRules = []
     try {
-      const { data: srData } = await supabaseAdmin
-        .from('special_day_rules')
-        .select('id, tanggal, scope_type, role_id, user_id, is_work_day, is_flexible_hours, custom_check_in, custom_check_out, keterangan')
-        .eq('tanggal', targetDate)
-      specialRules = srData || []
+      specialRules = await fetchAllRows((from, to) =>
+        supabaseAdmin
+          .from('special_day_rules')
+          .select('id, tanggal, scope_type, role_id, user_id, is_work_day, is_flexible_hours, custom_check_in, custom_check_out, keterangan')
+          .eq('tanggal', targetDate)
+          .order('id', { ascending: true })
+          .range(from, to)
+      )
     } catch (_) {}
 
     const resolveSpecialRule = (userRoleId, userId) => {
@@ -337,12 +341,15 @@ async function handleNotify(request) {
     // All holidays on this date (global + role-specific)
     let allHolidays = []
     try {
-      const { data: hData } = await supabaseAdmin
-        .from('school_holidays')
-        .select('role_id, name')
-        .lte('date_start', targetDate)
-        .gte('date_end', targetDate)
-      allHolidays = hData || []
+      allHolidays = await fetchAllRows((from, to) =>
+        supabaseAdmin
+          .from('school_holidays')
+          .select('role_id, name')
+          .lte('date_start', targetDate)
+          .gte('date_end', targetDate)
+          .order('id', { ascending: true })
+          .range(from, to)
+      )
     } catch (_) {}
 
     const isHoliday = (userRoleId) =>

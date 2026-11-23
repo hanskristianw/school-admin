@@ -1,16 +1,16 @@
-# Graph Report - school-admin  (2026-11-20)
+# Graph Report - school-admin  (2026-11-23)
 
 ## Corpus Check
-- 501 files · ~852,832 words
+- 501 files · ~853,984 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 2719 nodes · 2968 edges · 458 communities (321 shown, 137 thin omitted)
+- 2722 nodes · 2971 edges · 457 communities (320 shown, 137 thin omitted)
 - Extraction: 99% EXTRACTED · 1% INFERRED · 0% AMBIGUOUS · INFERRED: 15 edges (avg confidence: 0.7)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `a6766c60`
+- Built from commit: `62ad9681`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -306,8 +306,8 @@
 - @tiptap/extension-table-header
 - @tiptap/extension-table-row
 - @tiptap/extension-task-item
+- @supabase/supabase-js
 - @tiptap/extension-text-align
-- @tiptap/extension-text-style
 - @tiptap/extension-underline
 - �🏗️ **Database Structure**
 - @tiptap/react
@@ -324,7 +324,6 @@
 - clsx
 - changelog.js
 - googleapis
-- 6.1 Tables
 - react-hook-form
 - pngjs
 - @tiptap/extension-color
@@ -366,7 +365,7 @@
 ## Import Cycles
 - None detected.
 
-## Communities (458 total, 137 thin omitted)
+## Communities (457 total, 137 thin omitted)
 
 ### Community 0 - "Admission Management"
 Cohesion: 0.08
@@ -445,7 +444,7 @@ Cohesion: 0.25
 Nodes (5): closingsGeneral, delay(), greetings, messageTemplates, sendWhatsApp()
 
 ### Community 21 - "Module 21"
-Cohesion: 0.29
+Cohesion: 0.25
 Nodes (3): Select, SelectItem, cn()
 
 ### Community 22 - "Module 22"
@@ -457,7 +456,7 @@ Cohesion: 0.06
 Nodes (33): 1. Purchase Receipt - Auto Track Supplier (/stock/uniform/add), 1. Stock Available per Item per Supplier, 1. uniform_stock_txn - Tambah kolom supplier_id, 2. Index untuk Performance, 2. Initial Stock Input (/stock/uniform/initial), 2. Stock Movement by Supplier, 3. Stock Out - Manual Supplier Selection (/sales/uniform/stock-out), 3. Total Stock per Supplier (All Items) (+25 more)
 
 ### Community 24 - "Module 24"
-Cohesion: 0.47
+Cohesion: 0.32
 Nodes (5): AttendanceSettingsPage(), DAY_LABELS, diffDays(), formatDateRange(), NOTIF_TYPES
 
 ### Community 25 - "Module 25"
@@ -717,8 +716,8 @@ Cohesion: 0.20
 Nodes (9): 1. Protocol Overview, 2. Absolute Negative Constraints (Banned Elements), 3. Typographic Architecture, 4. Color Palette (Warm Monochrome + Spot Pastels), 5. Component Specifications, 6. Iconography & Imagery Directives, 7. Subtle Motion & Micro-Animations, 8. Execution Protocol (+1 more)
 
 ### Community 116 - "Module 116"
-Cohesion: 0.17
-Nodes (11): 10.1 Tables, 10.2 ERD / Relationships (Duty & Devotion Schedule Domain), 10. Duty, Greeter & Devotion Schedule Domain (`/data/door_greeter`), 20.1 Tables, 20. Sport Hall / Court Rental System, `court_blackout_dates`, `court_rentals`, `court_time_slots` (+3 more)
+Cohesion: 0.12
+Nodes (16): 10.1 Tables, 10.2 ERD / Relationships (Duty & Devotion Schedule Domain), 10. Duty, Greeter & Devotion Schedule Domain (`/data/door_greeter`), 20.1 Tables, 20. Sport Hall / Court Rental System, 6.1 Tables, 6.2 ERD / Relationships (Assessment & Grading), 6. Assessment & Grading Domain (`/data/topic-new` / Reports) (+8 more)
 
 ### Community 117 - "Module 117"
 Cohesion: 0.20
@@ -1104,10 +1103,6 @@ Nodes (3): 1. PostgREST Hard Limit of 1,000 Rows per Query, 2. Bulk/Batch Writes
 Cohesion: 0.40
 Nodes (3): ALLOWED_EXTS, ALLOWED_TYPES, supabaseAdmin
 
-### Community 434 - "6.1 Tables"
-Cohesion: 0.40
-Nodes (5): 6.1 Tables, 6.2 ERD / Relationships (Assessment & Grading), 6. Assessment & Grading Domain (`/data/topic-new` / Reports), `assessment_grade_strands`, `assessment_grades`
-
 ### Community 538 - "route.js"
 Cohesion: 0.67
 Nodes (3): fetchWithRetry(), GET(), supabaseAdmin
@@ -1120,8 +1115,8 @@ Nodes (3): fetchWithRetry(), GET(), supabaseAdmin
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `dependencies` connect `Module 133` to `Admission Management`, `Package Dependencies & Config`, `next-auth`, `bcryptjs`, `react-dom`, `Module 134`, `4.1 Tables`, `pdf-lib`, `googleapis`, `@radix-ui/react-select`, `React UI Components`, `class-variance-authority`, `@tiptap/extension-table-cell`, `@tiptap/extension-table-header`, `@tiptap/extension-table-row`, `@tiptap/extension-task-item`, `@tiptap/extension-text-align`, `docx`, `@tiptap/extension-text-style`, `�🏗️ **Database Structure**`, `@tiptap/extension-underline`, `Module 154`, `@tiptap/react`, `@tiptap/starter-kit`, `class-variance-authority`, `exceljs`, `clsx`, `dotenv`, `googleapis`, `react-hook-form`, `zod`, `pngjs`, `Appendix B - Canonical Sources (read these before reinventing)`, `Analysis & Synthesis Instructions`, `@tiptap/extension-color`, `**3. Assessment System**`, `@tiptap/extension-highlight`, `@tiptap/extension-task-list`, `@tiptap/pm`, `html5-qrcode`, `next`, `react-easy-crop`, `@tiptap/extension-table-header`, `xlsx`, `33. CATEGORY-SPECIFIC BIAS`, `12. THE BLOCK LIBRARY (Contract - Implementations Land Here Iteratively)`, `5. CONTEXT-AWARE PROACTIVITY`, `Module 105`, `Module 239`, `jsonwebtoken`, `jspdf-autotable`, `@sparticuz/chromium-min`?**
-  _High betweenness centrality (0.017) - this node is a cross-community bridge._
+- **Why does `dependencies` connect `Module 133` to `Admission Management`, `Package Dependencies & Config`, `next-auth`, `bcryptjs`, `react-dom`, `Module 134`, `4.1 Tables`, `pdf-lib`, `googleapis`, `@radix-ui/react-select`, `React UI Components`, `class-variance-authority`, `@tiptap/extension-table-cell`, `@tiptap/extension-table-header`, `@tiptap/extension-table-row`, `@tiptap/extension-task-item`, `@supabase/supabase-js`, `@tiptap/extension-text-align`, `docx`, `@tiptap/extension-underline`, `�🏗️ **Database Structure**`, `@tiptap/react`, `Module 154`, `@tiptap/starter-kit`, `class-variance-authority`, `exceljs`, `clsx`, `dotenv`, `googleapis`, `react-hook-form`, `zod`, `pngjs`, `Appendix B - Canonical Sources (read these before reinventing)`, `Analysis & Synthesis Instructions`, `@tiptap/extension-color`, `**3. Assessment System**`, `@tiptap/extension-highlight`, `@tiptap/extension-task-list`, `@tiptap/pm`, `html5-qrcode`, `next`, `react-easy-crop`, `@tiptap/extension-table-header`, `xlsx`, `33. CATEGORY-SPECIFIC BIAS`, `12. THE BLOCK LIBRARY (Contract - Implementations Land Here Iteratively)`, `5. CONTEXT-AWARE PROACTIVITY`, `Module 105`, `Module 239`, `jsonwebtoken`, `jspdf-autotable`, `@sparticuz/chromium-min`?**
+  _High betweenness centrality (0.016) - this node is a cross-community bridge._
 - **Why does `jspdf` connect `Admission Management` to `Module 105`, `Module 145`, `Module 133`, `Module 110`?**
   _High betweenness centrality (0.010) - this node is a cross-community bridge._
 - **What connects `extends`, `next/core-web-vitals`, `$schema` to the rest of the system?**

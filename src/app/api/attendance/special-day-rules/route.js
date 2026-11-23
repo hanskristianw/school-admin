@@ -1,35 +1,61 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { fetchAllRows } from '@/lib/utils'
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 )
 
-// GET /api/attendance/special-day-rules?start=&end=
+// GET /api/attendance/special-day-rules?start=&end=&page=&limit=&scope=
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url)
     const start = searchParams.get('start')
     const end   = searchParams.get('end')
+    const scope = searchParams.get('scope')
+    const pageParam  = searchParams.get('page')
+    const limitParam = searchParams.get('limit')
 
-    let q = supabaseAdmin
-      .from('special_day_rules')
-      .select(`
-        *,
-        role:role_id (role_name),
-        user:user_id (user_nama_depan, user_nama_belakang, user_pin)
-      `)
-      .order('tanggal', { ascending: true })
-      .order('id',      { ascending: true })
+    const buildBaseQuery = (options) => {
+      let q = supabaseAdmin
+        .from('special_day_rules')
+        .select(`
+          *,
+          role:role_id (role_name),
+          user:user_id (user_nama_depan, user_nama_belakang, user_pin)
+        `, options)
+        .order('tanggal', { ascending: false })
+        .order('id',      { ascending: false })
 
-    if (start) q = q.gte('tanggal', start)
-    if (end)   q = q.lte('tanggal', end)
+      if (start) q = q.gte('tanggal', start)
+      if (end)   q = q.lte('tanggal', end)
+      if (scope && ['all', 'role', 'user'].includes(scope)) q = q.eq('scope_type', scope)
+      return q
+    }
 
-    const { data, error } = await q
-    if (error) throw error
+    if (pageParam !== null || limitParam !== null) {
+      const page  = Math.max(1, parseInt(pageParam || '1', 10) || 1)
+      const limit = Math.min(100, Math.max(1, parseInt(limitParam || '20', 10) || 20))
+      const from  = (page - 1) * limit
+      const to    = from + limit - 1
 
-    return NextResponse.json({ success: true, data: data || [] })
+      const { data, error, count } = await buildBaseQuery({ count: 'exact' }).range(from, to)
+      if (error) throw error
+
+      const total = count || 0
+      return NextResponse.json({
+        success: true,
+        data: data || [],
+        total,
+        page,
+        limit,
+        totalPages: Math.max(1, Math.ceil(total / limit)),
+      })
+    }
+
+    const data = await fetchAllRows((from, to) => buildBaseQuery().range(from, to))
+    return NextResponse.json({ success: true, data })
   } catch (err) {
     return NextResponse.json({ success: false, message: err.message }, { status: 500 })
   }

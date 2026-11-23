@@ -14,9 +14,9 @@ export const SYSTEM_RELEASES = [
     "date": "2026-11-23",
     "isLatest": true,
     "summary": {
-      "id": "Menghapus pengiriman pesan salinan monitoring admin ([Cron Monitoring Copy for Hans]) pada notifikasi cron jadwal tugas guru (/api/duty/notify) agar notifikasi Google Chat hanya dikirim langsung kepada guru yang bertugas.",
-      "en": "Removed automatic admin monitoring CC messages ([Cron Monitoring Copy for Hans]) from scheduled duty notifications (/api/duty/notify) so Google Chat reminders are sent strictly to the assigned duty staff.",
-      "zh": "移除值日提醒定时任务（/api/duty/notify）中自动抄送管理员的监控消息（[Cron Monitoring Copy for Hans]），使 Google Chat 提醒仅直接发送给当值教师本人。"
+      "id": "Menghapus pesan salinan monitoring admin pada notifikasi cron jadwal tugas guru (/api/duty/notify), serta memperjelas kontrol pilihan Hari Kerja/Libur, pengurutan DESC, pagination tabel, dan chunked fetchAllRows bebas batas 1.000 baris Supabase pada /data/attendance-settings dan API absensi terkait.",
+      "en": "Removed automatic admin monitoring CC messages from scheduled duty notifications (/api/duty/notify), and upgraded /data/attendance-settings and related attendance APIs with clear segmented work-day/holiday controls, DESC ordering, table pagination, and chunked fetchAllRows bypassing Supabase's 1,000-row cap.",
+      "zh": "移除值日提醒定时任务（/api/duty/notify）的管理员抄送监控消息，并升级 /data/attendance-settings 及相关考勤接口，提供清晰的工作日/休息日分段选择控件、倒序排列、表格分页以及突破 Supabase 1,000 行上限的分批拉取机制。"
     },
     "sections": {
       "changed": [
@@ -24,6 +24,11 @@ export const SYSTEM_RELEASES = [
           "id": "Menghapus blok CC monitoring otomatis ke hans@ccs.sch.id ([Cron Monitoring Copy for Hans]) di endpoint cron /api/duty/notify sehingga pesan Google Chat pengingat Devotion, Door Greeter, Break Duty, dan Lunch Duty hanya dikirim langsung ke petugas yang dijadwalkan (kecuali mode tes ?test=true / ?test_email=).",
           "en": "Removed the hardcoded CC monitoring copy to hans@ccs.sch.id ([Cron Monitoring Copy for Hans]) in the /api/duty/notify cron endpoint so Google Chat reminders for Devotion, Door Greeter, Break Duty, and Lunch Duty are delivered solely to the assigned staff members (while preserving ?test=true / ?test_email= testing mode).",
           "zh": "移除定时接口 /api/duty/notify 中向 hans@ccs.sch.id 发送「[Cron Monitoring Copy for Hans]」抄送监控消息的逻辑，确保晨祷、迎宾、课间及午餐值日提醒仅发送给对应值班人员（保留 ?test=true / ?test_email= 测试模式）。"
+        },
+        {
+          "id": "Menyempurnakan tab Hari Khusus & Kalender Libur pada /data/attendance-settings serta API /api/attendance/special-day-rules, /api/attendance/report, dan /api/attendance/notify: mengubah tombol pill 'Hari Kerja / Bukan Hari Kerja (Libur)' dan 'Jam Kerja Standar / Bebas Jam' di form tambah dan modal edit menjadi segmented radio control yang jelas, mengurutkan tabel Hari Khusus secara DESC (terbaru di atas) dilengkapi filter lingkup dan pagination 20 baris/halaman (termasuk Kalender Libur), serta menambahkan mekanisme chunked range pagination (fetchAllRows) agar aman dari batas 1.000 baris Supabase.",
+          "en": "Upgraded the Special Day Rules and Holidays tabs on /data/attendance-settings along with /api/attendance/special-day-rules, /api/attendance/report, and /api/attendance/notify: replaced ambiguous single pill buttons ('Hari Kerja / Bukan Hari Kerja (Libur)' and 'Jam Kerja Standar / Bebas Jam') in both create and edit forms with explicit segmented radio controls, switched Special Day Rules sorting to DESC (newest first) with scope filtering and 20-row pagination (also applied to Holidays), and added chunked range pagination (fetchAllRows) to bypass Supabase's 1,000-row limit.",
+          "zh": "优化 /data/attendance-settings 的特殊日期规则与假期日历页签以及 /api/attendance/special-day-rules、/api/attendance/report 与 /api/attendance/notify 接口：将新增和编辑弹窗中易被误认为静态徽章的「工作日/休息日」和「标准工时/弹性工时」切换按钮改为清晰的双选项分段单选控件，将特殊日期列表改为按日期与 ID 倒序排列并补充范围筛选与每页 20 条分页（同步支持假期日历分页），同时引入 fetchAllRows 分批拉取机制以绕过 Supabase 单次 1,000 行上限。"
         }
       ]
     }

@@ -27,3 +27,25 @@ export function toNumber(value, fallback = 0) {
   const n = Number(String(value || '').replace(/[^0-9.-]/g, ''))
   return Number.isFinite(n) ? n : fallback
 }
+
+/**
+ * Fetch all rows from a Supabase/PostgREST query using chunked `.range()` pagination
+ * to bypass PostgREST's 1,000-row hard cap per HTTP request.
+ */
+export async function fetchAllRows(queryFn, chunkSize = 1000) {
+  let allRows = []
+  let from = 0
+  let hasMore = true
+  while (hasMore) {
+    const { data, error } = await queryFn(from, from + chunkSize - 1)
+    if (error) throw error
+    if (!data || data.length === 0) break
+    allRows = allRows.concat(data)
+    if (data.length < chunkSize) {
+      hasMore = false
+    } else {
+      from += chunkSize
+    }
+  }
+  return allRows
+}
