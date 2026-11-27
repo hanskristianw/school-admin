@@ -49,3 +49,38 @@ export async function fetchAllRows(queryFn, chunkSize = 1000) {
   }
   return allRows
 }
+
+export const PYP_RATING_SCORES = {
+  Beginning: 1,
+  Developing: 2,
+  Achieving: 3,
+  Exceeding: 4,
+}
+
+export const PYP_SCORE_TO_RATING = {
+  1: 'Beginning',
+  2: 'Developing',
+  3: 'Achieving',
+  4: 'Exceeding',
+}
+
+/**
+ * Compute average PYP strand rating across multiple units in a semester.
+ * Ignores 'N/A' or empty values and rounds half-up on the 1..4 scale.
+ */
+export function computeAverageStrandRating(ratings = []) {
+  const scores = []
+  for (const r of ratings) {
+    const score = PYP_RATING_SCORES[r]
+    if (score) scores.push(score)
+  }
+  if (scores.length === 0) return { rating: 'N/A', averageScore: null, count: 0 }
+  const sum = scores.reduce((acc, s) => acc + s, 0)
+  const avg = sum / scores.length
+  const rounded = Math.min(4, Math.max(1, Math.round(avg)))
+  return {
+    rating: PYP_SCORE_TO_RATING[rounded],
+    averageScore: Number(avg.toFixed(2)),
+    count: scores.length,
+  }
+}

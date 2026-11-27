@@ -1,16 +1,16 @@
-# Graph Report - school-admin  (2026-11-23)
+# Graph Report - school-admin  (2026-11-24)
 
 ## Corpus Check
-- 501 files · ~853,984 words
+- 503 files · ~858,152 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 2722 nodes · 2971 edges · 457 communities (320 shown, 137 thin omitted)
+- 2725 nodes · 2974 edges · 455 communities (322 shown, 133 thin omitted)
 - Extraction: 99% EXTRACTED · 1% INFERRED · 0% AMBIGUOUS · INFERRED: 15 edges (avg confidence: 0.7)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `62ad9681`
+- Built from commit: `cba2387f`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -300,7 +300,7 @@
 - bcryptjs
 - pdf-lib
 - @radix-ui/react-select
-- googleapis
+- 🔧 **Technical Implementation**
 - class-variance-authority
 - @tiptap/extension-table-cell
 - @tiptap/extension-table-header
@@ -308,10 +308,9 @@
 - @tiptap/extension-task-item
 - @supabase/supabase-js
 - @tiptap/extension-text-align
+- @tiptap/extension-text-style
 - @tiptap/extension-underline
-- �🏗️ **Database Structure**
 - @tiptap/react
-- @tiptap/starter-kit
 - xlsx
 - **3. Assessment System**
 - 📁 **Project Structure**
@@ -323,7 +322,6 @@
 - exceljs
 - clsx
 - changelog.js
-- googleapis
 - react-hook-form
 - pngjs
 - @tiptap/extension-color
@@ -365,7 +363,7 @@
 ## Import Cycles
 - None detected.
 
-## Communities (457 total, 137 thin omitted)
+## Communities (455 total, 133 thin omitted)
 
 ### Community 0 - "Admission Management"
 Cohesion: 0.08
@@ -444,8 +442,8 @@ Cohesion: 0.25
 Nodes (5): closingsGeneral, delay(), greetings, messageTemplates, sendWhatsApp()
 
 ### Community 21 - "Module 21"
-Cohesion: 0.25
-Nodes (3): Select, SelectItem, cn()
+Cohesion: 0.18
+Nodes (5): Select, SelectItem, cn(), PYP_RATING_SCORES, PYP_SCORE_TO_RATING
 
 ### Community 22 - "Module 22"
 Cohesion: 0.06
@@ -656,8 +654,8 @@ Cohesion: 0.37
 Nodes (13): public.uniform, public.uniform_purchase, public.uniform_purchase_item, public.uniform_purchase_receipt, public.uniform_purchase_receipt_item, public.uniform_sale, public.uniform_sale_item, public.uniform_size (+5 more)
 
 ### Community 101 - "Module 101"
-Cohesion: 0.12
-Nodes (16): Attendance (QR) Tables, **Backend & Database:**, **Completed Features:**, **Core Tables:**, �🏗️ **Database Structure**, **Frontend Stack:**, Grades (Nilai) Table, **Important Files:** (+8 more)
+Cohesion: 0.14
+Nodes (13): **Additional Files:**, **Completed Features:**, **Database Migration Files (Execute in Order):**, **Development:**, **Important Files:**, **Key Business Rules:**, **Key Directories:**, **Key Environment:** (+5 more)
 
 ### Community 102 - "Module 102"
 Cohesion: 0.14
@@ -716,8 +714,8 @@ Cohesion: 0.20
 Nodes (9): 1. Protocol Overview, 2. Absolute Negative Constraints (Banned Elements), 3. Typographic Architecture, 4. Color Palette (Warm Monochrome + Spot Pastels), 5. Component Specifications, 6. Iconography & Imagery Directives, 7. Subtle Motion & Micro-Animations, 8. Execution Protocol (+1 more)
 
 ### Community 116 - "Module 116"
-Cohesion: 0.12
-Nodes (16): 10.1 Tables, 10.2 ERD / Relationships (Duty & Devotion Schedule Domain), 10. Duty, Greeter & Devotion Schedule Domain (`/data/door_greeter`), 20.1 Tables, 20. Sport Hall / Court Rental System, 6.1 Tables, 6.2 ERD / Relationships (Assessment & Grading), 6. Assessment & Grading Domain (`/data/topic-new` / Reports) (+8 more)
+Cohesion: 0.17
+Nodes (11): 20.1 Tables, 20. Sport Hall / Court Rental System, 6.1 Tables, 6.2 ERD / Relationships (Assessment & Grading), 6. Assessment & Grading Domain (`/data/topic-new` / Reports), `assessment_grade_strands`, `assessment_grades`, `court_blackout_dates` (+3 more)
 
 ### Community 117 - "Module 117"
 Cohesion: 0.20
@@ -784,8 +782,8 @@ Cohesion: 0.25
 Nodes (8): 18.1 Key Features & Architecture, 18.2 Tables, 18.3 Storage Buckets, 18. OSIS Election & Live Quick Count Domain (`/data/osis-election`, `/data/osis-election/vote`, `/data/osis-election/live`), `osis-assets` (Public), `osis_candidates`, `osis_elections`, `osis_votes`
 
 ### Community 133 - "Module 133"
-Cohesion: 0.15
-Nodes (13): @fortawesome/react-fontawesome, @hookform/resolvers, lucide-react, dependencies, @fortawesome/react-fontawesome, @hookform/resolvers, lucide-react, @radix-ui/react-slot (+5 more)
+Cohesion: 0.10
+Nodes (21): clsx, google-auth-library, googleapis, @googleapis/chat, lucide-react, dependencies, clsx, google-auth-library (+13 more)
 
 ### Community 135 - "Module 135"
 Cohesion: 0.29
@@ -850,6 +848,10 @@ Nodes (6): 16.1 Tables, 16.2 Zero-Friction Fallback Architecture, 16. Athletic D
 ### Community 152 - "Module 152"
 Cohesion: 0.33
 Nodes (6): 19.1 Tables, 19.2 Storage Buckets, 19. System Changelog, Bug Reporting & Feature Roadmap Domain (`/data/feedback`, `/data/changelog`), `attachments` (Public), `system_feedback`, `system_feedback_recipients`
+
+### Community 154 - "Module 154"
+Cohesion: 0.40
+Nodes (5): 10.1 Tables, 10.2 ERD / Relationships (Duty & Devotion Schedule Domain), 10. Duty, Greeter & Devotion Schedule Domain (`/data/door_greeter`), `duty_schedules`, `duty_settings`
 
 ### Community 155 - "Module 155"
 Cohesion: 0.40
@@ -1068,8 +1070,8 @@ Cohesion: 0.67
 Nodes (3): fetchWithRetry(), GET(), supabaseAdmin
 
 ### Community 344 - "8. DARK MODE PROTOCOL"
-Cohesion: 0.40
-Nodes (5): **Additional Files:**, **Database Migration Files (Execute in Order):**, **Development:**, **Key Environment:**, 🚀 **Setup & Deployment**
+Cohesion: 0.50
+Nodes (4): Attendance (QR) Tables, **Core Tables:**, �🏗️ **Database Structure**, Grades (Nilai) Table
 
 ### Community 346 - "bcryptjs"
 Cohesion: 0.36
@@ -1091,6 +1093,10 @@ Nodes (6): ALLOWED_POINTS, AthleticDayManagementPage(), isLightColor(), normaliz
 Cohesion: 0.83
 Nodes (3): AthleticDayLivePage(), isLightColor(), normalizeTeamColor()
 
+### Community 394 - "🔧 **Technical Implementation**"
+Cohesion: 0.50
+Nodes (4): **Backend & Database:**, **Frontend Stack:**, **Key Technical Notes:**, 🔧 **Technical Implementation**
+
 ### Community 411 - "xlsx"
 Cohesion: 0.10
 Nodes (38): AwardIconBadge(), AlertIcon(), ArrowLeftIcon(), ArrowRightIcon(), BallotIcon(), CalendarIcon(), ChartIcon(), CheckCircleIcon() (+30 more)
@@ -1108,19 +1114,19 @@ Cohesion: 0.67
 Nodes (3): fetchWithRetry(), GET(), supabaseAdmin
 
 ## Knowledge Gaps
-- **1271 isolated node(s):** `extends`, `next/core-web-vitals`, `$schema`, `style`, `rsc` (+1266 more)
+- **1273 isolated node(s):** `extends`, `next/core-web-vitals`, `$schema`, `style`, `rsc` (+1268 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **137 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **133 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `dependencies` connect `Module 133` to `Admission Management`, `Package Dependencies & Config`, `next-auth`, `bcryptjs`, `react-dom`, `Module 134`, `4.1 Tables`, `pdf-lib`, `googleapis`, `@radix-ui/react-select`, `React UI Components`, `class-variance-authority`, `@tiptap/extension-table-cell`, `@tiptap/extension-table-header`, `@tiptap/extension-table-row`, `@tiptap/extension-task-item`, `@supabase/supabase-js`, `@tiptap/extension-text-align`, `docx`, `@tiptap/extension-underline`, `�🏗️ **Database Structure**`, `@tiptap/react`, `Module 154`, `@tiptap/starter-kit`, `class-variance-authority`, `exceljs`, `clsx`, `dotenv`, `googleapis`, `react-hook-form`, `zod`, `pngjs`, `Appendix B - Canonical Sources (read these before reinventing)`, `Analysis & Synthesis Instructions`, `@tiptap/extension-color`, `**3. Assessment System**`, `@tiptap/extension-highlight`, `@tiptap/extension-task-list`, `@tiptap/pm`, `html5-qrcode`, `next`, `react-easy-crop`, `@tiptap/extension-table-header`, `xlsx`, `33. CATEGORY-SPECIFIC BIAS`, `12. THE BLOCK LIBRARY (Contract - Implementations Land Here Iteratively)`, `5. CONTEXT-AWARE PROACTIVITY`, `Module 105`, `Module 239`, `jsonwebtoken`, `jspdf-autotable`, `@sparticuz/chromium-min`?**
+- **Why does `dependencies` connect `Module 133` to `Admission Management`, `Package Dependencies & Config`, `next-auth`, `bcryptjs`, `react-dom`, `Module 134`, `4.1 Tables`, `pdf-lib`, `@radix-ui/react-select`, `React UI Components`, `class-variance-authority`, `@tiptap/extension-table-cell`, `@tiptap/extension-table-header`, `@tiptap/extension-table-row`, `@tiptap/extension-task-item`, `@supabase/supabase-js`, `@tiptap/extension-text-align`, `docx`, `@tiptap/extension-text-style`, `@tiptap/extension-underline`, `@tiptap/react`, `class-variance-authority`, `exceljs`, `clsx`, `dotenv`, `react-hook-form`, `zod`, `pngjs`, `Appendix B - Canonical Sources (read these before reinventing)`, `Analysis & Synthesis Instructions`, `@tiptap/extension-color`, `**3. Assessment System**`, `@tiptap/extension-highlight`, `@tiptap/extension-task-list`, `@tiptap/pm`, `html5-qrcode`, `next`, `react-easy-crop`, `@tiptap/extension-table-header`, `xlsx`, `33. CATEGORY-SPECIFIC BIAS`, `12. THE BLOCK LIBRARY (Contract - Implementations Land Here Iteratively)`, `5. CONTEXT-AWARE PROACTIVITY`, `Module 105`, `Module 239`, `jsonwebtoken`, `jspdf-autotable`, `@sparticuz/chromium-min`?**
   _High betweenness centrality (0.016) - this node is a cross-community bridge._
 - **Why does `jspdf` connect `Admission Management` to `Module 105`, `Module 145`, `Module 133`, `Module 110`?**
   _High betweenness centrality (0.010) - this node is a cross-community bridge._
 - **What connects `extends`, `next/core-web-vitals`, `$schema` to the rest of the system?**
-  _1271 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _1273 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `Admission Management` be split into smaller, more focused modules?**
   _Cohesion score 0.07796610169491526 - nodes in this community are weakly interconnected._
 - **Should `Package Dependencies & Config` be split into smaller, more focused modules?**

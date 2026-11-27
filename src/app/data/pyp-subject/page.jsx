@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { supabase } from '@/lib/supabase'
+import { fetchAllRows } from '@/lib/utils'
 import { useTheme } from '@/lib/theme'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import {
@@ -29,6 +30,7 @@ export default function PypSubjectManagementPage() {
   const [subjects, setSubjects] = useState([])
   const [subjectClasses, setSubjectClasses] = useState([])
   const [strands, setStrands] = useState([])
+  const [strandClasses, setStrandClasses] = useState([])
   const [years, setYears] = useState([])
   const [pypClasses, setPypClasses] = useState([])
 
@@ -40,6 +42,8 @@ export default function PypSubjectManagementPage() {
   const [loading, setLoading] = useState(true)
   const [dbSetupNeeded, setDbSetupNeeded] = useState(false)
   const [copiedSql, setCopiedSql] = useState(false)
+  const [dbStrandClassSetupNeeded, setDbStrandClassSetupNeeded] = useState(false)
+  const [copiedStrandClassSql, setCopiedStrandClassSql] = useState(false)
 
   // Subject Modal State
   const [showSubjectModal, setShowSubjectModal] = useState(false)
@@ -61,7 +65,8 @@ export default function PypSubjectManagementPage() {
     subject_id: '',
     name: '',
     description: '',
-    order_index: 0
+    order_index: 0,
+    classAssignments: {} // { [kelas_id]: '1' | '2' | 'all' }
   })
   const [savingStrand, setSavingStrand] = useState(false)
 
@@ -135,14 +140,19 @@ export default function PypSubjectManagementPage() {
       setLoading(true)
 
       // Fetch Subjects
-      const { data: subData, error: subError } = await supabase
-        .from('pyp_subject')
-        .select('*')
-        .eq('is_active', true)
-        .order('order_index', { ascending: true })
-        .order('name', { ascending: true })
-
-      if (subError) {
+      let subData = []
+      try {
+        subData = await fetchAllRows((from, to) =>
+          supabase
+            .from('pyp_subject')
+            .select('*')
+            .eq('is_active', true)
+            .order('order_index', { ascending: true })
+            .order('name', { ascending: true })
+            .order('id', { ascending: true })
+            .range(from, to)
+        )
+      } catch (subError) {
         if (subError.code === '42P01' || subError.message?.includes('does not exist') || subError.message?.includes('relation "public.pyp_subject"')) {
           setDbSetupNeeded(true)
           setLoading(false)
@@ -151,37 +161,64 @@ export default function PypSubjectManagementPage() {
         throw subError
       }
 
-      setSubjects(subData || [])
+      setSubjects(subData)
       // Cards stay closed (collapsed) by default
 
       // Fetch Subject Classes Junction
-      const { data: scData, error: scError } = await supabase
-        .from('pyp_subject_class')
-        .select('id, subject_id, kelas_id')
-
-      if (scError) {
+      try {
+        const scData = await fetchAllRows((from, to) =>
+          supabase
+            .from('pyp_subject_class')
+            .select('id, subject_id, kelas_id')
+            .order('id', { ascending: true })
+            .range(from, to)
+        )
+        setSubjectClasses(scData)
+      } catch (scError) {
         if (scError.code === '42P01' || scError.message?.includes('does not exist') || scError.message?.includes('relation "public.pyp_subject_class"')) {
           setDbSetupNeeded(true)
         } else {
           console.warn('pyp_subject_class error:', scError)
         }
-      } else if (scData) {
-        setSubjectClasses(scData)
       }
 
-      // Fetch Strands
-      const { data: strData, error: strError } = await supabase
-        .from('pyp_subject_strand')
-        .select('*')
-        .eq('is_active', true)
-        .order('order_index', { ascending: true })
-        .order('name', { ascending: true })
-
-      if (strError && strError.code !== '42P01') {
-        throw strError
+      // Fetch Master Strands
+      try {
+        const strData = await fetchAllRows((from, to) =>
+          supabase
+            .from('pyp_subject_strand')
+            .select('*')
+            .eq('is_active', true)
+            .order('order_index', { ascending: true })
+            .order('name', { ascending: true })
+            .order('id', { ascending: true })
+            .range(from, to)
+        )
+        setStrands(strData)
+      } catch (strError) {
+        if (strError.code !== '42P01') throw strError
       }
 
-      setStrands(strData || [])
+      // Fetch Strict Per-Class Strand Junction (NO fallback)
+      try {
+        const stcData = await fetchAllRows((from, to) =>
+          supabase
+            .from('pyp_subject_strand_class')
+            .select('id, strand_id, kelas_id, semester, order_index')
+            .order('order_index', { ascending: true })
+            .order('id', { ascending: true })
+            .range(from, to)
+        )
+        setStrandClasses(stcData)
+        setDbStrandClassSetupNeeded(false)
+      } catch (stcError) {
+        if (stcError.code === '42P01' || stcError.message?.includes('does not exist') || stcError.message?.includes('pyp_subject_strand_class')) {
+          setDbStrandClassSetupNeeded(true)
+          setStrandClasses([])
+        } else {
+          console.warn('pyp_subject_strand_class error:', stcError)
+        }
+      }
     } catch (err) {
       console.error('Error fetching PYP master data:', err)
       showToast(err.message || 'Failed to load data', 'error')
@@ -241,22 +278,62 @@ export default function PypSubjectManagementPage() {
     })
   }
 
-  // Filtered Strands by Subject
+  // Strand -> Array of Class Assignments & Pair Map (Strict per-class, NO fallback)
+  const strandClassesByStrandMap = useMemo(() => {
+    const map = new Map()
+    for (const row of strandClasses) {
+      const sid = Number(row.strand_id)
+      if (!map.has(sid)) map.set(sid, [])
+      map.get(sid).push(row)
+    }
+    return map
+  }, [strandClasses])
+
+  const strandClassByPairMap = useMemo(() => {
+    const map = new Map()
+    for (const row of strandClasses) {
+      map.set(`${Number(row.strand_id)}_${Number(row.kelas_id)}`, row)
+    }
+    return map
+  }, [strandClasses])
+
+  // Filtered Strands by Subject (when a specific class is selected, strictly filter by pyp_subject_strand_class)
   const strandsBySubjectMap = useMemo(() => {
     const map = new Map()
+    const filterByClass = selectedClassId && selectedClassId !== 'All'
+    const targetKid = filterByClass ? Number(selectedClassId) : null
+
     for (const strand of strands) {
       const matchesSearch = !searchQuery.trim() || 
         strand.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
         (strand.description && strand.description.toLowerCase().includes(searchQuery.toLowerCase()))
 
-      if (matchesSearch) {
+      if (!matchesSearch) continue
+
+      if (filterByClass) {
+        const classMapping = strandClassByPairMap.get(`${Number(strand.id)}_${targetKid}`)
+        if (!classMapping) continue // Strict per-class: NOT assigned to this class
+        const list = map.get(strand.subject_id) || []
+        list.push({
+          ...strand,
+          activeClassSemester: classMapping.semester || '1',
+          activeClassOrderIndex: classMapping.order_index ?? strand.order_index ?? 0
+        })
+        map.set(strand.subject_id, list)
+      } else {
         const list = map.get(strand.subject_id) || []
         list.push(strand)
         map.set(strand.subject_id, list)
       }
     }
+
+    if (filterByClass) {
+      for (const [sid, list] of map.entries()) {
+        list.sort((a, b) => (a.activeClassOrderIndex ?? 0) - (b.activeClassOrderIndex ?? 0) || a.name.localeCompare(b.name))
+      }
+    }
     return map
-  }, [strands, searchQuery])
+  }, [strands, searchQuery, selectedClassId, strandClassByPairMap])
 
   // Filtered Subjects list (Scoped strictly to selected Academic Year AND Class)
   const filteredSubjects = useMemo(() => {
@@ -484,8 +561,32 @@ export default function PypSubjectManagementPage() {
   }
 
   // -------------------------------------------------------------
-  // STRAND ACTIONS
+  // STRAND ACTIONS (Master Strand PK + Strict Per-Class Junction)
   // -------------------------------------------------------------
+  const getSubjectApplicableClasses = (subjectId) => {
+    const classIdSet = classesBySubjectMap.get(Number(subjectId))
+    if (classIdSet && classIdSet.size > 0) {
+      return availableClasses.filter(c => classIdSet.has(Number(c.kelas_id)))
+    }
+    return availableClasses
+  }
+
+  const buildDefaultStrandAssignments = (subjectId) => {
+    const applicable = getSubjectApplicableClasses(subjectId)
+    const assignments = {}
+    if (selectedClassId && selectedClassId !== 'All') {
+      const targetKid = Number(selectedClassId)
+      if (applicable.some(c => Number(c.kelas_id) === targetKid)) {
+        assignments[targetKid] = '1'
+        return assignments
+      }
+    }
+    for (const c of applicable) {
+      assignments[Number(c.kelas_id)] = '1'
+    }
+    return assignments
+  }
+
   const handleOpenAddStrand = (subjectId) => {
     setEditingStrand(null)
     setExpandedSubjects(prev => new Set(prev).add(subjectId))
@@ -494,8 +595,8 @@ export default function PypSubjectManagementPage() {
       subject_id: subjectId,
       name: '',
       description: '',
-      semester: '1',
-      order_index: existingStrands.length + 1
+      order_index: existingStrands.length + 1,
+      classAssignments: buildDefaultStrandAssignments(subjectId)
     })
     setShowStrandModal(true)
   }
@@ -503,14 +604,66 @@ export default function PypSubjectManagementPage() {
   const handleOpenEditStrand = (strand) => {
     setEditingStrand(strand)
     setExpandedSubjects(prev => new Set(prev).add(strand.subject_id))
+    const existingClassRows = strandClassesByStrandMap.get(Number(strand.id)) || []
+    const assignments = {}
+    for (const row of existingClassRows) {
+      assignments[Number(row.kelas_id)] = row.semester || '1'
+    }
     setStrandForm({
       subject_id: strand.subject_id,
       name: strand.name,
       description: strand.description || '',
-      semester: strand.semester || '1',
-      order_index: strand.order_index ?? 0
+      order_index: strand.order_index ?? 0,
+      classAssignments: assignments
     })
     setShowStrandModal(true)
+  }
+
+  const handleToggleStrandClass = (rawKelasId) => {
+    const kid = Number(rawKelasId)
+    setStrandForm(prev => {
+      const next = { ...(prev.classAssignments || {}) }
+      if (next[kid] !== undefined) delete next[kid]
+      else next[kid] = '1'
+      return { ...prev, classAssignments: next }
+    })
+  }
+
+  const handleSetStrandClassSemester = (rawKelasId, sem) => {
+    const kid = Number(rawKelasId)
+    setStrandForm(prev => ({
+      ...prev,
+      classAssignments: {
+        ...(prev.classAssignments || {}),
+        [kid]: sem
+      }
+    }))
+  }
+
+  const handleBulkStrandClasses = (action, semesterVal = '1') => {
+    const applicable = getSubjectApplicableClasses(strandForm.subject_id)
+    setStrandForm(prev => {
+      const current = { ...(prev.classAssignments || {}) }
+      if (action === 'select_all') {
+        const next = {}
+        for (const c of applicable) {
+          const kid = Number(c.kelas_id)
+          next[kid] = current[kid] || '1'
+        }
+        return { ...prev, classAssignments: next }
+      }
+      if (action === 'deselect_all') {
+        return { ...prev, classAssignments: {} }
+      }
+      if (action === 'set_checked_semester') {
+        const next = {}
+        for (const [kid, _] of Object.entries(current)) {
+          next[kid] = semesterVal
+        }
+        return { ...prev, classAssignments: next }
+      }
+      return prev
+    })
   }
 
   const handleSaveStrand = async (e) => {
@@ -523,18 +676,24 @@ export default function PypSubjectManagementPage() {
       showToast('Subject selection is required', 'error')
       return
     }
+    const assignmentEntries = Object.entries(strandForm.classAssignments || {})
+    if (assignmentEntries.length === 0) {
+      showToast('Please select at least one class for this strand', 'error')
+      return
+    }
 
     try {
       setSavingStrand(true)
+      const nowIso = new Date().toISOString()
       const payload = {
         subject_id: Number(strandForm.subject_id),
         name: strandForm.name.trim(),
         description: strandForm.description ? strandForm.description.trim() : null,
-        semester: strandForm.semester || '1',
         order_index: Number(strandForm.order_index) || 0,
-        updated_at: new Date().toISOString()
+        updated_at: nowIso
       }
 
+      let savedStrandId = editingStrand?.id
       if (editingStrand) {
         const { error } = await supabase
           .from('pyp_subject_strand')
@@ -542,16 +701,54 @@ export default function PypSubjectManagementPage() {
           .eq('id', editingStrand.id)
 
         if (error) throw error
-        showToast('Strand updated successfully')
       } else {
-        const { error } = await supabase
+        const { data: insertedStrand, error } = await supabase
           .from('pyp_subject_strand')
-          .insert([payload])
+          .insert([{ ...payload, is_active: true }])
+          .select('id')
+          .single()
 
         if (error) throw error
-        showToast('Strand created successfully')
+        savedStrandId = insertedStrand.id
       }
 
+      // Sync pyp_subject_strand_class strictly (zero fallback)
+      const desiredClassIds = new Set(assignmentEntries.map(([kid]) => Number(kid)))
+      const previousRows = editingStrand ? (strandClassesByStrandMap.get(Number(savedStrandId)) || []) : []
+      const removedClassIds = previousRows
+        .map(r => Number(r.kelas_id))
+        .filter(kid => !desiredClassIds.has(kid))
+
+      if (removedClassIds.length > 0) {
+        const { error: delErr } = await supabase
+          .from('pyp_subject_strand_class')
+          .delete()
+          .eq('strand_id', savedStrandId)
+          .in('kelas_id', removedClassIds)
+        if (delErr) throw delErr
+      }
+
+      const upsertRows = assignmentEntries.map(([kid, sem]) => ({
+        strand_id: savedStrandId,
+        kelas_id: Number(kid),
+        semester: sem || '1',
+        order_index: Number(strandForm.order_index) || 0,
+        updated_at: nowIso
+      }))
+
+      const { error: upErr } = await supabase
+        .from('pyp_subject_strand_class')
+        .upsert(upsertRows, { onConflict: 'strand_id,kelas_id' })
+
+      if (upErr) {
+        if (upErr.code === '42P01' || upErr.message?.includes('pyp_subject_strand_class')) {
+          setDbStrandClassSetupNeeded(true)
+          throw new Error('Table pyp_subject_strand_class does not exist yet. Please run the SQL migration first.')
+        }
+        throw upErr
+      }
+
+      showToast(editingStrand ? 'Strand & class mappings updated' : 'Strand created & mapped to selected classes')
       setShowStrandModal(false)
       if (strandForm.subject_id) {
         setExpandedSubjects(prev => new Set(prev).add(Number(strandForm.subject_id)))
@@ -624,6 +821,21 @@ export default function PypSubjectManagementPage() {
       const sourceStrands = strRes.data || []
       const sourceSC = scRes.data || []
 
+      let sourceStrandClasses = []
+      if (sourceStrands.length > 0) {
+        try {
+          sourceStrandClasses = await fetchAllRows((from, to) =>
+            supabase
+              .from('pyp_subject_strand_class')
+              .select('strand_id, kelas_id, semester, order_index')
+              .in('strand_id', sourceStrands.map(s => s.id))
+              .range(from, to)
+          )
+        } catch (_) {
+          sourceStrandClasses = []
+        }
+      }
+
       let totalSubjectsCreated = 0
       let totalStrandsCreated = 0
 
@@ -671,25 +883,52 @@ export default function PypSubjectManagementPage() {
           }
         }
 
-        // Re-create strands
+        // Re-create strands and their per-class assignments
         const matchingStrands = sourceStrands.filter(s => s.subject_id === sourceSubj.id)
         if (matchingStrands.length > 0) {
+          const nowIso = new Date().toISOString()
           const strandClones = matchingStrands.map(str => ({
             subject_id: newSubjId,
             name: str.name,
             description: str.description || null,
             order_index: str.order_index ?? 0,
             is_active: true,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
+            created_at: nowIso,
+            updated_at: nowIso
           }))
 
-          const { error: insStrErr } = await supabase
+          const { data: insertedStrands, error: insStrErr } = await supabase
             .from('pyp_subject_strand')
             .insert(strandClones)
+            .select('id')
 
           if (insStrErr) throw insStrErr
           totalStrandsCreated += strandClones.length
+
+          if (insertedStrands && insertedStrands.length === matchingStrands.length) {
+            const stcClones = []
+            matchingStrands.forEach((oldStr, idx) => {
+              const newStrId = insertedStrands[idx]?.id
+              if (!newStrId) return
+              const oldMappings = sourceStrandClasses.filter(m => Number(m.strand_id) === Number(oldStr.id))
+              for (const om of oldMappings) {
+                const oldClassName = classesByIdMap.get(Number(om.kelas_id))?.kelas_nama?.toLowerCase()
+                const targetKid = oldClassName ? targetClassByName.get(oldClassName) : null
+                if (targetKid) {
+                  stcClones.push({
+                    strand_id: newStrId,
+                    kelas_id: targetKid,
+                    semester: om.semester || '1',
+                    order_index: om.order_index ?? oldStr.order_index ?? 0,
+                    updated_at: nowIso
+                  })
+                }
+              }
+            })
+            if (stcClones.length > 0) {
+              await supabase.from('pyp_subject_strand_class').insert(stcClones)
+            }
+          }
         }
       }
 
@@ -735,6 +974,42 @@ CREATE POLICY "Allow full access to pyp_subject_class" ON public.pyp_subject_cla
     setCopiedSql(true)
     setTimeout(() => setCopiedSql(false), 3000)
     showToast('SQL Schema copied to clipboard!')
+  }
+
+  const SQL_STRAND_CLASS_SCHEMA_STRING = `-- ==============================================================================
+-- CREATE JUNCTION TABLE pyp_subject_strand_class
+-- Strict per-class strand assignment & semester applicability (NO fallback)
+-- Copy & Run in Supabase SQL Editor
+-- ==============================================================================
+
+CREATE TABLE IF NOT EXISTS public.pyp_subject_strand_class (
+    id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+    strand_id BIGINT NOT NULL REFERENCES public.pyp_subject_strand(id) ON DELETE CASCADE,
+    kelas_id BIGINT NOT NULL REFERENCES public.kelas(kelas_id) ON DELETE CASCADE,
+    semester VARCHAR(20) NOT NULL DEFAULT '1',
+    order_index INTEGER NOT NULL DEFAULT 0,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    CONSTRAINT uq_pyp_subject_strand_class UNIQUE (strand_id, kelas_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_pyp_strand_class_strand ON public.pyp_subject_strand_class(strand_id);
+CREATE INDEX IF NOT EXISTS idx_pyp_strand_class_kelas  ON public.pyp_subject_strand_class(kelas_id);
+
+ALTER TABLE public.pyp_subject_strand_class ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Allow read access to pyp_subject_strand_class" ON public.pyp_subject_strand_class;
+CREATE POLICY "Allow read access to pyp_subject_strand_class" ON public.pyp_subject_strand_class FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Allow full access to pyp_subject_strand_class" ON public.pyp_subject_strand_class;
+CREATE POLICY "Allow full access to pyp_subject_strand_class" ON public.pyp_subject_strand_class FOR ALL USING (true) WITH CHECK (true);
+`
+
+  const handleCopyStrandClassSql = () => {
+    navigator.clipboard.writeText(SQL_STRAND_CLASS_SCHEMA_STRING)
+    setCopiedStrandClassSql(true)
+    setTimeout(() => setCopiedStrandClassSql(false), 3000)
+    showToast('SQL Schema pyp_subject_strand_class copied to clipboard!')
   }
 
   const selectedYearObj = years.find(y => String(y.year_id) === String(selectedYearId))
@@ -834,6 +1109,37 @@ CREATE POLICY "Allow full access to pyp_subject_class" ON public.pyp_subject_cla
           </div>
           <pre className="p-3 rounded text-[11px] font-mono overflow-x-auto max-h-48 border" style={{ background: isDark ? '#111827' : '#F9FAFB', borderColor: isDark ? '#374151' : '#E5E7EB', color: isDark ? '#D1D5DB' : '#374151' }}>
             {SQL_SCHEMA_STRING}
+          </pre>
+        </div>
+      )}
+
+      {/* ── DATABASE SETUP NOTICE BANNER (pyp_subject_strand_class) ─────────── */}
+      {dbStrandClassSetupNeeded && (
+        <div className="p-4 rounded border space-y-3" style={{ background: isDark ? 'rgba(234, 179, 8, 0.1)' : '#FEFCE8', borderColor: isDark ? 'rgba(234, 179, 8, 0.3)' : '#FEF08A' }}>
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-start gap-2.5">
+              <FontAwesomeIcon icon={faDatabase} className="text-amber-500 mt-0.5 text-base" />
+              <div>
+                <h3 className="text-xs font-bold font-mono uppercase tracking-wider text-amber-600 dark:text-amber-400">
+                  Database Table Setup Required: <code>pyp_subject_strand_class</code>
+                </h3>
+                <p className="text-xs text-amber-700 dark:text-amber-300 mt-0.5">
+                  Tabel <code>pyp_subject_strand_class</code> belum ada di Supabase. Salin dan jalankan script SQL di bawah ini pada <strong>Supabase SQL Editor</strong> untuk mengaktifkan mapping strand per kelas.
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={handleCopyStrandClassSql}
+              className="px-3 py-1.5 text-xs font-mono font-bold rounded border transition-colors flex items-center gap-1.5 shrink-0 cursor-pointer"
+              style={{ background: isDark ? '#1F2937' : '#FFFFFF', borderColor: isDark ? '#374151' : '#E5E7EB', color: theme.textPrimary }}
+            >
+              <FontAwesomeIcon icon={copiedStrandClassSql ? faCheck : faCopy} className={copiedStrandClassSql ? 'text-green-500' : ''} />
+              <span>{copiedStrandClassSql ? 'Copied!' : 'Copy SQL Schema'}</span>
+            </button>
+          </div>
+          <pre className="p-3 rounded text-[11px] font-mono overflow-x-auto max-h-48 border" style={{ background: isDark ? '#111827' : '#F9FAFB', borderColor: isDark ? '#374151' : '#E5E7EB', color: isDark ? '#D1D5DB' : '#374151' }}>
+            {SQL_STRAND_CLASS_SCHEMA_STRING}
           </pre>
         </div>
       )}
@@ -1037,71 +1343,134 @@ CREATE POLICY "Allow full access to pyp_subject_class" ON public.pyp_subject_cla
                   <div className="p-4 space-y-2.5">
                     {subjectStrands.length === 0 ? (
                       <div className="p-6 text-center border border-dashed rounded text-xs font-mono" style={{ borderColor: theme.border, color: theme.textSecondary }}>
-                        <p>No strands configured for this subject in the selected academic year.</p>
+                        <p>
+                          {selectedClassId !== 'All'
+                            ? `No strands assigned to ${selectedClassObj?.kelas_nama || 'this class'} for ${subject.name}.`
+                            : 'No strands configured for this subject in the selected academic year.'}
+                        </p>
                         <button
                           type="button"
                           onClick={() => handleOpenAddStrand(subject.id)}
                           className="mt-2 text-xs font-bold underline cursor-pointer"
                           style={{ color: theme.blueText }}
                         >
-                          + Add first strand for {subject.name}
+                          + Add strand for {selectedClassId !== 'All' ? (selectedClassObj?.kelas_nama || subject.name) : subject.name}
                         </button>
                       </div>
                     ) : (
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
-                        {subjectStrands.map(strand => (
-                          <div
-                            key={strand.id}
-                            className="p-3 rounded border flex flex-col justify-between gap-2 group transition-all"
-                            style={{ background: theme.cardBg, borderColor: theme.border }}
-                          >
-                            <div>
-                              <div className="flex items-start justify-between gap-2">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <span className="text-xs font-bold font-mono" style={{ color: theme.textPrimary }}>
-                                    {strand.name}
-                                  </span>
-                                  <span 
-                                    className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold"
-                                    style={{
-                                      background: strand.semester === '2' ? (isDark ? 'rgba(139, 92, 246, 0.15)' : '#F5F3FF') : (isDark ? 'rgba(59, 130, 246, 0.15)' : '#EFF6FF'),
-                                      color: strand.semester === '2' ? (isDark ? '#C4B5FD' : '#6D28D9') : (isDark ? '#93C5FD' : '#1D4ED8'),
-                                      border: `1px solid ${strand.semester === '2' ? (isDark ? '#8B5CF6' : '#DDD6FE') : (isDark ? '#3B82F6' : '#BFDBFE')}`
-                                    }}
-                                  >
-                                    {strand.semester === '2' ? 'Sem 2' : strand.semester === 'all' ? 'Sem 1 & 2' : 'Sem 1'}
-                                  </span>
+                        {subjectStrands.map(strand => {
+                          const allMappings = strandClassesByStrandMap.get(Number(strand.id)) || []
+                          const sem1Count = allMappings.filter(m => m.semester === '1').length
+                          const sem2Count = allMappings.filter(m => m.semester === '2').length
+                          const bothCount = allMappings.filter(m => m.semester === 'all').length
+                          const isSingleClass = selectedClassId !== 'All'
+                          const displaySem = isSingleClass ? strand.activeClassSemester : null
+
+                          return (
+                            <div
+                              key={strand.id}
+                              className="p-3 rounded border flex flex-col justify-between gap-2 group transition-all"
+                              style={{ background: theme.cardBg, borderColor: theme.border }}
+                            >
+                              <div>
+                                <div className="flex items-start justify-between gap-2">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <span className="text-xs font-bold font-mono" style={{ color: theme.textPrimary }}>
+                                      {strand.name}
+                                    </span>
+
+                                    {isSingleClass ? (
+                                      <span 
+                                        className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold"
+                                        style={{
+                                          background: displaySem === '2' ? (isDark ? 'rgba(139, 92, 246, 0.15)' : '#F5F3FF') : displaySem === 'all' ? (isDark ? 'rgba(16, 185, 129, 0.15)' : '#ECFDF5') : (isDark ? 'rgba(59, 130, 246, 0.15)' : '#EFF6FF'),
+                                          color: displaySem === '2' ? (isDark ? '#C4B5FD' : '#6D28D9') : displaySem === 'all' ? (isDark ? '#6EE7B7' : '#047857') : (isDark ? '#93C5FD' : '#1D4ED8'),
+                                          border: `1px solid ${displaySem === '2' ? (isDark ? '#8B5CF6' : '#DDD6FE') : displaySem === 'all' ? (isDark ? '#10B981' : '#A7F3D0') : (isDark ? '#3B82F6' : '#BFDBFE')}`
+                                        }}
+                                      >
+                                        {displaySem === '2' ? 'Sem 2' : displaySem === 'all' ? 'Sem 1 & 2' : 'Sem 1'}
+                                      </span>
+                                    ) : (
+                                      <div className="flex items-center gap-1 flex-wrap">
+                                        <span
+                                          className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold"
+                                          style={{ background: theme.subtleBg, color: theme.textSecondary, border: `1px solid ${theme.border}` }}
+                                        >
+                                          {allMappings.length} class{allMappings.length !== 1 ? 'es' : ''}
+                                        </span>
+                                        {sem1Count > 0 && (
+                                          <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                                            S1: {sem1Count}
+                                          </span>
+                                        )}
+                                        {sem2Count > 0 && (
+                                          <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-violet-50 dark:bg-violet-950/30 text-violet-700 dark:text-violet-300 border border-violet-200 dark:border-violet-800">
+                                            S2: {sem2Count}
+                                          </span>
+                                        )}
+                                        {bothCount > 0 && (
+                                          <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                                            Both: {bothCount}
+                                          </span>
+                                        )}
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  <div className="flex items-center gap-1 opacity-80 group-hover:opacity-100 transition-opacity shrink-0">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleOpenEditStrand(strand)}
+                                      className="w-6 h-6 rounded flex items-center justify-center text-xs hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer"
+                                      style={{ color: theme.textSecondary }}
+                                      title="Edit Strand & Class Mapping"
+                                    >
+                                      <FontAwesomeIcon icon={faEdit} />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleDeleteStrand(strand)}
+                                      className="w-6 h-6 rounded flex items-center justify-center text-xs text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 cursor-pointer"
+                                      title="Delete Strand"
+                                    >
+                                      <FontAwesomeIcon icon={faTrash} />
+                                    </button>
+                                  </div>
                                 </div>
 
-                                <div className="flex items-center gap-1 opacity-80 group-hover:opacity-100 transition-opacity">
-                                  <button
-                                    type="button"
-                                    onClick={() => handleOpenEditStrand(strand)}
-                                    className="w-6 h-6 rounded flex items-center justify-center text-xs hover:bg-gray-100 dark:hover:bg-gray-800"
-                                    style={{ color: theme.textSecondary }}
-                                    title="Edit Strand"
-                                  >
-                                    <FontAwesomeIcon icon={faEdit} />
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleDeleteStrand(strand)}
-                                    className="w-6 h-6 rounded flex items-center justify-center text-xs text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30"
-                                    title="Delete Strand"
-                                  >
-                                    <FontAwesomeIcon icon={faTrash} />
-                                  </button>
-                                </div>
+                                {strand.description && (
+                                  <p className="text-xs mt-1 leading-relaxed" style={{ color: theme.textSecondary }}>
+                                    {strand.description}
+                                  </p>
+                                )}
+
+                                {!isSingleClass && allMappings.length > 0 && (
+                                  <div className="flex flex-wrap gap-1 mt-2 pt-2 border-t" style={{ borderColor: theme.border }}>
+                                    {allMappings.map(m => {
+                                      const cName = classesByIdMap.get(Number(m.kelas_id))?.kelas_nama
+                                      if (!cName) return null
+                                      const semTag = m.semester === '2' ? 'S2' : m.semester === 'all' ? 'S1&2' : 'S1'
+                                      return (
+                                        <span
+                                          key={m.id || `${m.strand_id}_${m.kelas_id}`}
+                                          className="px-1.5 py-0.5 rounded text-[9px] font-mono border"
+                                          style={{
+                                            background: m.semester === '2' ? (isDark ? 'rgba(139, 92, 246, 0.12)' : '#FAF5FF') : m.semester === 'all' ? (isDark ? 'rgba(16, 185, 129, 0.12)' : '#ECFDF5') : (isDark ? 'rgba(59, 130, 246, 0.12)' : '#F0F7FF'),
+                                            borderColor: m.semester === '2' ? (isDark ? '#7C3AED' : '#E9D5FF') : m.semester === 'all' ? (isDark ? '#059669' : '#A7F3D0') : (isDark ? '#2563EB' : '#BFDBFE'),
+                                            color: m.semester === '2' ? (isDark ? '#DDD6FE' : '#6D28D9') : m.semester === 'all' ? (isDark ? '#6EE7B7' : '#047857') : (isDark ? '#93C5FD' : '#1E40AF')
+                                          }}
+                                        >
+                                          {cName} ({semTag})
+                                        </span>
+                                      )
+                                    })}
+                                  </div>
+                                )}
                               </div>
-
-                              {strand.description && (
-                                <p className="text-xs mt-1 leading-relaxed" style={{ color: theme.textSecondary }}>
-                                  {strand.description}
-                                </p>
-                              )}
                             </div>
-                          </div>
-                        ))}
+                          )
+                        })}
                       </div>
                     )}
                   </div>
@@ -1300,10 +1669,10 @@ CREATE POLICY "Allow full access to pyp_subject_class" ON public.pyp_subject_cla
       {showStrandModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-150">
           <div 
-            className="w-full max-w-md rounded-lg shadow-xl border overflow-hidden"
+            className="w-full max-w-lg rounded-lg shadow-xl border overflow-hidden max-h-[90vh] flex flex-col"
             style={{ background: theme.cardBg, borderColor: theme.border }}
           >
-            <div className="px-5 py-4 border-b flex items-center justify-between" style={{ borderColor: theme.border }}>
+            <div className="px-5 py-4 border-b flex items-center justify-between shrink-0" style={{ borderColor: theme.border }}>
               <h3 className="text-sm font-bold font-mono tracking-wider uppercase" style={{ color: theme.textPrimary }}>
                 {editingStrand ? 'Edit Subject Strand' : 'Add Subject Strand'}
               </h3>
@@ -1316,25 +1685,47 @@ CREATE POLICY "Allow full access to pyp_subject_class" ON public.pyp_subject_cla
               </button>
             </div>
 
-            <form onSubmit={handleSaveStrand} className="p-5 space-y-4 text-xs font-mono">
-              <div>
-                <label className="block text-[10px] uppercase mb-1 font-bold" style={{ color: theme.textSecondary }}>
-                  PYP Subject ({selectedYearObj?.year_name}) *
-                </label>
-                <select
-                  required
-                  value={strandForm.subject_id}
-                  onChange={e => setStrandForm({ ...strandForm, subject_id: e.target.value })}
-                  className="w-full px-3 py-2 text-xs rounded border outline-none cursor-pointer"
-                  style={{ background: theme.inputBg, borderColor: theme.border, color: theme.textPrimary, borderRadius: '4px' }}
-                >
-                  <option value="">Select Subject</option>
-                  {filteredSubjects.map(s => (
-                    <option key={s.id} value={s.id}>
-                      {s.name} {s.code ? `[${s.code}]` : ''}
-                    </option>
-                  ))}
-                </select>
+            <form onSubmit={handleSaveStrand} className="p-5 space-y-4 text-xs font-mono overflow-y-auto">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="sm:col-span-2">
+                  <label className="block text-[10px] uppercase mb-1 font-bold" style={{ color: theme.textSecondary }}>
+                    PYP Subject ({selectedYearObj?.year_name}) *
+                  </label>
+                  <select
+                    required
+                    value={strandForm.subject_id}
+                    onChange={e => {
+                      const nextSid = e.target.value
+                      setStrandForm(prev => ({
+                        ...prev,
+                        subject_id: nextSid,
+                        classAssignments: editingStrand ? prev.classAssignments : buildDefaultStrandAssignments(nextSid)
+                      }))
+                    }}
+                    className="w-full px-3 py-2 text-xs rounded border outline-none cursor-pointer"
+                    style={{ background: theme.inputBg, borderColor: theme.border, color: theme.textPrimary, borderRadius: '4px' }}
+                  >
+                    <option value="">Select Subject</option>
+                    {filteredSubjects.map(s => (
+                      <option key={s.id} value={s.id}>
+                        {s.name} {s.code ? `[${s.code}]` : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] uppercase mb-1 font-bold" style={{ color: theme.textSecondary }}>
+                    Sort Order
+                  </label>
+                  <input
+                    type="number"
+                    value={strandForm.order_index}
+                    onChange={e => setStrandForm({ ...strandForm, order_index: e.target.value })}
+                    className="w-full px-3 py-2 text-xs rounded border outline-none"
+                    style={{ background: theme.inputBg, borderColor: theme.border, color: theme.textPrimary, borderRadius: '4px' }}
+                  />
+                </div>
               </div>
 
               <div>
@@ -1357,7 +1748,7 @@ CREATE POLICY "Allow full access to pyp_subject_class" ON public.pyp_subject_cla
                   Learning Outcomes / Strand Description
                 </label>
                 <textarea
-                  rows={3}
+                  rows={2}
                   placeholder="Key concepts, learning objectives, and scope expectations..."
                   value={strandForm.description}
                   onChange={e => setStrandForm({ ...strandForm, description: e.target.value })}
@@ -1366,42 +1757,99 @@ CREATE POLICY "Allow full access to pyp_subject_class" ON public.pyp_subject_cla
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[10px] uppercase mb-1 font-bold" style={{ color: theme.textSecondary }}>
-                    Semester
+              {/* Per-Class Assignment & Semester Matrix */}
+              <div>
+                <div className="flex flex-wrap items-center justify-between gap-2 mb-1.5">
+                  <label className="block text-[10px] uppercase font-bold" style={{ color: theme.blueText }}>
+                    Class & Semester Assignment * ({Object.keys(strandForm.classAssignments || {}).length} selected)
                   </label>
-                  <select
-                    value={strandForm.semester || '1'}
-                    onChange={e => setStrandForm({ ...strandForm, semester: e.target.value })}
-                    className="w-full px-3 py-2 text-xs rounded border outline-none cursor-pointer"
-                    style={{ background: theme.inputBg, borderColor: theme.border, color: theme.textPrimary, borderRadius: '4px' }}
-                  >
-                    <option value="1">Semester 1</option>
-                    <option value="2">Semester 2</option>
-                    <option value="all">Both Semesters</option>
-                  </select>
+                  <div className="flex flex-wrap items-center gap-1.5 text-[10px]">
+                    <button type="button" onClick={() => handleBulkStrandClasses('select_all')} className="text-blue-500 hover:underline cursor-pointer">
+                      Select All
+                    </button>
+                    <span className="text-gray-400">|</span>
+                    <button type="button" onClick={() => handleBulkStrandClasses('deselect_all')} className="text-gray-400 hover:underline cursor-pointer">
+                      Clear
+                    </button>
+                    <span className="text-gray-400">|</span>
+                    <button type="button" onClick={() => handleBulkStrandClasses('set_checked_semester', '1')} className="px-1.5 py-0.5 rounded bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-300 border border-blue-200 dark:border-blue-800 cursor-pointer">
+                      Checked → S1
+                    </button>
+                    <button type="button" onClick={() => handleBulkStrandClasses('set_checked_semester', '2')} className="px-1.5 py-0.5 rounded bg-violet-50 dark:bg-violet-950/30 text-violet-600 dark:text-violet-300 border border-violet-200 dark:border-violet-800 cursor-pointer">
+                      Checked → S2
+                    </button>
+                    <button type="button" onClick={() => handleBulkStrandClasses('set_checked_semester', 'all')} className="px-1.5 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 cursor-pointer">
+                      Checked → Both
+                    </button>
+                  </div>
                 </div>
 
-                <div>
-                  <label className="block text-[10px] uppercase mb-1 font-bold" style={{ color: theme.textSecondary }}>
-                    Sort Order
-                  </label>
-                  <input
-                    type="number"
-                    value={strandForm.order_index}
-                    onChange={e => setStrandForm({ ...strandForm, order_index: e.target.value })}
-                    className="w-full px-3 py-2 text-xs rounded border outline-none"
-                    style={{ background: theme.inputBg, borderColor: theme.border, color: theme.textPrimary, borderRadius: '4px' }}
-                  />
+                <div
+                  className="rounded border divide-y max-h-56 overflow-y-auto"
+                  style={{ background: theme.inputBg, borderColor: theme.border, borderRadius: '4px' }}
+                >
+                  {getSubjectApplicableClasses(strandForm.subject_id).map(c => {
+                    const kid = Number(c.kelas_id)
+                    const assignedSem = (strandForm.classAssignments || {})[kid]
+                    const isChecked = assignedSem !== undefined
+
+                    return (
+                      <div
+                        key={kid}
+                        className="flex items-center justify-between gap-2 px-3 py-2 text-[11px]"
+                        style={{
+                          borderColor: theme.border,
+                          background: isChecked ? (isDark ? 'rgba(59, 130, 246, 0.08)' : '#F8FAFC') : 'transparent'
+                        }}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => handleToggleStrandClass(kid)}
+                          className="flex items-center gap-2 text-left cursor-pointer flex-1 min-w-0"
+                          style={{ color: isChecked ? theme.textPrimary : theme.textSecondary }}
+                        >
+                          <FontAwesomeIcon
+                            icon={isChecked ? faCheckSquare : faSquare}
+                            className={`text-xs shrink-0 ${isChecked ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 opacity-60'}`}
+                          />
+                          <span className="font-semibold truncate">{c.kelas_nama}</span>
+                        </button>
+
+                        {isChecked ? (
+                          <div className="inline-flex rounded border p-0.5 gap-0.5 shrink-0" style={{ borderColor: theme.border, background: theme.cardBg }}>
+                            {[
+                              { val: '1', label: 'Sem 1', bg: '#2563EB' },
+                              { val: '2', label: 'Sem 2', bg: '#7C3AED' },
+                              { val: 'all', label: 'Both', bg: '#059669' },
+                            ].map(opt => {
+                              const active = assignedSem === opt.val
+                              return (
+                                <button
+                                  key={opt.val}
+                                  type="button"
+                                  onClick={() => handleSetStrandClassSemester(kid, opt.val)}
+                                  className="px-2 py-0.5 rounded text-[10px] font-bold cursor-pointer transition-all"
+                                  style={active ? { background: opt.bg, color: '#FFFFFF' } : { background: 'transparent', color: theme.textSecondary }}
+                                >
+                                  {opt.label}
+                                </button>
+                              )
+                            })}
+                          </div>
+                        ) : (
+                          <span className="text-[10px] opacity-50 shrink-0">Not assigned</span>
+                        )}
+                      </div>
+                    )
+                  })}
                 </div>
               </div>
 
-              <div className="pt-3 border-t flex items-center justify-end gap-2" style={{ borderColor: theme.border }}>
+              <div className="pt-3 border-t flex items-center justify-end gap-2 shrink-0" style={{ borderColor: theme.border }}>
                 <button
                   type="button"
                   onClick={() => setShowStrandModal(false)}
-                  className="px-3 py-1.5 text-xs rounded border transition-colors"
+                  className="px-3 py-1.5 text-xs rounded border transition-colors cursor-pointer"
                   style={{ borderColor: theme.border, color: theme.textPrimary }}
                 >
                   Cancel
@@ -1409,7 +1857,7 @@ CREATE POLICY "Allow full access to pyp_subject_class" ON public.pyp_subject_cla
                 <button
                   type="submit"
                   disabled={savingStrand}
-                  className="px-4 py-1.5 text-xs font-bold rounded transition-all flex items-center gap-1.5"
+                  className="px-4 py-1.5 text-xs font-bold rounded transition-all flex items-center gap-1.5 cursor-pointer"
                   style={{ background: theme.textPrimary, color: theme.cardBg }}
                 >
                   {savingStrand && <FontAwesomeIcon icon={faSpinner} className="animate-spin text-xs" />}

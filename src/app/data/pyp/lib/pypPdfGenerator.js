@@ -1,6 +1,7 @@
 import { jsPDF } from 'jspdf'
 import JSZip from 'jszip'
 import { supabase } from '@/lib/supabase'
+import { fetchAllRows, computeAverageStrandRating } from '@/lib/utils'
 import autoTable from 'jspdf-autotable'
 
 /**
@@ -2720,34 +2721,71 @@ export const generatePypClassReportPDF = async ({
       const pypSubjectIds = classSubjects.map(s => s.id)
 
       if (pypSubjectIds.length > 0) {
-        const [strandsRes, strandAssessRes] = await Promise.all([
-          supabase
-            .from('pyp_subject_strand')
-            .select('*')
-            .in('subject_id', pypSubjectIds)
-            .eq('is_active', true)
-            .or(`semester.eq.${semester},semester.eq.all,semester.is.null`)
-            .order('order_index', { ascending: true }),
-          supabase
-            .from('pyp_strand_assessment')
-            .select('*')
-            .eq('kelas_id', Number(classId))
-            .eq('year_id', Number(yearId))
-            .eq('semester', Number(semester))
-            .in('subject_id', pypSubjectIds)
+        const [strandsData, strandClassRows, strandAssessData] = await Promise.all([
+          fetchAllRows((from, to) =>
+            supabase
+              .from('pyp_subject_strand')
+              .select('*')
+              .in('subject_id', pypSubjectIds)
+              .eq('is_active', true)
+              .order('order_index', { ascending: true })
+              .order('id', { ascending: true })
+              .range(from, to)
+          ),
+          fetchAllRows((from, to) =>
+            supabase
+              .from('pyp_subject_strand_class')
+              .select('strand_id, kelas_id, semester, order_index')
+              .eq('kelas_id', Number(classId))
+              .in('semester', [String(semester), 'all'])
+              .order('order_index', { ascending: true })
+              .range(from, to)
+          ).catch(() => []),
+          fetchAllRows((from, to) =>
+            supabase
+              .from('pyp_strand_assessment')
+              .select('*')
+              .eq('kelas_id', Number(classId))
+              .eq('year_id', Number(yearId))
+              .eq('semester', Number(semester))
+              .in('subject_id', pypSubjectIds)
+              .order('id', { ascending: true })
+              .range(from, to)
+          )
         ])
 
-        if (strandsRes.data) {
-          strandsRes.data.forEach(strand => {
-            if (!subjectStrandsMap[strand.subject_id]) subjectStrandsMap[strand.subject_id] = []
-            subjectStrandsMap[strand.subject_id].push(strand)
+        const classStrandMap = new Map()
+        for (const sc of strandClassRows) {
+          classStrandMap.set(Number(sc.strand_id), sc)
+        }
+
+        for (const strand of strandsData) {
+          const classMapping = classStrandMap.get(Number(strand.id))
+          if (!classMapping) continue // Strict per-class: only include strands assigned to this class & semester
+          if (!subjectStrandsMap[strand.subject_id]) subjectStrandsMap[strand.subject_id] = []
+          subjectStrandsMap[strand.subject_id].push({
+            ...strand,
+            semester: classMapping.semester,
+            order_index: classMapping.order_index ?? strand.order_index
           })
         }
 
-        if (strandAssessRes.data) {
-          strandAssessRes.data.forEach(row => {
-            strandAssessmentsMap[`${row.student_id}_${row.subject_id}_${row.strand_id}`] = row
-          })
+        for (const sid of Object.keys(subjectStrandsMap)) {
+          subjectStrandsMap[sid].sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0))
+        }
+
+        // Group per-unit ratings linked to valid pyp_unit rows in this semester and compute average per (student, subject, strand)
+        const activeUnitIdSet = new Set(unitIds.map(id => Number(id)))
+        const groupedRatings = {}
+        for (const row of strandAssessData) {
+          if (activeUnitIdSet.size > 0 && row.unit_id && !activeUnitIdSet.has(Number(row.unit_id))) continue
+          const key = `${row.student_id}_${row.subject_id}_${row.strand_id}`
+          if (!groupedRatings[key]) groupedRatings[key] = []
+          if (row.rating && row.rating !== 'N/A') groupedRatings[key].push(row.rating)
+        }
+        for (const [key, ratings] of Object.entries(groupedRatings)) {
+          const avgResult = computeAverageStrandRating(ratings)
+          strandAssessmentsMap[key] = avgResult
         }
       }
     } catch (e) {

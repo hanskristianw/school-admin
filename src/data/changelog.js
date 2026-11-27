@@ -11,12 +11,12 @@
 export const SYSTEM_RELEASES = [
   {
     "version": "0.6.4",
-    "date": "2026-11-23",
+    "date": "2026-11-24",
     "isLatest": true,
     "summary": {
-      "id": "Menghapus pesan salinan monitoring admin pada notifikasi cron jadwal tugas guru (/api/duty/notify), serta memperjelas kontrol pilihan Hari Kerja/Libur, pengurutan DESC, pagination tabel, dan chunked fetchAllRows bebas batas 1.000 baris Supabase pada /data/attendance-settings dan API absensi terkait.",
-      "en": "Removed automatic admin monitoring CC messages from scheduled duty notifications (/api/duty/notify), and upgraded /data/attendance-settings and related attendance APIs with clear segmented work-day/holiday controls, DESC ordering, table pagination, and chunked fetchAllRows bypassing Supabase's 1,000-row cap.",
-      "zh": "移除值日提醒定时任务（/api/duty/notify）的管理员抄送监控消息，并升级 /data/attendance-settings 及相关考勤接口，提供清晰的工作日/休息日分段选择控件、倒序排列、表格分页以及突破 Supabase 1,000 行上限的分批拉取机制。"
+      "id": "Menghapus pesan salinan monitoring admin pada notifikasi cron jadwal tugas guru (/api/duty/notify), menyempurnakan kontrol & pagination di /data/attendance-settings, serta merombak kurikulum strand PYP (/data/pyp-subject, /data/pyp, dan generator PDF) menggunakan tabel mapping ketat per kelas pyp_subject_strand_class tanpa fallback.",
+      "en": "Removed automatic admin monitoring CC messages from scheduled duty notifications (/api/duty/notify), upgraded controls and pagination on /data/attendance-settings, and refactored PYP subject strands (/data/pyp-subject, /data/pyp, and PDF generator) to use strict per-class strand assignments via pyp_subject_strand_class with zero fallback.",
+      "zh": "移除值日提醒定时任务（/api/duty/notify）的管理员抄送监控消息，升级 /data/attendance-settings 控件与分页机制，并重构 PYP 学科维度管理（/data/pyp-subject、/data/pyp 及 PDF 生成器），通过 pyp_subject_strand_class 实现严格按班级分配维度与学期（无回退机制）。"
     },
     "sections": {
       "changed": [
@@ -29,6 +29,11 @@ export const SYSTEM_RELEASES = [
           "id": "Menyempurnakan tab Hari Khusus & Kalender Libur pada /data/attendance-settings serta API /api/attendance/special-day-rules, /api/attendance/report, dan /api/attendance/notify: mengubah tombol pill 'Hari Kerja / Bukan Hari Kerja (Libur)' dan 'Jam Kerja Standar / Bebas Jam' di form tambah dan modal edit menjadi segmented radio control yang jelas, mengurutkan tabel Hari Khusus secara DESC (terbaru di atas) dilengkapi filter lingkup dan pagination 20 baris/halaman (termasuk Kalender Libur), serta menambahkan mekanisme chunked range pagination (fetchAllRows) agar aman dari batas 1.000 baris Supabase.",
           "en": "Upgraded the Special Day Rules and Holidays tabs on /data/attendance-settings along with /api/attendance/special-day-rules, /api/attendance/report, and /api/attendance/notify: replaced ambiguous single pill buttons ('Hari Kerja / Bukan Hari Kerja (Libur)' and 'Jam Kerja Standar / Bebas Jam') in both create and edit forms with explicit segmented radio controls, switched Special Day Rules sorting to DESC (newest first) with scope filtering and 20-row pagination (also applied to Holidays), and added chunked range pagination (fetchAllRows) to bypass Supabase's 1,000-row limit.",
           "zh": "优化 /data/attendance-settings 的特殊日期规则与假期日历页签以及 /api/attendance/special-day-rules、/api/attendance/report 与 /api/attendance/notify 接口：将新增和编辑弹窗中易被误认为静态徽章的「工作日/休息日」和「标准工时/弹性工时」切换按钮改为清晰的双选项分段单选控件，将特殊日期列表改为按日期与 ID 倒序排列并补充范围筛选与每页 20 条分页（同步支持假期日历分页），同时引入 fetchAllRows 分批拉取机制以绕过 Supabase 单次 1,000 行上限。"
+        },
+        {
+          "id": "Merombak manajemen strand PYP (/data/pyp-subject, /data/pyp, dan pypPdfGenerator.js) ke arsitektur Master + Junction per kelas (pyp_subject_strand + tabel baru pyp_subject_strand_class) tanpa fallback serta menghubungkan penilaian strand per Unit secara relasional ke pyp_unit (unit_id FK + unit_number) pada pyp_strand_assessment: Tab Subject hanya menampilkan Unit yang sudah dibuat pada Tab Class untuk kelas dan semester aktif (memblokir penilaian bila Unit belum dibuat), menampilkan pratinjau ∑ Sem Average, serta menghitung rata-rata nilai antar unit (Beginning=1 s.d. Exceeding=4, N/A diabaikan) secara otomatis saat cetak rapor PDF.",
+          "en": "Refactored PYP subject strand management (/data/pyp-subject, /data/pyp, and pypPdfGenerator.js) to a strict Master + Per-Class Junction architecture (pyp_subject_strand + pyp_subject_strand_class) with zero fallback and relationally linked per-unit strand grading to Tab Class units (unit_id FK to pyp_unit + unit_number) on pyp_strand_assessment: Tab Subject now dynamically derives its grading units strictly from pyp_unit rows configured in Tab Class for the active class & semester (preventing grading if no unit exists yet), provides a live ∑ Sem Average view, and automatically averages assessed unit ratings (Beginning=1..Exceeding=4, ignoring N/A) on PDF report cards.",
+          "zh": "将 PYP 学科维度管理（/data/pyp-subject、/data/pyp 与 pypPdfGenerator.js）重构为严格按班级分配的主表+关联表架构（pyp_subject_strand + pyp_subject_strand_class，无回退机制），并将按单元评分关联至 pyp_unit（新增 unit_id 外键与 unit_number）：Subject 页签仅显示 Class 页签中对应班级与学期已创建的单元（若尚未建单元则提示先创建），提供 ∑ 学期均值视图，并在导出 PDF 成绩单时自动计算各单元均值（忽略 N/A）。"
         }
       ]
     }
